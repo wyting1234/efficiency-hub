@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代码预览</title>
+<style></style>
+<script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
+<script>
+(function(){
+  try{
+    var beacon=new BeaconAction({
+      appkey:'0WEB06U85YBSLJNL',
+      versionCode:'1.0.0',
+      channelID:'share',
+      delay:1000,
+      sessionDuration:30*60*1000,
+      isOversea:false,
+      needReportRqdEvent:false
+    });
+    beacon.onDirectUserAction('preview_page_view',{
+      'url':location.href,
+      'referrer':document.referrer,
+      'title':document.title,
+      'sandbox_id':'c335412a0a1b4272a060320f54bdac42'
+    });
+  }catch(e){}
+})();
+</script></head>
+<body>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>琐碎时间记录与统计</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+        body { background: #f5f7fb; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { display: flex; align-items: center; gap: 8px; font-size: 24px; margin-top: 0; }
+        h1 small { font-size: 14px; font-weight: normal; color: #888; margin-left: auto; }
+
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #16a34a; color: white; padding: 10px 24px; border-radius: 30px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+
+        .top-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #f8f9fa; padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; }
+        .top-bar .btn { padding: 6px 14px; font-size: 13px; }
+
+        .stats { display: flex; gap: 20px; background: #f0f2f5; padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .stats span { font-size: 14px; color: #444; }
+        .stats strong { font-weight: 600; color: #1a1a1a; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+        .form-grid .full { grid-column: 1 / -1; }
+        .form-grid label { font-size: 13px; font-weight: 500; color: #555; display: block; margin-bottom: 2px; }
+        .form-grid input, .form-grid select { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+
+        .timer-section { background: #f0f4ff; padding: 12px 16px; border-radius: 10px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 8px 0; }
+        .timer-section .timer-display { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 120px; }
+        .timer-section .timer-status { font-size: 14px; color: #555; margin-right: 8px; }
+        .timer-section .btn { min-width: 80px; }
+
+        .btn { padding: 8px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-success:hover { background: #15803d; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-outline { background: transparent; border: 1px solid #ccc; color: #333; }
+        .btn-outline:hover { background: #f0f0f0; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .btn-warning:hover { background: #d97706; }
+        .btn-sm { padding: 4px 12px; font-size: 12px; }
+
+        .filters { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 16px; align-items: center; }
+        .filters select { padding: 6px 12px; border-radius: 8px; border: 1px solid #ccc; }
+
+        .activity-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #edf2f7; }
+        .activity-item .info { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+        .activity-item .info .name { font-weight: 500; }
+        .activity-item .info .tag { font-size: 12px; background: #e0e7ff; color: #1e40af; padding: 2px 10px; border-radius: 12px; }
+        .activity-item .info .scene-tag { font-size: 12px; background: #fce7f3; color: #9d174d; padding: 2px 10px; border-radius: 12px; }
+        .activity-item .info .time-range { font-size: 13px; color: #555; background: #f3f4f6; padding: 2px 10px; border-radius: 12px; }
+        .activity-item .info .meta { color: #666; font-size: 13px; }
+        .activity-item .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .empty { color: #999; text-align: center; padding: 30px 0; }
+        .hidden { display: none; }
+
+        .all-records-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+        .all-records-table th { background: #f8f9fa; font-weight: 600; padding: 8px 10px; border-bottom: 2px solid #dee2e6; text-align: left; }
+        .all-records-table td { padding: 6px 10px; border-bottom: 1px solid #e9ecef; }
+        .all-records-table .status-tag { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #e9ecef; }
+        .all-records-table .status-tag.done { background: #d4edda; color: #155724; }
+        .all-records-table .status-tag.pending { background: #fff3cd; color: #856404; }
+
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal { background: white; border-radius: 16px; padding: 24px; max-width: 800px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .modal h2 { margin-top: 0; display: flex; justify-content: space-between; align-items: center; }
+        .modal .close-btn { background: none; border: none; font-size: 28px; cursor: pointer; color: #999; }
+        .modal .close-btn:hover { color: #333; }
+
+        .stat-section { margin: 20px 0; border-top: 1px solid #eee; padding-top: 16px; }
+        .stat-section h3 { margin: 0 0 12px 0; }
+        .stat-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .stat-table th, .stat-table td { padding: 6px 10px; border-bottom: 1px solid #e9ecef; text-align: left; }
+        .stat-table th { background: #f8f9fa; font-weight: 600; }
+
+        .stat-filter { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+        .stat-filter select, .stat-filter input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; }
+
+        .chart-container { width: 100%; height: 250px; margin: 12px 0; }
+
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } .activity-item { flex-wrap: wrap; gap: 6px; } }
+    </style>
+</head>
+<body>
+<!-- Toast -->
+<div id="toast" class="toast">✅ 已保存</div>
+
+<div class="container" id="app">
+    <h1>🧩 琐碎时间记录器 <small>记录你的碎片时刻</small></h1>
+
+    <!-- 顶部操作栏 -->
+    <div class="top-bar">
+        <button class="btn btn-outline btn-sm" id="statsBtn">📊 场景统计</button>
+        <button class="btn btn-outline btn-sm" id="timeStatsBtn">⏱️ 时间统计</button>
+        <button class="btn btn-outline btn-sm" id="exportBtn">📥 导出CSV</button>
+        <button class="btn btn-outline btn-sm" id="resetBtn" style="color:#dc2626;">🗑️ 清空所有</button>
+        <span style="margin-left:auto; font-size:13px; color:#888;">💡 使用计时器记录时间</span>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats" id="stats">
+        <span>📋 待做 <strong id="stat-remaining">0</strong></span>
+        <span>✅ 已完成 <strong id="stat-done">0</strong></span>
+        <span>📊 总计 <strong id="stat-total">0</strong></span>
+        <span>⏱️ 今日总耗时 <strong id="stat-today">0</strong> 分钟</span>
+    </div>
+
+    <!-- 添加琐碎活动 -->
+    <div class="form-grid">
+        <div class="full"><label>活动分类</label>
+            <select id="actCategorySelect"></select>
+            <span style="font-size:12px; color:#888;">选择“其他”并保存活动时，自动将活动名称加入分类列表</span>
+        </div>
+        <div class="full"><label>琐碎活动名称</label>
+            <input id="actName" placeholder="输入活动名称（默认与分类相同）" />
+            <span style="font-size:12px; color:#999;">按回车键快速添加</span>
+        </div>
+        <div class="full"><label>⏱️ 计时器</label>
+            <div class="timer-section">
+                <span class="timer-status" id="timerStatus">⏸️ 未开始</span>
+                <span class="timer-display" id="timerDisplay">00:00</span>
+                <button class="btn btn-success" id="timerStartBtn">▶ 开始计时</button>
+                <button class="btn btn-warning" id="timerStopBtn" disabled>⏸️ 暂停计时</button>
+                <button class="btn btn-outline" id="timerResetBtn">↺ 重置</button>
+            </div>
+            <div style="font-size:13px; color:#666; margin-top:4px;">
+                已记录时间：<span id="recordedTimeDisplay">未计时</span>
+            </div>
+        </div>
+        <div><label>优先级</label>
+            <select id="actPriority">
+                <option value="1">1 (最低)</option>
+                <option value="2">2</option>
+                <option value="3" selected>3</option>
+                <option value="4">4</option>
+                <option value="5">5 (最高)</option>
+            </select>
+        </div>
+        <div><label>🧩 所属场景</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <select id="actSceneSelect" style="flex:1;"></select>
+                <button class="btn btn-outline btn-sm" id="addSceneBtn" style="white-space:nowrap;">➕ 新增场景</button>
+            </div>
+        </div>
+        <div class="full">
+            <button class="btn btn-primary" id="saveBtn" style="width:100%;">💾 保存活动</button>
+        </div>
+    </div>
+
+    <!-- 筛选 -->
+    <div class="filters">
+        <span>🔍 按场景筛选：</span>
+        <select id="filterScene"><option value="">全部场景</option></select>
+        <button class="btn btn-outline btn-sm" id="clearFilterBtn">清除</button>
+    </div>
+
+    <!-- 待做列表 -->
+    <div id="activityList"></div>
+
+    <!-- 已完成 & 全部记录 -->
+    <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" id="showCompletedBtn">📜 查看已完成</button>
+        <button class="btn btn-outline btn-sm" id="hideCompletedBtn" style="display:none;">🙈 隐藏已完成</button>
+        <button class="btn btn-outline btn-sm" id="toggleAllRecordsBtn">🙈 隐藏全部记录</button>
+    </div>
+    <div id="completedList" style="margin-top:8px;"></div>
+    <div id="allRecordsContainer" style="margin-top:12px;">
+        <div style="overflow-x:auto;">
+            <table class="all-records-table" id="allRecordsTable">
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>活动</th>
+                        <th>分类</th>
+                        <th>场景</th>
+                        <th>时间段</th>
+                        <th>耗时</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody id="allRecordsBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 场景统计模态框 -->
+<div id="statsModal" class="modal-overlay hidden" style="display:none;">
+    <div class="modal">
+        <h2>📊 按场景统计 <button class="close-btn" id="closeStatsBtn">&times;</button></h2>
+        <div id="statsContent"></div>
+    </div>
+</div>
+
+<!-- 时间统计模态框 -->
+<div id="timeStatsModal" class="modal-overlay hidden" style="display:none;">
+    <div class="modal">
+        <h2>⏱️ 时间统计 <button class="close-btn" id="closeTimeStatsBtn">&times;</button></h2>
+        <div id="timeStatsContent">
+            <div class="stat-filter">
+                <label>汇总维度：
+                    <select id="globalDimension">
+                        <option value="day">每日</option>
+                        <option value="week">每周</option>
+                        <option value="month">每月</option>
+                        <option value="year">每年</option>
+                    </select>
+                </label>
+                <label>场景筛选：
+                    <select id="statSceneFilter"><option value="">全部场景</option></select>
+                </label>
+                <label>活动筛选：
+                    <select id="statActivityFilter"><option value="">全部活动</option></select>
+                </label>
+                <button class="btn btn-primary btn-sm" id="refreshGlobalChartBtn">更新图表</button>
+            </div>
+            <div class="chart-container">
+                <canvas id="totalChart"></canvas>
+            </div>
+            <div class="stat-section">
+                <h3>📅 详细数据</h3>
+                <div id="dailyTotalStats"></div>
+            </div>
+            <div class="stat-section">
+                <h3>📊 按活动统计（日/周/月/年）</h3>
+                <div class="stat-filter">
+                    <label>选择活动：<select id="activityNameFilter"></select></label>
+                    <label>查看维度：
+                        <select id="dimensionSelect">
+                            <option value="day">每日</option>
+                            <option value="week">每周</option>
+                            <option value="month">每月</option>
+                            <option value="year">每年</option>
+                        </select>
+                    </label>
+                    <button class="btn btn-primary btn-sm" id="refreshActivityStatsBtn">刷新</button>
+                </div>
+                <div id="activityStatsResult"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- 预设 ----------
+        const PRESET_SCENES = [
+            '工作间隙（会议之间）',
+            '工作衔接（任务交接）',
+            '通勤等车（公交/地铁）',
+            '打车排队',
+            '用餐等餐',
+            '饭前/饭后等待',
+            '等电梯',
+            '排队（银行/医院）',
+            '孩子上课等待',
+            '午休间隙'
+        ];
+        const PRESET_CATEGORIES = ['学习', '运动', '工作', '其他'];
+
+        // ---------- 数据层 ----------
+        let data = {
+            activities: [],
+            completed: [],
+            customScenes: [],
+            customCategories: []
+        };
+        const STORAGE_KEY = 'idleManagerData_v15';
+
+        function loadData() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    data.activities = parsed.activities || [];
+                    data.completed = parsed.completed || [];
+                    data.customScenes = parsed.customScenes || [];
+                    data.customCategories = parsed.customCategories || [];
+                } catch(e) {}
+            }
+            if (!data.activities) data.activities = [];
+            if (!data.completed) data.completed = [];
+            if (!data.customScenes) data.customScenes = [];
+            if (!data.customCategories) data.customCategories = [];
+        }
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+
+        function genId() {
+            const all = [...data.activities, ...data.completed];
+            const maxId = all.reduce((max, a) => Math.max(max, a.id || 0), 0);
+            return maxId + 1;
+        }
+
+        // ---------- 工具函数 ----------
+        function calcMinutes(startStr, endStr) {
+            if (!startStr || !endStr) return 0;
+            const parseTime = (s) => {
+                const parts = s.split(':');
+                if (parts.length !== 2) return null;
+                const h = parseInt(parts[0]);
+                const m = parseInt(parts[1]);
+                if (isNaN(h) || isNaN(m) || h<0 || h>23 || m<0 || m>59) return null;
+                return h * 60 + m;
+            };
+            const startTotal = parseTime(startStr);
+            const endTotal = parseTime(endStr);
+            if (startTotal === null || endTotal === null) return 0;
+            let diff = endTotal - startTotal;
+            if (diff <= 0) diff += 24 * 60;
+            return diff;
+        }
+
+        function getToday() {
+            return new Date().toISOString().slice(0,10);
+        }
+
+        function getWeekStart(dateStr) {
+            const d = new Date(dateStr);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            d.setDate(diff);
+            return d.toISOString().slice(0,10);
+        }
+
+        function getMonthStart(dateStr) {
+            const d = new Date(dateStr);
+            d.setDate(1);
+            return d.toISOString().slice(0,10);
+        }
+
+        function getYearStart(dateStr) {
+            const d = new Date(dateStr);
+            d.setMonth(0, 1);
+            return d.toISOString().slice(0,10);
+        }
+
+        function formatMinutes(min) {
+            if (min < 60) return min + '分钟';
+            const h = Math.floor(min / 60);
+            const m = min % 60;
+            return h + '小时' + (m > 0 ? m + '分钟' : '');
+        }
+
+        function getCurrentTimeStr() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2,'0');
+            const m = String(now.getMinutes()).padStart(2,'0');
+            return h + ':' + m;
+        }
+
+        // ---------- Toast ----------
+        function showToast(msg = '✅ 已保存') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // ---------- 分类下拉 ----------
+        function getAllCategories() {
+            const all = [...PRESET_CATEGORIES, ...data.customCategories];
+            return [...new Set(all)];
+        }
+
+        function refreshCategorySelect() {
+            const allCats = getAllCategories();
+            const select = document.getElementById('actCategorySelect');
+            const currentVal = select.value;
+            select.innerHTML = '';
+            allCats.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                select.appendChild(opt);
+            });
+            if (allCats.includes(currentVal)) {
+                select.value = currentVal;
+            } else if (allCats.length > 0) {
+                select.value = allCats[0];
+            }
+        }
+
+        // ---------- 场景相关 ----------
+        function getAllScenes() {
+            const all = [...PRESET_SCENES, ...data.customScenes];
+            return [...new Set(all)];
+        }
+
+        function refreshSceneSelects() {
+            const allScenes = getAllScenes();
+            const actSelect = document.getElementById('actSceneSelect');
+            const currentVal = actSelect.value;
+            actSelect.innerHTML = '';
+            allScenes.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                actSelect.appendChild(opt);
+            });
+            if (allScenes.includes(currentVal)) {
+                actSelect.value = currentVal;
+            } else if (allScenes.length > 0) {
+                actSelect.value = allScenes[0];
+            }
+
+            const filterSelect = document.getElementById('filterScene');
+            const filterVal = filterSelect.value;
+            filterSelect.innerHTML = '<option value="">全部场景</option>';
+            allScenes.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                filterSelect.appendChild(opt);
+            });
+            if (allScenes.includes(filterVal)) {
+                filterSelect.value = filterVal;
+            } else {
+                filterSelect.value = '';
+            }
+
+            const statSceneFilter = document.getElementById('statSceneFilter');
+            const statSceneVal = statSceneFilter.value;
+            statSceneFilter.innerHTML = '<option value="">全部场景</option>';
+            allScenes.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                statSceneFilter.appendChild(opt);
+            });
+            if (allScenes.includes(statSceneVal)) {
+                statSceneFilter.value = statSceneVal;
+            } else {
+                statSceneFilter.value = '';
+            }
+        }
+
+        function addNewScene() {
+            const newScene = prompt('请输入新的间隙场景名称：');
+            if (newScene === null) return;
+            const trimmed = newScene.trim();
+            if (!trimmed) {
+                alert('场景名称不能为空！');
+                return;
+            }
+            const allScenes = getAllScenes();
+            if (allScenes.includes(trimmed)) {
+                alert('该场景已存在，请勿重复添加。');
+                return;
+            }
+            data.customScenes.push(trimmed);
+            saveData();
+            refreshSceneSelects();
+            document.getElementById('actSceneSelect').value = trimmed;
+            showToast('✅ 场景已添加');
+        }
+
+        // ---------- 计时器相关 ----------
+        let timerInterval = null;
+        let timerState = {
+            startTime: null,   // 开始时刻 Date 对象
+            endTime: null,     // 结束时刻 Date 对象
+            startStr: '',      // 开始时间 HH:MM
+            endStr: '',        // 结束时间 HH:MM
+            elapsedSeconds: 0, // 已计时的秒数（累计）
+            isRunning: false,
+            isPaused: false,
+            recorded: false    // 是否已记录计时（开始+结束）
+        };
+
+        function updateTimerDisplay() {
+            const display = document.getElementById('timerDisplay');
+            const totalSec = timerState.elapsedSeconds;
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            display.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+        }
+
+        function updateTimerStatus(text) {
+            document.getElementById('timerStatus').textContent = text;
+        }
+
+        function updateRecordedTimeDisplay() {
+            const el = document.getElementById('recordedTimeDisplay');
+            if (timerState.startStr && timerState.endStr) {
+                const mins = calcMinutes(timerState.startStr, timerState.endStr);
+                el.textContent = `${timerState.startStr} → ${timerState.endStr} (${mins} 分钟)`;
+            } else {
+                el.textContent = '未计时';
+            }
+        }
+
+        function resetTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            timerState = {
+                startTime: null,
+                endTime: null,
+                startStr: '',
+                endStr: '',
+                elapsedSeconds: 0,
+                isRunning: false,
+                isPaused: false,
+                recorded: false
+            };
+            updateTimerDisplay();
+            updateTimerStatus('⏸️ 未开始');
+            document.getElementById('timerStartBtn').disabled = false;
+            document.getElementById('timerStopBtn').disabled = true;
+            updateRecordedTimeDisplay();
+        }
+
+        function startTimer() {
+            if (timerState.isRunning) return;
+            // 如果已经记录过，重置再开始
+            if (timerState.recorded) {
+                resetTimer();
+                // 重新开始
+            }
+            // 如果暂停后继续，使用累计时间
+            if (!timerState.startTime) {
+                timerState.startTime = new Date();
+                timerState.startStr = getCurrentTimeStr();
+                timerState.elapsedSeconds = 0;
+            } else {
+                // 继续计时，记录开始时刻
+                timerState.startTime = new Date();
+                // 保留累计秒数
+            }
+            timerState.isRunning = true;
+            timerState.isPaused = false;
+            timerState.recorded = false;
+            document.getElementById('timerStartBtn').disabled = true;
+            document.getElementById('timerStopBtn').disabled = false;
+            updateTimerStatus('▶️ 计时中...');
+            // 启动计时器更新
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (timerState.isRunning && timerState.startTime) {
+                    const now = new Date();
+                    const diff = Math.floor((now - timerState.startTime) / 1000);
+                    // 累计秒数 = 之前累计 + diff（但我们在每次start时重置累计，这里用diff加上之前累计？我们采用简单方法：记录开始时间，每次更新用当前时间减开始时间）
+                    // 但暂停后继续，累计秒数应保留，我们修改逻辑：用elapsedSeconds作为基础，加上当前时间与startTime的差
+                    // 更好的方式：在每次tick时计算总秒数 = elapsedSeconds + (now - startTime)/1000
+                    // 但startTime在继续时被重置，所以elapsedSeconds保留之前已经计时的秒数
+                    // 这里直接用elapsedSeconds + (now - startTime)/1000
+                    const totalSec = timerState.elapsedSeconds + Math.floor((now - timerState.startTime) / 1000);
+                    const mins = Math.floor(totalSec / 60);
+                    const secs = totalSec % 60;
+                    document.getElementById('timerDisplay').textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+                }
+            }, 500);
+        }
+
+        function stopTimer() {
+            if (!timerState.isRunning) return;
+            // 停止计时
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            timerState.isRunning = false;
+            timerState.isPaused = true;
+            // 记录结束时间
+            const now = new Date();
+            timerState.endTime = now;
+            timerState.endStr = getCurrentTimeStr();
+            // 计算总秒数 = elapsedSeconds + (now - startTime) / 1000
+            if (timerState.startTime) {
+                const totalSec = timerState.elapsedSeconds + Math.floor((now - timerState.startTime) / 1000);
+                timerState.elapsedSeconds = totalSec;
+                timerState.recorded = true;
+                // 更新显示
+                updateTimerDisplay();
+                updateRecordedTimeDisplay();
+                updateTimerStatus('⏹️ 已暂停');
+                document.getElementById('timerStartBtn').disabled = false;
+                document.getElementById('timerStopBtn').disabled = true;
+                // 将开始和结束的HH:MM存入隐藏变量，供保存使用
+                // 同时计算分钟数
+                const mins = calcMinutes(timerState.startStr, timerState.endStr);
+                // 存储到全局变量供保存使用
+                window._tempStart = timerState.startStr;
+                window._tempEnd = timerState.endStr;
+                window._tempMinutes = mins;
+                showToast(`⏱️ 计时完成：${mins} 分钟`);
+            } else {
+                // 没有开始过，异常情况
+                resetTimer();
+            }
+        }
+
+        // ---------- 分类改变时自动填充名称 ----------
+        function onCategoryChange() {
+            const cat = document.getElementById('actCategorySelect').value;
+            const nameInput = document.getElementById('actName');
+            if (!nameInput.value || nameInput.value === nameInput.defaultValue || nameInput.value === '') {
+                nameInput.value = cat;
+                nameInput.defaultValue = cat;
+            }
+        }
+
+        // ---------- 添加活动 ----------
+        function addActivity() {
+            const name = document.getElementById('actName').value.trim();
+            if (!name) { alert('请输入活动名称'); return; }
+            // 检查是否已计时
+            if (!window._tempStart || !window._tempEnd) {
+                alert('请先使用计时器记录时间（点击“开始计时”和“暂停计时”）');
+                return;
+            }
+            const start = window._tempStart;
+            const end = window._tempEnd;
+            const minutes = window._tempMinutes;
+            if (minutes <= 0) {
+                alert('计时时间必须大于0分钟');
+                return;
+            }
+
+            const priority = parseInt(document.getElementById('actPriority').value);
+            let category = document.getElementById('actCategorySelect').value;
+            const scene = document.getElementById('actSceneSelect').value;
+            if (!scene) { alert('请选择场景'); return; }
+
+            // 如果分类是“其他”，且活动名称不在分类列表中，则自动添加为新分类
+            if (category === '其他' && name) {
+                const allCats = getAllCategories();
+                if (!allCats.includes(name)) {
+                    data.customCategories.push(name);
+                    saveData();
+                    refreshCategorySelect();
+                    category = name;
+                    document.getElementById('actCategorySelect').value = name;
+                } else {
+                    category = name;
+                    document.getElementById('actCategorySelect').value = name;
+                }
+            }
+
+            const activity = {
+                id: genId(),
+                name,
+                start,
+                end,
+                minutes,
+                priority,
+                category,
+                scene,
+                date: getToday(),
+                created: new Date().toLocaleString()
+            };
+            data.activities.push(activity);
+            saveData();
+            render();
+            // 重置计时器
+            resetTimer();
+            document.getElementById('actName').value = '';
+            document.getElementById('actName').defaultValue = '';
+            onCategoryChange();
+            document.getElementById('actName').focus();
+            // 清除临时变量
+            window._tempStart = null;
+            window._tempEnd = null;
+            window._tempMinutes = 0;
+            showToast('✅ 已保存');
+        }
+
+        // ---------- 刷新下拉（统计用） ----------
+        function refreshActivityNameFilter() {
+            const all = [...data.activities, ...data.completed];
+            const names = all.map(a => a.name).filter(Boolean);
+            const unique = [...new Set(names)];
+            const select = document.getElementById('activityNameFilter');
+            const current = select.value;
+            select.innerHTML = '';
+            if (unique.length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '（无活动）';
+                select.appendChild(opt);
+                select.disabled = true;
+            } else {
+                select.disabled = false;
+                unique.forEach(n => {
+                    const opt = document.createElement('option');
+                    opt.value = n;
+                    opt.textContent = n;
+                    select.appendChild(opt);
+                });
+                if (unique.includes(current)) {
+                    select.value = current;
+                } else {
+                    select.value = unique[0];
+                }
+            }
+            // 统计模态框中的活动筛选
+            const statActivityFilter = document.getElementById('statActivityFilter');
+            const statVal = statActivityFilter.value;
+            statActivityFilter.innerHTML = '<option value="">全部活动</option>';
+            unique.forEach(n => {
+                const opt = document.createElement('option');
+                opt.value = n;
+                opt.textContent = n;
+                statActivityFilter.appendChild(opt);
+            });
+            if (unique.includes(statVal)) {
+                statActivityFilter.value = statVal;
+            } else {
+                statActivityFilter.value = '';
+            }
+        }
+
+        // ---------- 渲染全部记录表格 ----------
+        function renderAllRecords() {
+            const all = [...data.activities, ...data.completed];
+            const sorted = all.slice().sort((a,b) => {
+                if (a.date !== b.date) return (a.date || '').localeCompare(b.date || '');
+                return (a.start || '').localeCompare(b.start || '');
+            });
+            const tbody = document.getElementById('allRecordsBody');
+            if (sorted.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">暂无记录</td></tr>';
+                return;
+            }
+            let html = '';
+            sorted.forEach(act => {
+                const status = data.completed.includes(act) ? '已完成' : '待做';
+                const statusClass = data.completed.includes(act) ? 'done' : 'pending';
+                const timeStr = act.start && act.end ? `${act.start} → ${act.end}` : '未设置';
+                html += `<tr>
+                    <td>${escapeHtml(act.date || '')}</td>
+                    <td>${escapeHtml(act.name)}</td>
+                    <td>${escapeHtml(act.category || '其他')}</td>
+                    <td>${escapeHtml(act.scene || '未指定')}</td>
+                    <td>${escapeHtml(timeStr)}</td>
+                    <td>${act.minutes || 0}分钟</td>
+                    <td><span class="status-tag ${statusClass}">${status}</span></td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ---------- CRUD ----------
+        function completeActivity(id) {
+            const idx = data.activities.findIndex(a => a.id === id);
+            if (idx === -1) return;
+            const [act] = data.activities.splice(idx, 1);
+            act.completedAt = new Date().toLocaleString();
+            data.completed.push(act);
+            saveData();
+            render();
+            showToast('✅ 已完成');
+        }
+
+        function deleteActivity(id) {
+            if (!confirm('确定删除该活动吗？')) return;
+            const idx = data.activities.findIndex(a => a.id === id);
+            if (idx === -1) return;
+            data.activities.splice(idx, 1);
+            saveData();
+            render();
+            showToast('🗑️ 已删除');
+        }
+
+        function editActivity(id) {
+            const act = data.activities.find(a => a.id === id);
+            if (!act) return;
+            const newName = prompt('修改名称：', act.name);
+            if (newName !== null && newName.trim() !== '') act.name = newName.trim();
+            const newCat = prompt('修改活动分类：', act.category);
+            if (newCat !== null && newCat.trim()) {
+                const allCats = getAllCategories();
+                if (!allCats.includes(newCat.trim())) {
+                    data.customCategories.push(newCat.trim());
+                    saveData();
+                    refreshCategorySelect();
+                }
+                act.category = newCat.trim();
+            }
+            const allScenes = getAllScenes();
+            const sceneMsg = '修改场景（请输入现有场景名称，若需新增请先通过“新增场景”按钮添加）\n当前：' + act.scene;
+            const newScene = prompt(sceneMsg, act.scene);
+            if (newScene !== null && newScene.trim()) {
+                const trimmed = newScene.trim();
+                if (allScenes.includes(trimmed)) {
+                    act.scene = trimmed;
+                } else {
+                    alert(`场景“${trimmed}”不存在，请先添加。`);
+                }
+            }
+            const prioMsg = '请选择新优先级（输入数字1-5）：\n当前为 ' + act.priority;
+            const newPrio = prompt(prioMsg, act.priority);
+            if (newPrio !== null && !isNaN(parseInt(newPrio)) && parseInt(newPrio)>=1 && parseInt(newPrio)<=5) {
+                act.priority = parseInt(newPrio);
+            }
+            saveData();
+            render();
+            showToast('✅ 已更新');
+        }
+
+        // ---------- 场景统计 ----------
+        function showStatsModal() {
+            refreshActivityNameFilter();
+            const modal = document.getElementById('statsModal');
+            const content = document.getElementById('statsContent');
+            const all = [...data.activities, ...data.completed];
+            const sceneMap = {};
+            all.forEach(a => {
+                const scene = a.scene || '未指定';
+                if (!sceneMap[scene]) sceneMap[scene] = { count: 0, totalMinutes: 0 };
+                sceneMap[scene].count++;
+                sceneMap[scene].totalMinutes += a.minutes || 0;
+            });
+            const sorted = Object.entries(sceneMap).sort((a,b) => b[1].totalMinutes - a[1].totalMinutes);
+            const maxMinutes = sorted.length > 0 ? sorted[0][1].totalMinutes : 1;
+            let html = '';
+            if (sorted.length === 0) {
+                html = '<p>暂无数据</p>';
+            } else {
+                sorted.forEach(([scene, stats]) => {
+                    const pct = (stats.totalMinutes / maxMinutes * 100).toFixed(0);
+                    html += `<div style="display:flex;align-items:center;gap:12px;margin:8px 0;">
+                        <span style="min-width:120px;font-weight:500;">${escapeHtml(scene)}</span>
+                        <div style="flex:1;height:20px;background:#e9ecef;border-radius:10px;overflow:hidden;">
+                            <div style="height:100%;width:${pct}%;background:#2563eb;border-radius:10px;transition:width 0.3s;"></div>
+                        </div>
+                        <span style="min-width:80px;text-align:right;font-size:14px;color:#555;">${stats.count}项 · ${stats.totalMinutes}分钟</span>
+                    </div>`;
+                });
+            }
+            content.innerHTML = html;
+            modal.style.display = 'flex';
+        }
+
+        // ---------- 时间统计 ----------
+        let globalChartInstance = null;
+
+        function showTimeStatsModal() {
+            refreshActivityNameFilter();
+            refreshSceneSelects();
+            const modal = document.getElementById('timeStatsModal');
+            modal.style.display = 'flex';
+            updateGlobalChartAndTable();
+            const actSelect = document.getElementById('activityNameFilter');
+            if (actSelect.options.length > 0 && !actSelect.disabled) {
+                actSelect.selectedIndex = 0;
+                updateActivityStats();
+            } else {
+                document.getElementById('activityStatsResult').innerHTML = '<p>请先添加琐碎活动</p>';
+            }
+        }
+
+        function updateGlobalChartAndTable() {
+            const dimension = document.getElementById('globalDimension').value;
+            const sceneFilter = document.getElementById('statSceneFilter').value;
+            const activityFilter = document.getElementById('statActivityFilter').value;
+
+            let all = [...data.activities, ...data.completed];
+            if (sceneFilter) {
+                all = all.filter(a => (a.scene || '') === sceneFilter);
+            }
+            if (activityFilter) {
+                all = all.filter(a => a.name === activityFilter);
+            }
+
+            const groupMap = {};
+            all.forEach(a => {
+                const date = a.date || '未知日期';
+                let key;
+                if (dimension === 'day') key = date;
+                else if (dimension === 'week') key = getWeekStart(date);
+                else if (dimension === 'month') key = getMonthStart(date);
+                else if (dimension === 'year') key = getYearStart(date);
+                else key = date;
+                if (!groupMap[key]) groupMap[key] = 0;
+                groupMap[key] += a.minutes || 0;
+            });
+
+            const sorted = Object.entries(groupMap).sort((a,b) => a[0].localeCompare(b[0]));
+            const labels = sorted.map(item => item[0]);
+            const values = sorted.map(item => item[1]);
+
+            const ctx = document.getElementById('totalChart').getContext('2d');
+            if (globalChartInstance) {
+                globalChartInstance.destroy();
+            }
+            globalChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '总耗时（分钟）',
+                        data: values,
+                        backgroundColor: 'rgba(37, 99, 235, 0.6)',
+                        borderColor: 'rgba(37, 99, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + ' 分钟';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: '分钟' }
+                        }
+                    }
+                }
+            });
+
+            const tableDiv = document.getElementById('dailyTotalStats');
+            if (sorted.length === 0) {
+                tableDiv.innerHTML = '<p>暂无数据</p>';
+            } else {
+                let html = `<table class="stat-table">
+                    <thead><tr><th>${dimension==='day'?'日期':dimension==='week'?'周起始':dimension==='month'?'月份起始':'年份起始'}</th><th>总耗时（分钟）</th><th>合计（时:分）</th></tr></thead><tbody>`;
+                sorted.forEach(([key, total]) => {
+                    const hours = Math.floor(total / 60);
+                    const mins = total % 60;
+                    html += `<tr><td>${key}</td><td>${total}</td><td>${hours}小时${mins>0?mins+'分钟':''}</td></tr>`;
+                });
+                html += '</tbody></table>';
+                tableDiv.innerHTML = html;
+            }
+        }
+
+        function updateActivityStats() {
+            const actName = document.getElementById('activityNameFilter').value;
+            const dimension = document.getElementById('dimensionSelect').value;
+            if (!actName) {
+                document.getElementById('activityStatsResult').innerHTML = '<p>请选择一个活动</p>';
+                return;
+            }
+            const all = [...data.activities, ...data.completed];
+            const filtered = all.filter(a => a.name === actName);
+            if (filtered.length === 0) {
+                document.getElementById('activityStatsResult').innerHTML = '<p>该活动暂无记录</p>';
+                return;
+            }
+            const groupMap = {};
+            filtered.forEach(a => {
+                const date = a.date || '未知日期';
+                let key;
+                if (dimension === 'day') key = date;
+                else if (dimension === 'week') key = getWeekStart(date) + ' (周)';
+                else if (dimension === 'month') key = getMonthStart(date) + ' (月)';
+                else if (dimension === 'year') key = getYearStart(date) + ' (年)';
+                else key = date;
+                if (!groupMap[key]) groupMap[key] = 0;
+                groupMap[key] += a.minutes || 0;
+            });
+            const sorted = Object.entries(groupMap).sort((a,b) => a[0].localeCompare(b[0]));
+            let html = '';
+            if (sorted.length === 0) {
+                html = '<p>无数据</p>';
+            } else {
+                html = `<table class="stat-table">
+                    <thead><tr><th>${dimension==='day'?'日期':dimension==='week'?'周起始':dimension==='month'?'月份起始':'年份起始'}</th><th>总耗时（分钟）</th><th>合计（时:分）</th></tr></thead><tbody>`;
+                sorted.forEach(([key, total]) => {
+                    const hours = Math.floor(total / 60);
+                    const mins = total % 60;
+                    html += `<tr><td>${key}</td><td>${total}</td><td>${hours}小时${mins>0?mins+'分钟':''}</td></tr>`;
+                });
+                html += '</tbody></table>';
+            }
+            document.getElementById('activityStatsResult').innerHTML = html;
+        }
+
+        // ---------- 导出CSV ----------
+        function exportCSV() {
+            const all = [...data.activities, ...data.completed];
+            if (all.length === 0) { alert('没有数据可导出'); return; }
+            const headers = ['ID', '名称', '日期', '开始时间', '结束时间', '耗时(分钟)', '优先级', '分类', '场景', '状态', '完成时间'];
+            const rows = all.map(a => [
+                a.id,
+                `"${a.name}"`,
+                `"${a.date || ''}"`,
+                `"${a.start || ''}"`,
+                `"${a.end || ''}"`,
+                a.minutes || 0,
+                a.priority,
+                `"${a.category || '其他'}"`,
+                `"${a.scene || ''}"`,
+                data.completed.includes(a) ? '已完成' : '待做',
+                `"${a.completedAt || ''}"`
+            ]);
+            const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `琐碎时间_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            showToast('📥 导出成功');
+        }
+
+        // ---------- 重置 ----------
+        function resetAll() {
+            if (!confirm('⚠️ 确定清空所有数据？不可恢复！')) return;
+            if (!confirm('再次确认？')) return;
+            data.activities = [];
+            data.completed = [];
+            data.customScenes = [];
+            data.customCategories = [];
+            saveData();
+            render();
+            showToast('🗑️ 已清空');
+        }
+
+        // ---------- 渲染主界面 ----------
+        let showCompletedFlag = false;
+        let showAllRecordsFlag = true;
+
+        function render() {
+            document.getElementById('stat-remaining').textContent = data.activities.length;
+            document.getElementById('stat-done').textContent = data.completed.length;
+            document.getElementById('stat-total').textContent = data.activities.length + data.completed.length;
+            const today = getToday();
+            const todayTotal = [...data.activities, ...data.completed]
+                .filter(a => a.date === today)
+                .reduce((sum, a) => sum + (a.minutes || 0), 0);
+            document.getElementById('stat-today').textContent = todayTotal;
+
+            refreshCategorySelect();
+            refreshSceneSelects();
+            refreshActivityNameFilter();
+
+            const filterScene = document.getElementById('filterScene').value;
+            let filtered = data.activities;
+            if (filterScene) filtered = filtered.filter(a => (a.scene || '') === filterScene);
+            filtered.sort((a,b) => (b.priority || 0) - (a.priority || 0));
+
+            const listDiv = document.getElementById('activityList');
+            if (filtered.length === 0) {
+                listDiv.innerHTML = '<div class="empty">📭 暂无待做琐碎活动</div>';
+            } else {
+                let html = '';
+                filtered.forEach(act => {
+                    const prioStars = '★'.repeat(act.priority || 1) + '☆'.repeat(5 - (act.priority || 1));
+                    const timeStr = act.start && act.end ? `${act.start} → ${act.end}` : '未设置时间';
+                    html += `<div class="activity-item" data-id="${act.id}">
+                        <div class="info">
+                            <span class="name">${escapeHtml(act.name)}</span>
+                            <span class="tag">${escapeHtml(act.category || '其他')}</span>
+                            <span class="scene-tag">🧩 ${escapeHtml(act.scene || '未指定')}</span>
+                            <span class="time-range">${escapeHtml(timeStr)} (${act.minutes}分钟)</span>
+                            <span class="meta">优先级 ${prioStars}</span>
+                            <span class="meta" style="font-size:12px;color:#aaa;">${act.date || ''} ${act.created || ''}</span>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-success btn-sm complete-btn" data-id="${act.id}">✅ 完成</button>
+                            <button class="btn btn-outline btn-sm edit-btn" data-id="${act.id}">✏️</button>
+                            <button class="btn btn-danger btn-sm delete-btn" data-id="${act.id}">🗑️</button>
+                        </div>
+                    </div>`;
+                });
+                listDiv.innerHTML = html;
+            }
+
+            const completedDiv = document.getElementById('completedList');
+            const showBtn = document.getElementById('showCompletedBtn');
+            const hideBtn = document.getElementById('hideCompletedBtn');
+            if (showCompletedFlag) {
+                showBtn.style.display = 'none';
+                hideBtn.style.display = 'inline-block';
+                if (data.completed.length === 0) {
+                    completedDiv.innerHTML = '<div class="empty">还没有已完成的活动</div>';
+                } else {
+                    let html = '<div style="border-top:2px dashed #ddd;padding-top:12px;margin-top:6px;"><h4 style="margin:0 0 8px;">✅ 已完成</h4>';
+                    data.completed.slice().reverse().forEach(act => {
+                        const timeStr = act.start && act.end ? `${act.start} → ${act.end}` : '未设置时间';
+                        html += `<div class="activity-item" style="opacity:0.7;">
+                            <div class="info">
+                                <span class="name">${escapeHtml(act.name)}</span>
+                                <span class="tag">${escapeHtml(act.category || '其他')}</span>
+                                <span class="scene-tag">🧩 ${escapeHtml(act.scene || '未指定')}</span>
+                                <span class="time-range">${escapeHtml(timeStr)} (${act.minutes}分钟)</span>
+                                <span class="meta">完成于 ${act.completedAt || ''}</span>
+                            </div>
+                        </div>`;
+                    });
+                    html += '</div>';
+                    completedDiv.innerHTML = html;
+                }
+            } else {
+                showBtn.style.display = 'inline-block';
+                hideBtn.style.display = 'none';
+                completedDiv.innerHTML = '';
+            }
+
+            const allRecordsContainer = document.getElementById('allRecordsContainer');
+            const toggleBtn = document.getElementById('toggleAllRecordsBtn');
+            if (showAllRecordsFlag) {
+                allRecordsContainer.style.display = 'block';
+                toggleBtn.textContent = '🙈 隐藏全部记录';
+                renderAllRecords();
+            } else {
+                allRecordsContainer.style.display = 'none';
+                toggleBtn.textContent = '📋 查看全部记录';
+            }
+        }
+
+        // ---------- 事件绑定 ----------
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            resetTimer();
+            refreshCategorySelect();
+            onCategoryChange();
+            render();
+
+            document.getElementById('addSceneBtn').addEventListener('click', addNewScene);
+            document.getElementById('actCategorySelect').addEventListener('change', onCategoryChange);
+
+            // 计时器按钮
+            document.getElementById('timerStartBtn').addEventListener('click', startTimer);
+            document.getElementById('timerStopBtn').addEventListener('click', stopTimer);
+            document.getElementById('timerResetBtn').addEventListener('click', function() {
+                if (confirm('确定重置计时器吗？当前计时将丢失。')) {
+                    resetTimer();
+                    window._tempStart = null;
+                    window._tempEnd = null;
+                    window._tempMinutes = 0;
+                }
+            });
+
+            document.getElementById('saveBtn').addEventListener('click', addActivity);
+            document.getElementById('actName').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addActivity();
+                }
+            });
+
+            document.getElementById('activityList').addEventListener('click', function(e) {
+                const target = e.target.closest('button');
+                if (!target) return;
+                const id = parseInt(target.dataset.id);
+                if (isNaN(id)) return;
+                if (target.classList.contains('complete-btn')) completeActivity(id);
+                else if (target.classList.contains('delete-btn')) deleteActivity(id);
+                else if (target.classList.contains('edit-btn')) editActivity(id);
+            });
+
+            document.getElementById('filterScene').addEventListener('change', render);
+            document.getElementById('clearFilterBtn').addEventListener('click', function() {
+                document.getElementById('filterScene').value = '';
+                render();
+            });
+
+            document.getElementById('showCompletedBtn').addEventListener('click', function() { showCompletedFlag = true; render(); });
+            document.getElementById('hideCompletedBtn').addEventListener('click', function() { showCompletedFlag = false; render(); });
+            document.getElementById('toggleAllRecordsBtn').addEventListener('click', function() {
+                showAllRecordsFlag = !showAllRecordsFlag;
+                render();
+            });
+
+            document.getElementById('statsBtn').addEventListener('click', showStatsModal);
+            document.getElementById('timeStatsBtn').addEventListener('click', showTimeStatsModal);
+            document.getElementById('exportBtn').addEventListener('click', exportCSV);
+            document.getElementById('resetBtn').addEventListener('click', resetAll);
+
+            document.getElementById('closeStatsBtn').addEventListener('click', function() {
+                document.getElementById('statsModal').style.display = 'none';
+            });
+            document.getElementById('statsModal').addEventListener('click', function(e) {
+                if (e.target === this) this.style.display = 'none';
+            });
+
+            document.getElementById('closeTimeStatsBtn').addEventListener('click', function() {
+                document.getElementById('timeStatsModal').style.display = 'none';
+                if (globalChartInstance) {
+                    globalChartInstance.destroy();
+                    globalChartInstance = null;
+                }
+            });
+            document.getElementById('timeStatsModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    document.getElementById('timeStatsModal').style.display = 'none';
+                    if (globalChartInstance) {
+                        globalChartInstance.destroy();
+                        globalChartInstance = null;
+                    }
+                }
+            });
+
+            document.getElementById('refreshGlobalChartBtn').addEventListener('click', updateGlobalChartAndTable);
+            document.getElementById('globalDimension').addEventListener('change', updateGlobalChartAndTable);
+            document.getElementById('statSceneFilter').addEventListener('change', updateGlobalChartAndTable);
+            document.getElementById('statActivityFilter').addEventListener('change', updateGlobalChartAndTable);
+
+            document.getElementById('refreshActivityStatsBtn').addEventListener('click', updateActivityStats);
+            document.getElementById('dimensionSelect').addEventListener('change', updateActivityStats);
+            document.getElementById('activityNameFilter').addEventListener('change', updateActivityStats);
+        });
+    })();
+</script>
+<!-- 页面末尾干净，无iframe -->
+</body>
+</html>
+<script>
+
+</script>
+</body>
+</html>
