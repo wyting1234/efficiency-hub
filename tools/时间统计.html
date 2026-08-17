@@ -1162,10 +1162,18 @@
                 if (saved && Array.isArray(saved) && saved.length) {
                     const result = [];
                     saved.forEach(s => {
-                        const def = DEFAULT_CATEGORIES.find(d => d.key === s.key) ||
-                                    cats.find(d => d.key === s.key);
-                        if (def && !result.some(r => r.key === s.key)) {
+                        if (result.some(r => r.key === s.key)) return;
+                        const def = DEFAULT_CATEGORIES.find(d => d.key === s.key);
+                        if (def) {
+                            // 内置类别：用代码里的默认值，场景以保存的为准
                             result.push({ ...def, scene: s.scene || def.scene || '生活' });
+                        } else {
+                            // 自定义类别（如「其他」里新增的）：必须保留，否则刷新后丢失
+                            result.push({
+                                key: s.key,
+                                color: s.color || CATEGORIES.find(c => c.key === s.key)?.color || '#94A3B8',
+                                scene: (s.scene && SCENE_NAMES.includes(s.scene)) ? s.scene : '生活'
+                            });
                         }
                     });
                     // 追加默认里有但保存里没有的（代码新增的内置类别）
