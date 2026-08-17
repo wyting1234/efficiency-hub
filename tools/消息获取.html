@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多维信息研判系统（优化版）</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            background: #f4f7fc;
+            padding: 20px;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 24px;
+            padding: 28px 32px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 6px;
+        }
+        h1 i { color: #2c7be5; }
+        .subhead {
+            color: #64748b;
+            border-left: 4px solid #2c7be5;
+            padding-left: 16px;
+            font-size: 14px;
+            margin-bottom: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #f8fafc;
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid #eef2f7;
+            text-align: center;
+        }
+        .stat-card .num {
+            font-size: 26px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .stat-card .label {
+            font-size: 13px;
+            color: #64748b;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #eef2f7;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .card-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-header h3 i { color: #2c7be5; }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 14px 18px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .form-group label {
+            font-weight: 500;
+            font-size: 13px;
+            color: #334155;
+        }
+        .form-group .required { color: #e74c5e; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 8px 12px;
+            border: 1.5px solid #dce1ea;
+            border-radius: 10px;
+            font-size: 14px;
+            background: #fafcff;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #2c7be5;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(44,123,229,0.10);
+        }
+        .form-group textarea { min-height: 56px; resize: vertical; }
+        .form-group .file-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .form-group .file-input-wrapper input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .form-group .file-input-wrapper .fake-btn {
+            background: #eef2f7;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #334155;
+            white-space: nowrap;
+        }
+        .form-group .file-input-wrapper .file-name {
+            font-size: 13px;
+            color: #64748b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .btn {
+            padding: 8px 22px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .btn-primary { background: #2c7be5; color: #fff; }
+        .btn-primary:hover { background: #1a68c7; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(44,123,229,0.25); }
+        .btn-success { background: #1ea97b; color: #fff; }
+        .btn-success:hover { background: #178e66; }
+        .btn-danger { background: #e74c5e; color: #fff; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-outline { background: transparent; border: 1.5px solid #dce1ea; color: #64748b; }
+        .btn-outline:hover { background: #f1f5f9; }
+        .btn-sm { padding: 5px 14px; font-size: 12px; border-radius: 8px; }
+        .btn-xs { padding: 3px 10px; font-size: 11px; border-radius: 6px; }
+
+        .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #eef2f7; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        table th { background: #f8fafc; color: #475569; font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 2px solid #e9edf4; white-space: nowrap; }
+        table td { padding: 10px 14px; border-bottom: 1px solid #eef2f7; vertical-align: middle; }
+        table tr:hover td { background: #f8faff; }
+        .empty-row td { text-align: center; color: #94a3b8; padding: 30px; font-style: italic; }
+
+        .tag { display: inline-block; padding: 2px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; background: #eef2f7; color: #3d4a5c; }
+        .tag-blue { background: #e3edfc; color: #1a68c7; }
+        .tag-green { background: #e1f5ed; color: #178e66; }
+        .tag-orange { background: #fef1e0; color: #c77a1a; }
+        .tag-red { background: #fde8ea; color: #c0392b; }
+        .tag-purple { background: #ede7f6; color: #6a3c9e; }
+        .tag-gray { background: #f1f5f9; color: #64748b; }
+
+        .impact-bull { background: #e1f5ed; color: #178e66; }
+        .impact-bear { background: #fde8ea; color: #c0392b; }
+        .impact-neutral { background: #f1f5f9; color: #64748b; }
+
+        .attachment-thumb {
+            max-width: 60px;
+            max-height: 60px;
+            border-radius: 6px;
+            border: 1px solid #e9edf4;
+            cursor: pointer;
+            object-fit: cover;
+        }
+        .attachment-icon { font-size: 24px; color: #94a3b8; }
+
+        .summary-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px 20px;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.8;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #eef2f7;
+            min-height: 100px;
+        }
+        .flex-wrap { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .mt-2 { margin-top: 12px; }
+        .mb-2 { margin-bottom: 12px; }
+        .text-muted { color: #94a3b8; }
+        .badge-count { background: #e9f0fe; color: #2c7be5; padding: 1px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+
+        /* 模态框 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #fff;
+            border-radius: 20px;
+            padding: 28px 32px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .modal-box .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-box .modal-title i { color: #2c7be5; }
+        .modal-box .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: flex-end;
+            border-top: 1px solid #eef2f7;
+            padding-top: 18px;
+        }
+        .modal-box .form-grid { max-height: 60vh; overflow-y: auto; }
+
+        @media (max-width: 768px) {
+            .container { padding: 16px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: 1fr 1fr; }
+            .modal-box { padding: 20px; }
+        }
+    </style>
+<script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
+<script>
+(function(){
+  try{
+    var beacon=new BeaconAction({
+      appkey:'0WEB06U85YBSLJNL',
+      versionCode:'1.0.0',
+      channelID:'share',
+      delay:1000,
+      sessionDuration:30*60*1000,
+      isOversea:false,
+      needReportRqdEvent:false
+    });
+    beacon.onDirectUserAction('preview_page_view',{
+      'url':location.href,
+      'referrer':document.referrer,
+      'title':document.title,
+      'sandbox_id':'9da32fa4efeb46b7b867f769dc97b15b'
+    });
+  }catch(e){}
+})();
+</script></head>
+<body>
+<div class="container">
+    <h1><i class="fas fa-chart-pie"></i> 多维信息研判系统（优化版）</h1>
+    <div class="subhead">
+        <span>📌 主分类联动 · 投资大类细分 · 记录可编辑 · 标签可修改</span>
+        <span class="text-muted" style="font-size:13px;"><i class="fas fa-database"></i> 数据本地存储</span>
+    </div>
+
+    <!-- 统计 -->
+    <div class="stats-row" id="statsRow">
+        <div class="stat-card"><div class="num" id="totalCount">0</div><div class="label">总记录</div></div>
+        <div class="stat-card"><div class="num" id="todayCount">0</div><div class="label">今日新增</div></div>
+        <div class="stat-card"><div class="num" id="bullCount">0</div><div class="label">利多</div></div>
+        <div class="stat-card"><div class="num" id="bearCount">0</div><div class="label">利空</div></div>
+        <div class="stat-card"><div class="num" id="neutralCount">0</div><div class="label">中性/其他</div></div>
+    </div>
+
+    <!-- 录入表单 -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-plus-circle"></i> 新增信息</h3>
+            <span class="badge-count" id="todayBadge">今日</span>
+        </div>
+        <form id="infoForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>日期 <span class="required">*</span></label>
+                    <input type="date" id="infoDate" required>
+                </div>
+                <div class="form-group">
+                    <label>信息来源 <span class="required">*</span></label>
+                    <select id="infoSource" required>
+                        <option value="微博">微博</option>
+                        <option value="公众号">公众号</option>
+                        <option value="网页">网页</option>
+                        <option value="知乎">知乎</option>
+                        <option value="B站">B站</option>
+                        <option value="Wind">Wind</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>主分类 <span class="required">*</span></label>
+                    <select id="infoCategory" required>
+                        <option value="投资大类">投资大类</option>
+                        <option value="工作技能">工作技能</option>
+                        <option value="生活技能">生活技能</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>子分类（仅投资大类有效）</label>
+                    <select id="infoSubCategory">
+                        <option value="">无</option>
+                    </select>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>标题 <span class="required">*</span></label>
+                    <input type="text" id="infoTitle" placeholder="标题" required>
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>内容摘要 / 核心观点</label>
+                    <textarea id="infoSummary" rows="2" placeholder="简要描述..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>链接</label>
+                    <input type="url" id="infoLink" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>影响方向</label>
+                    <select id="infoImpact">
+                        <option value="利多">利多</option>
+                        <option value="利空">利空</option>
+                        <option value="中性">中性</option>
+                        <option value="无影响">无影响</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>标签（逗号分隔）</label>
+                    <input type="text" id="infoTags" placeholder="AI, 消费, 政策">
+                </div>
+                <div class="form-group">
+                    <label>附件（图片/文件）</label>
+                    <div class="file-input-wrapper">
+                        <span class="fake-btn"><i class="fas fa-upload"></i> 选择文件</span>
+                        <input type="file" id="infoFile" accept="image/*,.pdf,.doc,.docx,.txt,.csv">
+                        <span class="file-name" id="fileNameDisplay">未选择</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-wrap mt-2">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存记录</button>
+                <button type="reset" class="btn btn-outline"><i class="fas fa-undo"></i> 重置</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 列表 & 操作 -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-list-ul"></i> 信息列表 <span class="badge-count" id="listCount">0</span></h3>
+            <div class="flex-wrap">
+                <input type="text" id="searchInput" placeholder="🔍 搜索标题/摘要/标签..." style="padding:6px 14px;border:1.5px solid #dce1ea;border-radius:10px;font-size:13px;width:200px;">
+                <select id="filterImpact" style="padding:6px 12px;border:1.5px solid #dce1ea;border-radius:10px;font-size:13px;">
+                    <option value="">全部影响</option>
+                    <option value="利多">利多</option>
+                    <option value="利空">利空</option>
+                    <option value="中性">中性</option>
+                    <option value="无影响">无影响</option>
+                </select>
+                <select id="filterCategory" style="padding:6px 12px;border:1.5px solid #dce1ea;border-radius:10px;font-size:13px;">
+                    <option value="">全部分类</option>
+                    <option value="投资大类">投资大类</option>
+                    <option value="工作技能">工作技能</option>
+                    <option value="生活技能">生活技能</option>
+                </select>
+                <button class="btn btn-sm btn-success" onclick="generateSummary()"><i class="fas fa-file-alt"></i> 生成总结</button>
+                <button class="btn btn-sm btn-outline" onclick="exportCSV()"><i class="fas fa-file-csv"></i> 导出CSV</button>
+                <button class="btn btn-sm btn-outline" onclick="importCSV()"><i class="fas fa-upload"></i> 导入CSV</button>
+                <button class="btn btn-sm btn-danger" onclick="clearAll()"><i class="fas fa-trash"></i> 清空全部</button>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>来源</th>
+                        <th>分类</th>
+                        <th>标题</th>
+                        <th>摘要</th>
+                        <th>影响</th>
+                        <th>标签</th>
+                        <th>附件</th>
+                        <th style="width:120px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="infoTableBody">
+                    <tr class="empty-row"><td colspan="9">暂无记录，请添加信息</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 总结区域 -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-brain"></i> 综合研判总结</h3>
+            <span class="text-muted" style="font-size:13px;">按分类 & 影响方向汇总</span>
+        </div>
+        <div id="summaryContainer" class="summary-box">
+            点击「生成总结」按钮，系统将聚合展示各分类下的信息及影响方向分布。
+        </div>
+    </div>
+
+    <!-- 隐藏文件输入用于导入CSV -->
+    <input type="file" id="csvFileInput" accept=".csv" style="display:none" onchange="handleCSVImport(event)">
+
+    <!-- 图片预览模态框 -->
+    <div class="modal-overlay" id="imageModal" onclick="closeModal()">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <img id="modalImage" src="" alt="预览">
+    </div>
+
+    <!-- 编辑记录模态框 -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-box">
+            <div class="modal-title"><i class="fas fa-edit"></i> 编辑记录</div>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>日期 <span class="required">*</span></label>
+                        <input type="date" id="editDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>信息来源 <span class="required">*</span></label>
+                        <select id="editSource" required>
+                            <option value="微博">微博</option>
+                            <option value="公众号">公众号</option>
+                            <option value="网页">网页</option>
+                            <option value="知乎">知乎</option>
+                            <option value="B站">B站</option>
+                            <option value="Wind">Wind</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>主分类 <span class="required">*</span></label>
+                        <select id="editCategory" required>
+                            <option value="投资大类">投资大类</option>
+                            <option value="工作技能">工作技能</option>
+                            <option value="生活技能">生活技能</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>子分类</label>
+                        <select id="editSubCategory">
+                            <option value="">无</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>标题 <span class="required">*</span></label>
+                        <input type="text" id="editTitle" required>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>内容摘要 / 核心观点</label>
+                        <textarea id="editSummary" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>链接</label>
+                        <input type="url" id="editLink" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>影响方向</label>
+                        <select id="editImpact">
+                            <option value="利多">利多</option>
+                            <option value="利空">利空</option>
+                            <option value="中性">中性</option>
+                            <option value="无影响">无影响</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>标签（逗号分隔）</label>
+                        <input type="text" id="editTags" placeholder="AI, 消费, 政策">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>附件（重新上传将替换原附件）</label>
+                        <div class="file-input-wrapper">
+                            <span class="fake-btn"><i class="fas fa-upload"></i> 选择文件</span>
+                            <input type="file" id="editFile" accept="image/*,.pdf,.doc,.docx,.txt,.csv">
+                            <span class="file-name" id="editFileName">当前：无</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeEditModal()">取消</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========== 子分类联动映射 (仅投资大类有详细细分) ==========
+    const subCategoryMap = {
+        '投资大类': [
+            '宏观 & 大类资产',
+            '科技赛道',
+            '消费赛道',
+            '医疗医药赛道',
+            '周期 / 金融 / 军工制造',
+            '固收 & 基金 FOF',
+            '私募另类策略',
+            '实物资产',
+            '市场资金情绪'
+        ],
+        '工作技能': [],
+        '生活技能': []
+    };
+
+    // ========== 数据层 ==========
+    const STORAGE_KEY = 'multi_info_records';
+    let records = [];
+    let nextId = 1;
+
+    function loadRecords() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            try {
+                records = JSON.parse(stored);
+                records.forEach(r => { if (!r.id) r.id = nextId++; });
+                nextId = records.reduce((max, r) => Math.max(max, r.id || 0), 0) + 1;
+            } catch(e) { records = []; }
+        } else {
+            records = [];
+            nextId = 1;
+        }
+        records.sort((a,b) => (a.date || '').localeCompare(b.date || '') * -1);
+    }
+
+    function saveRecords() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    }
+
+    // ========== 更新子分类下拉（通用） ==========
+    function updateSubCategorySelect(selectId, category) {
+        const select = document.getElementById(selectId);
+        const options = subCategoryMap[category] || [];
+        select.innerHTML = '';
+        if (options.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '无';
+            select.appendChild(opt);
+        } else {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '请选择';
+            select.appendChild(opt);
+            options.forEach(item => {
+                const o = document.createElement('option');
+                o.value = item;
+                o.textContent = item;
+                select.appendChild(o);
+            });
+        }
+        // 如果当前选中的值不在新列表中，重置为空
+        const currentVal = select.value;
+        if (currentVal && !options.includes(currentVal) && options.length > 0) {
+            select.value = '';
+        }
+    }
+
+    // 监听新增表单主分类变化
+    document.getElementById('infoCategory').addEventListener('change', function() {
+        updateSubCategorySelect('infoSubCategory', this.value);
+    });
+
+    // 监听编辑表单主分类变化
+    document.getElementById('editCategory').addEventListener('change', function() {
+        updateSubCategorySelect('editSubCategory', this.value);
+    });
+
+    // ========== 渲染列表 ==========
+    function renderTable() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const filterImpact = document.getElementById('filterImpact').value;
+        const filterCategory = document.getElementById('filterCategory').value;
+
+        let filtered = records.filter(r => {
+            if (search) {
+                const text = (r.title + ' ' + r.summary + ' ' + r.tags + ' ' + r.source + ' ' + r.category + ' ' + r.subCategory).toLowerCase();
+                if (!text.includes(search)) return false;
+            }
+            if (filterImpact && r.impact !== filterImpact) return false;
+            if (filterCategory && r.category !== filterCategory) return false;
+            return true;
+        });
+
+        const tbody = document.getElementById('infoTableBody');
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr class="empty-row"><td colspan="9">暂无匹配记录</td></tr>`;
+        } else {
+            tbody.innerHTML = filtered.map(r => {
+                const impactClass = r.impact === '利多' ? 'impact-bull' : (r.impact === '利空' ? 'impact-bear' : 'impact-neutral');
+                const attachmentHtml = r.attachment ? 
+                    (r.attachmentType && r.attachmentType.startsWith('image') ? 
+                        `<img src="${r.attachment}" class="attachment-thumb" onclick="previewImage('${r.attachment}')" alt="附件">` :
+                        `<i class="fas fa-file attachment-icon" title="${r.attachmentName || '附件'}"></i>`) :
+                    '-';
+                const tags = r.tags ? r.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => `<span class="tag tag-gray">${t}</span>`).join(' ') : '';
+                const subDisplay = r.subCategory ? `<br><span style="font-size:12px;color:#64748b;">${r.subCategory}</span>` : '';
+                return `
+                    <tr>
+                        <td>${r.date || '-'}</td>
+                        <td><span class="tag tag-blue">${r.source || '-'}</span></td>
+                        <td>${r.category || '-'}${subDisplay}</td>
+                        <td><strong>${r.title || '-'}</strong></td>
+                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.summary || ''}">${r.summary || '-'}</td>
+                        <td><span class="tag ${impactClass}">${r.impact || '中性'}</span></td>
+                        <td style="max-width:100px;">${tags}</td>
+                        <td>${attachmentHtml}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="openEditModal('${r.id}')" style="padding:3px 10px;font-size:12px;"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteRecord('${r.id}')" style="padding:3px 10px;font-size:12px;"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        updateStats();
+        document.getElementById('listCount').textContent = records.length;
+    }
+
+    // ========== 统计 ==========
+    function updateStats() {
+        const total = records.length;
+        const today = new Date().toISOString().slice(0,10);
+        const todayRecords = records.filter(r => r.date === today);
+        const bull = records.filter(r => r.impact === '利多').length;
+        const bear = records.filter(r => r.impact === '利空').length;
+        const neutral = records.filter(r => r.impact !== '利多' && r.impact !== '利空').length;
+
+        document.getElementById('totalCount').textContent = total;
+        document.getElementById('todayCount').textContent = todayRecords.length;
+        document.getElementById('bullCount').textContent = bull;
+        document.getElementById('bearCount').textContent = bear;
+        document.getElementById('neutralCount').textContent = neutral;
+        document.getElementById('todayBadge').textContent = '今日 ' + todayRecords.length;
+    }
+
+    // ========== 新增记录 ==========
+    document.getElementById('infoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const date = document.getElementById('infoDate').value;
+        const source = document.getElementById('infoSource').value;
+        const category = document.getElementById('infoCategory').value;
+        const subCategory = document.getElementById('infoSubCategory').value;
+        const title = document.getElementById('infoTitle').value.trim();
+        const summary = document.getElementById('infoSummary').value.trim();
+        const link = document.getElementById('infoLink').value.trim();
+        const impact = document.getElementById('infoImpact').value;
+        const tags = document.getElementById('infoTags').value.trim();
+        const fileInput = document.getElementById('infoFile');
+
+        if (!date || !title || !category || !source) {
+            alert('请填写日期、来源、分类和标题');
+            return;
+        }
+
+        let attachment = null, attachmentType = null, attachmentName = null;
+        if (fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            attachmentName = file.name;
+            attachmentType = file.type;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                attachment = ev.target.result;
+                saveRecord(date, source, category, subCategory, title, summary, link, impact, tags, attachment, attachmentType, attachmentName);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            saveRecord(date, source, category, subCategory, title, summary, link, impact, tags, null, null, null);
+        }
+    });
+
+    function saveRecord(date, source, category, subCategory, title, summary, link, impact, tags, attachment, attachmentType, attachmentName) {
+        const newRecord = {
+            id: nextId++,
+            date,
+            source,
+            category,
+            subCategory,
+            title,
+            summary,
+            link,
+            impact,
+            tags,
+            attachment,
+            attachmentType,
+            attachmentName,
+            createdAt: new Date().toISOString()
+        };
+        records.push(newRecord);
+        saveRecords();
+        renderTable();
+        // 重置部分字段
+        document.getElementById('infoTitle').value = '';
+        document.getElementById('infoSummary').value = '';
+        document.getElementById('infoLink').value = '';
+        document.getElementById('infoTags').value = '';
+        document.getElementById('infoFile').value = '';
+        document.getElementById('fileNameDisplay').textContent = '未选择';
+        document.getElementById('infoDate').value = new Date().toISOString().slice(0,10);
+        generateSummary();
+    }
+
+    // ========== 删除记录 ==========
+    function deleteRecord(id) {
+        if (!confirm('确定删除该条记录吗？')) return;
+        records = records.filter(r => r.id != id);
+        saveRecords();
+        renderTable();
+        generateSummary();
+    }
+
+    // ========== 清空全部 ==========
+    function clearAll() {
+        if (!confirm('确定清空所有数据吗？不可恢复！')) return;
+        records = [];
+        saveRecords();
+        renderTable();
+        document.getElementById('summaryContainer').innerHTML = '数据已清空。';
+    }
+
+    // ========== 编辑记录 ==========
+    function openEditModal(id) {
+        const record = records.find(r => r.id == id);
+        if (!record) return;
+        document.getElementById('editId').value = id;
+        document.getElementById('editDate').value = record.date || '';
+        document.getElementById('editSource').value = record.source || '微博';
+        document.getElementById('editCategory').value = record.category || '投资大类';
+        // 更新子分类下拉
+        updateSubCategorySelect('editSubCategory', record.category || '投资大类');
+        document.getElementById('editSubCategory').value = record.subCategory || '';
+        document.getElementById('editTitle').value = record.title || '';
+        document.getElementById('editSummary').value = record.summary || '';
+        document.getElementById('editLink').value = record.link || '';
+        document.getElementById('editImpact').value = record.impact || '中性';
+        document.getElementById('editTags').value = record.tags || '';
+        document.getElementById('editFileName').textContent = record.attachmentName ? '当前：' + record.attachmentName : '当前：无';
+        // 清除文件选择
+        document.getElementById('editFile').value = '';
+        document.getElementById('editModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('active');
+    }
+
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const id = document.getElementById('editId').value;
+        const index = records.findIndex(r => r.id == id);
+        if (index === -1) return;
+
+        const date = document.getElementById('editDate').value;
+        const source = document.getElementById('editSource').value;
+        const category = document.getElementById('editCategory').value;
+        const subCategory = document.getElementById('editSubCategory').value;
+        const title = document.getElementById('editTitle').value.trim();
+        const summary = document.getElementById('editSummary').value.trim();
+        const link = document.getElementById('editLink').value.trim();
+        const impact = document.getElementById('editImpact').value;
+        const tags = document.getElementById('editTags').value.trim();
+        const fileInput = document.getElementById('editFile');
+
+        if (!date || !title || !category || !source) {
+            alert('请填写完整信息');
+            return;
+        }
+
+        // 更新基础字段
+        records[index].date = date;
+        records[index].source = source;
+        records[index].category = category;
+        records[index].subCategory = subCategory;
+        records[index].title = title;
+        records[index].summary = summary;
+        records[index].link = link;
+        records[index].impact = impact;
+        records[index].tags = tags;
+
+        // 处理附件（如果重新上传）
+        if (fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                records[index].attachment = ev.target.result;
+                records[index].attachmentType = file.type;
+                records[index].attachmentName = file.name;
+                saveRecords();
+                renderTable();
+                generateSummary();
+                closeEditModal();
+                alert('✅ 记录已更新（含附件）');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            // 没有新文件，保持原附件
+            saveRecords();
+            renderTable();
+            generateSummary();
+            closeEditModal();
+            alert('✅ 记录已更新');
+        }
+    });
+
+    // 点击模态框外部关闭
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal();
+    });
+
+    // ========== 文件选择显示 ==========
+    document.getElementById('infoFile').addEventListener('change', function() {
+        document.getElementById('fileNameDisplay').textContent = this.files[0] ? this.files[0].name : '未选择';
+    });
+    document.getElementById('editFile').addEventListener('change', function() {
+        document.getElementById('editFileName').textContent = this.files[0] ? '新文件：' + this.files[0].name : '当前：无';
+    });
+
+    // ========== 图片预览 ==========
+    function previewImage(src) {
+        const modal = document.getElementById('imageModal');
+        document.getElementById('modalImage').src = src;
+        modal.classList.add('active');
+    }
+    function closeModal() {
+        document.getElementById('imageModal').classList.remove('active');
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    // ========== 生成总结 ==========
+    function generateSummary() {
+        const container = document.getElementById('summaryContainer');
+        if (records.length === 0) {
+            container.innerHTML = '暂无记录，请添加信息。';
+            return;
+        }
+        const catMap = {};
+        records.forEach(r => {
+            const key = r.category || '未分类';
+            if (!catMap[key]) catMap[key] = [];
+            catMap[key].push(r);
+        });
+
+        let output = '📊 综合研判总结\n';
+        output += '═'.repeat(50) + '\n\n';
+        for (const [cat, items] of Object.entries(catMap)) {
+            output += `🏷️ 【${cat}】 (${items.length}条)\n`;
+            const bull = items.filter(i => i.impact === '利多').length;
+            const bear = items.filter(i => i.impact === '利空').length;
+            const neutral = items.filter(i => i.impact !== '利多' && i.impact !== '利空').length;
+            output += `  利多: ${bull}  利空: ${bear}  中性/其他: ${neutral}\n`;
+            items.forEach((item, idx) => {
+                const impactEmoji = item.impact === '利多' ? '🟢' : (item.impact === '利空' ? '🔴' : '⚪');
+                output += `  ${idx+1}. ${impactEmoji} ${item.title}`;
+                if (item.source) output += ` (${item.source})`;
+                if (item.subCategory) output += ` [${item.subCategory}]`;
+                if (item.summary) output += `\n     💡 ${item.summary}`;
+                if (item.tags) output += `\n     🏷️ ${item.tags}`;
+                output += '\n';
+            });
+            output += '\n';
+        }
+        output += '═'.repeat(50) + '\n';
+        output += `📌 总计 ${records.length} 条记录`;
+        container.innerHTML = output;
+    }
+
+    // ========== 导出CSV ==========
+    function exportCSV() {
+        if (records.length === 0) { alert('暂无数据可导出'); return; }
+        let csv = '日期,来源,主分类,子分类,标题,摘要,链接,影响方向,标签,附件名\n';
+        records.forEach(r => {
+            csv += `${r.date||''},${r.source||''},${r.category||''},${r.subCategory||''},${r.title||''},${r.summary||''},${r.link||''},${r.impact||''},${r.tags||''},${r.attachmentName||''}\n`;
+        });
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `信息汇总_${new Date().toISOString().slice(0,10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+
+    // ========== 导入CSV ==========
+    function importCSV() {
+        document.getElementById('csvFileInput').click();
+    }
+    function handleCSVImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim());
+            if (lines.length < 2) { alert('CSV格式不正确，至少需要表头+一行数据'); return; }
+            const header = lines[0].split(',').map(h => h.trim());
+            const dateIdx = header.indexOf('日期');
+            const sourceIdx = header.indexOf('来源');
+            const catIdx = header.indexOf('主分类');
+            const subIdx = header.indexOf('子分类');
+            const titleIdx = header.indexOf('标题');
+            const sumIdx = header.indexOf('摘要');
+            const linkIdx = header.indexOf('链接');
+            const impactIdx = header.indexOf('影响方向');
+            const tagsIdx = header.indexOf('标签');
+
+            if (dateIdx < 0 || sourceIdx < 0 || catIdx < 0 || titleIdx < 0) {
+                alert('CSV必须包含: 日期,来源,主分类,标题 等列');
+                return;
+            }
+
+            let imported = 0;
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',').map(c => c.trim());
+                if (cols.length < Math.max(dateIdx, sourceIdx, catIdx, titleIdx) + 1) continue;
+                const date = cols[dateIdx] || '';
+                const source = cols[sourceIdx] || '';
+                const category = cols[catIdx] || '';
+                const subCategory = subIdx >= 0 ? cols[subIdx] || '' : '';
+                const title = cols[titleIdx] || '';
+                const summary = sumIdx >= 0 ? cols[sumIdx] || '' : '';
+                const link = linkIdx >= 0 ? cols[linkIdx] || '' : '';
+                const impact = impactIdx >= 0 ? cols[impactIdx] || '' : '中性';
+                const tags = tagsIdx >= 0 ? cols[tagsIdx] || '' : '';
+                if (date && title) {
+                    records.push({
+                        id: nextId++,
+                        date,
+                        source,
+                        category,
+                        subCategory,
+                        title,
+                        summary,
+                        link,
+                        impact,
+                        tags,
+                        attachment: null,
+                        attachmentType: null,
+                        attachmentName: '',
+                        createdAt: new Date().toISOString()
+                    });
+                    imported++;
+                }
+            }
+            saveRecords();
+            renderTable();
+            generateSummary();
+            alert(`成功导入 ${imported} 条记录`);
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    // ========== 搜索/筛选监听 ==========
+    document.getElementById('searchInput').addEventListener('input', renderTable);
+    document.getElementById('filterImpact').addEventListener('change', renderTable);
+    document.getElementById('filterCategory').addEventListener('change', renderTable);
+
+    // ========== 初始化 ==========
+    function init() {
+        const today = new Date().toISOString().slice(0,10);
+        document.getElementById('infoDate').value = today;
+
+        // 初始化新增表单的子分类（默认投资大类）
+        updateSubCategorySelect('infoSubCategory', '投资大类');
+        // 初始化编辑表单的子分类（默认投资大类）
+        updateSubCategorySelect('editSubCategory', '投资大类');
+
+        loadRecords();
+        renderTable();
+        updateStats();
+        if (records.length > 0) generateSummary();
+
+        // 暴露全局
+        window.generateSummary = generateSummary;
+        window.exportCSV = exportCSV;
+        window.importCSV = importCSV;
+        window.clearAll = clearAll;
+        window.deleteRecord = deleteRecord;
+        window.openEditModal = openEditModal;
+        window.closeEditModal = closeEditModal;
+        window.previewImage = previewImage;
+        window.closeModal = closeModal;
+        window.handleCSVImport = handleCSVImport;
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
