@@ -236,29 +236,34 @@
     }
   }
 
-  // 关键修复：在用户所有 Gist 里找到我们用的那个（同名文件），
-  // 让手机和电脑连到「同一个」Gist。多个时取最近更新过的。
+  // 关键修复：每次都重新搜索账号下我们用的那个 Gist（同名文件），
+  // 优先选「有数据」的那份，让手机和电脑一定连到同一份数据。
   async function findOrCreateGist() {
-    if (GIST_ID) {
-      // 验证一下这个 Gist 还在不在
-      try { const t = await readGist(); if (t !== null || true) return GIST_ID; }
-      catch (e) { /* 下面重建 */ }
-    }
     try {
       const list = await apiCall('GET', '/gists?per_page=100');
-      let best = null;
+      let best = null;        // 最近更新的
+      let bestWithData = null; // 有数据的里最近更新的
       for (const g of list) {
-        if (g.files && g.files[GIST_FILENAME]) {
-          if (!best || new Date(g.updated_at) > new Date(best.updated_at)) best = g;
-        }
+        if (!g.files || !g.files[GIST_FILENAME]) continue;
+        const content = g.files[GIST_FILENAME].content;
+        let hasData = false;
+        try {
+          const j = JSON.parse(content);
+          if (j && j.data && Object.keys(j.data).length > 0) hasData = true;
+        } catch (e) {}
+        if (!best || new Date(g.updated_at) > new Date(best.updated_at)) best = g;
+        if (hasData && (!bestWithData || new Date(g.updated_at) > new Date(bestWithData.updated_at))) bestWithData = g;
       }
-      if (best) {
-        GIST_ID = best.id;
+      const chosen = bestWithData || best;
+      if (chosen) {
+        GIST_ID = chosen.id;
         localStorage.setItem('github_gist_id', GIST_ID);
         return GIST_ID;
       }
-    } catch (e) { console.warn('[GitHub] 查找 Gist 失败，将新建：', e.message); }
-
+    } catch (e) {
+      console.warn('[GitHub] 查找 Gist 失败：', e.message);
+      if (GIST_ID) return GIST_ID; // 网络异常处理：用已记录的
+    }
     // 没找到，新建
     const data = await apiCall('POST', '/gists', {
       description: GIST_DESC, public: false,
@@ -321,6 +326,7 @@
   async function doUpload() {
     if (!isConnected) { showConfigModal(); return; }
     try {
+      await findOrCreateGist();   // 始终对准同一份 Gist
       const remote = await readGist();
       const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
       if (cloudHas) {
@@ -344,6 +350,7 @@
   async function doDownload() {
     if (!isConnected) { showConfigModal(); return; }
     try {
+      await findOrCreateGist();   // 始终对准同一份 Gist
       const remote = await readGist();
       const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
       if (!cloudHas) {
