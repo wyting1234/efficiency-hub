@@ -2,21 +2,23 @@
  * 个人效率中心 - GitHub Gist 云端同步模块（手动上传/下载版，国内可用）
  *
  * 设计说明：
- * - 手动「上传 / 下载」+ 覆盖确认弹窗：让哪边覆盖哪边，用户说了算，
- *   每次覆盖前都会弹窗并显示数据摘要，不会在不知情的情况下覆盖掉一端的数据。
+ * - 手动「上传 / 下载」+ 覆盖确认弹窗：
+ *   · 上传 = 增量补充：只把本机【新增/修改】的数据上传并合并到云端，
+ *     不删除云端已有数据（只传变化部分，速度快，照片多时更明显）
+ *   · 下载 = 整体覆盖：用云端数据覆盖本机（覆盖前弹窗确认）
+ * - 每次上传/下载完成后，都会在页面顶部弹出成功/失败提示，明确告知结果。
  * - 修复多设备不同步：
  *   1) 列表接口不返回 Gist 文件内容，旧版「有数据优先」判断必然失效；
  *      新版对候选 Gist 逐个拉取完整内容，真正选「有数据且最新」的那份，
  *      手机和电脑一定连到同一份云端数据（即使旧版留下了多个同名 Gist）。
  *   2) 分页遍历账号下所有 Gist，账号 Gist 超过 100 个也不会漏掉。
- *   3) 显示当前连接账号（GitHub 用户名），两端必须使用【同一个账号】的 Token，
- *      不同账号永远连不上同一份数据——界面直接告诉你。
- *   4) 上传前检查数据大小：Gist 单文件超过 1MB 会被 API 截断，自动预警阻止。
+ *   3) 显示当前连接账号（GitHub 用户名），两端必须使用【同一个账号】的 Token。
+ *   4) 上传前检查合并后数据大小：Gist 单文件超过 1MB 会被 API 截断，自动预警阻止。
  *
  * 使用：
  * 1. 生成 GitHub Token（只需一次）：https://github.com/settings/tokens/new?description=efficiency-hub-sync&scopes=gist
  * 2. 手机和电脑都粘贴【同一个账号】的 Token
- * 3. 想让哪边覆盖哪边，就手动点「上传」或「下载」，每次覆盖前都会弹窗确认
+ * 3. 有数据的设备点「上传」（只传变化），另一台点「下载」（整体覆盖）
  */
 (function () {
   'use strict';
@@ -33,16 +35,31 @@
 
   // ============ 状态 ============
   let isConnected = false;
+  let gistVerified = false; // 本次会话已验证 GIST_ID 有效，避免重复查找
   let statusEl = null;
   let syncBtn = null;
   let lastSyncTime = localStorage.getItem('sync_last_sync') || '';
-  let cloudSummary = null; // 打开面板时异步拉取的云端概览 {keys, updatedAt, login}
 
   // 不纳入同步的键（本机偏好 / 同步配置）
   const EXCLUDE_KEYS = new Set([
     'github_token', 'github_gist_id', 'github_login', 'sync_last_sync', 'sync_timestamps',
     'hub_lastModule', 'hub_theme', 'hub_sidebar', 'hub_custom_modules', 'hub_module_hidden'
   ]);
+
+  // ============ 顶部提示（成功/失败明确提醒） ============
+  function notify(msg, type) {
+    type = type || 'info';
+    const colors = { success: '#16a34a', error: '#dc2626', info: '#1d4ed8' };
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:20000;background:' + (colors[type] || colors.info) + ';color:#fff;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:88vw;text-align:center;';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(function () {
+      el.style.transition = 'opacity .4s';
+      el.style.opacity = '0';
+      setTimeout(function () { el.remove(); }, 450);
+    }, 3800);
+  }
 
   // ============ 工具：弹窗 ============
   function closeTopModal() {
@@ -63,7 +80,7 @@
         <div style="margin:0 0 18px;color:#444;font-size:14px;line-height:1.7;white-space:pre-wrap">${message}</div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="sync-cancel" style="padding:9px 18px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">取消</button>
-          <button class="sync-ok" style="padding:9px 18px;border:none;border-radius:6px;background:#08bd74;color:white;cursor:pointer;font-size:14px">${okText || '确定覆盖'}</button>
+          <button class="sync-ok" style="padding:9px 18px;border:none;border-radius:6px;background:#08bd74;color:white;cursor:pointer;font-size:14px">${okText || '确定'}</button>
         </div>`;
       mask.appendChild(modal);
       document.body.appendChild(mask);
@@ -155,9 +172,10 @@
 
       <div style="background:#f6f8fa;border-radius:8px;padding:12px;font-size:13px;color:#444;line-height:1.7;margin-bottom:14px">
         <b>怎么用：</b><br>
-        • <b>上传</b>：把这部设备的数据存到云端（覆盖云端）<br>
-        • <b>下载</b>：把云端的数据拉到这部设备（覆盖本机）<br>
-        想让手机和电脑一致，就先在「源头」那端点<b>上传</b>，再到另一端点<b>下载</b>。
+        • <b>上传</b>：把本机【新增/修改】的数据补充到云端（只传变化部分，更快）<br>
+        • <b>下载</b>：把云端的数据整体拉到这部设备（覆盖本机）<br>
+        想让手机和电脑一致：在有数据的设备上<b>上传</b>，再到另一台<b>下载</b>。
+        <div style="margin-top:6px;color:#666">每次操作完成后，页面顶部会弹出<b>成功 / 失败</b>提示。</div>
         <div style="margin-top:6px;color:#d97706">⚠️ 手机和电脑必须用<b>同一个 GitHub 账号</b>的 Token。</div>
       </div>
 
@@ -200,7 +218,8 @@
 
   async function fetchCloudSummary() {
     try {
-      await findOrCreateGist();
+      const gistId = await resolveGistId();
+      if (!gistId) return null;
       const remote = await readGist();
       if (!remote || !remote.data || Object.keys(remote.data).length === 0) return null;
       const keys = countDataKeys(remote.data);
@@ -332,9 +351,23 @@
     }
   }
 
+  // 解析当前要用的 Gist ID（带会话内缓存，避免每次重复全量查找）
+  async function resolveGistId() {
+    if (GIST_ID && gistVerified) return GIST_ID;
+    if (GIST_ID) {
+      try {
+        const t = await apiCall('GET', '/gists/' + GIST_ID);
+        if (t && t.files && t.files[GIST_FILENAME]) { gistVerified = true; return GIST_ID; }
+      } catch (e) { /* 失效，下面重新查找 */ }
+    }
+    const id = await findOrCreateGist();
+    gistVerified = true;
+    return id;
+  }
+
   // 关键修复：找到账号下我们用的那份 Gist，手机和电脑一定连到同一份。
   // - 分页遍历全部 Gist（列表接口不返回文件内容，必须逐个拉取才能判断有没有数据）
-  // - 候选按最近更新排序，逐个 GET 完整内容，优先选「有数据且最新」的
+  // - 候选按最近更新排序，逐个 GET 完整内容，选「有数据且最新」的（找到即停）
   // - 旧版若留下多个同名 Gist，这里会收敛到同一份
   async function findOrCreateGist() {
     try {
@@ -349,17 +382,17 @@
       }
       candidates.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
-      // 逐个拉取内容（最多检查 8 个最新候选），找出「有数据且最新」的
       let best = null;
       let bestWithData = null;
-      for (let i = 0; i < Math.min(candidates.length, 8); i++) {
+      const limit = Math.min(candidates.length, 5);
+      for (let i = 0; i < limit; i++) {
         const g = candidates[i];
         if (!best) best = g;
         try {
           const full = await apiCall('GET', '/gists/' + g.id);
           const file = full.files && full.files[GIST_FILENAME];
           const j = file && file.content ? JSON.parse(file.content) : null;
-          if (j && j.data && Object.keys(j.data).length > 0 && !bestWithData) bestWithData = g;
+          if (j && j.data && Object.keys(j.data).length > 0) { bestWithData = g; break; }
         } catch (e) { /* 单个读取失败跳过 */ }
       }
       const chosen = bestWithData || best;
@@ -417,6 +450,18 @@
     return keys;
   }
 
+  // 找出本机相对云端的「变化键」：本机有而云端没有，或值不同
+  function diffChangedKeys(localData, cloudData) {
+    const changed = [];
+    for (const key in localData) {
+      if (EXCLUDE_KEYS.has(key)) continue;
+      const lv = localData[key].value;
+      const ce = cloudData ? cloudData[key] : null;
+      if (!ce || typeof ce.value !== 'string' || ce.value !== lv) changed.push(key);
+    }
+    return changed;
+  }
+
   // 用云端数据整体覆盖本机（真正的"下载覆盖"）
   function applyCloudToLocal(serverData) {
     const sdata = serverData.data || {};
@@ -438,51 +483,59 @@
     }
   }
 
-  // ============ 动作：上传 / 下载 ============
+  // ============ 动作：上传（增量补充） / 下载（整体覆盖） ============
   async function doUpload() {
     if (!isConnected) { showConfigModal(); return; }
     try {
       updateStatus('上传中...');
-      await findOrCreateGist();   // 始终对准同一份 Gist
+      await resolveGistId();        // 快速定位同一份 Gist
       const remote = await readGist();
-      const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
-
+      const cloudData = (remote && remote.data) || {};
       const localData = collectLocalData();
-      const localSummary = summarizeData(localData);
-      const localCount = countDataKeys(localData);
-      const payload = JSON.stringify({ version: 1, data: localData, updatedAt: Date.now() });
-      const size = new Blob([payload]).size;
 
-      // 大小保护：Gist 单文件超过 1MB 会被截断
+      // 只挑「有变化」的键：本机有而云端没有，或值不同
+      const changedKeys = diffChangedKeys(localData, cloudData);
+
+      if (changedKeys.length === 0) {
+        notify('✓ 云端已是最新，没有需要上传的变化', 'success');
+        updateStatus('已是最新 ' + fmtTime(String(Date.now())));
+        return;
+      }
+
+      const changedData = {};
+      changedKeys.forEach(k => { changedData[k] = localData[k]; });
+
+      // 合并后云端总大小预估（Gist 单文件 1MB 截断保护）
+      const mergedData = Object.assign({}, cloudData, changedData);
+      const mergedPayload = JSON.stringify({ version: 1, data: mergedData, updatedAt: Date.now() });
+      const size = new Blob([mergedPayload]).size;
+
       if (size > BLOCK_UPLOAD_BYTES) {
-        await showAlert('本机数据约 ' + fmtSize(size) + '，超过 GitHub 云端单文件上限（1MB）。\n\n请先「导出备份」保存到手机/电脑，再删掉部分照片类大文件后重试。');
+        await showAlert('合并后云端数据约 ' + fmtSize(size) + '，超过 GitHub 云端单文件上限（1MB）。\n\n请先「导出备份」保存到本地，再删掉部分照片类大文件后重试。');
         updateStatus('数据过大，未上传');
         return;
       }
       if (size > MAX_UPLOAD_BYTES) {
         const okBig = await showConfirm('数据较大（' + fmtSize(size) + '）',
-          '本机数据约 ' + fmtSize(size) + '，接近 GitHub 云端 1MB 上限，可能上传失败或被截断。\n\n建议先「导出备份」；仍要上传吗？', '仍要上传');
+          '上传后云端数据约 ' + fmtSize(size) + '，接近 GitHub 云端 1MB 上限，可能上传失败或被截断。\n\n建议先「导出备份」；仍要上传吗？', '仍要上传');
         if (!okBig) { updateStatus('已取消上传'); return; }
       }
 
-      let msg = '将把【本机数据】上传到云端并覆盖云端。\n\n本机：' + localCount + ' 项\n' + localSummary;
-      if (cloudHas) {
-        const cloudCount = countDataKeys(remote.data);
-        msg += '\n\n⚠️ 云端现有 ' + cloudCount + ' 项数据，将被本机数据【整体替换】。\n想保留云端就点「取消」，改去点「下载」。';
-      } else {
-        msg += '\n\n云端当前为空，上传后即为首次备份。';
-      }
-      const ok = await showConfirm('上传将覆盖云端', msg, '确定上传');
+      // 覆盖确认：明确告知这是「增量补充」，云端其他数据不受影响
+      const msg = '将把本机 <b>' + changedKeys.length + '</b> 项变化数据上传并合并到云端：\n\n' +
+        summarizeData(changedData) + '\n\n' +
+        '云端原有的其他数据保持不变（不会删除）。\n确定上传？';
+      const ok = await showConfirm('上传将补充更新云端', msg, '确定上传');
       if (!ok) { updateStatus('已取消上传'); return; }
 
-      await writeGist({ version: 1, data: localData, updatedAt: Date.now() });
+      await writeGist({ version: 1, data: mergedData, updatedAt: Date.now() });
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
+      notify('✅ 上传成功：已同步 ' + changedKeys.length + ' 项变化', 'success');
       updateStatus('已上传 ' + fmtTime(lastSyncTime));
-      openSyncPanel();
     } catch (e) {
       console.warn('[GitHub] 上传失败:', e.message);
-      alert('上传失败：' + friendlyError(e));
+      notify('❌ 上传失败：' + friendlyError(e), 'error');
       updateStatus('上传失败');
     }
   }
@@ -491,7 +544,7 @@
     if (!isConnected) { showConfigModal(); return; }
     try {
       updateStatus('下载中...');
-      await findOrCreateGist();   // 始终对准同一份 Gist
+      await resolveGistId();        // 快速定位同一份 Gist
       const remote = await readGist();
       const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
       if (!cloudHas) {
@@ -505,7 +558,7 @@
       const localHas = localKeys.length > 0;
       const localSummary = localHas ? summarizeData(collectLocalData()) : '';
 
-      let msg = '将用【云端数据】覆盖本机。\n\n云端：' + cloudCount + ' 项\n' + cloudSummaryTxt;
+      let msg = '将用【云端数据】整体覆盖本机。\n\n云端：' + cloudCount + ' 项\n' + cloudSummaryTxt;
       if (localHas) {
         msg += '\n\n⚠️ 本机现有 ' + localKeys.length + ' 项数据，将被云端数据【整体替换】。\n想保留本机就点「取消」，改去点「上传」。';
       } else {
@@ -519,11 +572,11 @@
       if (typeof buildCards === 'function') buildCards();
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
+      notify('✅ 下载成功：已用云端数据覆盖本机 ' + cloudCount + ' 项', 'success');
       updateStatus('已下载 ' + fmtTime(lastSyncTime));
-      openSyncPanel();
     } catch (e) {
       console.warn('[GitHub] 下载失败:', e.message);
-      alert('下载失败：' + friendlyError(e));
+      notify('❌ 下载失败：' + friendlyError(e), 'error');
       updateStatus('下载失败');
     }
   }
@@ -538,6 +591,7 @@
     if (!GITHUB_TOKEN) { showConfigModal(); return; }
     try {
       await findOrCreateGist();   // 关键：两端复用同一 Gist
+      gistVerified = true;
       const login = await fetchAccount();
       isConnected = true;
       updateStatus(login ? '已连接 @' + login : '已连接');
