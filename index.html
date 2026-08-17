@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F6F4EF">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="效率中心">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+<title>个人效率中心 · 统一工作台</title>
+<style>
+  :root{
+    --accent:#6366f1;
+    --accent-2:#8b5cf6;
+    --bg:#f6f7fb;
+    --panel:#ffffff;
+    --text:#1e2533;
+    --muted:#6b7280;
+    --border:#e6e8ef;
+    --side-bg:#0f172a;
+    --side-text:#cbd5e1;
+    --side-active:#6366f1;
+    --shadow:0 1px 3px rgba(15,23,42,.06),0 8px 24px rgba(15,23,42,.06);
+  }
+  html[data-theme="dark"]{
+    --bg:#0b1120;
+    --panel:#111a2e;
+    --text:#e5e9f2;
+    --muted:#94a3b8;
+    --border:#1f2c47;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);overflow:hidden;
+  }
+  .app{display:flex;height:100vh;width:100%}
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:248px;flex:0 0 248px;background:var(--side-bg);color:var(--side-text);
+    display:flex;flex-direction:column;padding:18px 14px;gap:6px;transition:transform .25s ease,flex-basis .25s ease,width .25s ease,padding .25s ease;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px}
+  .brand #collapseBtn{margin-left:auto;flex:none;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--side-text);font-size:18px;line-height:1;cursor:pointer;display:none;align-items:center;justify-content:center;transition:background .15s}
+  .brand #collapseBtn:hover{background:rgba(255,255,255,.14);color:#fff}
+  .brand .logo{
+    width:38px;height:38px;border-radius:10px;flex:0 0 38px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;font-size:20px;
+  }
+  .brand .name{font-size:16px;font-weight:700;color:#fff;line-height:1.2}
+  .brand .sub{font-size:11px;color:#7c8aa5}
+  .nav-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5b6b86;padding:14px 10px 6px}
+  .nav-item{
+    display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;cursor:pointer;
+    font-size:14px;color:var(--side-text);transition:background .15s,color .15s;user-select:none;
+  }
+  .nav-item .ico{font-size:17px;width:22px;text-align:center;flex:0 0 22px}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-item.active{background:var(--side-active);color:#fff;font-weight:600;box-shadow:0 4px 12px rgba(99,102,241,.35)}
+  .nav-item .badge{margin-left:auto;font-size:10px;background:rgba(255,255,255,.16);color:#fff;padding:1px 7px;border-radius:999px}
+  .nav-item .badge.empty{background:transparent;color:#475569}
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)}
+  .side-btn{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;
+    font-size:13px;color:var(--side-text);background:rgba(255,255,255,.04);transition:background .15s;
+  }
+  .side-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{
+    display:none;
+  }
+  /* 左侧悬浮标签：始终可见，点击切换侧边栏 */
+  .float-tab{
+    position:fixed;top:50%;left:0;transform:translateY(-50%);z-index:55;
+    width:28px;height:56px;border-radius:0 10px 10px 0;background:var(--panel);
+    border:1px solid var(--border);border-left:none;box-shadow:2px 0 12px rgba(0,0,0,.1);
+    font-size:16px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.25s;
+  }
+  .float-tab:hover{background:var(--accent);color:#fff}
+  .crumb{font-size:15px;font-weight:600}
+  .crumb small{font-weight:400;color:var(--muted);margin-left:8px;font-size:12px}
+  .top-actions{margin-left:auto;display:flex;gap:8px}
+  .tbtn{
+    border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:13px;
+    padding:8px 13px;border-radius:9px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.15s;
+  }
+  .tbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .tbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tbtn.primary:hover{filter:brightness(1.07)}
+
+  .content{flex:1;position:relative;overflow:hidden}
+  .dashboard{position:absolute;inset:0;overflow:auto;padding:26px}
+  .dash-head{margin-bottom:20px}
+  .dash-head h1{font-size:22px;margin-bottom:6px}
+  .dash-head p{color:var(--muted);font-size:13px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+  .card{
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;
+    box-shadow:var(--shadow);cursor:pointer;transition:transform .15s,border-color .15s;position:relative;overflow:hidden;
+  }
+  .card:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .card .c-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .card .c-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:linear-gradient(135deg,#eef0ff,#f3e8ff)}
+  .card .c-name{font-size:15px;font-weight:700}
+  .card .c-desc{font-size:12.5px;color:var(--muted);line-height:1.5;min-height:38px}
+  .card .c-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+  .stat{font-size:12px;color:var(--muted)}
+  .stat b{color:var(--accent)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+  .dot.on{background:#22c55e}
+  .dot.off{background:#cbd5e1}
+
+  #toolContainer{position:absolute;inset:0}
+  .tool-container{position:absolute;inset:0;display:none}
+  .tool-container.active{display:block}
+  iframe.tool{width:100%;height:100%;border:none;background:var(--panel)}
+
+  /* ---------- Modal ---------- */
+  .modal-mask{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:50}
+  .modal-mask.show{display:flex}
+  .modal{width:520px;max-width:92vw;max-height:88vh;overflow:auto;background:var(--panel);border-radius:16px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal h2{font-size:18px;margin-bottom:4px}
+  .modal .m-sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .dm-row{
+    border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;
+  }
+  .dm-row .dm-ico{width:40px;height:40px;border-radius:10px;background:#eef0ff;display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 40px}
+  .dm-row .dm-txt{flex:1}
+  .dm-row .dm-txt b{font-size:14px}
+  .dm-row .dm-txt p{font-size:12px;color:var(--muted);margin-top:2px}
+  .dm-row .dm-act{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .opt{display:flex;gap:8px;margin:6px 0 16px;font-size:13px}
+  .opt label{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .modal-close{position:absolute;top:16px;right:18px;font-size:22px;cursor:pointer;color:var(--muted);background:none;border:none}
+  .modal-wrap{position:relative}
+  .m-btn{border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:13px;padding:8px 14px;border-radius:9px;cursor:pointer;transition:.15s}
+  .m-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .m-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .m-btn.danger{background:#ef4444;border-color:#ef4444;color:#fff}
+  .m-btn.danger:hover{filter:brightness(1.05);color:#fff}
+  .note{font-size:12px;color:var(--muted);background:var(--bg);border:1px dashed var(--border);border-radius:10px;padding:10px 12px;margin-top:6px;line-height:1.6}
+
+  /* 模块管理 */
+  .mini-btn{font-size:11px;color:var(--side-text);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:2px 9px;cursor:pointer;transition:.15s}
+  .mini-btn:hover{background:rgba(255,255,255,.16);color:#fff}
+  .mod-row{display:flex;align-items:center;gap:11px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px}
+  .mod-row .mi{font-size:18px;width:24px;text-align:center;flex:none}
+  .mod-row .mn{flex:1;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mod-row .mn small{display:block;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mod-row .mdel{background:none;border:none;color:#ef4444;font-size:17px;cursor:pointer;padding:2px 6px;border-radius:6px;flex:none}
+  .mod-row .mdel:hover{background:rgba(239,68,68,.12)}
+  .mod-row input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent);flex:none;cursor:pointer}
+
+  /* ---------- Toast ---------- */
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#111a2e;color:#fff;padding:11px 20px;border-radius:10px;font-size:13.5px;opacity:0;pointer-events:none;transition:.25s;z-index:80;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:780px){
+    .sidebar{position:fixed;z-index:40;height:100%;transform:translateX(-100%)}
+    .sidebar.open{transform:translateX(0)}
+    .hamburger{display:block}
+    .mask{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35;display:none}
+    .mask.show{display:block}
+  }
+  /* 桌面端：一键收起侧边栏，给工具区腾出空间 */
+  @media (min-width:781px){
+    .brand #collapseBtn{display:inline-flex}
+    .app.collapsed .sidebar{flex-basis:0;width:0;padding-left:0;padding-right:0;overflow:hidden;border:none}
+  }
+</style>
+<script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
+<script>
+(function(){
+  try{
+    var beacon=new BeaconAction({
+      appkey:'0WEB06U85YBSLJNL',
+      versionCode:'1.0.0',
+      channelID:'share',
+      delay:1000,
+      sessionDuration:30*60*1000,
+      isOversea:false,
+      needReportRqdEvent:false
+    });
+    beacon.onDirectUserAction('preview_page_view',{
+      'url':location.href,
+      'referrer':document.referrer,
+      'title':document.title,
+      'sandbox_id':'9da32fa4efeb46b7b867f769dc97b15b'
+    });
+  }catch(e){}
+})();
+</script></head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">🧭</div>
+      <div>
+        <div class="name">个人效率中心</div>
+        <div class="sub"><span id="hubCount">0</span> 个工具 · 统一工作台</div>
+      </div>
+      <button id="collapseBtn" title="收起侧边栏" aria-label="收起侧边栏">‹</button>
+    </div>
+
+    <div class="nav-label">工作台</div>
+    <div class="nav-item active" data-target="dashboard" data-type="dashboard">
+      <span class="ico">🏠</span><span>仪表盘</span>
+    </div>
+
+    <div class="nav-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:6px">
+      <span>我的工具</span>
+      <button id="manageModules" class="mini-btn" title="管理显示的模块">管理</button>
+    </div>
+    <!-- nav items injected by JS -->
+    <div id="navList"></div>
+
+    <div class="side-foot">
+      <div class="side-btn" id="openData"><span>💾</span><span>数据管理</span></div>
+      <div class="side-btn" id="toggleTheme"><span id="themeIco">🌙</span><span id="themeTxt">夜间模式</span></div>
+    </div>
+  </aside>
+  <div class="mask" id="mask"></div>
+
+  <!-- 左侧悬浮标签：点击打开/收起侧边栏 -->
+  <div class="float-tab" id="floatTab" title="模块导航">☰</div>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb" id="crumb">仪表盘 <small>总览与快速入口</small></div>
+      <div class="top-actions">
+        <button class="tbtn" id="refreshBtn" title="重新加载当前工具">⟳ 刷新</button>
+        <button class="tbtn primary" id="dataBtn">💾 数据导入/导出</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Dashboard -->
+      <div class="dashboard" id="dashboard">
+        <div class="dash-head">
+          <h1>欢迎回到个人效率中心 👋</h1>
+          <p id="dashIntro">这里把你的多个独立工具整合到同一个工作台，统一导航、统一数据备份。点击任意卡片开始，或随时用右下角导出全部数据。</p>
+        </div>
+        <div class="cards" id="cards"></div>
+      </div>
+
+      <!-- Tool iframes -->
+      <div id="toolContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Management Modal -->
+<div class="modal-mask" id="dataModal">
+  <div class="modal modal-wrap">
+    <button class="modal-close" id="closeData">×</button>
+    <h2>💾 数据管理</h2>
+    <p class="m-sub">数据保存在本机浏览器中，并通过云端同步在所有设备间自动同步。你也可以手动导出 / 导入 / 清空全部数据。</p>
+
+    <div class="dm-row">
+      <div class="dm-ico">📤</div>
+      <div class="dm-txt"><b>导出全部数据</b><p>把当前浏览器里的所有工具数据打包成一个 JSON 备份文件。</p></div>
+      <div class="dm-act"><button class="m-btn primary" id="exportBtn">导出备份</button></div>
+    </div>
+
+    <div class="dm-row">
+      <div class="dm-ico">📥</div>
+      <div class="dm-txt"><b>导入备份</b><p>从备份文件恢复数据。可选择覆盖或合并到现有数据。</p></div>
+      <div class="dm-act">
+        <div class="opt">
+          <label><input type="radio" name="importMode" value="merge" checked> 合并</label>
+          <label><input type="radio" name="importMode" value="replace"> 覆盖</label>
+        </div>
+        <button class="m-btn" id="importBtn">选择文件</button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+      </div>
+    </div>
+
+    <div class="dm-row">
+      <div class="dm-ico">🗑️</div>
+      <div class="dm-txt"><b>清空所有工具数据</b><p>删除本机保存的全部数据（不可恢复，请先导出备份）。</p></div>
+      <div class="dm-act"><button class="m-btn danger" id="clearBtn">清空</button></div>
+    </div>
+
+    <div class="note" id="dataNote">当前浏览器共保存 <b id="keyCount">0</b> 项数据键值。</div>
+  </div>
+</div>
+
+<!-- Module Management Modal -->
+<div class="modal-mask" id="moduleModal">
+  <div class="modal modal-wrap">
+    <button class="modal-close" id="closeModuleModal">×</button>
+    <h2>🧩 模块管理</h2>
+    <p class="m-sub">勾选需要在导航中显示的模块；可新增自定义模块或删除自定义模块，最后点「保存」生效。</p>
+    <div id="moduleList"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
+      <button class="m-btn" id="addModuleBtn">＋ 新增模块</button>
+      <button class="m-btn primary" id="saveModuleBtn" style="margin-left:auto">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============== 模块配置 ============== */
+const MODULES = [
+  {id:'cpa',   name:'CPA 学习进度', file:'tools/cpa学习工具1.html',  icon:'📚', desc:'CPA 备考进度、章节与错题追踪', keys:['cpa_learning_data_v3']},
+  {id:'work',  name:'工作管理系统', file:'tools/工作管理系统.html',  icon:'🗂️', desc:'工作日志、待办、周报与人员管理', keys:['workLogs','workTodos','workWeekly','workStaff']},
+  {id:'diary', name:'日记',         file:'tools/日记.html',          icon:'📝', desc:'每日随笔、心情与照片记录',     keys:['diary_app_data']},
+  {id:'time',  name:'时间统计',     file:'tools/时间统计.html',      icon:'⏱️', desc:'柳比歇夫法时间开销记录与分析', keys:['timeRecords','timeTodos']},
+  {id:'dream', name:'梦想成真',     file:'tools/梦想成真.html',      icon:'🌟', desc:'目标拆解、习惯打卡与愿景板',   keys:['dreamGoals','dreamDiaries','dreamHabits','dreamHabitRecords']},
+  {id:'info',  name:'信息研判',     file:'tools/消息获取.html',      icon:'📡', desc:'多维信息收集与研判',           keys:['multi_info_records']},
+  {id:'box',   name:'收纳盒',       file:'tools/王鑫迪的收纳盒.html', icon:'🧺', desc:'物品 / 资料收纳与检索',         keys:['organizer_items_v2','organizer_theme']},
+  {id:'reading', name:'阅读·思享',   file:'tools/阅读 (2).html',        icon:'📖', desc:'读书笔记、书单与阅读记录',     keys:['reading_think_system_v1']},
+  {id:'life',    name:'生活工作台',   file:'tools/life-workbench.html',  icon:'🏠', desc:'个人生活综合管理与记录',         keys:['wb_life_v1']},
+
+  /* ===== 新增工具（由 WorkBuddy 集成） ===== */
+  {id:'star',    name:'恒星时间管理法', file:'tools/恒星时间管理法.html', icon:'🪐', desc:'恒星时间管理法：标签与时间记录', keys:['stellar_tag_system_v2','stellar_time_records']},
+  {id:'idle',    name:'琐碎时间记录',   file:'tools/时间统计2.html',      icon:'🧩', desc:'柳比歇夫法碎片时间记录与统计',   keys:['idleManagerData_v15']},
+  {id:'idol',    name:'偶像学习',       file:'tools/偶像学习.html',        icon:'🎯', desc:'偶像模仿 · 习惯养成与打卡',     keys:['imitation_targets','good_habits','daily_checklist','bad_habits']},
+  {id:'health',  name:'健康管理',       file:'tools/健康管理.html',        icon:'💪', desc:'睡眠·运动·体重·血压·饮水·饮食记录', keys:['mySleepData','mySportData','myWeightData','myBpData','myWaterData','myDietData','healthFoodDB']},
+  {id:'members', name:'成员管理',       file:'tools/成员管理.html',        icon:'👥', desc:'团队成员增删改查、角色与状态管理',   keys:['teamMembers_v1']},
+];
+
+const HUB_KEYS = ['hub_lastModule','hub_theme'];
+const HUB_CUSTOM_KEY = 'hub_custom_modules';   // 自定义模块
+const HUB_HIDDEN_KEY = 'hub_module_hidden';    // 隐藏的内置模块 id
+
+/* 模块列表（含可见性）：内置未隐藏 + 自定义 */
+function getCustomModules(){
+  try{ return JSON.parse(localStorage.getItem(HUB_CUSTOM_KEY)||'[]'); }catch(e){ return []; }
+}
+function getHiddenModules(){
+  try{ return JSON.parse(localStorage.getItem(HUB_HIDDEN_KEY)||'[]'); }catch(e){ return []; }
+}
+function getModules(){
+  const hidden=getHiddenModules();
+  const builtin=MODULES.filter(m=>!hidden.includes(m.id));
+  return builtin.concat(getCustomModules());
+}
+// 自定义模块路径归一化：相对路径补 tools/ 前缀
+function normFile(f){
+  if(/^https?:\/\//.test(f)) return f;
+  return /[\/]/.test(f) ? f : 'tools/'+f;
+}
+
+/* ============== 工具函数 ============== */
+function $(s){return document.querySelector(s);}
+function hasData(keys){
+  return keys.some(k=>{
+    const v = localStorage.getItem(k);
+    if(v===null) return false;
+    const t = v.trim();
+    return t!=='' && t!=='[]' && t!=='{}' && t!=='null';
+  });
+}
+function countKeys(){
+  let n=0;
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!HUB_KEYS.includes(k))n++;}
+  return n;
+}
+function toast(msg){
+  const t=$('#toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ============== 构建导航 & 仪表盘 ============== */
+function buildNav(){
+  const list=$('#navList');
+  list.innerHTML='';
+  getModules().forEach(m=>{
+    const el=document.createElement('div');
+    el.className='nav-item';
+    el.dataset.target='tool';
+    el.dataset.id=m.id;
+    el.innerHTML=`<span class="ico">${m.icon}</span><span>${m.name}</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
+    el.addEventListener('click',()=>openModule('tool',m.id));
+    list.appendChild(el);
+  });
+}
+function buildCards(){
+  const wrap=$('#cards');
+  wrap.innerHTML='';
+  getModules().forEach(m=>{
+    const used=hasData(m.keys);
+    const card=document.createElement('div');
+    card.className='card';
+    card.innerHTML=`
+      <div class="c-top">
+        <div class="c-ico">${m.icon}</div>
+        <div class="c-name">${m.name}</div>
+      </div>
+      <div class="c-desc">${m.desc}</div>
+      <div class="c-foot">
+        <span class="stat"><span class="dot ${used?'on':'off'}"></span>${used?'已有数据':'尚未使用'}</span>
+        <span class="stat">打开 →</span>
+      </div>`;
+    card.addEventListener('click',()=>openModule('tool',m.id));
+    wrap.appendChild(card);
+  });
+  refreshBadges();
+}
+function refreshBadges(){
+  getModules().forEach(m=>{
+    const used=hasData(m.keys);
+    const b=document.querySelector(`[data-badge="${m.id}"]`);
+    if(b){b.textContent=used?'有数据':'未使用';b.classList.toggle('empty',!used);}
+  });
+  $('#keyCount').textContent=countKeys();
+}
+
+/* ============== iframe 容器 ============== */
+function buildIframes(){
+  const c=$('#toolContainer');
+  getModules().forEach(m=>{
+    const box=document.createElement('div');
+    box.className='tool-container';
+    box.id='frame-'+m.id;
+    const f=document.createElement('iframe');
+    f.className='tool';
+    f.src=normFile(m.file);
+    f.setAttribute('title',m.name);
+    box.appendChild(f);
+    c.appendChild(box);
+  });
+}
+function getFrame(id){return document.querySelector('#frame-'+id+' iframe');}
+
+/* ============== 模块切换 ============== */
+function openModule(type,id){
+  // sidebar active
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(type==='dashboard'){
+    document.querySelector('[data-target="dashboard"]').classList.add('active');
+    $('#crumb').innerHTML='仪表盘 <small>总览与快速入口</small>';
+  }else{
+    const m=MODULES.find(x=>x.id===id);
+    const nav=document.querySelector(`.nav-item[data-id="${id}"]`);
+    if(nav)nav.classList.add('active');
+    $('#crumb').innerHTML=`${m.icon} ${m.name} <small>${m.desc}</small>`;
+  }
+  // views
+  $('#dashboard').style.display = type==='dashboard'?'block':'none';
+  $('#toolContainer').style.display = type==='tool'?'block':'none';
+  document.querySelectorAll('#toolContainer .tool-container').forEach(b=>{
+    b.classList.toggle('active', type==='tool' && b.id==='frame-'+id);
+  });
+  localStorage.setItem('hub_lastModule', JSON.stringify({type,id}));
+  closeSidebarMobile();
+}
+function refreshCurrent(){
+  const cur=JSON.parse(localStorage.getItem('hub_lastModule')||'{"type":"dashboard"}');
+  if(cur.type==='tool'){const f=getFrame(cur.id);if(f)f.src=f.src;}
+  else{$('#dashboard').style.display='block';}
+  setTimeout(()=>{buildCards();},300);
+  toast('已刷新');
+}
+
+/* ============== 数据管理 ============== */
+function exportData(){
+  const data={};
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    data[k]=localStorage.getItem(k);
+  }
+  const payload={__hub_backup:true,version:1,exportedAt:new Date().toISOString(),data};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const name=`效率中心数据备份-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('已导出备份文件');
+}
+function importData(file){
+  const mode=document.querySelector('input[name="importMode"]:checked').value;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const obj=JSON.parse(e.target.result);
+      const data=obj.__hub_backup && obj.data ? obj.data : obj;
+      if(mode==='replace'){
+        // 仅清除工具数据，保留 hub 偏好
+        for(let i=localStorage.length-1;i>=0;i--){
+          const k=localStorage.key(i);
+          if(!HUB_KEYS.includes(k)) localStorage.removeItem(k);
+        }
+      }
+      let n=0;
+      for(const k in data){localStorage.setItem(k,String(data[k]));n++;}
+      // 重载所有 iframe 以反映新数据
+      getModules().forEach(m=>{const f=getFrame(m.id);if(f)f.src=f.src;});
+      buildCards();
+      toast(`导入成功，共恢复 ${n} 项数据（${mode==='replace'?'覆盖':'合并'}）`);
+    }catch(err){
+      toast('导入失败：文件格式不正确');
+    }
+  };
+  reader.readAsText(file);
+}
+function clearData(){
+  if(!confirm('确定清空全部工具数据？此操作不可恢复，建议先导出备份。'))return;
+  for(let i=localStorage.length-1;i>=0;i--){
+    const k=localStorage.key(i);
+    if(!HUB_KEYS.includes(k)) localStorage.removeItem(k);
+  }
+  getModules().forEach(m=>{const f=getFrame(m.id);if(f)f.src=f.src;});
+  buildCards();
+  toast('已清空全部工具数据');
+}
+
+/* ============== 主题 ============== */
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  $('#themeIco').textContent = t==='dark'?'☀️':'🌙';
+  $('#themeTxt').textContent = t==='dark'?'日间模式':'夜间模式';
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme');
+  const next=cur==='dark'?'light':'dark';
+  applyTheme(next);
+  localStorage.setItem('hub_theme',next);
+}
+
+/* ============== 侧边栏（桌面收起 / 移动抽屉） ============== */
+function openSidebarMobile(){$('#sidebar').classList.add('open');$('#mask').classList.add('show');}
+function closeSidebarMobile(){$('#sidebar').classList.remove('open');$('#mask').classList.remove('show');}
+function toggleSidebar(){
+  if(window.innerWidth<=780){                      // 窄屏：抽屉式开合
+    if($('#sidebar').classList.contains('open')) closeSidebarMobile(); else openSidebarMobile();
+  }else{                                          // 宽屏：整体收起/展开
+    var app=document.querySelector('.app');
+    var c=app.classList.toggle('collapsed');
+    try{ localStorage.setItem('hub_sidebar', c?'collapsed':'open'); }catch(e){}
+    var hb=document.getElementById('hamburger'); if(hb) hb.title=c?'展开侧边栏':'收起侧边栏';
+  }
+}
+
+/* ============== 模块管理 ============== */
+var mmState=null; // {hidden:Set, custom:[...]}
+function openModuleManager(){
+  mmState={ hidden:new Set(getHiddenModules()), custom:getCustomModules().slice() };
+  renderModuleManager();
+  $('#moduleModal').classList.add('show');
+}
+function renderModuleManager(){
+  const wrap=$('#moduleList');
+  if(!wrap||!mmState) return;
+  wrap.innerHTML='';
+  // 内置模块：可勾选显示/隐藏
+  MODULES.forEach(m=>{
+    const on=!mmState.hidden.has(m.id);
+    const row=document.createElement('div');
+    row.className='mod-row';
+    row.innerHTML=`<span class="mi">${m.icon}</span>`+
+      `<span class="mn">${m.name}<small>${m.desc}</small></span>`+
+      `<input type="checkbox" ${on?'checked':''} data-id="${m.id}" title="显示">`;
+    row.querySelector('input').addEventListener('change',e=>{
+      if(e.target.checked) mmState.hidden.delete(m.id); else mmState.hidden.add(m.id);
+    });
+    wrap.appendChild(row);
+  });
+  // 自定义模块：可勾选显示/隐藏 + 删除
+  mmState.custom.forEach(m=>{
+    const row=document.createElement('div');
+    row.className='mod-row';
+    row.innerHTML=`<span class="mi">${m.icon}</span>`+
+      `<span class="mn">${m.name}<small>${m.file}</small></span>`+
+      `<button class="mdel" title="删除该模块" data-del="${m.id}">🗑</button>`;
+    row.querySelector('.mdel').addEventListener('click',()=>{
+      mmState.custom=mmState.custom.filter(x=>x.id!==m.id);
+      renderModuleManager();
+    });
+    wrap.appendChild(row);
+  });
+  if(!mmState.custom.length){
+    const tip=document.createElement('div');
+    tip.className='xs muted';
+    tip.style.cssText='font-size:12px;color:var(--muted);padding:4px 2px';
+    tip.textContent='暂无自定义模块，点「＋ 新增模块」添加一个。';
+    wrap.appendChild(tip);
+  }
+}
+function addCustomModule(){
+  if(!mmState) return;
+  const name=prompt('模块名称（如：我的笔记）：');
+  if(!name||!name.trim()) return;
+  const file=prompt('模块路径或网址：\n· 本站工具填文件名，如 cpa学习工具1.html\n· 外部网页填完整网址，如 https://example.com','');
+  if(file===null) return;
+  const f=file.trim();
+  if(!f) return;
+  const id='c'+(Date.now().toString(36));
+  const palette=['📌','🔖','💡','🧩','🎨','🔧','📎','🌈','⭐','🚀'];
+  mmState.custom.push({
+    id, name:name.trim(), file:f,
+    icon:palette[mmState.custom.length%palette.length],
+    desc:'自定义模块',
+    keys:[]
+  });
+  renderModuleManager();
+}
+function saveModuleManager(){
+  try{
+    localStorage.setItem(HUB_HIDDEN_KEY, JSON.stringify([...mmState.hidden]));
+    localStorage.setItem(HUB_CUSTOM_KEY, JSON.stringify(mmState.custom));
+  }catch(e){ toast('保存失败：'+e.message); return; }
+  mmState=null;
+  $('#moduleModal').classList.remove('show');
+  // 重建导航 / 卡片 / iframe
+  buildNav(); buildCards(); buildIframes();
+  $('#hubCount').textContent=getModules().length;
+  toast('模块配置已保存');
+}
+
+/* ============== 初始化 ============== */
+function init(){
+  buildNav();
+  buildCards();
+  buildIframes();
+  const hc=document.getElementById('hubCount'); if(hc) hc.textContent=getModules().length;
+  var di=document.getElementById('dashIntro'); if(di) di.textContent='这里把你的 '+getModules().length+' 个独立工具整合到同一个工作台，统一导航、统一数据备份。点击任意卡片开始，或随时用右下角导出全部数据。';
+
+  // 侧边栏默认收起（宽屏最大化内容区）；仅当用户明确设为展开时才展开
+  try{
+    if(window.innerWidth>780 && localStorage.getItem('hub_sidebar')!=='open'){
+      document.querySelector('.app').classList.add('collapsed');
+      localStorage.setItem('hub_sidebar','collapsed');
+    }
+  }catch(e){}
+
+  // 主题
+  const savedTheme=localStorage.getItem('hub_theme')||'light';
+  applyTheme(savedTheme);
+  $('#toggleTheme').addEventListener('click',toggleTheme);
+
+  // 导航：仪表盘
+  document.querySelector('[data-target="dashboard"]').addEventListener('click',()=>openModule('dashboard'));
+
+  // 数据管理弹窗
+  const modal=$('#dataModal');
+  $('#openData').addEventListener('click',()=>{refreshBadges();modal.classList.add('show');});
+  $('#dataBtn').addEventListener('click',()=>{refreshBadges();modal.classList.add('show');});
+  $('#closeData').addEventListener('click',()=>modal.classList.remove('show'));
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('show');});
+  $('#exportBtn').addEventListener('click',exportData);
+  $('#importBtn').addEventListener('click',()=>$('#importFile').click());
+  $('#importFile').addEventListener('change',e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value='';});
+  $('#clearBtn').addEventListener('click',clearData);
+
+  // 模块管理弹窗
+  const mmModal=$('#moduleModal');
+  $('#manageModules').addEventListener('click',openModuleManager);
+  $('#closeModuleModal').addEventListener('click',()=>mmModal.classList.remove('show'));
+  mmModal.addEventListener('click',e=>{if(e.target===mmModal)mmModal.classList.remove('show');});
+  $('#addModuleBtn').addEventListener('click',addCustomModule);
+  $('#saveModuleBtn').addEventListener('click',saveModuleManager);
+
+  // 刷新
+  $('#refreshBtn').addEventListener('click',refreshCurrent);
+
+  // 移动端 / 桌面端侧栏
+  $('#mask').addEventListener('click',closeSidebarMobile);
+  // 左侧悬浮标签：点击直接切换侧边栏（抽屉/收起）
+  var floatTab=document.getElementById('floatTab');
+  if(floatTab){
+    floatTab.addEventListener('click',toggleSidebar);
+  }
+  // 桌面端：从品牌区收起侧栏
+  $('#collapseBtn').addEventListener('click',function(){
+    if(window.innerWidth<=780) return;
+    document.querySelector('.app').classList.add('collapsed');
+    try{ localStorage.setItem('hub_sidebar','collapsed'); }catch(e){}
+  });
+
+  // 恢复上次模块
+  try{
+    const last=JSON.parse(localStorage.getItem('hub_lastModule')||'{"type":"dashboard"}');
+    openModule(last.type,last.id);
+  }catch(_){openModule('dashboard');}
+}
+init();
+</script>
+<script src="sync-github.js"></script>
+</body>
+</html>
