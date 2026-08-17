@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>时间统计 · 柳比歇夫法</title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* ===== RESET & BASE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f0f2f5;
+            color: #1e293b;
+            padding: 16px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+        }
+        #app {
+            max-width: 720px;
+            width: 100%;
+        }
+
+        /* ===== HEADER ===== */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 4px 16px 4px;
+        }
+        .app-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .app-header .date-badge {
+            font-size: 14px;
+            color: #64748b;
+            background: #eef2f6;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: box-shadow 0.2s;
+        }
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-title i {
+            color: #3b82f6;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* ===== TIMER ===== */
+        .timer-categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+        .timer-categories .cat-btn {
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 2px solid #e2e8f0;
+            background: transparent;
+            font-size: 13px;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .timer-categories .cat-btn:hover {
+            border-color: #94a3b8;
+            background: #f8fafc;
+        }
+        .timer-categories .cat-btn.active {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        .timer-categories .cat-btn .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+        .timer-categories .cat-btn.cat-add {
+            border-style: dashed;
+            border-color: #cbd5e1;
+            color: #64748b;
+        }
+        .timer-categories .cat-btn.cat-add .dot {
+            background: #3b82f6 !important;
+        }
+        .timer-categories .cat-btn.cat-add:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        /* 场景按钮（一级） */
+        .timer-categories .cat-btn.scene-btn {
+            background: #f1f5f9;
+            border-color: #e2e8f0;
+            font-weight: 600;
+            color: #475569;
+            padding: 5px 16px;
+        }
+        .timer-categories .cat-btn.scene-btn.active {
+            background: #ede9fe;
+            border-color: #8b5cf6;
+            color: #7c3aed;
+        }
+        /* 二级标签 */
+        .timer-categories .cat-btn.sub-cat {
+            margin-left: 18px;
+            background: #fafbfc;
+            border-color: #eef2f6;
+            font-size: 12px;
+            padding: 4px 12px;
+        }
+
+        .timer-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 8px 0 4px 0;
+        }
+        .timer-display .time-text {
+            font-size: 48px;
+            font-weight: 300;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 2px;
+            color: #0f172a;
+            min-width: 140px;
+            text-align: center;
+            font-family: "SF Mono", "Menlo", monospace;
+        }
+        .timer-display .timer-ctrl {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: #3b82f6;
+            color: #fff;
+            font-size: 26px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+            flex-shrink: 0;
+        }
+        .timer-display .timer-ctrl:hover {
+            transform: scale(1.04);
+            background: #2563eb;
+        }
+        .timer-display .timer-ctrl.running {
+            background: #ef4444;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+        }
+        .timer-display .timer-ctrl.running:hover {
+            background: #dc2626;
+        }
+        .timer-display .timer-ctrl:active {
+            transform: scale(0.94);
+        }
+
+        .timer-current-label {
+            text-align: center;
+            font-size: 13px;
+            color: #94a3b8;
+            margin-top: 4px;
+            min-height: 20px;
+        }
+        .timer-current-label span {
+            font-weight: 600;
+            color: #334155;
+        }
+
+        /* ===== CHART ===== */
+        .chart-wrapper {
+            position: relative;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chart-wrapper canvas {
+            max-height: 200px;
+            max-width: 200px;
+        }
+        /* ===== CHART DIMENSION TABS ===== */
+        .chart-dim-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .chart-dim-tabs .dim-tab {
+            flex: 1;
+            min-width: 52px;
+            padding: 7px 4px;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            background: transparent;
+            font-size: 13px;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .chart-dim-tabs .dim-tab:hover {
+            border-color: #94a3b8;
+            background: #f8fafc;
+        }
+        .chart-dim-tabs .dim-tab.active {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        .chart-empty {
+            color: #94a3b8;
+            font-size: 14px;
+            text-align: center;
+        }
+        .chart-legend-custom {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 14px;
+            margin-top: 12px;
+            justify-content: center;
+        }
+        .chart-legend-custom .legend-item {
+            font-size: 12px;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .chart-legend-custom .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ===== RECORD LIST ===== */
+        .record-list {
+            max-height: 360px;
+            overflow-y: auto;
+        }
+        .record-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .record-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .record-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #f8fafc;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+            gap: 12px;
+            border-left: 4px solid #e2e8f0;
+        }
+        .record-item:hover {
+            background: #f1f5f9;
+        }
+        .record-item .ri-cat {
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 44px;
+            flex-shrink: 0;
+        }
+        .record-item .ri-time {
+            font-size: 13px;
+            color: #475569;
+            flex: 1;
+            font-variant-numeric: tabular-nums;
+        }
+        .record-item .ri-dur {
+            font-size: 13px;
+            font-weight: 500;
+            color: #0f172a;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+        }
+        .record-item .ri-note {
+            font-size: 12px;
+            color: #94a3b8;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .record-item .ri-del {
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+            transition: all 0.15s;
+            flex-shrink: 0;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+        }
+        .record-item .ri-del:hover {
+            color: #ef4444;
+            background: #fee2e2;
+        }
+
+        .record-empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 24px 0;
+            font-size: 14px;
+        }
+
+        /* ===== TODO ===== */
+        .todo-input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .todo-input-row input[type="text"] {
+            flex: 1;
+            min-width: 120px;
+            padding: 8px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border 0.2s;
+            background: #fafbfc;
+        }
+        .todo-input-row input[type="text"]:focus {
+            border-color: #3b82f6;
+            background: #fff;
+        }
+        .todo-input-row .todo-type-group {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            background: #f1f5f9;
+            border-radius: 10px;
+            padding: 2px;
+            flex-shrink: 0;
+        }
+        .todo-input-row .todo-type-group button {
+            padding: 5px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            background: transparent;
+            color: #64748b;
+            transition: all 0.15s;
+        }
+        .todo-input-row .todo-type-group button.active {
+            background: #fff;
+            color: #1e293b;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+        .todo-input-row .todo-time-input {
+            padding: 6px 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            outline: none;
+            background: #fafbfc;
+            flex-shrink: 0;
+            min-width: 120px;
+        }
+        .todo-input-row .todo-time-input:focus {
+            border-color: #3b82f6;
+        }
+        .todo-input-row .todo-add-btn {
+            padding: 8px 18px;
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+        .todo-input-row .todo-add-btn:hover {
+            background: #2563eb;
+        }
+
+        .todo-list {
+            max-height: 260px;
+            overflow-y: auto;
+        }
+        .todo-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .todo-list::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: 10px;
+            background: #f8fafc;
+            margin-bottom: 4px;
+            gap: 10px;
+            transition: background 0.15s;
+            border-left: 3px solid transparent;
+        }
+        .todo-item:hover {
+            background: #f1f5f9;
+        }
+        .todo-item .todo-check {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #cbd5e1;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+            color: transparent;
+            font-size: 11px;
+        }
+        .todo-item .todo-check.done {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+        .todo-item .todo-title {
+            flex: 1;
+            font-size: 14px;
+            color: #1e293b;
+        }
+        .todo-item .todo-title.done-text {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+        .todo-item .todo-meta {
+            font-size: 12px;
+            color: #94a3b8;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .todo-item .todo-meta .urgent {
+            color: #ef4444;
+            font-weight: 600;
+        }
+        .todo-item .todo-del {
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .todo-item .todo-del:hover {
+            color: #ef4444;
+            background: #fee2e2;
+        }
+
+        .todo-empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 16px 0;
+            font-size: 13px;
+        }
+
+        /* ===== EDIT MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+        .modal-box {
+            background: #fff;
+            border-radius: 20px;
+            padding: 28px 24px 24px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            animation: modalIn 0.25s ease;
+        }
+        @keyframes modalIn {
+            from {
+                transform: scale(0.92) translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+        .modal-box h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #0f172a;
+        }
+        .modal-box label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #475569;
+            display: block;
+            margin: 10px 0 4px;
+        }
+        .modal-box select,
+        .modal-box textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border 0.2s;
+            font-family: inherit;
+            background: #fafbfc;
+        }
+        .modal-box select:focus,
+        .modal-box textarea:focus {
+            border-color: #3b82f6;
+            background: #fff;
+        }
+        .modal-box textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        .modal-box .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+            justify-content: flex-end;
+        }
+        .modal-box .modal-actions button {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .modal-box .modal-actions .btn-cancel {
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .modal-box .modal-actions .btn-cancel:hover {
+            background: #e2e8f0;
+        }
+        .modal-box .modal-actions .btn-save {
+            background: #3b82f6;
+            color: #fff;
+        }
+        .modal-box .modal-actions .btn-save:hover {
+            background: #2563eb;
+        }
+        /* 标签管理按钮 */
+        .tm-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #475569;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+        .tm-btn:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        .tm-del:hover {
+            border-color: #ef4444;
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        /* ===== STATISTICS ===== */
+        .stats-card {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .stats-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .stats-filter label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .stats-filter select,
+        .stats-filter .stats-btn {
+            padding: 8px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            outline: none;
+            background: #fafbfc;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .stats-filter select:focus {
+            border-color: #3b82f6;
+            background: #fff;
+        }
+        .stats-filter .stats-btn {
+            background: #3b82f6;
+            color: #fff;
+            border-color: #3b82f6;
+            font-weight: 600;
+            padding: 8px 18px;
+        }
+        .stats-filter .stats-btn:hover {
+            background: #2563eb;
+        }
+        .stats-chart-area {
+            position: relative;
+            height: 240px;
+            margin-bottom: 16px;
+        }
+        .stats-detail-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 16px 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stats-detail-title .date-icon {
+            background: linear-gradient(135deg, #ef4444, #f97316);
+            color: #fff;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .stats-table th {
+            text-align: left;
+            padding: 10px 12px;
+            background: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            font-size: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .stats-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+        }
+        .stats-table tr:hover td {
+            background: #f8fafc;
+        }
+        .stats-table .num-cell {
+            font-family: "SF Mono", Menlo, monospace;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .stats-empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 24px 0;
+            font-size: 14px;
+        }
+        .stats-section-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 20px 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .stats-summary-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .stats-summary-item {
+            flex: 1;
+            min-width: 100px;
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border-radius: 12px;
+            padding: 12px 14px;
+            text-align: center;
+        }
+        .stats-summary-item .ssi-val {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0369a1;
+            font-family: "SF Mono", Menlo, monospace;
+        }
+        .stats-summary-item .ssi-label {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .card {
+                padding: 14px;
+            }
+            .timer-display .time-text {
+                font-size: 36px;
+                min-width: 100px;
+            }
+            .timer-display .timer-ctrl {
+                width: 50px;
+                height: 50px;
+                font-size: 22px;
+            }
+            .record-item {
+                flex-wrap: wrap;
+                gap: 4px 8px;
+            }
+            .record-item .ri-cat {
+                min-width: 36px;
+                font-size: 12px;
+            }
+            .record-item .ri-time {
+                font-size: 12px;
+                flex-basis: 100%;
+                order: 1;
+            }
+            .record-item .ri-dur {
+                font-size: 12px;
+            }
+            .record-item .ri-note {
+                max-width: 60px;
+                font-size: 11px;
+            }
+            .todo-input-row {
+                flex-direction: column;
+            }
+            .todo-input-row input[type="text"] {
+                min-width: unset;
+            }
+            .todo-input-row .todo-time-input {
+                min-width: unset;
+                width: 100%;
+            }
+            .todo-input-row .todo-type-group {
+                align-self: flex-start;
+            }
+            .chart-wrapper {
+                height: 160px;
+            }
+            .chart-wrapper canvas {
+                max-height: 160px;
+                max-width: 160px;
+            }
+            .app-header h1 {
+                font-size: 18px;
+            }
+            .app-header .date-badge {
+                font-size: 12px;
+                padding: 3px 10px;
+            }
+            .modal-box {
+                padding: 20px 16px 16px;
+            }
+            .stats-filter {
+                gap: 8px;
+            }
+            .stats-filter label {
+                font-size: 13px;
+                width: 100%;
+                margin-bottom: 2px;
+            }
+            .stats-filter select {
+                flex: 1;
+                min-width: 0;
+                font-size: 12px;
+                padding: 7px 10px;
+            }
+            .stats-chart-area {
+                height: 200px;
+            }
+            .stats-summary-item {
+                min-width: 70px;
+                padding: 10px 8px;
+            }
+            .stats-summary-item .ssi-val {
+                font-size: 17px;
+            }
+            .stats-table th, .stats-table td {
+                padding: 7px 8px;
+                font-size: 12px;
+            }
+        }
+
+        /* ===== UTILITY ===== */
+        .text-muted {
+            color: #94a3b8;
+        }
+        .mt-1 {
+            margin-top: 8px;
+        }
+        .flex-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .gap-1 {
+            gap: 4px;
+        }
+    </style>
+<script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
+<script>
+(function(){
+  try{
+    var beacon=new BeaconAction({
+      appkey:'0WEB06U85YBSLJNL',
+      versionCode:'1.0.0',
+      channelID:'share',
+      delay:1000,
+      sessionDuration:30*60*1000,
+      isOversea:false,
+      needReportRqdEvent:false
+    });
+    beacon.onDirectUserAction('preview_page_view',{
+      'url':location.href,
+      'referrer':document.referrer,
+      'title':document.title,
+      'sandbox_id':'9da32fa4efeb46b7b867f769dc97b15b'
+    });
+  }catch(e){}
+})();
+</script></head>
+<body>
+
+    <div id="app">
+        <!-- HEADER -->
+        <div class="app-header">
+            <h1><i class="fas fa-clock" style="color:#3b82f6;margin-right:6px;"></i>时间统计</h1>
+            <span class="date-badge" id="headerDate"></span>
+        </div>
+
+        <!-- TIMER CARD -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-play-circle"></i> 计时器</div>
+            <div class="timer-categories" id="categoryContainer">
+                <!-- 由 JS 动态生成 -->
+            </div>
+            <div class="timer-display">
+                <span class="time-text" id="timerDisplay">00:00:00</span>
+                <button class="timer-ctrl" id="timerCtrl" title="开始计时">
+                    <i class="fas fa-play" id="timerIcon"></i>
+                </button>
+            </div>
+            <div class="timer-current-label" id="timerLabel">
+                当前类别：<span id="currentCategoryLabel">学习</span>
+            </div>
+        </div>
+
+        <!-- CHART CARD -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-chart-pie"></i> 时间分布</div>
+            <div class="chart-dim-tabs" id="chartDimTabs">
+                <button class="dim-tab active" data-dim="day">本日</button>
+                <button class="dim-tab" data-dim="week">本周</button>
+                <button class="dim-tab" data-dim="month">本月</button>
+                <button class="dim-tab" data-dim="quarter">本季</button>
+                <button class="dim-tab" data-dim="year">本年</button>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="chart-legend-custom" id="chartLegend"></div>
+            <div id="chartEmpty" class="chart-empty" style="display:none;margin-top:8px;">
+                暂无时间记录，开始计时吧！
+            </div>
+        </div>
+
+        <!-- STATISTICS CARD -->
+        <div class="stats-card">
+            <div class="card-title"><i class="fas fa-chart-bar"></i> 琐碎时间统计</div>
+
+            <!-- Filter Row -->
+            <div class="stats-filter">
+                <label>汇总维度：</label>
+                <select id="statDimension">
+                    <option value="range">时间区间</option>
+                    <option value="daily">每日</option>
+                    <option value="weekly">每周</option>
+                    <option value="monthly">每月</option>
+                    <option value="yearly">每年</option>
+                </select>
+
+                <!-- 时间区间长度（仅维度=时间区间时显示） -->
+                <label id="statRangeLabel" style="display:none;">区间长度：</label>
+                <select id="statRange" style="display:none;">
+                    <option value="7">过去一周的每日</option>
+                    <option value="30">过去一月的每日</option>
+                    <option value="365">过去一年的每日</option>
+                </select>
+
+                <label>场景筛选：</label>
+                <select id="statScene">
+                    <option value="all">全部场景</option>
+                </select>
+
+                <label>活动筛选：</label>
+                <select id="statActivity">
+                    <option value="all">全部活动</option>
+                </select>
+
+                <button class="stats-btn" id="updateStatChart">更新图表</button>
+            </div>
+
+            <!-- Chart Area -->
+            <div class="stats-chart-area">
+                <canvas id="statBarChart"></canvas>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="stats-summary-row" id="statSummary"></div>
+
+            <!-- Detailed Data Table -->
+            <div class="stats-detail-title">
+                <span class="date-icon" id="statDateIcon">📅 今日</span>
+                详细数据
+            </div>
+            <div id="statDetailTableWrap">
+                <table class="stats-table" id="statDetailTable">
+                    <thead><tr><th>日期</th><th>活动</th><th>时长(分)</th><th>占比</th></tr></thead>
+                    <tbody id="statDetailBody"><tr><td colspan="4" class="stats-empty">暂无数据</td></tr></tbody>
+                </table>
+            </div>
+
+            <!-- Per-Activity Statistics -->
+            <div class="stats-section-title">
+                <i class="fas fa-chart-line" style="color:#3b82f6;"></i>
+                按活动统计（日/周/月/年）
+            </div>
+            <div class="stats-filter">
+                <label>选择活动：</label>
+                <select id="actStatActivity">
+                    <option value="">(无活动)</option>
+                </select>
+
+                <label>查看维度：</label>
+                <select id="actStatDimension">
+                    <option value="daily">每日</option>
+                    <option value="weekly">每周</option>
+                    <option value="monthly">每月</option>
+                    <option value="yearly">每年</option>
+                </select>
+
+                <button class="stats-btn" id="refreshActStat">刷新</button>
+            </div>
+            <div class="stats-chart-area" style="height:200px;">
+                <canvas id="actStatChart"></canvas>
+            </div>
+        </div>
+
+        <!-- RECORDS CARD -->
+        <div class="card">
+            <div class="card-title" style="justify-content:space-between;">
+                <span><i class="fas fa-list-ul"></i> 时间记录</span>
+                <span style="font-size:13px;font-weight:400;color:#94a3b8;" id="recordCount">0 条</span>
+            </div>
+            <div class="record-list" id="recordList">
+                <!-- 由 JS 动态渲染 -->
+            </div>
+        </div>
+
+        <!-- TODO CARD -->
+        <div class="card">
+            <div class="card-title"><i class="fas fa-tasks"></i> 待办清单</div>
+            <div class="todo-input-row">
+                <input type="text" id="todoInput" placeholder="写一个待办..." />
+                <div class="todo-type-group">
+                    <button class="active" data-mode="deadline" id="todoModeDeadline">截止</button>
+                    <button data-mode="countdown" id="todoModeCountdown">倒计时</button>
+                </div>
+                <input type="datetime-local" id="todoDeadlineInput" class="todo-time-input" />
+                <div id="todoCountdownGroup" style="display:none;flex-shrink:0;display:none;gap:4px;align-items:center;">
+                    <input type="number" id="todoCountdownHours" placeholder="时" min="0" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
+                    <span style="color:#94a3b8;">:</span>
+                    <input type="number" id="todoCountdownMinutes" placeholder="分" min="0" max="59" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
+                </div>
+                <button class="todo-add-btn" id="todoAddBtn"><i class="fas fa-plus"></i> 添加</button>
+            </div>
+            <div class="todo-list" id="todoList">
+                <!-- 由 JS 动态渲染 -->
+            </div>
+        </div>
+
+        <!-- EDIT MODAL -->
+        <div class="modal-overlay" id="editModal">
+            <div class="modal-box">
+                <h3><i class="fas fa-pen" style="color:#3b82f6;margin-right:8px;"></i>编辑记录</h3>
+                <label>类别</label>
+                <select id="editCategory"></select>
+                <label>备注</label>
+                <textarea id="editNote" placeholder="添加备注..."></textarea>
+                <div class="modal-actions">
+                    <button class="btn-cancel" id="editCancel">取消</button>
+                    <button class="btn-save" id="editSave">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADD CATEGORY MODAL -->
+        <div class="modal-overlay" id="catModal">
+            <div class="modal-box">
+                <h3><i class="fas fa-plus" style="color:#3b82f6;margin-right:8px;"></i>新增自定义类别</h3>
+                <label>类别名称</label>
+                <input type="text" id="catInput" placeholder="如：写作、陪娃、冥想…" maxlength="12" autocomplete="off">
+                <label style="margin-top:12px;">所属场景</label>
+                <select id="catSceneSelect" style="width:100%;padding:9px 12px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;background:#fafbfc;color:#334155;font-family:inherit;margin-bottom:4px;">
+                    <option value="工作">工作</option>
+                    <option value="生活" selected>生活</option>
+                    <option value="成长">成长</option>
+                </select>
+                <div class="modal-actions">
+                    <button class="btn-cancel" id="catCancel">取消</button>
+                    <button class="btn-save" id="catSave">确定</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAG MANAGER MODAL (long-press to open) -->
+        <div class="modal-overlay" id="tagManagerModal">
+            <div class="modal-box" style="max-width:340px;">
+                <h3><i class="fas fa-sliders-h" style="color:#3b82f6;margin-right:8px;"></i>标签管理</h3>
+                <p style="font-size:12px;color:#94a3b8;margin:0 0 12px 0;">长按标签可进入此模式。可排序或删除（场景与「其他」不可删除）。</p>
+                <div id="tagManagerList" style="max-height:52vh;overflow:auto;"></div>
+                <div class="modal-actions">
+                    <button class="btn-cancel" id="tagManagerClose" style="width:100%;">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  DATA
+        // ============================================================
+        // 场景定义（固定 3 个一级场景）
+        const SCENE_NAMES = ['工作', '生活', '成长'];
+
+        // 内置默认类别（含场景归属）
+        const DEFAULT_CATEGORIES = [
+            { key: '工作', color: '#FF6B6B', scene: '工作' },
+            { key: '学习', color: '#4ECDC4', scene: '成长' },
+            { key: '读书', color: '#45B7D1', scene: '成长' },
+            { key: '饮食', color: '#96CEB4', scene: '生活' },
+            { key: '运动', color: '#FFEAA7', scene: '生活' },
+            { key: '休息', color: '#DDA0DD', scene: '生活' },
+            { key: '交通', color: '#FF9F43', scene: '生活' },
+            { key: '家务', color: '#A29BFE', scene: '生活' },
+            { key: '电视', color: '#FD79A8', scene: '生活' },
+            { key: '上网', color: '#00CEC9', scene: '生活' },
+            { key: '其他', color: '#B2BEC3', scene: '其他' }
+        ];
+
+        // 运行时可变数据（由 buildCategoryData 初始化）
+        let CATEGORIES = [];
+        let CATEGORY_KEYS = [];
+        let CAT_COLOR_MAP = {};
+        let SCENES = {};
+
+        // 从默认类别 + localStorage 构建完整类别数据（保留顺序、删除、自定义）
+        function buildCategoryData() {
+            let cats = DEFAULT_CATEGORIES.map(c => ({ ...c }));
+            try {
+                const saved = JSON.parse(localStorage.getItem('timeCategoriesV2') || 'null');
+                if (saved && Array.isArray(saved) && saved.length) {
+                    const result = [];
+                    saved.forEach(s => {
+                        const def = DEFAULT_CATEGORIES.find(d => d.key === s.key) ||
+                                    cats.find(d => d.key === s.key);
+                        if (def && !result.some(r => r.key === s.key)) {
+                            result.push({ ...def, scene: s.scene || def.scene || '生活' });
+                        }
+                    });
+                    // 追加默认里有但保存里没有的（代码新增的内置类别）
+                    cats.forEach(c => {
+                        if (!result.some(r => r.key === c.key)) result.push({ ...c });
+                    });
+                    cats = result;
+                }
+            } catch (e) {}
+            CATEGORIES = cats;
+            CATEGORY_KEYS = CATEGORIES.map(c => c.key);
+            CAT_COLOR_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c.color]));
+            // 重建 SCENES
+            SCENES = {};
+            SCENE_NAMES.forEach(s => SCENES[s] = []);
+            CATEGORIES.forEach(c => {
+                const sc = c.scene && SCENE_NAMES.includes(c.scene) ? c.scene : '生活';
+                if (!SCENES[sc]) SCENES[sc] = [];
+                if (c.key !== '其他') SCENES[sc].push(c.key);
+            });
+        }
+
+        // 持久化完整类别配置（顺序 + 删除 + 自定义 + 场景）
+        function saveCategoryData() {
+            try {
+                localStorage.setItem('timeCategoriesV2', JSON.stringify(
+                    CATEGORIES.map(c => ({ key: c.key, color: c.color, scene: c.scene }))
+                ));
+            } catch (e) {}
+        }
+
+        // 获取类别所属场景
+        function getCategoryScene(catKey) {
+            for (const [scene, cats] of Object.entries(SCENES)) {
+                if (cats.includes(catKey)) return scene;
+            }
+            return '生活'; // 默认归入生活
+        }
+
+        // ============================================================
+        //  STATE
+        // ============================================================
+        let records = []; // { id, category, startTime, endTime, note, date }
+        let todos = []; // { id, title, type: 'deadline'|'countdown', deadline, countdownSeconds, createdAt, isCompleted, completedAt }
+        let timerState = {
+            running: false,
+            category: '学习',
+            startTime: null, // Date when started
+            elapsedMs: 0, // accumulated ms when paused
+            intervalId: null,
+        };
+        let editingRecordId = null;
+        let todoMode = 'deadline'; // 'deadline' | 'countdown'
+
+        // Chart instance
+        let chartInstance = null;
+
+        // ============================================================
+        //  DOM REFS
+        // ============================================================
+        const $ = id => document.getElementById(id);
+        const headerDate = $('headerDate');
+        const categoryContainer = $('categoryContainer');
+        const timerDisplay = $('timerDisplay');
+        const timerCtrl = $('timerCtrl');
+        const timerIcon = $('timerIcon');
+        const currentCategoryLabel = $('currentCategoryLabel');
+        const timerLabel = $('timerLabel');
+        const recordList = $('recordList');
+        const recordCount = $('recordCount');
+        const chartEmpty = $('chartEmpty');
+        const editModal = $('editModal');
+        const editCategory = $('editCategory');
+        const editNote = $('editNote');
+        const editCancel = $('editCancel');
+        const editSave = $('editSave');
+        const todoInput = $('todoInput');
+        const todoDeadlineInput = $('todoDeadlineInput');
+        const todoCountdownGroup = $('todoCountdownGroup');
+        const todoCountdownHours = $('todoCountdownHours');
+        const todoCountdownMinutes = $('todoCountdownMinutes');
+        const todoModeDeadline = $('todoModeDeadline');
+        const todoModeCountdown = $('todoModeCountdown');
+        const todoAddBtn = $('todoAddBtn');
+        const todoList = $('todoList');
+
+        // ============================================================
+        //  HELPERS
+        // ============================================================
+        function formatDate(iso) {
+            const d = new Date(iso);
+            return d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
+        }
+
+        function formatTime(iso) {
+            const d = new Date(iso);
+            return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function formatDuration(ms) {
+            if (ms < 0) ms = 0;
+            const totalSec = Math.floor(ms / 1000);
+            const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+            const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+            const s = String(totalSec % 60).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        function formatDurationShort(ms) {
+            const totalSec = Math.floor(ms / 1000);
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            if (h > 0) return `${h}h${m}m`;
+            if (m > 0) return `${m}m${s}s`;
+            return `${s}s`;
+        }
+
+        function getToday() {
+            return new Date().toISOString().slice(0, 10);
+        }
+
+        // 根据维度返回日期范围 [startDate, endDate]（含端点，格式 YYYY-MM-DD）
+        function getDateRangeForDim(dim) {
+            const now = new Date();
+            const today = getToday();
+            if (dim === 'day') {
+                return [today, today];
+            }
+            if (dim === 'week') {
+                // 周一为一周开始
+                const day = now.getDay(); // 0=周日
+                const diff = (day === 0 ? -6 : 1 - day); // 距本周一的天数
+                const monday = new Date(now);
+                monday.setDate(now.getDate() + diff);
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                return [monday.toISOString().slice(0, 10), sunday.toISOString().slice(0, 10)];
+            }
+            if (dim === 'month') {
+                const first = new Date(now.getFullYear(), now.getMonth(), 1);
+                const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                return [first.toISOString().slice(0, 10), last.toISOString().slice(0, 10)];
+            }
+            if (dim === 'quarter') {
+                const q = Math.floor(now.getMonth() / 3);
+                const first = new Date(now.getFullYear(), q * 3, 1);
+                const last = new Date(now.getFullYear(), q * 3 + 3, 0);
+                return [first.toISOString().slice(0, 10), last.toISOString().slice(0, 10)];
+            }
+            if (dim === 'year') {
+                const first = new Date(now.getFullYear(), 0, 1);
+                const last = new Date(now.getFullYear(), 11, 31);
+                return [first.toISOString().slice(0, 10), last.toISOString().slice(0, 10)];
+            }
+            return [today, today];
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        }
+
+        function getCategoryColor(cat) {
+            return CAT_COLOR_MAP[cat] || '#B2BEC3';
+        }
+
+        function getTodayRecords() {
+            const today = getToday();
+            return records.filter(r => r.date === today);
+        }
+
+        function getTotalDurationForCategory(cat) {
+            const today = getToday();
+            return records
+                .filter(r => r.date === today && r.category === cat)
+                .reduce((sum, r) => sum + r.duration, 0);
+        }
+
+        function getCategoryTotals() {
+            const today = getToday();
+            const totals = {};
+            CATEGORY_KEYS.forEach(k => totals[k] = 0);
+            records
+                .filter(r => r.date === today)
+                .forEach(r => {
+                    if (totals[r.category] !== undefined) totals[r.category] += r.duration;
+                });
+            return totals;
+        }
+
+        // ============================================================
+        //  STORAGE
+        // ============================================================
+        function loadData() {
+            try {
+                const r = localStorage.getItem('timeRecords');
+                if (r) records = JSON.parse(r);
+                const t = localStorage.getItem('timeTodos');
+                if (t) todos = JSON.parse(t);
+            } catch (e) { console.warn('Load data error', e); }
+            // migration: ensure all records have date field
+            records = records.filter(r => r && typeof r === 'object');
+            records.forEach(r => {
+                if (!r.date && r.startTime) {
+                    r.date = r.startTime.slice(0, 10);
+                }
+                if (!r.note) r.note = '';
+                if (!r.duration) r.duration = 0;
+            });
+            todos = todos.filter(t => t && typeof t === 'object');
+            todos.forEach(t => {
+                if (!t.createdAt) t.createdAt = new Date().toISOString();
+                if (t.isCompleted === undefined) t.isCompleted = false;
+            });
+        }
+
+        function saveRecords() {
+            localStorage.setItem('timeRecords', JSON.stringify(records));
+        }
+
+        function saveTodos() {
+            localStorage.setItem('timeTodos', JSON.stringify(todos));
+        }
+
+        // ============================================================
+        //  RENDER: CATEGORY BUTTONS (scene-first)
+        //  默认只显示场景按钮；点击场景展开其二级标签
+        // ============================================================
+        let expandedScene = null; // 当前展开的计时器场景
+
+        function renderCategoryButtons() {
+            categoryContainer.innerHTML = '';
+            const showScene = expandedScene;
+
+            SCENE_NAMES.forEach(scene => {
+                const catsInScene = CATEGORIES.filter(c => c.key !== '其他' && getCategoryScene(c.key) === scene);
+                if (catsInScene.length === 0) return;
+                const isExpanded = showScene === scene;
+                // 场景按钮（始终显示）
+                const sceneBtn = document.createElement('button');
+                sceneBtn.className = `cat-btn scene-btn ${isExpanded ? 'active' : ''}`;
+                sceneBtn.dataset.scene = scene;
+                sceneBtn.innerHTML = `${scene} <i class="fas fa-chevron-${isExpanded ? 'up' : 'down'}" style="font-size:9px;opacity:.6;margin-left:2px;"></i>`;
+                sceneBtn.addEventListener('click', () => {
+                    expandedScene = (expandedScene === scene) ? null : scene;
+                    renderCategoryButtons();
+                });
+                categoryContainer.appendChild(sceneBtn);
+
+                // 二级标签（仅展开时显示）
+                if (isExpanded) {
+                    catsInScene.forEach(cat => {
+                        const btn = document.createElement('button');
+                        btn.className = `cat-btn sub-cat ${timerState.category === cat.key ? 'active' : ''}`;
+                        btn.dataset.cat = cat.key;
+                        btn.innerHTML = `<span class="dot" style="background:${cat.color};"></span>${cat.key}`;
+                        btn.addEventListener('click', () => {
+                            if (timerState.running) {
+                                if (confirm('正在计时，切换类别将停止当前记录，是否继续？')) {
+                                    stopTimerAndSave();
+                                    timerState.category = cat.key;
+                                    renderCategoryButtons();
+                                    currentCategoryLabel.textContent = cat.key;
+                                    updateTimerDisplay(0);
+                                }
+                            } else {
+                                timerState.category = cat.key;
+                                renderCategoryButtons();
+                                currentCategoryLabel.textContent = cat.key;
+                                if (!timerState.running && timerState.startTime) {
+                                    timerState.startTime = null;
+                                    timerState.elapsedMs = 0;
+                                    updateTimerDisplay(0);
+                                }
+                            }
+                        });
+                        categoryContainer.appendChild(btn);
+                    });
+                }
+            });
+
+            // 「其他」按钮（始终显示，点击新增自定义类别）
+            const otherBtn = document.createElement('button');
+            otherBtn.className = `cat-btn cat-add ${timerState.category === '其他' ? 'active' : ''}`;
+            otherBtn.dataset.cat = '其他';
+            otherBtn.innerHTML = `<span class="dot" style="background:#B2BEC3;"></span>其他`;
+            otherBtn.addEventListener('click', openAddCategoryModal);
+            categoryContainer.appendChild(otherBtn);
+
+            currentCategoryLabel.textContent = timerState.category;
+        }
+
+        // 点击「其他」：弹出窗口输入自定义类别
+        function openAddCategoryModal() {
+            const modal = $('catModal');
+            const input = $('catInput');
+            if (!modal || !input) return;
+            input.value = '';
+            modal.classList.add('open');
+            setTimeout(() => input.focus(), 50);
+        }
+        function confirmAddCategory() {
+            const modal = $('catModal');
+            const input = $('catInput');
+            const sceneSel = $('catSceneSelect');
+            const name = (input.value || '').trim();
+            if (!name) { input.focus(); return; }
+            if (CATEGORIES.some(c => c.key === name)) {
+                alert('已存在同名类别：「' + name + '」');
+                return;
+            }
+            // 自动配色
+            const palette = ['#FF6B6B','#4ECDC4','#45B7D1','#96CEB4','#FFEAA7','#DDA0DD','#FF9F43','#A29BFE','#FD79A8','#00CEC9','#6C5CE7','#E17055'];
+            const color = palette[CATEGORIES.length % palette.length];
+            const scene = sceneSel?.value || '生活';
+            const cat = { key: name, color, scene };
+            CATEGORIES.splice(CATEGORIES.length - 1, 0, cat); // 插到「其他」之前
+            // 归入场景
+            if (!SCENES[scene]) SCENES[scene] = [];
+            if (!SCENES[scene].includes(name)) SCENES[scene].push(name);
+            // 持久化完整类别配置
+            saveCategoryData();
+            timerState.category = name;
+            expandedScene = scene; // 展开所属场景，便于看到新标签
+            modal.classList.remove('open');
+            renderCategoryButtons();
+            populateStatFilters();
+            currentCategoryLabel.textContent = name;
+        }
+        function cancelAddCategory() {
+            const modal = $('catModal');
+            if (modal) modal.classList.remove('open');
+        }
+
+        // ============================================================
+        //  TAG MANAGER (长按标签进入：排序 / 删除)
+        // ============================================================
+        function openTagManager() {
+            rebuildTagManagerList();
+            $('tagManagerModal')?.classList.add('open');
+        }
+        function closeTagManager() {
+            $('tagManagerModal')?.classList.remove('open');
+        }
+        function rebuildTagManagerList() {
+            const list = $('tagManagerList');
+            if (!list) return;
+            list.innerHTML = '';
+            CATEGORIES.forEach(cat => {
+                const isScene = SCENE_NAMES.includes(cat.key);
+                const isLocked = cat.key === '其他'; // 其他固定在末尾
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px solid #f1f5f9;';
+                const delHtml = (isScene || isLocked)
+                    ? `<span style="width:30px;text-align:center;color:#cbd5e1;font-size:11px;">${isLocked ? '锁定' : '固定'}</span>`
+                    : `<button class="tm-btn tm-del" data-key="${cat.key}" title="删除"><i class="fas fa-trash-alt"></i></button>`;
+                const moveDisabled = isLocked ? 'disabled style="opacity:.3;cursor:not-allowed;"' : '';
+                row.innerHTML = `
+                    <span class="dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cat.color};flex-shrink:0;"></span>
+                    <span style="flex:1;font-size:14px;color:#334155;">${cat.key}${isScene ? ' <span style="font-size:11px;color:#94a3b8;">(场景)</span>' : ''}</span>
+                    <button class="tm-btn tm-move" data-key="${cat.key}" data-dir="-1" title="上移" ${moveDisabled}><i class="fas fa-arrow-up"></i></button>
+                    <button class="tm-btn tm-move" data-key="${cat.key}" data-dir="1" title="下移" ${moveDisabled}><i class="fas fa-arrow-down"></i></button>
+                    ${delHtml}
+                `;
+                list.appendChild(row);
+            });
+            list.querySelectorAll('.tm-move').forEach(b => b.addEventListener('click', () => {
+                if (b.disabled) return;
+                moveTag(b.dataset.key, parseInt(b.dataset.dir));
+            }));
+            list.querySelectorAll('.tm-del').forEach(b => b.addEventListener('click', () => deleteTag(b.dataset.key)));
+        }
+        // 排序：在 CATEGORIES 数组内移动（其他固定末尾）
+        function moveTag(key, dir) {
+            const i = CATEGORIES.findIndex(c => c.key === key);
+            if (i < 0) return;
+            const j = i + dir;
+            if (j < 0 || j >= CATEGORIES.length) return;
+            if (CATEGORIES[i].key === '其他' || CATEGORIES[j].key === '其他') return;
+            [CATEGORIES[i], CATEGORIES[j]] = [CATEGORIES[j], CATEGORIES[i]];
+            saveCategoryData();
+            rebuildTagManagerList();
+            renderCategoryButtons();
+        }
+        // 删除标签（场景与「其他」不可删；相关记录归入其他）
+        function deleteTag(key) {
+            if (SCENE_NAMES.includes(key) || key === '其他') return;
+            if (!confirm('确定删除标签「' + key + '」？相关记录将归入「其他」。')) return;
+            const i = CATEGORIES.findIndex(c => c.key === key);
+            if (i < 0) return;
+            for (const s in SCENES) SCENES[s] = SCENES[s].filter(k => k !== key);
+            CATEGORIES.splice(i, 1);
+            records.forEach(r => { if (r.category === key) r.category = '其他'; });
+            saveRecords();
+            if (timerState.category === key) {
+                timerState.category = '其他';
+                currentCategoryLabel.textContent = '其他';
+            }
+            saveCategoryData();
+            rebuildTagManagerList();
+            renderCategoryButtons();
+            populateStatFilters();
+        }
+        // 长按 / 右键进入标签管理（事件委托，兼容动态按钮）
+        function setupTagLongPress() {
+            let timer = null;
+            const start = () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => openTagManager(), 550);
+            };
+            const cancel = () => { clearTimeout(timer); timer = null; };
+            categoryContainer.addEventListener('pointerdown', start);
+            categoryContainer.addEventListener('pointerup', cancel);
+            categoryContainer.addEventListener('pointerleave', cancel);
+            categoryContainer.addEventListener('pointercancel', cancel);
+            categoryContainer.addEventListener('contextmenu', (e) => {
+                const btn = e.target.closest('.cat-btn');
+                if (btn) { e.preventDefault(); openTagManager(); }
+            });
+        }
+
+        // ============================================================
+        //  TIMER
+        // ============================================================
+        function updateTimerDisplay(ms) {
+            timerDisplay.textContent = formatDuration(ms);
+        }
+
+        function tick() {
+            const elapsed = Math.max(0, Date.now() - timerState.startTime);
+            timerState.elapsedMs = elapsed;
+            updateTimerDisplay(elapsed);
+        }
+
+        function persistTimer() {
+            try {
+                localStorage.setItem('timeTimerState', JSON.stringify({
+                    running: timerState.running,
+                    category: timerState.category,
+                    startTime: timerState.startTime,
+                    elapsedMs: timerState.elapsedMs
+                }));
+            } catch (e) {}
+        }
+
+        function restoreTimer() {
+            try {
+                const raw = localStorage.getItem('timeTimerState');
+                if (!raw) return;
+                const s = JSON.parse(raw);
+                if (s && s.running && s.startTime) {
+                    timerState.category = s.category || '学习';
+                    // startTime 是真实起点；按真实时间重算累计，避免后台被杀后的误差
+                    timerState.startTime = s.startTime;
+                    timerState.elapsedMs = Math.max(0, Date.now() - s.startTime);
+                    timerState.running = true;
+                    timerIcon.className = 'fas fa-square';
+                    timerCtrl.classList.add('running');
+                    timerCtrl.title = '停止计时';
+                    if (timerState.intervalId) clearInterval(timerState.intervalId);
+                    timerState.intervalId = setInterval(tick, 500);
+                    updateTimerDisplay(timerState.elapsedMs);
+                }
+            } catch (e) {}
+        }
+
+        function startTimer() {
+            if (timerState.running) return;
+            // 用真实起点（含暂停累计）重建 startTime，不要依赖过期的 interval
+            timerState.startTime = Date.now() - (timerState.elapsedMs || 0);
+            timerState.running = true;
+            timerIcon.className = 'fas fa-square';
+            timerCtrl.classList.add('running');
+            timerCtrl.title = '停止计时';
+            if (timerState.intervalId) clearInterval(timerState.intervalId);
+            timerState.intervalId = setInterval(tick, 500);
+            tick(); // 立即刷新一次
+            persistTimer();
+        }
+
+        function stopTimerAndSave() {
+            if (!timerState.running) return;
+            if (timerState.intervalId) {
+                clearInterval(timerState.intervalId);
+                timerState.intervalId = null;
+            }
+            const startTime = new Date(timerState.startTime);
+            const endTime = new Date();
+            // 关键：停止时直接按真实时间戳计算，不信任可能被后台节流的 elapsedMs
+            const duration = Math.max(0, Date.now() - timerState.startTime);
+            timerState.elapsedMs = duration;
+            if (duration > 500) { // 至少0.5秒才保存
+                const record = {
+                    id: generateId(),
+                    category: timerState.category,
+                    startTime: startTime.toISOString(),
+                    endTime: endTime.toISOString(),
+                    duration: duration,
+                    note: '',
+                    date: startTime.toISOString().slice(0, 10),
+                };
+                records.push(record);
+                saveRecords();
+                renderAll();
+            }
+            timerState.running = false;
+            timerState.startTime = null;
+            timerState.elapsedMs = 0;
+            localStorage.removeItem('timeTimerState'); // 清除持久化的计时状态
+            timerIcon.className = 'fas fa-play';
+            timerCtrl.classList.remove('running');
+            timerCtrl.title = '开始计时';
+            updateTimerDisplay(0);
+        }
+
+        function toggleTimer() {
+            if (timerState.running) {
+                stopTimerAndSave();
+            } else {
+                startTimer();
+            }
+        }
+
+        // ============================================================
+        //  RENDER: RECORDS
+        // ============================================================
+        function renderRecords() {
+            if (records.length === 0) {
+                recordList.innerHTML = `<div class="record-empty"><i class="fas fa-inbox" style="margin-right:6px;"></i>暂无记录，开始计时吧</div>`;
+                recordCount.textContent = '0 条';
+                return;
+            }
+            // 按时间倒序
+            const sorted = [...records].sort((a, b) => b.startTime.localeCompare(a.startTime));
+            let html = '';
+            sorted.forEach(r => {
+                const color = getCategoryColor(r.category);
+                const durStr = formatDuration(r.duration);
+                const timeStr = `${formatTime(r.startTime)} — ${formatTime(r.endTime)}`;
+                const noteStr = r.note ? r.note : '';
+                html += `
+                        <div class="record-item" data-id="${r.id}" style="border-left-color:${color};">
+                            <span class="ri-cat" style="color:${color};">${r.category}</span>
+                            <span class="ri-time">${timeStr}</span>
+                            <span class="ri-dur">${durStr}</span>
+                            ${noteStr ? `<span class="ri-note" title="${noteStr}">${noteStr}</span>` : ''}
+                            <button class="ri-del" data-id="${r.id}" title="删除"><i class="fas fa-times"></i></button>
+                        </div>
+                    `;
+            });
+            recordList.innerHTML = html;
+            recordCount.textContent = `${records.length} 条`;
+
+            // 删除事件
+            recordList.querySelectorAll('.ri-del').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id;
+                    if (confirm('确定删除这条记录吗？')) {
+                        records = records.filter(r => r.id !== id);
+                        saveRecords();
+                        renderAll();
+                    }
+                });
+            });
+
+            // 点击记录编辑
+            recordList.querySelectorAll('.record-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = el.dataset.id;
+                    openEditModal(id);
+                });
+            });
+        }
+
+        // ============================================================
+        //  RENDER: CHART (with dimension tabs + center percentage)
+        // ============================================================
+        let chartCenterText = null; // plugin for center text
+        let chartDim = 'day'; // day/week/month/quarter/year
+
+        function renderChart() {
+            const [startDate, endDate] = getDateRangeForDim(chartDim);
+            const chartRecs = records.filter(r => r.date >= startDate && r.date <= endDate);
+            if (chartRecs.length === 0) {
+                chartEmpty.style.display = 'block';
+                if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+                document.querySelector('#chartLegend').innerHTML = '';
+                return;
+            }
+            chartEmpty.style.display = 'none';
+
+            // Calculate totals for the selected range
+            const totals = {};
+            CATEGORY_KEYS.forEach(k => totals[k] = 0);
+            chartRecs.forEach(r => {
+                if (totals[r.category] !== undefined) totals[r.category] += r.duration;
+            });
+
+            const labels = [];
+            const data = [];
+            const colors = [];
+            CATEGORY_KEYS.forEach(key => {
+                if (totals[key] > 0) {
+                    labels.push(key);
+                    data.push(totals[key]);
+                    colors.push(getCategoryColor(key));
+                }
+            });
+
+            if (data.length === 0) {
+                chartEmpty.style.display = 'block';
+                if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+                document.querySelector('#chartLegend').innerHTML = '';
+                return;
+            }
+
+            const totalMs = data.reduce((a, b) => a + b, 0);
+
+            // Find largest segment for center display
+            const maxIdx = data.indexOf(Math.max(...data));
+            const maxPct = totalMs > 0 ? (data[maxIdx] / totalMs * 100).toFixed(1) : 0;
+            const maxLabel = labels[maxIdx];
+
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            if (chartInstance) { chartInstance.destroy(); }
+
+            // Center text plugin
+            chartCenterText = {
+                id: 'centerText',
+                afterDraw(chart) {
+                    if (chart.config.type !== 'doughnut') return;
+                    const { ctx, width, height } = chart;
+                    ctx.save();
+                    const cx = width / 2;
+                    const cy = height / 2;
+                    ctx.font = "bold 26px -apple-system, sans-serif";
+                    ctx.fillStyle = '#1e293b';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(maxPct + '%', cx, cy - 10);
+                    ctx.font = "12px -apple-system, sans-serif";
+                    ctx.fillStyle = '#64748b';
+                    ctx.fillText(maxLabel, cx, cy + 16);
+                    ctx.restore();
+                }
+            };
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: '#ffffff',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const pct = totalMs > 0 ? (context.parsed / totalMs * 100).toFixed(1) : 0;
+                                    return `${context.label}: ${formatDuration(context.parsed)} (${pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '62%',
+                },
+                plugins: [chartCenterText]
+            });
+
+            // Custom legend with percentages
+            const legendHtml = labels.map((label, idx) => {
+                const pct = totalMs > 0 ? (data[idx] / totalMs * 100).toFixed(1) : 0;
+                return `<span class="legend-item">
+                    <span class="legend-dot" style="background:${colors[idx]};"></span>
+                    ${label} ${formatDuration(data[idx])} <span style="color:#94a3b8;font-size:11px;">(${pct}%)</span>
+                </span>`;
+            }).join('');
+            document.querySelector('#chartLegend').innerHTML = legendHtml;
+        }
+
+        // ============================================================
+        //  RENDER: TODO
+        // ============================================================
+        function renderTodos() {
+            if (todos.length === 0) {
+                todoList.innerHTML = `<div class="todo-empty"><i class="far fa-smile" style="margin-right:6px;"></i>没有待办，轻松一下</div>`;
+                return;
+            }
+            // 未完成的在前，按创建时间倒序
+            const sorted = [...todos].sort((a, b) => {
+                if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+                return b.createdAt.localeCompare(a.createdAt);
+            });
+            let html = '';
+            sorted.forEach(t => {
+                let metaHtml = '';
+                let isUrgent = false;
+                if (t.type === 'deadline' && t.deadline) {
+                    const now = Date.now();
+                    const deadlineMs = new Date(t.deadline).getTime();
+                    const remaining = deadlineMs - now;
+                    if (remaining < 0 && !t.isCompleted) {
+                        isUrgent = true;
+                        metaHtml = `<span class="urgent"><i class="fas fa-exclamation-circle"></i> 已过期</span>`;
+                    } else if (remaining < 86400000 && remaining > 0 && !t.isCompleted) {
+                        isUrgent = true;
+                        metaHtml = `<span class="urgent"><i class="fas fa-clock"></i> ${formatDuration(remaining)}</span>`;
+                    } else if (!t.isCompleted) {
+                        metaHtml = `截止 ${formatDate(t.deadline)} ${formatTime(t.deadline)}`;
+                    } else {
+                        metaHtml = `截止 ${formatDate(t.deadline)}`;
+                    }
+                } else if (t.type === 'countdown' && t.countdownSeconds) {
+                    if (!t.isCompleted) {
+                        // 计算剩余倒计时
+                        const createdAt = new Date(t.createdAt).getTime();
+                        const elapsed = (Date.now() - createdAt) / 1000;
+                        const remaining = Math.max(0, t.countdownSeconds - elapsed);
+                        if (remaining <= 0) {
+                            isUrgent = true;
+                            metaHtml = `<span class="urgent"><i class="fas fa-bell"></i> 时间到</span>`;
+                        } else {
+                            const hrs = Math.floor(remaining / 3600);
+                            const mins = Math.floor((remaining % 3600) / 60);
+                            const secs = Math.floor(remaining % 60);
+                            let str = '';
+                            if (hrs > 0) str += `${hrs}h`;
+                            if (mins > 0) str += `${mins}m`;
+                            if (secs > 0 || str === '') str += `${secs}s`;
+                            metaHtml = `⏳ ${str}`;
+                            if (remaining < 600) isUrgent = true; // 10分钟内
+                        }
+                    } else {
+                        metaHtml = '已完成';
+                    }
+                }
+                const doneClass = t.isCompleted ? 'done' : '';
+                const titleClass = t.isCompleted ? 'done-text' : '';
+                html += `
+                        <div class="todo-item" style="${isUrgent && !t.isCompleted ? 'border-left-color:#ef4444;' : ''}">
+                            <button class="todo-check ${doneClass}" data-id="${t.id}">
+                                ${t.isCompleted ? '<i class="fas fa-check"></i>' : ''}
+                            </button>
+                            <span class="todo-title ${titleClass}">${t.title}</span>
+                            <span class="todo-meta">${metaHtml}</span>
+                            <button class="todo-del" data-id="${t.id}"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    `;
+            });
+            todoList.innerHTML = html;
+
+            // 切换完成状态
+            todoList.querySelectorAll('.todo-check').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.id;
+                    const todo = todos.find(t => t.id === id);
+                    if (todo) {
+                        todo.isCompleted = !todo.isCompleted;
+                        if (todo.isCompleted) {
+                            todo.completedAt = new Date().toISOString();
+                        } else {
+                            todo.completedAt = null;
+                        }
+                        saveTodos();
+                        renderTodos();
+                    }
+                });
+            });
+
+            // 删除
+            todoList.querySelectorAll('.todo-del').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id;
+                    if (confirm('删除此待办？')) {
+                        todos = todos.filter(t => t.id !== id);
+                        saveTodos();
+                        renderTodos();
+                    }
+                });
+            });
+        }
+
+        // ============================================================
+        //  MODAL: EDIT RECORD
+        // ============================================================
+        function openEditModal(id) {
+            const record = records.find(r => r.id === id);
+            if (!record) return;
+            editingRecordId = id;
+            // 填充类别选项
+            editCategory.innerHTML = '';
+            CATEGORIES.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.key;
+                opt.textContent = cat.key;
+                if (cat.key === record.category) opt.selected = true;
+                editCategory.appendChild(opt);
+            });
+            editNote.value = record.note || '';
+            editModal.classList.add('open');
+        }
+
+        function closeEditModal() {
+            editModal.classList.remove('open');
+            editingRecordId = null;
+        }
+
+        function saveEditModal() {
+            if (!editingRecordId) return;
+            const record = records.find(r => r.id === editingRecordId);
+            if (!record) return;
+            record.category = editCategory.value;
+            record.note = editNote.value.trim();
+            saveRecords();
+            closeEditModal();
+            renderAll();
+        }
+
+        // ============================================================
+        //  TODO: ADD
+        // ============================================================
+        function addTodo() {
+            const title = todoInput.value.trim();
+            if (!title) {
+                alert('请输入待办内容');
+                return;
+            }
+
+            let deadline = null;
+            let countdownSeconds = null;
+
+            if (todoMode === 'deadline') {
+                const val = todoDeadlineInput.value;
+                if (!val) {
+                    alert('请选择截止时间');
+                    return;
+                }
+                deadline = new Date(val).toISOString();
+            } else {
+                const h = parseInt(todoCountdownHours.value) || 0;
+                const m = parseInt(todoCountdownMinutes.value) || 0;
+                if (h === 0 && m === 0) {
+                    alert('请设置倒计时时长');
+                    return;
+                }
+                countdownSeconds = h * 3600 + m * 60;
+            }
+
+            const todo = {
+                id: generateId(),
+                title: title,
+                type: todoMode,
+                deadline: deadline,
+                countdownSeconds: countdownSeconds,
+                createdAt: new Date().toISOString(),
+                isCompleted: false,
+                completedAt: null,
+            };
+            todos.push(todo);
+            saveTodos();
+            todoInput.value = '';
+            todoDeadlineInput.value = '';
+            todoCountdownHours.value = '';
+            todoCountdownMinutes.value = '';
+            renderTodos();
+        }
+
+        // ============================================================
+        //  STATISTICS
+        // ============================================================
+        let statBarChartInstance = null;
+        let actStatChartInstance = null;
+
+        // Populate filter dropdowns with scenes and categories
+        function populateStatFilters() {
+            const sceneSel = $('statScene');
+            const actStatSel = $('actStatActivity');
+
+            // Scene: 工作/生活/成长
+            if (sceneSel) {
+                const sVal = sceneSel.value;
+                sceneSel.innerHTML = '<option value="all">全部场景</option>';
+                SCENE_NAMES.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s;
+                    opt.textContent = s;
+                    sceneSel.appendChild(opt);
+                });
+                if (sVal) sceneSel.value = sVal;
+            }
+
+            // Activity options for per-activity stats (keep "all")
+            if (actStatSel) {
+                const val = actStatSel.value;
+                actStatSel.innerHTML = '<option value="">(无活动)</option>';
+                CATEGORIES.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat.key;
+                    opt.textContent = cat.key;
+                    actStatSel.appendChild(opt);
+                });
+                if (val) actStatSel.value = val;
+            }
+
+            // 活动筛选联动场景
+            rebuildActivityFilter();
+        }
+
+        // 根据选中的场景，重建活动筛选下拉框
+        function rebuildActivityFilter() {
+            const sceneSel = $('statScene');
+            const actSel = $('statActivity');
+            if (!actSel) return;
+            const scene = sceneSel?.value || 'all';
+            actSel.innerHTML = '';
+            if (scene === 'all') {
+                actSel.innerHTML = '<option value="all">全部活动</option>';
+                CATEGORIES.forEach(cat => {
+                    if (cat.key === '其他') return;
+                    const opt = document.createElement('option');
+                    opt.value = cat.key;
+                    opt.textContent = cat.key;
+                    actSel.appendChild(opt);
+                });
+            } else {
+                // "全部XX" 聚合项
+                const allOpt = document.createElement('option');
+                allOpt.value = 'scene_' + scene;
+                allOpt.textContent = '全部' + scene;
+                actSel.appendChild(allOpt);
+                // 该场景下的二级标签
+                const cats = SCENES[scene] || [];
+                cats.forEach(catKey => {
+                    if (CATEGORIES.some(c => c.key === catKey)) {
+                        const opt = document.createElement('option');
+                        opt.value = catKey;
+                        opt.textContent = catKey;
+                        actSel.appendChild(opt);
+                    }
+                });
+            }
+        }
+
+        // Get filtered records based on current filter settings (with scene filter)
+        function getFilteredRecords() {
+            const scene = $('statScene')?.value || 'all';
+            const activity = $('statActivity')?.value || 'all';
+            let filtered = [...records];
+            if (scene !== 'all') {
+                // 场景筛选：找出该场景下的所有类别
+                const sceneCats = SCENES[scene] || [];
+                filtered = filtered.filter(r => sceneCats.includes(r.category));
+            }
+            // 活动筛选
+            if (activity && activity !== 'all') {
+                if (activity.startsWith('scene_')) {
+                    // "全部XX" 聚合项：等于该场景，已在上一步处理，这里不过滤
+                } else {
+                    filtered = filtered.filter(r => r.category === activity);
+                }
+            }
+            return filtered;
+        }
+
+        // Bucket records by time dimension
+        function bucketByDimension(recs, dimension) {
+            const buckets = {};
+            recs.forEach(r => {
+                const d = new Date(r.date || r.startTime?.slice(0,10));
+                if (isNaN(d.getTime())) return;
+                let key;
+                switch (dimension) {
+                    case 'daily':
+                        key = r.date || r.startTime.slice(0, 10);
+                        break;
+                    case 'weekly':
+                        const monday = new Date(d);
+                        monday.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1));
+                        key = monday.toISOString().slice(0, 10);
+                        break;
+                    case 'monthly':
+                        key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        break;
+                    case 'yearly':
+                        key = String(d.getFullYear());
+                        break;
+                    default:
+                        key = r.date || r.startTime.slice(0, 10);
+                }
+                if (!buckets[key]) buckets[key] = { total: 0, count: 0, details: [] };
+                buckets[key].total += (r.duration || 0);
+                buckets[key].count++;
+                buckets[key].details.push(r);
+            });
+            return buckets;
+        }
+
+        // Format bucket key to display label
+        function formatBucketLabel(key, dimension) {
+            switch (dimension) {
+                case 'weekly': {
+                    const d = new Date(key + 'T00:00:00');
+                    const end = new Date(d); end.setDate(end.getDate() + 6);
+                    return `${d.getMonth()+1}/${d.getDate()}-${end.getMonth()+1}/${end.getDate()}`;
+                }
+                case 'monthly': {
+                    const [y, m] = key.split('-');
+                    return `${parseInt(m)}月`;
+                }
+                case 'yearly':
+                    return key + '年';
+                default:
+                    return key.slice(5); // MM-DD
+            }
+        }
+
+        // Render main statistics chart
+        function renderStatChart() {
+            const dimension = $('statDimension')?.value || 'daily';
+            let filtered = getFilteredRecords();
+            let bucketDim = dimension;
+
+            // 时间区间维度：限定日期范围，再按每日分桶统计
+            if (dimension === 'range') {
+                const days = parseInt($('statRange')?.value || '7', 10);
+                const start = new Date();
+                start.setDate(start.getDate() - (days - 1));
+                const startStr = start.toISOString().slice(0, 10);
+                const today = getToday();
+                filtered = filtered.filter(r => {
+                    const d = r.date || (r.startTime ? r.startTime.slice(0, 10) : '');
+                    return d >= startStr && d <= today;
+                });
+                bucketDim = 'daily'; // 区间内按每日
+            }
+
+            const buckets = bucketByDimension(filtered, bucketDim);
+
+            // Sort keys chronologically
+            const sortedKeys = Object.keys(buckets).sort();
+
+            if (sortedKeys.length === 0) {
+                if (statBarChartInstance) { statBarChartInstance.destroy(); statBarChartInstance = null; }
+                $('statSummary').innerHTML = '';
+                $('statDetailBody').innerHTML = '<tr><td colspan="4" class="stats-empty">暂无数据</td></tr>';
+                return;
+            }
+
+            const labels = sortedKeys.map(k => formatBucketLabel(k, bucketDim));
+            const dataMinutes = sortedKeys.map(k => Math.round(buckets[k].total / 60000)); // ms -> min
+
+            // Update date icon
+            const dateIcon = $('statDateIcon');
+            if (dateIcon) {
+                const dimNames = { range: '📊 时间区间', daily: '📅 今日', weekly: '📆 本周', monthly: '📋 本月', yearly: '📊 本年' };
+                dateIcon.textContent = dimNames[dimension] || '📅';
+            }
+
+            // Render bar chart
+            const ctx = document.getElementById('statBarChart').getContext('2d');
+            if (statBarChartInstance) { statBarChartInstance.destroy(); }
+
+            // Generate colors per bar
+            const colors = sortedKeys.map((_, i) => {
+                const hue = (i * 37) % 360;
+                return `hsla(${hue}, 70%, 60%, 0.8)`;
+            });
+
+            statBarChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '时长（分钟）',
+                        data: dataMinutes,
+                        backgroundColor: colors,
+                        borderColor: colors.map(c => c.replace('0.8', '1')),
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.parsed.y} 分钟 (${formatDuration(ctx.parsed.y * 60000)})`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: '分钟', font: { size: 12 } },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxRotation: 45, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+
+            // Summary stats
+            const totalMin = dataMinutes.reduce((a, b) => a + b, 0);
+            const avgMin = totalMin / dataMinutes.length || 0;
+            const maxMin = Math.max(...dataMinutes);
+            const daysCount = sortedKeys.length;
+            $('statSummary').innerHTML = `
+                <div class="stats-summary-item"><div class="ssi-val">${totalMin.toFixed(0)}</div><div class="ssi-label">总分钟</div></div>
+                <div class="stats-summary-item"><div class="ssi-val">${avgMin.toFixed(0)}</div><div class="ssi-label">日均/均次</div></div>
+                <div class="stats-summary-item"><div class="ssi-val">${maxMin}</div><div class="ssi-label">最高单次</div></div>
+                <div class="stats-summary-item"><div class="ssi-val">${daysCount}</div><div class="ssi-label">记录天数</div></div>
+            `;
+
+            // Detail table: show last bucket's records or all if daily
+            let detailRecs = [];
+            if (dimension === 'daily') {
+                detailRecs = filtered.sort((a, b) => (b.startTime || '').localeCompare(a.startTime || '')).slice(0, 50);
+            } else {
+                // Show the most recent bucket's details
+                const lastKey = sortedKeys[sortedKeys.length - 1];
+                detailRecs = (buckets[lastKey]?.details || []).sort((a, b) => (b.startTime || '').localeCompare(a.startTime || ''));
+            }
+
+            if (detailRecs.length === 0) {
+                $('statDetailBody').innerHTML = '<tr><td colspan="4" class="stats-empty">暂无数据</td></tr>';
+            } else {
+                const grandTotal = detailRecs.reduce((s, r) => s + (r.duration || 0), 0);
+                let html = '';
+                detailRecs.forEach(r => {
+                    const durMin = (r.duration || 0) / 60000;
+                    const pct = grandTotal > 0 ? ((r.duration || 0) / grandTotal * 100).toFixed(1) : 0;
+                    const color = getCategoryColor(r.category);
+                    html += `<tr>
+                        <td>${formatDate(r.date || r.startTime)}</td>
+                        <td><span style="color:${color};font-weight:600;">${r.category}</span></td>
+                        <td class="num-cell">${durMin.toFixed(1)}</td>
+                        <td class="num-cell">${pct}%</td>
+                    </tr>`;
+                });
+                $('statDetailBody').innerHTML = html;
+            }
+        }
+
+        // Render per-activity statistics chart
+        function renderActStatChart() {
+            const activity = $('actStatActivity')?.value || '';
+            const dimension = $('actStatDimension')?.value || 'daily';
+
+            if (!activity) {
+                if (actStatChartInstance) { actStatChartInstance.destroy(); actStatChartInstance = null; }
+                return;
+            }
+
+            const actRecs = records.filter(r => r.category === activity);
+            const buckets = bucketByDimension(actRecs, dimension);
+            const sortedKeys = Object.keys(buckets).sort();
+
+            if (sortedKeys.length === 0) {
+                if (actStatChartInstance) { actStatChartInstance.destroy(); actStatChartInstance = null; }
+                return;
+            }
+
+            const labels = sortedKeys.map(k => formatBucketLabel(k, dimension));
+            const dataMin = sortedKeys.map(k => Math.round(buckets[k].total / 60000));
+
+            const ctx = document.getElementById('actStatChart').getContext('2d');
+            if (actStatChartInstance) { actStatChartInstance.destroy(); }
+
+            const catColor = getCategoryColor(activity);
+
+            actStatChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: activity,
+                        data: dataMin,
+                        backgroundColor: catColor + 'cc',
+                        borderColor: catColor,
+                        borderWidth: 1,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top' },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y} 分钟`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: '分钟', font: { size: 12 } },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { maxRotation: 45, font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize statistics event listeners
+        function initStatistics() {
+            populateStatFilters();
+
+            // Init chart dimension tabs
+            const dimTabs = document.querySelectorAll('#chartDimTabs .dim-tab');
+            dimTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    dimTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    chartDim = tab.dataset.dim;
+                    renderChart();
+                });
+            });
+
+            $('updateStatChart')?.addEventListener('click', () => {
+                renderStatChart();
+            });
+            $('refreshActStat')?.addEventListener('click', () => {
+                renderActStatChart();
+            });
+
+            // Auto-update on dropdown change (with scene filter)
+            ['statDimension', 'statScene', 'statActivity'].forEach(id => {
+                $(id)?.addEventListener('change', renderStatChart);
+            });
+            // 维度切换：显示/隐藏时间区间长度选择
+            const dimSel = $('statDimension');
+            const rangeSel = $('statRange');
+            const rangeLabel = $('statRangeLabel');
+            const toggleRange = () => {
+                const isRange = dimSel?.value === 'range';
+                if (rangeSel) rangeSel.style.display = isRange ? '' : 'none';
+                if (rangeLabel) rangeLabel.style.display = isRange ? '' : 'none';
+                if (isRange) renderStatChart();
+            };
+            dimSel?.addEventListener('change', toggleRange);
+            rangeSel?.addEventListener('change', renderStatChart);
+            toggleRange(); // 初始化显隐
+            // 场景切换时联动重建活动筛选
+            $('statScene')?.addEventListener('change', rebuildActivityFilter);
+            $('actStatDimension')?.addEventListener('change', renderActStatChart);
+            $('actStatActivity')?.addEventListener('change', renderActStatChart);
+
+            // Initial render
+            renderStatChart();
+            renderActStatChart();
+        }
+
+        // ============================================================
+        //  RENDER ALL
+        // ============================================================
+        function renderAll() {
+            renderRecords();
+            renderChart();
+            renderTodos();
+            // 更新 header 日期
+            const now = new Date();
+            headerDate.textContent = now.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric',
+                weekday: 'short' });
+            // 同步计时器显示
+            if (timerState.running) {
+                const elapsed = Date.now() - timerState.startTime;
+                timerState.elapsedMs = elapsed;
+                updateTimerDisplay(elapsed);
+            } else {
+                updateTimerDisplay(timerState.elapsedMs || 0);
+            }
+            // 同步类别高亮
+            renderCategoryButtons();
+            currentCategoryLabel.textContent = timerState.category;
+            // 刷新统计（如果已初始化）
+            if (typeof renderStatChart === 'function') { renderStatChart(); }
+        }
+
+        // ============================================================
+        //  INIT
+        // ============================================================
+        function init() {
+            buildCategoryData(); // 初始化类别数据（顺序/删除/自定义/场景）
+            loadData();
+            restoreTimer(); // 恢复可能仍在运行的计时（刷新/被杀后也能续上）
+
+            // 标签管理：关闭按钮 + 点击遮罩关闭
+            $('tagManagerClose')?.addEventListener('click', closeTagManager);
+            $('tagManagerModal')?.addEventListener('click', (e) => {
+                if (e.target === $('tagManagerModal')) closeTagManager();
+            });
+            setupTagLongPress(); // 长按/右键标签进入管理
+
+            // 设置默认截止时间
+            const now = new Date();
+            now.setHours(now.getHours() + 2);
+            todoDeadlineInput.value = now.toISOString().slice(0, 16);
+
+            // 计时器控制
+            timerCtrl.addEventListener('click', toggleTimer);
+
+            // 键盘快捷键：空格切换计时
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                if (e.key === ' ' || e.key === 'Space') {
+                    e.preventDefault();
+                    toggleTimer();
+                }
+            });
+
+            // 模态框
+            editCancel.addEventListener('click', closeEditModal);
+            editSave.addEventListener('click', saveEditModal);
+            editModal.addEventListener('click', (e) => {
+                if (e.target === editModal) closeEditModal();
+            });
+
+            // 新增类别弹窗
+            const catModal = $('catModal');
+            const catInput = $('catInput');
+            $('catSave').addEventListener('click', confirmAddCategory);
+            $('catCancel').addEventListener('click', cancelAddCategory);
+            catModal.addEventListener('click', (e) => { if (e.target === catModal) cancelAddCategory(); });
+            catInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmAddCategory(); });
+
+            // TODO 模式切换
+            todoModeDeadline.addEventListener('click', () => {
+                todoMode = 'deadline';
+                todoModeDeadline.classList.add('active');
+                todoModeCountdown.classList.remove('active');
+                todoDeadlineInput.style.display = 'inline-block';
+                todoCountdownGroup.style.display = 'none';
+            });
+            todoModeCountdown.addEventListener('click', () => {
+                todoMode = 'countdown';
+                todoModeCountdown.classList.add('active');
+                todoModeDeadline.classList.remove('active');
+                todoDeadlineInput.style.display = 'none';
+                todoCountdownGroup.style.display = 'flex';
+            });
+            // 默认
+            todoDeadlineInput.style.display = 'inline-block';
+            todoCountdownGroup.style.display = 'none';
+
+            todoAddBtn.addEventListener('click', addTodo);
+            todoInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') addTodo();
+            });
+
+            // 初始化渲染
+            renderAll();
+
+            // 初始化统计功能
+            initStatistics();
+
+            // 回到前台时：startTime 才是真实起点，直接用真实时间刷新显示，绝不丢弃后台流逝的时间
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && timerState.running) {
+                    tick();
+                }
+            });
+
+            // 定时刷新倒计时（每分钟）
+            setInterval(() => {
+                renderTodos();
+                if (!timerState.running) {
+                    // 如果计时器不在运行，但显示需要刷新
+                }
+            }, 30000);
+
+            console.log('⏱ 时间统计已启动 — 柳比歇夫法');
+            console.log(`📊 当前 ${records.length} 条记录, ${todos.length} 个待办`);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+
+</body>
+</html>
