@@ -1,0 +1,2275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>🏠 收纳管家 · 完整版</title>
+    <style>
+        /* ===== CSS 变量 & 重置 ===== */
+        :root {
+            --primary: #4A6CF7;
+            --primary-light: #6B8AFF;
+            --primary-dark: #3458D6;
+            --primary-bg: #EEF2FF;
+            --success: #22C55E;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --gray-50: #F8FAFC;
+            --gray-100: #F1F5F9;
+            --gray-200: #E2E8F0;
+            --gray-300: #CBD5E1;
+            --gray-400: #94A3B8;
+            --gray-500: #64748B;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1E293B;
+            --gray-900: #0F172A;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.10);
+            --transition: 0.25s ease;
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        html.dark {
+            --gray-50: #0F172A;
+            --gray-100: #1E293B;
+            --gray-200: #334155;
+            --gray-300: #475569;
+            --gray-400: #64748B;
+            --gray-500: #94A3B8;
+            --gray-600: #CBD5E1;
+            --gray-700: #E2E8F0;
+            --gray-800: #F1F5F9;
+            --gray-900: #F8FAFC;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.4);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: var(--font);
+            background: var(--gray-50);
+            color: var(--gray-800);
+            min-height: 100vh;
+            padding: 20px;
+            transition: background var(--transition), color var(--transition);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+        .app {
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+        /* ===== 头部 ===== */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 24px;
+            background: #fff;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            transition: background var(--transition);
+        }
+        html.dark .header {
+            background: var(--gray-100);
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header-left .logo {
+            font-size: 28px;
+        }
+        .header-left h1 {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .header-actions .stats-badge {
+            background: var(--primary-bg);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 18px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--gray-100);
+            color: var(--gray-700);
+            text-decoration: none;
+            white-space: nowrap;
+            min-height: 40px;
+        }
+        html.dark .btn {
+            background: var(--gray-200);
+            color: var(--gray-800);
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+        }
+        .btn:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+        }
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+        .btn-success:hover:not(:disabled) {
+            background: #16A34A;
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+        .btn-danger:hover:not(:disabled) {
+            background: #DC2626;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--gray-200);
+        }
+        html.dark .btn-outline {
+            border-color: var(--gray-300);
+        }
+        .btn-outline:hover:not(:disabled) {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 12px;
+            min-height: 32px;
+        }
+        /* ===== 统计卡片 ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #fff;
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            transition: background var(--transition);
+        }
+        html.dark .stat-card {
+            background: var(--gray-100);
+        }
+        .stat-card .label {
+            font-size: 12px;
+            color: var(--gray-500);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-top: 2px;
+        }
+        .stat-card .sub {
+            font-size: 13px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+        .stat-card.accent {
+            border-left: 4px solid var(--primary);
+        }
+        .stat-card.accent-green {
+            border-left: 4px solid var(--success);
+        }
+        .stat-card.accent-red {
+            border-left: 4px solid var(--danger);
+        }
+        .stat-card.accent-orange {
+            border-left: 4px solid var(--warning);
+        }
+        .stat-card.accent-purple {
+            border-left: 4px solid #9333EA;
+        }
+        .stat-card.accent-cyan {
+            border-left: 4px solid #06B6D4;
+        }
+        .stat-card.accent-pink {
+            border-left: 4px solid #EC4899;
+        }
+        /* ===== 汇总面板 ===== */
+        .summary-panel {
+            background: #fff;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            transition: background var(--transition);
+        }
+        html.dark .summary-panel {
+            background: var(--gray-100);
+        }
+        .summary-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            gap: 10px;
+        }
+        .summary-header h3 {
+            font-size: 16px;
+            color: var(--gray-800);
+        }
+        .summary-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .summary-content {
+            max-height: 360px;
+            overflow-y: auto;
+            padding-top: 8px;
+            display: none;
+        }
+        .summary-content.active {
+            display: block;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px dashed var(--gray-200);
+        }
+        html.dark .summary-row {
+            border-color: var(--gray-300);
+        }
+        .summary-row .bar-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            max-width: 300px;
+        }
+        .summary-row .bar {
+            height: 8px;
+            background: var(--primary);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        /* ===== 筛选栏 ===== */
+        .filter-bar {
+            background: #fff;
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px 16px;
+            transition: background var(--transition);
+        }
+        html.dark .filter-bar {
+            background: var(--gray-100);
+        }
+        .filter-bar .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .filter-bar label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-600);
+            white-space: nowrap;
+        }
+        html.dark .filter-bar label {
+            color: var(--gray-600);
+        }
+        .filter-bar select,
+        .filter-bar input[type="text"],
+        .filter-bar input[type="date"],
+        .filter-bar input[type="number"] {
+            padding: 6px 12px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            background: #fff;
+            color: var(--gray-800);
+            outline: none;
+            transition: var(--transition);
+            min-width: 100px;
+        }
+        html.dark .filter-bar select,
+        html.dark .filter-bar input[type="text"],
+        html.dark .filter-bar input[type="date"],
+        html.dark .filter-bar input[type="number"] {
+            background: var(--gray-100);
+            border-color: var(--gray-300);
+            color: var(--gray-800);
+        }
+        .filter-bar select:focus,
+        .filter-bar input[type="text"]:focus,
+        .filter-bar input[type="date"]:focus,
+        .filter-bar input[type="number"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.15);
+        }
+        .filter-bar .search-input {
+            flex: 1;
+            min-width: 150px;
+        }
+        .filter-bar .search-input input {
+            width: 100%;
+            min-width: 120px;
+        }
+        .filter-actions {
+            display: flex;
+            gap: 6px;
+            margin-left: auto;
+        }
+        /* ===== 物品列表 ===== */
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .list-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        .list-header .count {
+            font-size: 14px;
+            color: var(--gray-500);
+            font-weight: 400;
+        }
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        /* ===== 物品卡片 ===== */
+        .item-card {
+            background: #fff;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        html.dark .item-card {
+            background: var(--gray-100);
+        }
+        .item-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+        .item-card .card-img {
+            width: 100%;
+            height: 180px;
+            background: var(--gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+        .item-card .card-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .item-card .card-img .no-img {
+            color: var(--gray-400);
+            font-size: 40px;
+            opacity: 0.5;
+        }
+        .item-card .card-img .status-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            backdrop-filter: blur(4px);
+        }
+        .item-card .card-img .status-badge.lost {
+            background: rgba(239, 68, 68, 0.85);
+        }
+        .item-card .card-body {
+            padding: 14px 16px 16px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .item-card .card-body .item-name {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--gray-900);
+            line-height: 1.3;
+        }
+        .item-card .card-body .item-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 10px;
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+        .item-card .card-body .item-meta .tag {
+            background: var(--gray-100);
+            padding: 1px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: var(--gray-600);
+        }
+        html.dark .item-card .card-body .item-meta .tag {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+        .item-card .card-body .item-meta .tag.room {
+            background: #DBEAFE;
+            color: #1D4ED8;
+        }
+        html.dark .item-card .card-body .item-meta .tag.room {
+            background: rgba(219, 234, 254, 0.15);
+        }
+        .item-card .card-body .item-meta .tag.category {
+            background: #FCE7F3;
+            color: #BE185D;
+        }
+        html.dark .item-card .card-body .item-meta .tag.category {
+            background: rgba(252, 231, 243, 0.15);
+        }
+        .item-card .card-body .item-meta .tag.owner {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+        html.dark .item-card .card-body .item-meta .tag.owner {
+            background: rgba(209, 250, 229, 0.15);
+        }
+        .item-card .card-body .item-details {
+            font-size: 13px;
+            color: var(--gray-600);
+            margin-top: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .item-card .card-body .item-details .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px dashed var(--gray-100);
+        }
+        html.dark .item-card .card-body .item-details .detail-row {
+            border-color: var(--gray-200);
+        }
+        .item-card .card-body .item-details .detail-row .label {
+            color: var(--gray-400);
+            font-weight: 400;
+        }
+        .item-card .card-body .item-details .life-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            font-size: 13px;
+        }
+        .item-card .card-body .item-details .life-row .life-bar {
+            width: 80px;
+            height: 6px;
+            background: var(--gray-200);
+            border-radius: 3px;
+            overflow: hidden;
+            display: inline-block;
+            margin-left: 6px;
+        }
+        .item-card .card-body .item-details .life-row .life-bar .fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s;
+        }
+        .item-card .card-body .item-reason {
+            font-size: 13px;
+            color: var(--gray-500);
+            background: var(--gray-50);
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            margin-top: 4px;
+            border-left: 3px solid var(--gray-300);
+        }
+        html.dark .item-card .card-body .item-reason {
+            background: var(--gray-100);
+        }
+        .item-card .card-actions {
+            display: flex;
+            gap: 8px;
+            padding: 10px 16px 14px;
+            border-top: 1px solid var(--gray-100);
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        html.dark .item-card .card-actions {
+            border-color: var(--gray-200);
+        }
+        /* ===== 空状态 ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-400);
+        }
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+        .empty-state h3 {
+            font-size: 20px;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+        }
+        .empty-state p {
+            font-size: 15px;
+            max-width: 400px;
+            margin: 0 auto 16px;
+        }
+        /* ===== 模态框 ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 20px;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal {
+            background: #fff;
+            border-radius: var(--radius);
+            max-width: 680px;
+            width: 100%;
+            max-height: 92vh;
+            overflow-y: auto;
+            padding: 24px 28px 28px;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.25s ease;
+            transition: background var(--transition);
+        }
+        html.dark .modal {
+            background: var(--gray-100);
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gray-900);
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: var(--gray-400);
+            transition: var(--transition);
+            line-height: 1;
+            padding: 0 4px;
+        }
+        .modal-close:hover {
+            color: var(--gray-700);
+            transform: rotate(90deg);
+        }
+        .modal .form-group {
+            margin-bottom: 14px;
+        }
+        .modal .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 4px;
+        }
+        html.dark .modal .form-group label {
+            color: var(--gray-700);
+        }
+        .modal .form-group label .required {
+            color: var(--danger);
+            margin-left: 2px;
+        }
+        .modal .form-group input,
+        .modal .form-group select,
+        .modal .form-group textarea {
+            width: 100%;
+            padding: 8px 14px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: var(--font);
+            transition: var(--transition);
+            background: #fff;
+            color: var(--gray-800);
+        }
+        html.dark .modal .form-group input,
+        html.dark .modal .form-group select,
+        html.dark .modal .form-group textarea {
+            background: var(--gray-50);
+            border-color: var(--gray-300);
+        }
+        .modal .form-group input:focus,
+        .modal .form-group select:focus,
+        .modal .form-group textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.12);
+            outline: none;
+        }
+        .modal .form-group textarea {
+            resize: vertical;
+            min-height: 50px;
+        }
+        .modal .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .modal .form-row-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+        }
+        .modal .form-group .file-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .modal .form-group .file-input-wrapper input[type="file"] {
+            flex: 1;
+            padding: 6px;
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--radius-sm);
+            background: var(--gray-50);
+            font-size: 13px;
+            min-width: 140px;
+        }
+        .modal .form-group .file-input-wrapper .preview {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 2px solid var(--gray-200);
+            flex-shrink: 0;
+            background: var(--gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--gray-400);
+        }
+        .modal .form-group .file-input-wrapper .preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .modal .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--gray-100);
+        }
+        html.dark .modal .form-actions {
+            border-color: var(--gray-200);
+        }
+        /* ===== Toast ===== */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 360px;
+        }
+        .toast {
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            background: var(--gray-900);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .toast.success {
+            background: var(--success);
+        }
+        .toast.error {
+            background: var(--danger);
+        }
+        .toast.info {
+            background: var(--primary);
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(60px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        /* ===== 图片预览 ===== */
+        .img-preview-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.88);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .img-preview-overlay.active {
+            display: flex;
+        }
+        .img-preview-overlay img {
+            max-width: 95%;
+            max-height: 95vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        .img-preview-close {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            font-size: 32px;
+            color: white;
+            cursor: pointer;
+        }
+        /* ===== 响应式 ===== */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .header {
+                padding: 12px 16px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            .header-left h1 {
+                font-size: 18px;
+            }
+            .header-actions {
+                justify-content: space-between;
+            }
+            .filter-bar {
+                padding: 12px 14px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            .filter-bar .filter-group {
+                flex-wrap: wrap;
+            }
+            .filter-bar .search-input {
+                min-width: 100%;
+            }
+            .filter-actions {
+                margin-left: 0;
+                justify-content: flex-end;
+            }
+            .items-grid {
+                grid-template-columns: 1fr;
+            }
+            .modal {
+                padding: 16px 18px;
+                max-height: 95vh;
+            }
+            .modal .form-row,
+            .modal .form-row-3 {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .stat-card .value {
+                font-size: 20px;
+            }
+            .item-card .card-img {
+                height: 140px;
+            }
+            .summary-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            .summary-buttons .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        @media (max-width: 480px) {
+            .header-actions .stats-badge {
+                font-size: 12px;
+                padding: 4px 12px;
+            }
+            .btn {
+                font-size: 12px;
+                padding: 6px 14px;
+            }
+            .modal .form-actions {
+                flex-direction: column;
+            }
+            .modal .form-actions .btn {
+                justify-content: center;
+            }
+        }
+        .text-muted {
+            color: var(--gray-500);
+        }
+        .text-center {
+            text-align: center;
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .flex {
+            display: flex;
+        }
+        .items-center {
+            align-items: center;
+        }
+        .gap-4 {
+            gap: 4px;
+        }
+        .flex-wrap {
+            flex-wrap: wrap;
+        }
+        .w-full {
+            width: 100%;
+        }
+    </style>
+<script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
+<script>
+(function(){
+  try{
+    var beacon=new BeaconAction({
+      appkey:'0WEB06U85YBSLJNL',
+      versionCode:'1.0.0',
+      channelID:'share',
+      delay:1000,
+      sessionDuration:30*60*1000,
+      isOversea:false,
+      needReportRqdEvent:false
+    });
+    beacon.onDirectUserAction('preview_page_view',{
+      'url':location.href,
+      'referrer':document.referrer,
+      'title':document.title,
+      'sandbox_id':'9da32fa4efeb46b7b867f769dc97b15b'
+    });
+  }catch(e){}
+})();
+</script></head>
+<body>
+    <div class="app" id="app">
+        <!-- ===== 头部 ===== -->
+        <header class="header">
+            <div class="header-left">
+                <span class="logo">📦</span>
+                <h1>收纳管家 · 完整版</h1>
+            </div>
+            <div class="header-actions">
+                <span class="stats-badge" id="totalBadge">📊 0 件物品</span>
+                <button class="btn btn-primary" id="openAddBtn">➕ 添加物品</button>
+                <button class="btn btn-outline btn-sm" id="themeToggleBtn">🌓 切换主题</button>
+                <button class="btn btn-outline btn-sm" id="exportBtn">📥 导出数据</button>
+                <button class="btn btn-outline btn-sm" id="importBtn">📤 导入数据</button>
+                <input type="file" id="importFileInput" accept=".json" style="display:none" />
+            </div>
+        </header>
+        <!-- ===== 统计卡片 ===== -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card accent">
+                <span class="label">📦 总物品</span>
+                <span class="value" id="statTotal">0</span>
+                <span class="sub">全部记录</span>
+            </div>
+            <div class="stat-card accent-green">
+                <span class="label">✅ 在库物品</span>
+                <span class="value" id="statActive">0</span>
+                <span class="sub">可用物品</span>
+            </div>
+            <div class="stat-card accent-red">
+                <span class="label">❌ 流失物品</span>
+                <span class="value" id="statLost">0</span>
+                <span class="sub">丢弃/送人</span>
+            </div>
+            <div class="stat-card accent-orange">
+                <span class="label">🏷️ 分类总数</span>
+                <span class="value" id="statCategories">0</span>
+                <span class="sub">不同类别</span>
+            </div>
+            <div class="stat-card accent-purple">
+                <span class="label">👥 归属人数</span>
+                <span class="value" id="statOwners">0</span>
+                <span class="sub">使用人</span>
+            </div>
+            <div class="stat-card accent-cyan">
+                <span class="label">🏠 房间数量</span>
+                <span class="value" id="statRooms">0</span>
+                <span class="sub">存放区域</span>
+            </div>
+            <div class="stat-card accent">
+                <span class="label">💰 在库总价值</span>
+                <span class="value" id="statActiveValue">¥0</span>
+                <span class="sub">现有资产</span>
+            </div>
+            <div class="stat-card accent-red">
+                <span class="label">💸 流失总价值</span>
+                <span class="value" id="statLostValue">¥0</span>
+                <span class="sub">已损耗资产</span>
+            </div>
+            <div class="stat-card accent-pink">
+                <span class="label">⏳ 平均剩余寿命</span>
+                <span class="value" id="statAvgLife">0 年</span>
+                <span class="sub">在库物品平均</span>
+            </div>
+        </div>
+        <!-- ===== 汇总面板 ===== -->
+        <div class="summary-panel">
+            <div class="summary-header">
+                <h3>📊 多维度汇总统计</h3>
+                <div class="summary-buttons">
+                    <button class="btn btn-sm btn-outline" data-type="room">按房间汇总</button>
+                    <button class="btn btn-sm btn-outline" data-type="owner">按归属人汇总</button>
+                    <button class="btn btn-sm btn-outline" data-type="category">按分类汇总</button>
+                    <button class="btn btn-sm btn-outline" data-type="month">按年月汇总</button>
+                    <button class="btn btn-sm btn-outline" data-type="life" style="border-color:var(--primary);color:var(--primary);">⏳ 按剩余寿命</button>
+                </div>
+            </div>
+            <div class="summary-content" id="summaryContent"></div>
+        </div>
+        <!-- ===== 筛选栏 ===== -->
+        <div class="filter-bar" id="filterBar">
+            <div class="filter-group">
+                <label>🏠 房间</label>
+                <select id="filterRoom"><option value="">全部</option></select>
+            </div>
+            <div class="filter-group">
+                <label>📂 主分类</label>
+                <select id="filterMainCat"><option value="">全部</option></select>
+            </div>
+            <div class="filter-group">
+                <label>📂 子分类</label>
+                <select id="filterSubCat"><option value="">全部</option></select>
+            </div>
+            <div class="filter-group">
+                <label>👤 归属人</label>
+                <select id="filterOwner"><option value="">全部</option></select>
+            </div>
+            <div class="filter-group">
+                <label>📌 状态</label>
+                <select id="filterStatus">
+                    <option value="">全部</option>
+                    <option value="active">✅ 现有</option>
+                    <option value="lost">❌ 已失去</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>🖼️ 图片</label>
+                <select id="filterHasImg">
+                    <option value="">全部</option>
+                    <option value="yes">有照片</option>
+                    <option value="no">无照片</option>
+                </select>
+            </div>
+            <div class="filter-group search-input">
+                <input type="text" id="filterSearch" placeholder="🔍 搜索物品名称..." />
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-sm btn-outline" id="clearFiltersBtn">✕ 清除筛选</button>
+            </div>
+        </div>
+        <!-- ===== 列表 ===== -->
+        <div class="list-header">
+            <h2>📋 物品清单 <span class="count" id="listCount">(0 件)</span></h2>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-outline" id="sortByNameBtn">🔤 按名称</button>
+                <button class="btn btn-sm btn-outline" id="sortByDateBtn">📅 按获得时间</button>
+                <button class="btn btn-sm btn-outline" id="sortByPriceBtn">💰 按价格</button>
+                <button class="btn btn-sm btn-outline" id="sortByLifeBtn">⏳ 按剩余寿命</button>
+            </div>
+        </div>
+        <div class="items-grid" id="itemsGrid"></div>
+        <div class="empty-state" id="emptyState" style="display:none;">
+            <div class="icon">📭</div>
+            <h3>还没有物品</h3>
+            <p>点击右上角「添加物品」按钮，开始记录你的收纳清单吧！</p>
+            <button class="btn btn-primary" id="emptyAddBtn">➕ 添加第一件物品</button>
+        </div>
+    </div>
+    <!-- ===== 模态框 ===== -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">添加物品</h2>
+                <button class="modal-close" id="modalCloseBtn">✕</button>
+            </div>
+            <form id="itemForm" autocomplete="off">
+                <input type="hidden" id="formId" value="" />
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>物品名称 <span class="required">*</span></label>
+                        <input type="text" id="formName" placeholder="如：无线降噪耳机" required />
+                    </div>
+                    <div class="form-group">
+                        <label>🏠 房间 <span class="required">*</span></label>
+                        <select id="formRoom" required></select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>📂 主分类 <span class="required">*</span></label>
+                        <select id="formMainCat" required>
+                            <option value="">选择主分类</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>📂 子分类 <span class="required">*</span></label>
+                        <select id="formSubCat" required>
+                            <option value="">请先选择主分类</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>👤 归属人 <span class="required">*</span></label>
+                        <select id="formOwner" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>📅 获得时间 <span class="required">*</span></label>
+                        <input type="date" id="formAcquireDate" required />
+                    </div>
+                </div>
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label>💰 获得价格 (¥)</label>
+                        <input type="number" id="formAcquirePrice" placeholder="0.00" step="0.01" min="0" />
+                    </div>
+                    <div class="form-group">
+                        <label>⏳ 使用寿命 (年)</label>
+                        <input type="number" id="formLifeSpan" placeholder="如：10" min="0" step="1" />
+                    </div>
+                    <div class="form-group">
+                        <label>📅 失去时间</label>
+                        <input type="date" id="formLoseDate" />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>💡 买入原因</label>
+                        <textarea id="formBuyReason" placeholder="为什么买这个物品？" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>📌 失去原因</label>
+                        <input type="text" id="formLoseReason" placeholder="如：送人、丢弃、损坏" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>🖼️ 照片（最大2MB，自动压缩）</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="formPhoto" accept="image/*" />
+                        <div class="preview" id="formPhotoPreview">📷</div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" id="modalCancelBtn">取消</button>
+                    <button type="submit" class="btn btn-primary" id="modalSubmitBtn">💾 保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- ===== 图片预览弹窗 ===== -->
+    <div class="img-preview-overlay" id="imgPreviewOverlay">
+        <span class="img-preview-close" id="imgPreviewClose">✕</span>
+        <img id="previewImage" src="" alt="大图预览" />
+    </div>
+    <!-- ===== Toast ===== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ============================================================
+        // 数据配置（房间、归属人、分类）
+        // ============================================================
+        const ROOMS = [
+            '主卧', '次卧', '儿童房',
+            '客厅', '餐厅', '厨房',
+            '主卫', '次卫', '公卫',
+            '阳台', '玄关',
+            '书房', '办公区',
+            '储藏间', '储物间',
+            '车库'
+        ];
+        const OWNERS = ['爸爸', '妈妈', '鑫迪', '欣艺', '爷爷', '奶奶', '其他'];
+
+        const CATEGORIES = {
+            '衣物穿戴类': [
+                'T恤', '衬衫', '毛衣', '卫衣', '外套', '羽绒服', '西装',
+                '长裤', '牛仔裤', '短裤', '半身裙', '连衣裙',
+                '内衣', '内裤', '袜子', '睡衣', '保暖衣',
+                '运动鞋', '皮鞋', '拖鞋', '靴子', '帽子', '围巾', '手套',
+                '背包', '手提包', '行李箱', '钱包', '收纳包',
+                '首饰', '发饰', '皮带', '眼镜'
+            ],
+            '厨卫用品': [
+                '锅具', '刀具', '铲子', '汤勺', '砧板',
+                '碗', '盘子', '杯子', '筷子', '保鲜盒',
+                '电饭煲', '空气炸锅', '破壁机', '水壶', '烤箱',
+                '干货', '调味品', '粮油', '零食',
+                '洗碗布', '垃圾袋', '保鲜膜', '清洁剂',
+                '洗发水', '沐浴露', '牙膏', '护肤品',
+                '毛巾', '浴巾', '马桶刷', '浴球',
+                '卫生纸', '湿巾', '卫生巾'
+            ],
+            '家居软装&日用': [
+                '被子', '枕头', '床单', '窗帘', '地毯',
+                '靠垫', '衣架', '收纳盒', '置物架',
+                '吸尘器', '拖把', '扫帚', '抹布',
+                '台灯', '灯带', '备用灯泡'
+            ],
+            '电子数码': [
+                '手机', '平板', '笔记本电脑',
+                '充电器', '数据线',
+                '耳机', '音箱', '相机', '游戏机',
+                'U盘', '硬盘', '鼠标', '键盘', '插座',
+                '风扇', '加湿器', '电吹风'
+            ],
+            '书籍文具办公': [
+                '小说', '教材', '杂志', '工具书',
+                '笔', '本子', '文件夹', '便利贴',
+                '打印机', '档案袋', '印章',
+                '图纸', '票据', '相册'
+            ],
+            '医药健康': [
+                '感冒药', '肠胃药', '外用膏药',
+                '体温计', '血压计', '创可贴',
+                '保健品', '康复护具'
+            ],
+            '运动户外': [
+                '瑜伽垫', '哑铃', '跳绳',
+                '帐篷', '背包', '渔具', '骑行装备',
+                '球类', '轮滑', '游泳装备'
+            ],
+            '工具维修': [
+                '螺丝刀', '扳手', '卷尺', '电钻',
+                '螺丝', '合页', '水管配件',
+                '胶水', '胶带', '油漆耗材'
+            ],
+            '母婴用品': [
+                '婴儿衣物', '奶瓶', '辅食工具',
+                '玩具', '婴儿车', '绘本', '安全用品'
+            ],
+            '休闲玩具': [
+                '成人桌游', '拼图', '模型',
+                '儿童玩具', '积木', '玩偶'
+            ],
+            '贵重&证件档案': [
+                '身份证', '户口本', '房产证', '证书',
+                '钱币', '藏品', '手表', '贵金属',
+                '合同', '票据', '保单'
+            ],
+            '车品': [
+                '车载工具', '行车记录仪', '车内饰品', '备用轮胎配件'
+            ]
+        };
+
+        // ============================================================
+        // 状态
+        // ============================================================
+        let items = [];
+        let editingId = null;
+        let currentSort = 'date';
+        let sortAsc = false;
+        let submitLock = false;
+
+        const $ = id => document.getElementById(id);
+        const itemsGrid = $('itemsGrid');
+        const emptyState = $('emptyState');
+        const modalOverlay = $('modalOverlay');
+        const itemForm = $('itemForm');
+        const formId = $('formId');
+        const formName = $('formName');
+        const formRoom = $('formRoom');
+        const formMainCat = $('formMainCat');
+        const formSubCat = $('formSubCat');
+        const formOwner = $('formOwner');
+        const formAcquireDate = $('formAcquireDate');
+        const formAcquirePrice = $('formAcquirePrice');
+        const formLifeSpan = $('formLifeSpan');
+        const formBuyReason = $('formBuyReason');
+        const formLoseDate = $('formLoseDate');
+        const formLoseReason = $('formLoseReason');
+        const formPhoto = $('formPhoto');
+        const formPhotoPreview = $('formPhotoPreview');
+        const modalTitle = $('modalTitle');
+        const modalSubmitBtn = $('modalSubmitBtn');
+        const imgPreviewOverlay = $('imgPreviewOverlay');
+        const previewImage = $('previewImage');
+
+        const filterRoom = $('filterRoom');
+        const filterMainCat = $('filterMainCat');
+        const filterSubCat = $('filterSubCat');
+        const filterOwner = $('filterOwner');
+        const filterStatus = $('filterStatus');
+        const filterHasImg = $('filterHasImg');
+        const filterSearch = $('filterSearch');
+
+        const statTotal = $('statTotal');
+        const statActive = $('statActive');
+        const statLost = $('statLost');
+        const statCategories = $('statCategories');
+        const statOwners = $('statOwners');
+        const statRooms = $('statRooms');
+        const statActiveValue = $('statActiveValue');
+        const statLostValue = $('statLostValue');
+        const statAvgLife = $('statAvgLife');
+        const listCount = $('listCount');
+        const totalBadge = $('totalBadge');
+        const summaryContent = $('summaryContent');
+        const summaryBtns = document.querySelectorAll('.summary-buttons .btn');
+
+        // ============================================================
+        // 工具函数
+        // ============================================================
+        function debounce(fn, delay = 250) {
+            let timer;
+            return function(...args) { clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay); };
+        }
+
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            const d = new Date(dateStr);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        function formatMonth(dateStr) {
+            if (!dateStr) return '未知';
+            const d = new Date(dateStr);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        }
+
+        function formatPrice(val) {
+            if (val === undefined || val === null || val === '') return '¥0.00';
+            const n = Number(val);
+            if (isNaN(n) || n === 0) return '¥0.00';
+            return `¥${n.toFixed(2)}`;
+        }
+
+        function getStatus(item) {
+            if (item.loseDate && item.loseDate.trim() !== '') return 'lost';
+            return 'active';
+        }
+
+        function getStatusText(item) {
+            return getStatus(item) === 'active' ? '✅ 现有' : '❌ 已失去';
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getRemainingLife(item) {
+            if (!item.lifeSpan || !item.acquireDate) return null;
+            const years = Number(item.lifeSpan);
+            if (isNaN(years) || years <= 0) return null;
+            const acquire = new Date(item.acquireDate);
+            const now = new Date();
+            const used = (now - acquire) / (365.25 * 24 * 60 * 60 * 1000);
+            const remain = years - used;
+            return Math.max(0, remain);
+        }
+
+        function getLifeStatus(remain) {
+            if (remain === null || remain === undefined) return '未设置';
+            if (remain <= 0) return '已过期';
+            if (remain < 1) return '0-1年';
+            if (remain < 3) return '1-3年';
+            if (remain < 5) return '3-5年';
+            if (remain < 10) return '5-10年';
+            return '10年以上';
+        }
+
+        function getLifeColor(remain) {
+            if (remain === null || remain === undefined) return 'var(--gray-400)';
+            if (remain <= 0) return 'var(--danger)';
+            if (remain < 2) return '#F59E0B';
+            if (remain < 5) return '#3B82F6';
+            return '#22C55E';
+        }
+
+        async function compressImage(file, maxWidth = 1200, quality = 0.7) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = e => {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width,
+                            height = img.height;
+                        if (width > maxWidth) { height = (maxWidth / width) * height;
+                            width = maxWidth; }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                };
+            });
+        }
+
+        function showToast(message, type = 'info') {
+            const container = $('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+            toast.innerHTML = `${icons[type] || 'ℹ️'} ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(40px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 2600);
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('organizer_theme');
+            const html = document.documentElement;
+            if (saved === 'dark') html.classList.add('dark');
+            else if (saved === 'light') html.classList.remove('dark');
+            else if (window.matchMedia('(prefers-color-scheme: dark)').matches) html.classList.add('dark');
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            localStorage.setItem('organizer_theme', html.classList.contains('dark') ? 'dark' : 'light');
+            showToast(html.classList.contains('dark') ? '已切换深色模式' : '已切换浅色模式', 'info');
+        }
+
+        // ============================================================
+        // 数据持久化
+        // ============================================================
+        function loadData() {
+            try {
+                const raw = localStorage.getItem('organizer_items_v2');
+                if (raw) {
+                    items = JSON.parse(raw);
+                    items.forEach(it => {
+                        if (!it.id) it.id = generateId();
+                        if (it.photo === undefined) it.photo = '';
+                        if (it.lifeSpan === undefined) it.lifeSpan = null;
+                        if (it.mainCat === undefined) it.mainCat = '';
+                        if (it.subCat === undefined) it.subCat = '';
+                    });
+                } else {
+                    // 示例数据（房间已同步更新）
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    const d = String(now.getDate()).padStart(2, '0');
+                    items = [{
+                        id: generateId(),
+                        name: '无线降噪耳机',
+                        room: '主卧',
+                        mainCat: '电子数码',
+                        subCat: '耳机',
+                        owner: '鑫迪',
+                        acquireDate: '2025-12-01',
+                        acquirePrice: 899,
+                        lifeSpan: 5,
+                        buyReason: '通勤听音乐，降噪效果很好',
+                        loseDate: '',
+                        loseReason: '',
+                        photo: ''
+                    }, {
+                        id: generateId(),
+                        name: '实木书桌',
+                        room: '书房',
+                        mainCat: '家居软装&日用',
+                        subCat: '置物架',
+                        owner: '爸爸',
+                        acquireDate: '2025-11-15',
+                        acquirePrice: 2500,
+                        lifeSpan: 20,
+                        buyReason: '在家办公需要宽敞的工作台',
+                        loseDate: '',
+                        loseReason: '',
+                        photo: ''
+                    }, {
+                        id: generateId(),
+                        name: '铸铁锅',
+                        room: '厨房',
+                        mainCat: '厨卫用品',
+                        subCat: '锅具',
+                        owner: '妈妈',
+                        acquireDate: '2025-10-20',
+                        acquirePrice: 380,
+                        lifeSpan: 15,
+                        buyReason: '煎牛排和炖菜更好吃',
+                        loseDate: '2026-02-10',
+                        loseReason: '搬家时送给了朋友',
+                        photo: ''
+                    }, {
+                        id: generateId(),
+                        name: '瑜伽垫',
+                        room: '次卧',
+                        mainCat: '运动户外',
+                        subCat: '瑜伽垫',
+                        owner: '欣艺',
+                        acquireDate: '2026-01-05',
+                        acquirePrice: 120,
+                        lifeSpan: 3,
+                        buyReason: '在家健身',
+                        loseDate: '',
+                        loseReason: '',
+                        photo: ''
+                    }];
+                    saveData();
+                }
+            } catch (e) {
+                items = [];
+                showToast('数据加载失败，已重置', 'error');
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem('organizer_items_v2', JSON.stringify(items));
+            } catch (e) {
+                showToast('本地存储空间不足！建议导出备份后清理图片', 'error');
+            }
+        }
+
+        function exportData() {
+            if (items.length === 0) { showToast('没有数据可导出', 'info'); return; }
+            const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `收纳管家备份_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('数据导出成功', 'success');
+        }
+
+        function importData(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!Array.isArray(data)) { showToast('无效备份文件，必须是物品数组', 'error'); return; }
+                    data.forEach(it => { if (!it.id) it.id = generateId(); });
+                    if (confirm(`将导入 ${data.length} 件物品，现有数据将被覆盖，确定吗？`)) {
+                        items = data;
+                        saveData();
+                        renderAll();
+                        showToast(`成功导入 ${items.length} 件物品`, 'success');
+                    }
+                } catch (err) {
+                    showToast('解析失败，请确认是收纳管家导出的json文件', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ============================================================
+        // 分类联动
+        // ============================================================
+        function populateMainCats() {
+            const sel = formMainCat;
+            sel.innerHTML = '<option value="">选择主分类</option>';
+            Object.keys(CATEGORIES).forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                sel.appendChild(opt);
+            });
+        }
+
+        function updateSubCats(mainCat) {
+            const sel = formSubCat;
+            sel.innerHTML = '<option value="">请选择子分类</option>';
+            if (mainCat && CATEGORIES[mainCat]) {
+                CATEGORIES[mainCat].forEach(sub => {
+                    const opt = document.createElement('option');
+                    opt.value = sub;
+                    opt.textContent = sub;
+                    sel.appendChild(opt);
+                });
+            }
+        }
+
+        // 筛选器中的分类联动
+        function populateFilterCats() {
+            const sel = filterMainCat;
+            sel.innerHTML = '<option value="">全部</option>';
+            Object.keys(CATEGORIES).forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                sel.appendChild(opt);
+            });
+        }
+
+        function updateFilterSubCats(mainCat) {
+            const sel = filterSubCat;
+            sel.innerHTML = '<option value="">全部</option>';
+            if (mainCat && CATEGORIES[mainCat]) {
+                CATEGORIES[mainCat].forEach(sub => {
+                    const opt = document.createElement('option');
+                    opt.value = sub;
+                    opt.textContent = sub;
+                    sel.appendChild(opt);
+                });
+            }
+        }
+
+        // ============================================================
+        // 渲染函数
+        // ============================================================
+        function getFilteredItems() {
+            const room = filterRoom.value;
+            const mainCat = filterMainCat.value;
+            const subCat = filterSubCat.value;
+            const owner = filterOwner.value;
+            const status = filterStatus.value;
+            const search = filterSearch.value.trim().toLowerCase();
+            const hasImg = filterHasImg.value;
+
+            let result = items.filter(item => {
+                if (room && item.room !== room) return false;
+                if (mainCat && item.mainCat !== mainCat) return false;
+                if (subCat && item.subCat !== subCat) return false;
+                if (owner && item.owner !== owner) return false;
+                if (status === 'active' && getStatus(item) !== 'active') return false;
+                if (status === 'lost' && getStatus(item) !== 'lost') return false;
+                if (search && !item.name.toLowerCase().includes(search)) return false;
+                if (hasImg === 'yes' && (!item.photo || item.photo === '')) return false;
+                if (hasImg === 'no' && item.photo && item.photo !== '') return false;
+                return true;
+            });
+
+            result.sort((a, b) => {
+                let cmp = 0;
+                if (currentSort === 'name') {
+                    cmp = a.name.localeCompare(b.name, 'zh-CN');
+                } else if (currentSort === 'price') {
+                    cmp = (Number(a.acquirePrice) || 0) - (Number(b.acquirePrice) || 0);
+                } else if (currentSort === 'life') {
+                    const ra = getRemainingLife(a) ?? -1;
+                    const rb = getRemainingLife(b) ?? -1;
+                    cmp = ra - rb;
+                } else {
+                    const da = a.acquireDate || '';
+                    const db = b.acquireDate || '';
+                    cmp = da.localeCompare(db);
+                }
+                return sortAsc ? cmp : -cmp;
+            });
+            return result;
+        }
+
+        // ===== 关键修复：筛选器下拉直接使用预定义常量 =====
+        function updateFilterOptions() {
+            // 房间筛选：直接使用 ROOMS
+            const currentRoom = filterRoom.value;
+            filterRoom.innerHTML = '<option value="">🏠 全部房间</option>';
+            ROOMS.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                filterRoom.appendChild(opt);
+            });
+            if (currentRoom && ROOMS.includes(currentRoom)) filterRoom.value = currentRoom;
+
+            // 归属人筛选：直接使用 OWNERS
+            const currentOwner = filterOwner.value;
+            filterOwner.innerHTML = '<option value="">👤 全部归属人</option>';
+            OWNERS.forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o;
+                opt.textContent = o;
+                filterOwner.appendChild(opt);
+            });
+            if (currentOwner && OWNERS.includes(currentOwner)) filterOwner.value = currentOwner;
+
+            // 主分类筛选：由 populateFilterCats() 生成，无需改动
+            // 但为了保持同步，重新生成（以防分类列表变化）
+            // 这里保留当前选中的主分类值
+            const currentMain = filterMainCat.value;
+            populateFilterCats();
+            if (currentMain && CATEGORIES[currentMain]) filterMainCat.value = currentMain;
+            // 子分类联动
+            updateFilterSubCats(filterMainCat.value);
+        }
+
+        function renderStats() {
+            const total = items.length;
+            const activeList = items.filter(it => getStatus(it) === 'active');
+            const lostList = items.filter(it => getStatus(it) === 'lost');
+            const cats = new Set(items.map(it => it.subCat).filter(Boolean));
+            const owners = new Set(items.map(it => it.owner).filter(Boolean));
+            const rooms = new Set(items.map(it => it.room).filter(Boolean));
+
+            const activeVal = activeList.reduce((s, it) => s + (Number(it.acquirePrice) || 0), 0);
+            const lostVal = lostList.reduce((s, it) => s + (Number(it.acquirePrice) || 0), 0);
+
+            // 平均剩余寿命（仅统计在库且有使用寿命的）
+            const lifeItems = activeList.filter(it => it.lifeSpan && Number(it.lifeSpan) > 0 && it.acquireDate);
+            let avgLife = 0;
+            if (lifeItems.length > 0) {
+                const sum = lifeItems.reduce((s, it) => s + getRemainingLife(it), 0);
+                avgLife = sum / lifeItems.length;
+            }
+
+            statTotal.textContent = total;
+            statActive.textContent = activeList.length;
+            statLost.textContent = lostList.length;
+            statCategories.textContent = cats.size;
+            statOwners.textContent = owners.size;
+            statRooms.textContent = rooms.size;
+            statActiveValue.textContent = formatPrice(activeVal);
+            statLostValue.textContent = formatPrice(lostVal);
+            statAvgLife.textContent = avgLife > 0 ? `${avgLife.toFixed(1)} 年` : '—';
+            totalBadge.textContent = `📊 ${total} 件物品`;
+        }
+
+        function renderItems() {
+            const filtered = getFilteredItems();
+            const count = filtered.length;
+            listCount.textContent = `(${count} 件)`;
+
+            if (count === 0 && items.length === 0) {
+                itemsGrid.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            } else if (count === 0) {
+                itemsGrid.innerHTML =
+                    `<div class="empty-state" style="display:block;grid-column:1/-1;padding:40px 20px;"><div class="icon">🔍</div><h3>没有匹配的物品</h3><p>试试调整筛选条件，或清除筛选</p></div>`;
+                emptyState.style.display = 'none';
+                return;
+            } else {
+                emptyState.style.display = 'none';
+            }
+
+            const fragment = document.createDocumentFragment();
+            filtered.forEach(item => {
+                const status = getStatus(item);
+                const statusText = getStatusText(item);
+                const priceDisplay = formatPrice(item.acquirePrice);
+                const imgHtml = item.photo ?
+                    `<img src="${item.photo}" alt="${escapeHtml(item.name)}" loading="lazy" />` :
+                    `<span class="no-img">📷</span>`;
+
+                const remain = getRemainingLife(item);
+                const lifeDisplay = remain !== null ? `${remain.toFixed(1)}年` : '未设置';
+                const lifeStatus = getLifeStatus(remain);
+                const lifeColor = getLifeColor(remain);
+                const lifeBarWidth = remain !== null ? Math.min(100, (remain / 15) * 100) : 0;
+
+                const loseHtml = status === 'lost' ?
+                    `<div class="item-reason"><strong>失去：</strong>${formatDate(item.loseDate)} ${escapeHtml(item.loseReason || '')}</div>` :
+                    '';
+
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <div class="card-img" data-photo="${escapeHtml(item.photo)}">
+                        ${imgHtml}
+                        <div class="status-badge ${status === 'lost' ? 'lost' : ''}">${statusText}</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="item-name">${escapeHtml(item.name)}</div>
+                        <div class="item-meta">
+                            <span class="tag room">🏠 ${escapeHtml(item.room)}</span>
+                            <span class="tag category">📂 ${escapeHtml(item.subCat || item.mainCat)}</span>
+                            <span class="tag owner">👤 ${escapeHtml(item.owner)}</span>
+                        </div>
+                        <div class="item-details">
+                            <div class="detail-row"><span class="label">📅 获得时间</span><span>${formatDate(item.acquireDate)}</span></div>
+                            <div class="detail-row"><span class="label">💰 价格</span><span>${priceDisplay}</span></div>
+                            ${item.lifeSpan ? `<div class="life-row"><span class="label">⏳ 使用寿命</span><span>${item.lifeSpan}年</span></div>` : ''}
+                            ${remain !== null ? `<div class="life-row"><span class="label">📊 剩余寿命</span><span><span style="color:${lifeColor};font-weight:600;">${lifeDisplay}</span> <span style="font-size:12px;color:var(--gray-400);">(${lifeStatus})</span>
+                            <span class="life-bar"><span class="fill" style="width:${lifeBarWidth}%;background:${lifeColor};"></span></span>
+                            </span></div>` : ''}
+                            ${item.buyReason ? `<div class="detail-row" style="border-bottom:none;"><span class="label">💡 原因</span><span style="max-width:140px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item.buyReason)}</span></div>` : ''}
+                        </div>
+                        ${loseHtml}
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-outline edit-btn" data-id="${item.id}">✏️ 编辑</button>
+                        <button class="btn btn-sm btn-danger delete-btn" data-id="${item.id}">🗑️ 删除</button>
+                    </div>
+                `;
+
+                const imgContainer = card.querySelector('.card-img');
+                imgContainer.addEventListener('click', () => {
+                    const photo = imgContainer.dataset.photo;
+                    if (photo && photo.startsWith('data:image')) {
+                        previewImage.src = photo;
+                        imgPreviewOverlay.classList.add('active');
+                    } else {
+                        showToast('该物品没有上传照片', 'info');
+                    }
+                });
+
+                card.querySelector('.edit-btn').addEventListener('click', () => openEditModal(item.id));
+                card.querySelector('.delete-btn').addEventListener('click', () => {
+                    if (confirm(`确定要删除「${item.name}」吗？`)) deleteItem(item.id);
+                });
+                fragment.appendChild(card);
+            });
+            itemsGrid.innerHTML = '';
+            itemsGrid.appendChild(fragment);
+        }
+
+        function renderAll() {
+            updateFilterOptions();
+            renderStats();
+            renderItems();
+        }
+
+        function deleteItem(id) {
+            items = items.filter(it => it.id !== id);
+            saveData();
+            renderAll();
+            showToast('已删除物品', 'success');
+        }
+
+        // ============================================================
+        // 汇总统计
+        // ============================================================
+        function renderSummary(type) {
+            summaryContent.classList.add('active');
+            let html = '';
+            const activeItems = items.filter(it => getStatus(it) === 'active');
+
+            if (type === 'room') {
+                const group = {};
+                items.forEach(i => {
+                    if (!group[i.room]) group[i.room] = { count: 0, value: 0 };
+                    group[i.room].count++;
+                    group[i.room].value += Number(i.acquirePrice) || 0;
+                });
+                html = `<h4>🏠 按房间汇总（数量/总价）</h4>`;
+                Object.entries(group).sort((a, b) => b[1].count - a[1].count).forEach(([k, v]) => {
+                    html +=
+                        `<div class="summary-row"><span>${escapeHtml(k)}</span><span>${v.count}件 / ${formatPrice(v.value)}</span></div>`;
+                });
+            } else if (type === 'owner') {
+                const group = {};
+                items.forEach(i => {
+                    if (!group[i.owner]) group[i.owner] = { count: 0, value: 0 };
+                    group[i.owner].count++;
+                    group[i.owner].value += Number(i.acquirePrice) || 0;
+                });
+                html = `<h4>👤 按归属人汇总（数量/总资产）</h4>`;
+                Object.entries(group).sort((a, b) => b[1].value - a[1].value).forEach(([k, v]) => {
+                    html +=
+                        `<div class="summary-row"><span>${escapeHtml(k)}</span><span>${v.count}件 / ${formatPrice(v.value)}</span></div>`;
+                });
+            } else if (type === 'category') {
+                const group = {};
+                items.forEach(i => {
+                    const key = i.subCat || i.mainCat || '未分类';
+                    if (!group[key]) group[key] = { count: 0, value: 0 };
+                    group[key].count++;
+                    group[key].value += Number(i.acquirePrice) || 0;
+                });
+                html = `<h4>📂 按物品子分类汇总（数量/总价）</h4>`;
+                Object.entries(group).sort((a, b) => b[1].count - a[1].count).forEach(([k, v]) => {
+                    html +=
+                        `<div class="summary-row"><span>${escapeHtml(k)}</span><span>${v.count}件 / ${formatPrice(v.value)}</span></div>`;
+                });
+            } else if (type === 'month') {
+                const group = {};
+                items.forEach(i => {
+                    const m = formatMonth(i.acquireDate);
+                    if (!group[m]) group[m] = { count: 0, value: 0 };
+                    group[m].count++;
+                    group[m].value += Number(i.acquirePrice) || 0;
+                });
+                html = `<h4>📅 按购入年月汇总（新增数量/当月花费）</h4>`;
+                Object.entries(group).sort((a, b) => a[0].localeCompare(b[0])).forEach(([k, v]) => {
+                    html +=
+                        `<div class="summary-row"><span>${k}</span><span>${v.count}件 / ${formatPrice(v.value)}</span></div>`;
+                });
+            } else if (type === 'life') {
+                // 按剩余使用寿命汇总（仅统计在库且有寿命的物品）
+                const groups = {
+                    '已过期': { count: 0, items: [] },
+                    '0-1年': { count: 0, items: [] },
+                    '1-3年': { count: 0, items: [] },
+                    '3-5年': { count: 0, items: [] },
+                    '5-10年': { count: 0, items: [] },
+                    '10年以上': { count: 0, items: [] },
+                    '未设置': { count: 0, items: [] }
+                };
+                activeItems.forEach(it => {
+                    const remain = getRemainingLife(it);
+                    let key = '未设置';
+                    if (remain !== null) {
+                        if (remain <= 0) key = '已过期';
+                        else if (remain < 1) key = '0-1年';
+                        else if (remain < 3) key = '1-3年';
+                        else if (remain < 5) key = '3-5年';
+                        else if (remain < 10) key = '5-10年';
+                        else key = '10年以上';
+                    }
+                    groups[key].count++;
+                    groups[key].items.push(it);
+                });
+
+                html = `<h4>⏳ 按剩余使用寿命汇总（在库物品）</h4>`;
+                const total = activeItems.length;
+                const order = ['已过期', '0-1年', '1-3年', '3-5年', '5-10年', '10年以上', '未设置'];
+                order.forEach(key => {
+                    const g = groups[key];
+                    if (g.count === 0) return;
+                    const pct = total > 0 ? (g.count / total * 100) : 0;
+                    const color = key === '已过期' ? 'var(--danger)' :
+                        key === '未设置' ? 'var(--gray-400)' :
+                        key === '0-1年' ? '#F59E0B' :
+                        key === '1-3年' ? '#F59E0B' :
+                        key === '3-5年' ? '#3B82F6' :
+                        key === '5-10年' ? '#22C55E' : '#22C55E';
+                    html += `<div class="summary-row">
+                        <span>${key}</span>
+                        <span style="display:flex;align-items:center;gap:12px;">
+                            <span>${g.count}件 (${pct.toFixed(1)}%)</span>
+                            <span class="bar-wrap"><span class="bar" style="width:${Math.max(2,pct)}%;background:${color};"></span></span>
+                        </span>
+                    </div>`;
+                });
+                if (activeItems.length === 0) {
+                    html += `<div class="summary-row"><span style="color:var(--gray-400);">暂无在库物品</span></div>`;
+                }
+            }
+            summaryContent.innerHTML = html;
+        }
+
+        // ============================================================
+        // 模态框控制
+        // ============================================================
+        function resetForm() {
+            formId.value = '';
+            formName.value = '';
+            formRoom.value = '';
+            formMainCat.value = '';
+            formSubCat.innerHTML = '<option value="">请先选择主分类</option>';
+            formOwner.value = '';
+            formAcquireDate.value = '';
+            formAcquirePrice.value = '';
+            formLifeSpan.value = '';
+            formBuyReason.value = '';
+            formLoseDate.value = '';
+            formLoseReason.value = '';
+            formPhoto.value = '';
+            formPhotoPreview.innerHTML = '📷';
+            editingId = null;
+        }
+
+        function openAddModal() {
+            resetForm();
+            editingId = null;
+            modalTitle.textContent = '添加物品';
+            modalSubmitBtn.textContent = '💾 保存';
+            // 设置默认日期为今天
+            const today = new Date().toISOString().slice(0, 10);
+            formAcquireDate.value = today;
+            modalOverlay.classList.add('active');
+        }
+
+        function openEditModal(id) {
+            const item = items.find(it => it.id === id);
+            if (!item) return;
+            resetForm();
+            editingId = id;
+            modalTitle.textContent = '编辑物品';
+            modalSubmitBtn.textContent = '💾 更新';
+            formId.value = id;
+            formName.value = item.name || '';
+            formRoom.value = item.room || '';
+            formMainCat.value = item.mainCat || '';
+            // 更新子分类
+            updateSubCats(item.mainCat);
+            formSubCat.value = item.subCat || '';
+            formOwner.value = item.owner || '';
+            formAcquireDate.value = item.acquireDate || '';
+            formAcquirePrice.value = item.acquirePrice || '';
+            formLifeSpan.value = item.lifeSpan || '';
+            formBuyReason.value = item.buyReason || '';
+            formLoseDate.value = item.loseDate || '';
+            formLoseReason.value = item.loseReason || '';
+            if (item.photo) {
+                formPhotoPreview.innerHTML = `<img src="${item.photo}" alt="预览" />`;
+            } else {
+                formPhotoPreview.innerHTML = '📷';
+            }
+            modalOverlay.classList.add('active');
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove('active');
+            resetForm();
+        }
+
+        // ============================================================
+        // 表单提交
+        // ============================================================
+        itemForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (submitLock) return;
+
+            const name = formName.value.trim();
+            const room = formRoom.value;
+            const mainCat = formMainCat.value;
+            const subCat = formSubCat.value;
+            const owner = formOwner.value;
+            const acquireDate = formAcquireDate.value;
+            const acquirePrice = parseFloat(formAcquirePrice.value) || 0;
+            const lifeSpan = formLifeSpan.value ? parseInt(formLifeSpan.value) : null;
+            const buyReason = formBuyReason.value.trim();
+            const loseDate = formLoseDate.value;
+            const loseReason = formLoseReason.value.trim();
+
+            if (!name || !room || !mainCat || !subCat || !owner || !acquireDate) {
+                showToast('请填写所有必填项（* 标记）', 'error');
+                return;
+            }
+
+            if (lifeSpan !== null && (isNaN(lifeSpan) || lifeSpan < 0)) {
+                showToast('请输入有效的使用寿命（年）', 'error');
+                return;
+            }
+
+            submitLock = true;
+            modalSubmitBtn.disabled = true;
+            modalSubmitBtn.textContent = '⏳ 保存中...';
+
+            try {
+                let photoData = '';
+                if (formPhoto.files && formPhoto.files.length > 0) {
+                    const file = formPhoto.files[0];
+                    if (file.size > 2 * 1024 * 1024) {
+                        showToast('图片超过2MB，请压缩后重新上传', 'error');
+                        submitLock = false;
+                        modalSubmitBtn.disabled = false;
+                        modalSubmitBtn.textContent = '💾 保存';
+                        return;
+                    }
+                    photoData = await compressImage(file);
+                } else if (editingId) {
+                    const existing = items.find(it => it.id === editingId);
+                    if (existing && existing.photo) photoData = existing.photo;
+                }
+
+                const newItem = {
+                    id: editingId || generateId(),
+                    name,
+                    room,
+                    mainCat,
+                    subCat,
+                    owner,
+                    acquireDate,
+                    acquirePrice,
+                    lifeSpan,
+                    buyReason,
+                    loseDate,
+                    loseReason,
+                    photo: photoData
+                };
+
+                if (editingId) {
+                    const idx = items.findIndex(it => it.id === editingId);
+                    if (idx !== -1) items[idx] = newItem;
+                } else {
+                    items.push(newItem);
+                }
+
+                saveData();
+                renderAll();
+                closeModal();
+                showToast(editingId ? '物品已更新' : '物品添加成功', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('保存失败，请重试', 'error');
+            } finally {
+                submitLock = false;
+                modalSubmitBtn.disabled = false;
+                modalSubmitBtn.textContent = '💾 保存';
+            }
+        });
+
+        // ============================================================
+        // 事件绑定
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化主题
+            initTheme();
+
+            // 填充表单下拉（房间和归属人）
+            ROOMS.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r;
+                opt.textContent = r;
+                formRoom.appendChild(opt);
+            });
+            OWNERS.forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o;
+                opt.textContent = o;
+                formOwner.appendChild(opt);
+            });
+
+            // 分类联动
+            populateMainCats();
+            populateFilterCats();
+            formMainCat.addEventListener('change', function() {
+                updateSubCats(this.value);
+            });
+            filterMainCat.addEventListener('change', function() {
+                updateFilterSubCats(this.value);
+                renderItems();
+            });
+            filterSubCat.addEventListener('change', renderItems);
+
+            // 加载数据
+            loadData();
+            renderAll();
+
+            // 添加按钮
+            $('openAddBtn').addEventListener('click', openAddModal);
+            $('emptyAddBtn').addEventListener('click', openAddModal);
+
+            // 关闭模态框
+            $('modalCloseBtn').addEventListener('click', closeModal);
+            $('modalCancelBtn').addEventListener('click', closeModal);
+            modalOverlay.addEventListener('click', function(e) {
+                if (e.target === modalOverlay) closeModal();
+            });
+
+            // 主题切换
+            $('themeToggleBtn').addEventListener('click', toggleTheme);
+
+            // 导出
+            $('exportBtn').addEventListener('click', exportData);
+
+            // 导入
+            $('importBtn').addEventListener('click', () => $('importFileInput').click());
+            $('importFileInput').addEventListener('change', function(e) {
+                if (this.files && this.files.length > 0) {
+                    importData(this.files[0]);
+                    this.value = '';
+                }
+            });
+
+            // 筛选监听
+            const filterInputs = [filterRoom, filterStatus, filterHasImg, filterSearch];
+            filterInputs.forEach(el => {
+                el.addEventListener('input', debounce(renderItems, 200));
+                el.addEventListener('change', renderItems);
+            });
+
+            // 清除筛选
+            $('clearFiltersBtn').addEventListener('click', function() {
+                filterRoom.value = '';
+                filterMainCat.value = '';
+                filterSubCat.innerHTML = '<option value="">全部</option>';
+                filterOwner.value = '';
+                filterStatus.value = '';
+                filterHasImg.value = '';
+                filterSearch.value = '';
+                renderItems();
+                showToast('已清除所有筛选条件', 'info');
+            });
+
+            // 排序
+            $('sortByNameBtn').addEventListener('click', function() {
+                if (currentSort === 'name') sortAsc = !sortAsc;
+                else { currentSort = 'name';
+                    sortAsc = true; }
+                renderItems();
+            });
+            $('sortByDateBtn').addEventListener('click', function() {
+                if (currentSort === 'date') sortAsc = !sortAsc;
+                else { currentSort = 'date';
+                    sortAsc = false; }
+                renderItems();
+            });
+            $('sortByPriceBtn').addEventListener('click', function() {
+                if (currentSort === 'price') sortAsc = !sortAsc;
+                else { currentSort = 'price';
+                    sortAsc = true; }
+                renderItems();
+            });
+            $('sortByLifeBtn').addEventListener('click', function() {
+                if (currentSort === 'life') sortAsc = !sortAsc;
+                else { currentSort = 'life';
+                    sortAsc = false; }
+                renderItems();
+            });
+
+            // 汇总按钮
+            summaryBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    renderSummary(type);
+                });
+            });
+
+            // 图片预览关闭
+            $('imgPreviewClose').addEventListener('click', () => imgPreviewOverlay.classList.remove('active'));
+            imgPreviewOverlay.addEventListener('click', function(e) {
+                if (e.target === imgPreviewOverlay) imgPreviewOverlay.classList.remove('active');
+            });
+
+            // 图片预览
+            formPhoto.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        formPhotoPreview.innerHTML = `<img src="${ev.target.result}" alt="预览" />`;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    formPhotoPreview.innerHTML = '📷';
+                }
+            });
+
+            console.log('🏠 收纳管家 · 完整版 已加载！');
+            console.log(`📦 共 ${items.length} 件物品`);
+            console.log(`🏠 房间列表: ${ROOMS.join(', ')}`);
+            console.log(`👤 归属人: ${OWNERS.join(', ')}`);
+        });
+    </script>
+</body>
+</html>
