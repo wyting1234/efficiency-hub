@@ -507,12 +507,12 @@ function save(silent){
     setBanner('store','err',full
       ? '保存失败：本地存储空间已满。请立即导出备份，并考虑删除部分带封面图的收藏以释放空间。'
       : '保存失败：浏览器阻止了本地存储写入（无痕模式或隐私设置）。请导出备份以免丢失。',
-      [['立即导出备份','export']]);
+      []);
   }
 }
 function bump(n){
   state.meta.since=(state.meta.since||0)+(n||1);
-  if(state.meta.since>=20) setBanner('backup','warn','已新增 '+state.meta.since+' 条记录未备份，建议现在导出一份 JSON 存到网盘或微信收藏。',[['导出备份','export'],['稍后再说','dismissBackup']]);
+  if(state.meta.since>=20) setBanner('backup','warn','已新增 '+state.meta.since+' 条记录未备份，建议现在导出一份 JSON 存到网盘或微信收藏。',[['稍后再说','dismissBackup']]);
 }
 function commit(n){ if(n!==0) bump(n||1); save(); render(); }
 
@@ -551,7 +551,7 @@ function confirm2(title,text,onOK,okLabel){
 function showRecovery(reason){
   modal('本地数据读取失败',
     '原因：'+esc(reason)+'<br><br>为避免二次损坏，原始数据已另存一份副本。你可以先把副本下载下来，或直接用之前导出的 JSON 备份恢复。当前页面暂时使用演示数据，<b>在你选择之前不会覆盖副本</b>。',
-    [['下载损坏副本','dlCorrupt'],['用备份文件恢复','import','sec'],['重新开始','resetFresh','danger']]);
+    [['下载损坏副本','dlCorrupt'],['重新开始','resetFresh','danger']]);
 }
 
 /* ---------- 图表：全部手写内联 SVG ---------- */
@@ -1410,7 +1410,7 @@ function mediaEditor(id){
 }
 
 /* ============================================================
-   八、数据备份中心
+   八、数据统计
    ============================================================ */
 function dataSize(){
   try{ var s=localStorage.getItem(KEY)||''; return (s.length/1024).toFixed(1); }catch(e){ return '?'; }
@@ -1419,47 +1419,7 @@ function counts(){
   return [['收支记录',state.tx.length],['习惯',state.habits.length],['身体记录',state.body.length],
           ['日程',state.events.length],['待买',state.wish.length],['书影音',state.media.length]];
 }
-function renderData(){
-  var h='';
-  var total=counts().reduce(function(a,c){return a+c[1];},0);
-  var demoN=['tx','habits','body','events','wish','media'].reduce(function(a,k){return a+state[k].filter(function(x){return x._d;}).length;},0);
-  h+='<div class="hd"><div class="t">数据备份</div><div class="s">共 '+total+' 条记录 · 占用 '+dataSize()+' KB</div><div class="sp"></div></div>';
 
-  h+='<div class="sec"><div class="panel"><div class="sec-h" style="border:none;padding:0;margin-bottom:12px">'+ic('data',16)+'<h3>备份与恢复</h3></div>'+
-     '<div class="sm muted" style="margin-bottom:14px">所有数据只保存在这台设备的浏览器里，不会上传到任何服务器。清理浏览器数据、换设备、换浏览器都会导致丢失，所以<b style="color:var(--ink)">请定期导出一份 JSON 存到网盘或发给自己</b>。</div>'+
-     '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
-     '<button class="btn" data-g="export">'+ic('down',16)+'导出 JSON 备份</button>'+
-     '<button class="btn sec" data-g="import">'+ic('up',16)+'导入恢复（不限条数）</button>'+
-     '<button class="btn sec" data-act="exportCSV">'+ic('down',16)+'导出记账 Excel</button>'+
-     '</div>'+
-     '<div class="hr"></div>'+
-     '<div class="sm"><span class="muted">上次备份：</span>'+(state.meta.lastBackup?esc(state.meta.lastBackup):'从未备份')+
-     '　<span class="muted">未备份新增：</span><b class="num" style="color:'+((state.meta.since||0)>=20?'var(--red)':'var(--ink)')+'">'+(state.meta.since||0)+'</b> 条</div>'+
-     '</div></div>';
-
-  h+='<div class="sec"><div class="grid g2">';
-  h+='<div class="panel"><div class="sec-h" style="border:none;padding:0;margin-bottom:10px">'+ic('note',16)+'<h3>数据构成</h3></div>';
-  counts().forEach(function(c){
-    h+='<div style="display:flex;font-size:13.5px;padding:6px 0;border-bottom:1px solid var(--line2)"><span class="muted">'+c[0]+'</span><span style="flex:1"></span><span class="num">'+c[1]+' 条</span></div>';
-  });
-  h+='<div style="display:flex;font-size:13.5px;padding:8px 0"><span>合计</span><span style="flex:1"></span><span class="num">'+total+' 条</span></div></div>';
-
-  h+='<div class="panel"><div class="sec-h" style="border:none;padding:0;margin-bottom:10px">'+ic('alert',16)+'<h3>清理</h3></div>'+
-     '<div class="sm muted" style="margin-bottom:12px">演示数据是首次打开时预置的示例，用于让你立刻看到效果。删除它们不会影响你自己录入的内容。</div>'+
-     '<button class="btn sec wide" data-act="clearDemo"'+(demoN?'':' disabled style="opacity:.45"')+'>清空演示数据（'+demoN+' 条）</button>'+
-     '<div style="height:9px"></div>'+
-     '<button class="btn danger wide" data-act="clearAll">清空全部数据</button>'+
-     '<div class="xs muted" style="margin-top:10px">清空全部会删除本工作台的所有记录，操作不可撤销，会要求二次确认。</div></div>';
-  h+='</div></div>';
-
-  h+='<div class="sec"><div class="panel flat"><div class="sec-h" style="border:none;padding:0;margin-bottom:10px">'+ic('sparkle',16)+'<h3>把它装进手机</h3></div>'+
-     '<div class="sm" style="line-height:1.85">'+
-     '<b>iPhone</b>：用 Safari 打开 → 底部分享按钮 → 「添加到主屏幕」<br>'+
-     '<b>Android</b>：用 Chrome 打开 → 右上角菜单 → 「添加到主屏幕 / 安装应用」<br>'+
-     '<b>电脑</b>：直接把这个 HTML 文件存到桌面，双击即可，无需联网。<br>'+
-     '<span class="muted">注意：手机和电脑的数据是各自独立的，跨设备同步请用「导出 JSON → 导入恢复」。</span></div></div></div>';
-  return h;
-}
 
 /* ============================================================
    渲染主循环
@@ -1476,8 +1436,7 @@ function render(){
     nav+='<button data-nav="'+tb[0]+'" class="'+(view===tb[0]?'on':'')+'">'+ic(tb[2],17)+'<span>'+tb[1]+'</span>'+cnt+'</button>';
   });
   $('#navi').innerHTML=nav;
-  $('#sidefoot').innerHTML='数据存于本机浏览器<br>共 '+counts().reduce(function(a,c){return a+c[1];},0)+' 条 · '+dataSize()+' KB'+
-    (state.meta.lastBackup?'<br>上次备份 '+esc(String(state.meta.lastBackup).slice(5,10)):'<br><span style="color:var(--clay)">尚未备份</span>');
+  $('#sidefoot').innerHTML='数据存于本机浏览器<br>共 '+counts().reduce(function(a,c){return a+c[1];},0)+' 条 · '+dataSize()+' KB';
   var fn=VIEWS[view]||renderToday;
   var main=$('#main');
   main.innerHTML=fn();
