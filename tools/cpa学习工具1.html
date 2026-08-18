@@ -1064,9 +1064,6 @@
             <div class="sub-text">每一次回顾都是新的领悟</div>
         </div>
         <div class="sidebar-footer">
-            <button class="primary-btn" id="importBtn">📥 导入</button>
-            <button class="primary-btn" id="exportBtn">📤 导出</button>
-            <button class="danger" id="clearAllBtn">🗑️ 清空</button>
         </div>
         <input type="file" id="importFileInput" accept=".json" />
     </aside>
@@ -2702,9 +2699,6 @@
             initForm();
             initFilters();
             initTomato();
-            initExport();
-            initImport();
-            initClear();
 
             if (state.records.length > 0) {
                 const most = state.records.reduce((a, b) => {

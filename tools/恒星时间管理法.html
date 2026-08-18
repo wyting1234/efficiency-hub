@@ -965,15 +965,6 @@
                 <div class="record-list" id="recordList">
                     <div class="record-empty">暂无记录，开始记录你的时间吧 ✨</div>
                 </div>
-                <div class="io-area" style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);">
-                    <button class="btn-secondary" id="btnExport">⬇ 导出记录 (JSON)</button>
-                    <span class="file-input-wrap">
-                        <button class="btn-secondary">⬆ 导入记录</button>
-                        <input type="file" id="fileInput" accept=".json,application/json" />
-                    </span>
-                    <button class="btn-secondary" id="btnBackup" style="color:#64ffda;">💾 备份到本地</button>
-                    <span style="font-size:11px;color:#495670;margin-left:auto;">数据保存在浏览器本地</span>
-                </div>
             </div>
         </div>
 
@@ -1075,15 +1066,6 @@
                         </select>
                         <input type="text" id="newLevel3Input" placeholder="新增三级标签名称..." />
                         <button class="btn-secondary" id="btnAddLevel3" style="height:36px;padding:0 16px;font-size:13px;">➕ 添加三级</button>
-                    </div>
-                    <!-- 数据管理 -->
-                    <div class="tag-add-row" style="border-top:1px dashed rgba(255,255,255,0.08);padding-top:10px;margin-top:2px;">
-                        <button class="btn-secondary" id="btnExportTags" style="height:36px;padding:0 14px;font-size:13px;">⬇ 导出标签</button>
-                        <span class="file-input-wrap" style="display:inline-block;">
-                            <button class="btn-secondary" style="height:36px;padding:0 14px;font-size:13px;">⬆ 导入标签</button>
-                            <input type="file" id="fileInputTags" accept=".json,application/json" />
-                        </span>
-                        <button class="btn-secondary" id="btnResetTags" style="height:36px;padding:0 14px;font-size:13px;color:#ff6b6b;border-color:rgba(255,80,80,0.3);">↺ 恢复默认</button>
                     </div>
                 </div>
                 <div id="tagTreeContainer">
@@ -2429,51 +2411,6 @@
             }
         });
 
-        // 导入导出记录
-        document.getElementById('btnExport').addEventListener('click', () => {
-            const data = JSON.stringify(records, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `stellar_records_${getTodayStr()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('⬇ 记录已导出', 'success');
-        });
-
-        document.getElementById('fileInput').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                try {
-                    const imported = JSON.parse(ev.target.result);
-                    if (!Array.isArray(imported)) throw new Error('格式错误');
-                    if (imported.length > 0 && (!imported[0].id || !imported[0].date || !imported[0].path || !imported[0]
-                            .duration)) {
-                        throw new Error('字段不完整');
-                    }
-                    if (!confirm(`将导入 ${imported.length} 条记录，是否覆盖当前数据？`)) return;
-                    records = imported;
-                    saveRecords(records);
-                    renderAll();
-                    if (document.getElementById('viewStats').classList.contains('active')) renderStatsView();
-                    showToast(`✅ 成功导入 ${imported.length} 条记录`, 'success');
-                } catch (err) {
-                    showToast('❌ 导入失败: ' + err.message, 'error');
-                }
-            };
-            reader.readAsText(file);
-            e.target.value = '';
-        });
-
-        document.getElementById('btnBackup').addEventListener('click', () => {
-            const backupKey = STORAGE_KEY + '_backup';
-            localStorage.setItem(backupKey, JSON.stringify(records));
-            showToast('💾 数据已备份到本地', 'success');
-        });
-
         // 新增一级
         document.getElementById('btnAddLevel1').addEventListener('click', () => {
             const input = document.getElementById('newLevel1Input');
@@ -2613,51 +2550,6 @@
         // 添加一级输入框回车
         document.getElementById('newLevel1Input')?.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnAddLevel1').click(); }
-        });
-
-        // 导出标签配置
-        document.getElementById('btnExportTags').addEventListener('click', () => {
-            const data = JSON.stringify(tagSystem, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `stellar_tags_${getTodayStr()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('⬇ 标签配置已导出', 'success');
-        });
-
-        // 导入标签配置
-        document.getElementById('fileInputTags').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                try {
-                    const imported = JSON.parse(ev.target.result);
-                    if (typeof imported !== 'object' || Array.isArray(imported)) throw new Error('格式错误');
-                    if (!confirm('导入标签配置将覆盖当前所有标签，确定继续？')) return;
-                    tagSystem = imported;
-                    saveTagSystem(tagSystem);
-                    renderAll();
-                    if (document.getElementById('viewTags').classList.contains('active')) renderTagManagement();
-                    showToast('✅ 标签配置已导入', 'success');
-                } catch (err) {
-                    showToast('❌ 导入失败: ' + err.message, 'error');
-                }
-            };
-            reader.readAsText(file);
-            e.target.value = '';
-        });
-
-        // 恢复默认标签
-        document.getElementById('btnResetTags').addEventListener('click', () => {
-            if (!confirm('⚠️ 恢复默认标签将覆盖当前所有标签，且不会自动修正已有记录中的标签路径（记录可能无法正确匹配）。\n\n确定继续？')) return;
-            tagSystem = resetTagSystemToDefault();
-            renderAll();
-            if (document.getElementById('viewTags').classList.contains('active')) renderTagManagement();
-            showToast('↺ 已恢复默认标签配置', 'success');
         });
 
         // 统计周期

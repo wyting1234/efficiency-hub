@@ -968,8 +968,6 @@
                 <span class="stats-badge" id="totalBadge">📊 0 件物品</span>
                 <button class="btn btn-primary" id="openAddBtn">➕ 添加物品</button>
                 <button class="btn btn-outline btn-sm" id="themeToggleBtn">🌓 切换主题</button>
-                <button class="btn btn-outline btn-sm" id="exportBtn">📥 导出数据</button>
-                <button class="btn btn-outline btn-sm" id="importBtn">📤 导入数据</button>
                 <input type="file" id="importFileInput" accept=".json" style="display:none" />
             </div>
         </header>
@@ -2158,18 +2156,6 @@
 
             // 主题切换
             $('themeToggleBtn').addEventListener('click', toggleTheme);
-
-            // 导出
-            $('exportBtn').addEventListener('click', exportData);
-
-            // 导入
-            $('importBtn').addEventListener('click', () => $('importFileInput').click());
-            $('importFileInput').addEventListener('change', function(e) {
-                if (this.files && this.files.length > 0) {
-                    importData(this.files[0]);
-                    this.value = '';
-                }
-            });
 
             // 筛选监听
             const filterInputs = [filterRoom, filterStatus, filterHasImg, filterSearch];

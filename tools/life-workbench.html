@@ -258,14 +258,6 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);flex:none
       <span>生活工作台<small style="margin-left:8px">DAILY</small></span>
     </div>
     <div class="top-sp"></div>
-    <div class="top-acts">
-      <button class="pillbtn" data-g="export" title="导出 JSON 备份">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 17v3h16v-3"/></svg>
-        <span class="lbl">导出备份</span></button>
-      <button class="pillbtn" data-g="import" title="导入恢复">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7.5 7.5 4.5-4.5 4.5 4.5"/><path d="M4 17v3h16v-3"/></svg>
-        <span class="lbl">导入恢复</span></button>
-    </div>
   </div>
 </header>
 
@@ -620,7 +612,7 @@ function miniBars(vals,color){
 }
 
 /* ---------- 导航 ---------- */
-var TABS=[['today','今日','today'],['money','记账理财','money'],['habit','习惯健康','habit'],['fit','减脂健身','fit'],['plan','日程统筹','plan'],['wish','待买清单','wish'],['media','书影音','media'],['data','数据备份','data']];
+var TABS=[['today','今日','today'],['money','记账理财','money'],['habit','习惯健康','habit'],['fit','减脂健身','fit'],['plan','日程统筹','plan'],['wish','待买清单','wish'],['media','书影音','media']];
 var view='today';
 var ui={ moneyMonth:null, moneyCat:'全部', moneyType:'全部', cmpRange:'month', mediaView:'wall', mediaFilter:'全部', planView:'week', wishView:'todo', habitEdit:false };
 
@@ -1472,7 +1464,7 @@ function renderData(){
 /* ============================================================
    渲染主循环
    ============================================================ */
-var VIEWS={today:renderToday,money:renderMoney,habit:renderHabit,fit:renderFit,plan:renderPlan,wish:renderWish,media:renderMedia,data:renderData};
+var VIEWS={today:renderToday,money:renderMoney,habit:renderHabit,fit:renderFit,plan:renderPlan,wish:renderWish,media:renderMedia};
 function render(){
   var sc=null;
   try{ sc=scores(); }catch(e){ sc={evs:[],over:0}; }

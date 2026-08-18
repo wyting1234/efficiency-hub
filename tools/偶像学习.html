@@ -914,8 +914,6 @@
         <header class="app-header">
             <h1><span>🎯</span> 偶像模仿工具</h1>
             <div class="header-actions">
-                <button class="btn btn-outline btn-sm" id="exportBtn">📤 导出数据</button>
-                <button class="btn btn-outline btn-sm" id="importBtn">📥 导入数据</button>
                 <button class="btn btn-danger-outline btn-sm" id="resetBtn">🔄 重置</button>
                 <input type="file" id="fileInput" accept=".json" />
             </div>
@@ -1846,14 +1844,8 @@
 
             document.getElementById('clearTodoBtn').addEventListener('click', clearTodoItems);
 
-            document.getElementById('exportBtn').addEventListener('click', exportData);
-            document.getElementById('importBtn').addEventListener('click', () => document.getElementById('fileInput').click());
-            document.getElementById('fileInput').addEventListener('change', function(e) {
-                if (this.files.length) {
-                    importData(this.files[0]);
-                    this.value = '';
-                }
-            });
+            
+
             document.getElementById('resetBtn').addEventListener('click', resetAll);
             document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
         }

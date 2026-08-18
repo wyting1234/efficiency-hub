@@ -795,9 +795,6 @@
             </div>
             <div class="right">
                 <button class="btn btn-primary" id="toggleFormBtn">✏️ 记录阅读</button>
-                <button class="btn btn-outline btn-sm" id="exportBtn">📤 导出</button>
-                <button class="btn btn-outline btn-sm" id="importBtn">📥 导入</button>
-                <button class="btn btn-danger btn-sm" id="clearBtn">🗑️ 清空</button>
             </div>
         </div>
         <input type="file" id="importFileInput" accept=".json" style="display:none;" />
@@ -1460,64 +1457,6 @@
         // ============================================================
         //  导入导出
         // ============================================================
-        function initExport() {
-            document.getElementById('exportBtn').addEventListener('click', () => {
-                const data = JSON.stringify({ records: state.records, exportedAt: new Date().toISOString() }, null,
-                2);
-                const blob = new Blob([data], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `reading_notes_${getToday()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-            });
-        }
-
-        function initImport() {
-            const input = document.getElementById('importFileInput');
-            document.getElementById('importBtn').addEventListener('click', () => input.click());
-            input.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    try {
-                        const data = JSON.parse(ev.target.result);
-                        if (!data.records || !Array.isArray(data.records)) {
-                            alert('无效的数据文件');
-                            return;
-                        }
-                        if (confirm(`将导入 ${data.records.length} 条记录，当前数据将被覆盖，确认继续？`)) {
-                            state.records = data.records;
-                            state.records.forEach(r => {
-                                if (!r.id) r.id = generateId();
-                                if (!r.date) r.date = getToday();
-                                if (!r.category) r.category = '其他';
-                                if (r.duration === undefined) r.duration = 0;
-                                if (r.pages !== undefined && r.pages !== null) {
-                                    r.pages = String(r.pages);
-                                } else {
-                                    r.pages = '';
-                                }
-                                if (!r.quote) r.quote = '';
-                                if (!r.thought) r.thought = '';
-                                if (!r.connection) r.connection = '';
-                                if (!r.createdAt) r.createdAt = getToday();
-                            });
-                            saveData();
-                            renderAll();
-                            alert('导入成功！');
-                        }
-                    } catch (err) {
-                        alert('导入失败：' + err.message);
-                    }
-                };
-                reader.readAsText(file);
-                input.value = '';
-            });
-        }
-
         // ============================================================
         //  清空
         // ============================================================
@@ -1565,9 +1504,6 @@
             initForm();
             initFilters();
             initViewTabs();
-            initExport();
-            initImport();
-            initClear();
 
             state.viewMode = 'list';
             state.filterCategory = 'all';
