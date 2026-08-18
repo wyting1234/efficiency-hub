@@ -1974,41 +1974,134 @@
             updateGuide(course, parseInt(document.getElementById('fChapter').value), parseInt(sectionSelect.value));
         }
 
+        // ---------- 用户补充指南（localStorage 持久化） ----------
+        const USER_GUIDE_KEY = 'cpa_user_guide_v1';
+        const GUIDE_FIELDS = ['objectives', 'keypoints', 'difficulties', 'content'];
+
+        function loadUserGuide() {
+            try { return JSON.parse(localStorage.getItem(USER_GUIDE_KEY) || '{}') || {}; }
+            catch (e) { return {}; }
+        }
+        function saveUserGuideAll(data) {
+            try { localStorage.setItem(USER_GUIDE_KEY, JSON.stringify(data)); } catch (e) {}
+        }
+        function getMergedGuide(course, chapter, section) {
+            const base = getGuide(course, chapter, section) || {};
+            const user = (loadUserGuide()[course] || {})[chapter] || {};
+            const sectionUser = user[section] || {};
+            const out = {};
+            GUIDE_FIELDS.forEach(f => {
+                const u = (sectionUser[f] || '').trim();
+                const b = (base[f] || base.objective || '').toString();
+                out[f] = u || b || '';
+            });
+            out.duration = base.duration || '';
+            return out;
+        }
+
         // ---------- 更新学习指南 ----------
         function updateGuide(course, chapter, section) {
-            const guide = getGuide(course, chapter, section);
+            const guide = getMergedGuide(course, chapter, section);
             const titleEl = document.getElementById('guideTitle');
             const durationEl = document.getElementById('guideDuration');
-            const objectiveEl = document.getElementById('guideObjective');
-            const keypointsEl = document.getElementById('guideKeypoints');
-            const masteryEl = document.getElementById('guideMastery');
             const emptyEl = document.getElementById('guideEmpty');
             const chName = getChapterName(course, chapter);
             const secName = getSectionName(course, chapter, section);
             const totalH = getChapterTotalHours(course, chapter);
+            const chSec = chName ?
+                (secName ? `第${chapter}章 ${chName} · 第${section}节 ${secName}` :
+                    `第${chapter}章 ${chName} · 第${section}节`) :
+                `第${chapter}章 第${section}节`;
+            titleEl.textContent = `📖 ${chSec} · 学习指南`;
+            durationEl.textContent = `建议时长：${guide.duration || '-'} (本章共${totalH.toFixed(1)}h)`;
 
-            if (guide) {
-                const title = chName ?
-                    (secName ? `第${chapter}章 ${chName} · 第${section}节 ${secName}` :
-                        `第${chapter}章 ${chName} · 第${section}节`) :
-                    `第${chapter}章 第${section}节`;
-                titleEl.textContent = `📖 ${title} · 学习指南`;
-                durationEl.textContent = `建议时长：${guide.duration || '-'} (本章共${totalH.toFixed(1)}h)`;
-                objectiveEl.textContent = guide.objective || '-';
-                keypointsEl.textContent = guide.keypoints || '-';
-                const mastery = guide.mastery || '了解';
-                const badgeClass = mastery.includes('熟练') ? 'mastery-熟练掌握' :
-                    mastery.includes('掌握') ? 'mastery-掌握' : 'mastery-了解';
-                masteryEl.innerHTML = `<span class="mastery-badge ${badgeClass}">${mastery}</span>`;
-                emptyEl.style.display = 'none';
-                document.querySelector('.guide-body').style.display = 'grid';
-            } else {
-                const title = chName ? `第${chapter}章 ${chName}` : `第${chapter}章`;
-                titleEl.textContent = `📖 ${title} · 学习指南`;
-                durationEl.textContent = `建议时长：${totalH.toFixed(1)}h (总计)`;
+            const body = document.getElementById('guideBody');
+            const hasAny = GUIDE_FIELDS.some(f => (guide[f] || '').trim());
+            if (!hasAny) {
+                titleEl.textContent = `📖 ${chSec} · 学习指南`;
                 emptyEl.style.display = 'block';
-                document.querySelector('.guide-body').style.display = 'none';
+                body.style.display = 'none';
+            } else {
+                emptyEl.style.display = 'none';
+                body.style.display = 'grid';
+                body.querySelectorAll('.item.editing').forEach(el => el.classList.remove('editing'));
+                GUIDE_FIELDS.forEach(f => {
+                    const item = body.querySelector(`.item[data-field="${f}"]`);
+                    if (!item) return;
+                    const valEl = item.querySelector('.value');
+                    const text = (guide[f] || '').trim();
+                    if (text) {
+                        valEl.textContent = text;
+                        valEl.classList.remove('empty');
+                    } else {
+                        valEl.textContent = '待补充，点击 ✏️ 补充';
+                        valEl.classList.add('empty');
+                    }
+                });
             }
+        }
+
+        // ---------- 指南字段编辑 ----------
+        function enterEditGuideField(field) {
+            const item = document.querySelector(`#guideBody .item[data-field="${field}"]`);
+            if (!item) return;
+            document.querySelectorAll('#guideBody .item.editing').forEach(el => {
+                if (el !== item) el.classList.remove('editing');
+            });
+            if (item.classList.contains('editing')) return;
+            item.classList.add('editing');
+            const valEl = item.querySelector('.value');
+            const current = valEl.classList.contains('empty') ? '' : (valEl.textContent || '');
+            let area = item.querySelector('.ed-area');
+            if (!area) {
+                area = document.createElement('div');
+                area.className = 'ed-area';
+                area.innerHTML = `<textarea></textarea>
+                    <div class="ed-actions">
+                        <button type="button" class="cancel">取消</button>
+                        <button type="button" class="primary save">保存</button>
+                    </div>`;
+                item.appendChild(area);
+                const ta = area.querySelector('textarea');
+                area.querySelector('.cancel').onclick = () => exitEditGuideField(item);
+                area.querySelector('.save').onclick = () => {
+                    const val = (ta.value || '').trim();
+                    if (saveGuideField(field, val)) {
+                        exitEditGuideField(item);
+                        const cs = document.getElementById('fChapter').value;
+                        const ss = document.getElementById('fSection').value;
+                        updateGuide(state.currentCourse, parseInt(cs), parseInt(ss));
+                        if (typeof toast === 'function') toast('✅ 已保存');
+                    }
+                };
+            }
+            const ta = area.querySelector('textarea');
+            ta.value = current;
+            setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 0);
+        }
+        function exitEditGuideField(item) {
+            item.classList.remove('editing');
+        }
+        function saveGuideField(field, value) {
+            const course = state.currentCourse;
+            const chapter = parseInt(document.getElementById('fChapter').value);
+            const section = parseInt(document.getElementById('fSection').value);
+            const data = loadUserGuide();
+            if (!data[course]) data[course] = {};
+            if (!data[course][chapter]) data[course][chapter] = {};
+            if (!data[course][chapter][section]) data[course][chapter][section] = {};
+            data[course][chapter][section][field] = value;
+            saveUserGuideAll(data);
+            return true;
+        }
+        function initGuideEditor() {
+            const body = document.getElementById('guideBody');
+            if (!body) return;
+            body.addEventListener('click', (e) => {
+                const btn = e.target.closest('.ed-btn');
+                if (!btn) return;
+                enterEditGuideField(btn.dataset.field);
+            });
         }
 
         // ---------- 表单初始化 ----------
