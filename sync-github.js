@@ -339,7 +339,8 @@
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
       updateStatus('已上传 ' + fmtTime(lastSyncTime));
-      openSyncPanel();
+      closeTopModal();
+      if (typeof toast === 'function') toast('✅ 上传云盘成功！');
     } catch (e) {
       console.warn('[GitHub] 上传失败:', e.message);
       alert('上传失败：' + e.message);
@@ -369,7 +370,8 @@
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
       updateStatus('已下载 ' + fmtTime(lastSyncTime));
-      openSyncPanel();
+      closeTopModal();
+      if (typeof toast === 'function') toast('✅ 下载覆盖本地成功！');
     } catch (e) {
       console.warn('[GitHub] 下载失败:', e.message);
       alert('下载失败：' + e.message);
