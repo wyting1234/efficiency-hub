@@ -1050,10 +1050,10 @@
         </div>
         <!-- 进度统计 -->
         <div class="progress-stats" id="progressStats">
-            <div class="p-item"><span class="p-label">📚 已学科目</span><span class="p-value"><span class="done" id="doneCourses">0</span> / <span class="highlight" id="totalCourses">6</span></span></div>
-            <div class="p-item"><span class="p-label">📖 已学章节</span><span class="p-value"><span class="done" id="doneChapters">0</span> / <span class="highlight" id="totalChapters">0</span></span></div>
-            <div class="p-item"><span class="p-label">📄 已学节数</span><span class="p-value"><span class="done" id="doneSections">0</span> / <span class="highlight" id="totalSections">0</span></span></div>
-            <div class="p-item"><span class="p-label">⏳ 建议学时</span><span class="p-value"><span class="done" id="doneHoursProgress">0</span> / <span class="highlight" id="totalHoursProgress">0</span> h</span></div>
+            <div class="p-item"><span class="p-label">📚 已学科目</span><span class="p-value"><span class="done" id="doneCourses">0</span> / <span class="highlight" id="totalCourses">6</span><span class="p-unit"> 科</span></span></div>
+            <div class="p-item"><span class="p-label">📖 已学章节</span><span class="p-value"><span class="done" id="doneChapters">0</span> / <span class="highlight" id="totalChapters">0</span><span class="p-unit"> 章</span></span></div>
+            <div class="p-item"><span class="p-label">📄 已学节数</span><span class="p-value"><span class="done" id="doneSections">0</span> / <span class="highlight" id="totalSections">0</span><span class="p-unit"> 节</span></span></div>
+            <div class="p-item"><span class="p-label">⏳ 建议学时</span><span class="p-value"><span class="done" id="doneHoursProgress">0</span> / <span class="highlight" id="totalHoursProgress">0</span><span class="p-unit"> h</span></span></div>
         </div>
 
         <div class="course-list-title">📚 课程进度（已学 / 建议）</div>
@@ -1215,9 +1215,10 @@
                 <span class="badge-duration" id="guideDuration">建议时长：-</span>
             </div>
             <div class="guide-body" id="guideBody">
-                <div class="item"><span class="label">学习目标</span><span class="value" id="guideObjective">-</span></div>
-                <div class="item"><span class="label">重点难点</span><span class="value" id="guideKeypoints">-</span></div>
-                <div class="item" style="grid-column:1 / -1;"><span class="label">掌握程度</span><span class="value" id="guideMastery">-</span></div>
+                <div class="item" data-field="objectives"><span class="label">学习目标</span><span class="value" id="guideObjectives">-</span><button type="button" class="ed-btn" data-field="objectives" title="编辑/补充">✏️</button></div>
+                <div class="item" data-field="keypoints"><span class="label">重点</span><span class="value" id="guideKeypoints">-</span><button type="button" class="ed-btn" data-field="keypoints" title="编辑/补充">✏️</button></div>
+                <div class="item" data-field="difficulties"><span class="label">难点</span><span class="value" id="guideDifficulties">-</span><button type="button" class="ed-btn" data-field="difficulties" title="编辑/补充">✏️</button></div>
+                <div class="item full" data-field="content"><span class="label">内容</span><span class="value" id="guideContent">-</span><button type="button" class="ed-btn" data-field="content" title="编辑/补充">✏️</button></div>
             </div>
             <div class="guide-empty" id="guideEmpty" style="display:none;">该章节暂无详细指南，请参考教材。</div>
         </div>
@@ -2699,6 +2700,7 @@
             initForm();
             initFilters();
             initTomato();
+            initGuideEditor();
 
             if (state.records.length > 0) {
                 const most = state.records.reduce((a, b) => {
