@@ -172,10 +172,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 6px;
             color: var(--text-secondary);
+            min-width: 0;
         }
-        .progress-stats .p-item .p-label { font-weight: 500; }
-        .progress-stats .p-item .p-value { font-weight: 600; color: var(--text); }
+        .progress-stats .p-item .p-label { font-weight: 500; white-space: nowrap; }
+        .progress-stats .p-item .p-value { font-weight: 600; color: var(--text); white-space: nowrap; flex-shrink: 0; }
         .progress-stats .p-item .p-value .done { color: var(--green); }
         .progress-stats .p-item .p-value .todo { color: var(--red); }
         .progress-stats .p-item .p-value .highlight { color: var(--primary); }
@@ -1064,8 +1066,6 @@
         <div class="sidebar-footer">
             <button class="primary-btn" id="importBtn">📥 导入</button>
             <button class="primary-btn" id="exportBtn">📤 导出</button>
-            <button class="primary-btn" id="fontZoomIn">🔍+</button>
-            <button class="primary-btn" id="fontZoomOut">🔍-</button>
             <button class="danger" id="clearAllBtn">🗑️ 清空</button>
         </div>
         <input type="file" id="importFileInput" accept=".json" />
@@ -2582,36 +2582,6 @@
             updateDisplay();
         }
 
-        // ---------- 字体缩放 ----------
-        let fontSizeScale = parseFloat(localStorage.getItem('cpa_font_scale') || '1');
-        const FONT_MIN = 0.8;
-        const FONT_MAX = 1.5;
-        const FONT_STEP = 0.1;
-
-        function applyFontSize() {
-            document.documentElement.style.fontSize = fontSizeScale + 'em';
-            localStorage.setItem('cpa_font_scale', fontSizeScale.toFixed(1));
-        }
-
-        function initFontZoom() {
-            // 恢复之前的字体大小
-            applyFontSize();
-
-            document.getElementById('fontZoomIn').addEventListener('click', () => {
-                if (fontSizeScale < FONT_MAX) {
-                    fontSizeScale = Math.min(FONT_MAX, fontSizeScale + FONT_STEP);
-                    applyFontSize();
-                }
-            });
-
-            document.getElementById('fontZoomOut').addEventListener('click', () => {
-                if (fontSizeScale > FONT_MIN) {
-                    fontSizeScale = Math.max(FONT_MIN, fontSizeScale - FONT_STEP);
-                    applyFontSize();
-                }
-            });
-        }
-
         // ---------- 导入导出 ----------
         function initExport() {
             document.getElementById('exportBtn').addEventListener('click', () => {
@@ -2735,7 +2705,6 @@
             initExport();
             initImport();
             initClear();
-            initFontZoom();
 
             if (state.records.length > 0) {
                 const most = state.records.reduce((a, b) => {

@@ -252,6 +252,14 @@
           <p id="dashIntro">这里把你的多个独立工具整合到同一个工作台，统一导航、统一数据备份。点击任意卡片开始，或随时用右下角导出全部数据。</p>
         </div>
         <div class="cards" id="cards"></div>
+
+        <!-- 云端同步状态条：点击打开同步面板（桌面侧栏收起时也能找到） -->
+        <div id="syncBar" title="云端同步：上传 / 下载数据"
+             style="display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin:16px 0 4px;cursor:pointer;box-shadow:var(--shadow);font-size:13px">
+          <span style="font-size:17px">🔄</span>
+          <span style="flex:1"><b>云端同步</b> <span id="syncBarStatus" style="color:var(--muted);margin-left:6px">检测中...</span></span>
+          <span style="color:var(--accent);font-size:12px;flex:none">上传 / 下载 →</span>
+        </div>
       </div>
 
       <!-- Tool iframes -->
@@ -265,7 +273,13 @@
   <div class="modal modal-wrap">
     <button class="modal-close" id="closeData">×</button>
     <h2>💾 数据管理</h2>
-    <p class="m-sub">数据保存在本机浏览器中，并通过云端同步在所有设备间自动同步。你也可以手动导出 / 导入 / 清空全部数据。</p>
+    <p class="m-sub">数据保存在本机浏览器中。换设备时用「云端同步」手动上传 / 下载（覆盖前会弹窗确认）。也可以导出 / 导入 / 清空全部数据。</p>
+
+    <div class="dm-row">
+      <div class="dm-ico">🔄</div>
+      <div class="dm-txt"><b>云端同步</b><p>手机与电脑互传数据：先在这部设备「上传」，再到另一部「下载」。两端必须用同一个 GitHub 账号。</p></div>
+      <div class="dm-act"><button class="m-btn primary" id="cloudSyncBtn">打开同步面板</button></div>
+    </div>
 
     <div class="dm-row">
       <div class="dm-ico">📤</div>
@@ -349,11 +363,10 @@ function getModules(){
   const builtin=MODULES.filter(m=>!hidden.includes(m.id));
   return builtin.concat(getCustomModules());
 }
-// 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
+// 自定义模块路径归一化：相对路径补 tools/ 前缀
 function normFile(f){
   if(/^https?:\/\//.test(f)) return f;
-  const rel = /[\/]/.test(f) ? f : 'tools/'+f;
-  return new URL(rel, location.href).href;
+  return /[\/]/.test(f) ? f : 'tools/'+f;
 }
 
 /* ============== 工具函数 ============== */
@@ -462,7 +475,7 @@ function openModule(type,id){
 }
 function refreshCurrent(){
   const cur=JSON.parse(localStorage.getItem('hub_lastModule')||'{"type":"dashboard"}');
-  if(cur.type==='tool'){const f=getFrame(cur.id);if(f){const m=MODULES.find(x=>x.id===cur.id);if(m)f.src=normFile(m.file);}}
+  if(cur.type==='tool'){const f=getFrame(cur.id);if(f)f.src=f.src;}
   else{$('#dashboard').style.display='block';}
   setTimeout(()=>{buildCards();},300);
   toast('已刷新');
@@ -660,6 +673,11 @@ function init(){
   $('#importBtn').addEventListener('click',()=>$('#importFile').click());
   $('#importFile').addEventListener('change',e=>{if(e.target.files[0])importData(e.target.files[0]);e.target.value='';});
   $('#clearBtn').addEventListener('click',clearData);
+  $('#cloudSyncBtn').addEventListener('click',()=>{modal.classList.remove('show');if(window.CloudSync)window.CloudSync.openPanel();});
+
+  // 云端同步状态条：点击打开同步面板
+  const syncBar=$('#syncBar');
+  if(syncBar) syncBar.addEventListener('click',()=>{if(window.CloudSync)window.CloudSync.openPanel();});
 
   // 模块管理弹窗
   const mmModal=$('#moduleModal');
