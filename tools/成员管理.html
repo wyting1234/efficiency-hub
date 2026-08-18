@@ -60,27 +60,7 @@
     }
 </style>
 <script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
-<script>
-(function(){
-  try{
-    var beacon=new BeaconAction({
-      appkey:'0WEB06U85YBSLJNL',
-      versionCode:'1.0.0',
-      channelID:'share',
-      delay:1000,
-      sessionDuration:30*60*1000,
-      isOversea:false,
-      needReportRqdEvent:false
-    });
-    beacon.onDirectUserAction('preview_page_view',{
-      'url':location.href,
-      'referrer':document.referrer,
-      'title':document.title,
-      'sandbox_id':'c335412a0a1b4272a060320f54bdac42'
-    });
-  }catch(e){}
-})();
-</script></head>
+</head>
 <body>
 <h1>👥 成员管理</h1>
 
@@ -89,7 +69,8 @@
     <h2 id="formTitle">➕ 新增成员</h2>
     <form id="memberForm">
         <div class="grid-row">
-            <div><label>姓名 *</label><input placeholder="成员姓名" id="mName" required maxlength="20"></div>
+            <div><label>姓名 *</label><input placeholder="成员姓名" id="mName" required maxlength="20">  <button class="btn btn-outline" onclick="exportMembers()" style="margin:10px">📤 导出JSON</button>
+</div>
             <div><label>角色</label>
                 <select id="mRole">
                     <option value="负责人">负责人</option>
@@ -331,5 +312,18 @@
         renderAll();
     })();
 </script>
+
+    // 导出成员数据
+    function exportMembers() {
+        const data = JSON.parse(localStorage.getItem('teamMembers_v1') || '[]');
+        if (!data.length) { alert('暂无数据可导出'); return; }
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '成员管理备份_' + new Date().toISOString().slice(0,10) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
 </body>
 </html>
