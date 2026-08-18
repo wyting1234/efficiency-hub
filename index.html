@@ -349,10 +349,11 @@ function getModules(){
   const builtin=MODULES.filter(m=>!hidden.includes(m.id));
   return builtin.concat(getCustomModules());
 }
-// 自定义模块路径归一化：相对路径补 tools/ 前缀
+// 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 function normFile(f){
   if(/^https?:\/\//.test(f)) return f;
-  return /[\/]/.test(f) ? f : 'tools/'+f;
+  const rel = /[\/]/.test(f) ? f : 'tools/'+f;
+  return new URL(rel, location.href).href;
 }
 
 /* ============== 工具函数 ============== */
@@ -461,7 +462,7 @@ function openModule(type,id){
 }
 function refreshCurrent(){
   const cur=JSON.parse(localStorage.getItem('hub_lastModule')||'{"type":"dashboard"}');
-  if(cur.type==='tool'){const f=getFrame(cur.id);if(f)f.src=f.src;}
+  if(cur.type==='tool'){const f=getFrame(cur.id);if(f){const m=MODULES.find(x=>x.id===cur.id);if(m)f.src=normFile(m.file);}}
   else{$('#dashboard').style.display='block';}
   setTimeout(()=>{buildCards();},300);
   toast('已刷新');
