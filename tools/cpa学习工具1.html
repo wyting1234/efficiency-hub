@@ -159,8 +159,8 @@
         /* 进度统计 */
         .progress-stats {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 6px 12px;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 12px;
             margin-bottom: 16px;
             background: var(--bg);
             border-radius: var(--radius-sm);
@@ -172,12 +172,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 6px;
             color: var(--text-secondary);
-            min-width: 0;
         }
-        .progress-stats .p-item .p-label { font-weight: 500; white-space: nowrap; }
-        .progress-stats .p-item .p-value { font-weight: 600; color: var(--text); white-space: nowrap; flex-shrink: 0; }
+        .progress-stats .p-item .p-label { font-weight: 500; }
+        .progress-stats .p-item .p-value { font-weight: 600; color: var(--text); }
         .progress-stats .p-item .p-value .done { color: var(--green); }
         .progress-stats .p-item .p-value .todo { color: var(--red); }
         .progress-stats .p-item .p-value .highlight { color: var(--primary); }
@@ -1050,10 +1048,10 @@
         </div>
         <!-- 进度统计 -->
         <div class="progress-stats" id="progressStats">
-            <div class="p-item"><span class="p-label">📚 已学科目</span><span class="p-value"><span class="done" id="doneCourses">0</span> / <span class="highlight" id="totalCourses">6</span><span class="p-unit"> 科</span></span></div>
-            <div class="p-item"><span class="p-label">📖 已学章节</span><span class="p-value"><span class="done" id="doneChapters">0</span> / <span class="highlight" id="totalChapters">0</span><span class="p-unit"> 章</span></span></div>
-            <div class="p-item"><span class="p-label">📄 已学节数</span><span class="p-value"><span class="done" id="doneSections">0</span> / <span class="highlight" id="totalSections">0</span><span class="p-unit"> 节</span></span></div>
-            <div class="p-item"><span class="p-label">⏳ 建议学时</span><span class="p-value"><span class="done" id="doneHoursProgress">0</span> / <span class="highlight" id="totalHoursProgress">0</span><span class="p-unit"> h</span></span></div>
+            <div class="p-item"><span class="p-label">📚 已学科目</span><span class="p-value"><span class="done" id="doneCourses">0</span> / <span class="highlight" id="totalCourses">6</span></span></div>
+            <div class="p-item"><span class="p-label">📖 已学章节</span><span class="p-value"><span class="done" id="doneChapters">0</span> / <span class="highlight" id="totalChapters">0</span></span></div>
+            <div class="p-item"><span class="p-label">📄 已学节数</span><span class="p-value"><span class="done" id="doneSections">0</span> / <span class="highlight" id="totalSections">0</span></span></div>
+            <div class="p-item"><span class="p-label">⏳ 建议学时</span><span class="p-value"><span class="done" id="doneHoursProgress">0</span> / <span class="highlight" id="totalHoursProgress">0</span> h</span></div>
         </div>
 
         <div class="course-list-title">📚 课程进度（已学 / 建议）</div>
@@ -1064,6 +1062,11 @@
             <div class="sub-text">每一次回顾都是新的领悟</div>
         </div>
         <div class="sidebar-footer">
+            <button class="primary-btn" id="importBtn">📥 导入</button>
+            <button class="primary-btn" id="exportBtn">📤 导出</button>
+            <button class="primary-btn" id="fontZoomIn">🔍+</button>
+            <button class="primary-btn" id="fontZoomOut">🔍-</button>
+            <button class="danger" id="clearAllBtn">🗑️ 清空</button>
         </div>
         <input type="file" id="importFileInput" accept=".json" />
     </aside>
@@ -1215,10 +1218,9 @@
                 <span class="badge-duration" id="guideDuration">建议时长：-</span>
             </div>
             <div class="guide-body" id="guideBody">
-                <div class="item" data-field="objectives"><span class="label">学习目标</span><span class="value" id="guideObjectives">-</span><button type="button" class="ed-btn" data-field="objectives" title="编辑/补充">✏️</button></div>
-                <div class="item" data-field="keypoints"><span class="label">重点</span><span class="value" id="guideKeypoints">-</span><button type="button" class="ed-btn" data-field="keypoints" title="编辑/补充">✏️</button></div>
-                <div class="item" data-field="difficulties"><span class="label">难点</span><span class="value" id="guideDifficulties">-</span><button type="button" class="ed-btn" data-field="difficulties" title="编辑/补充">✏️</button></div>
-                <div class="item full" data-field="content"><span class="label">内容</span><span class="value" id="guideContent">-</span><button type="button" class="ed-btn" data-field="content" title="编辑/补充">✏️</button></div>
+                <div class="item"><span class="label">学习目标</span><span class="value" id="guideObjective">-</span></div>
+                <div class="item"><span class="label">重点难点</span><span class="value" id="guideKeypoints">-</span></div>
+                <div class="item" style="grid-column:1 / -1;"><span class="label">掌握程度</span><span class="value" id="guideMastery">-</span></div>
             </div>
             <div class="guide-empty" id="guideEmpty" style="display:none;">该章节暂无详细指南，请参考教材。</div>
         </div>
@@ -1974,134 +1976,41 @@
             updateGuide(course, parseInt(document.getElementById('fChapter').value), parseInt(sectionSelect.value));
         }
 
-        // ---------- 用户补充指南（localStorage 持久化） ----------
-        const USER_GUIDE_KEY = 'cpa_user_guide_v1';
-        const GUIDE_FIELDS = ['objectives', 'keypoints', 'difficulties', 'content'];
-
-        function loadUserGuide() {
-            try { return JSON.parse(localStorage.getItem(USER_GUIDE_KEY) || '{}') || {}; }
-            catch (e) { return {}; }
-        }
-        function saveUserGuideAll(data) {
-            try { localStorage.setItem(USER_GUIDE_KEY, JSON.stringify(data)); } catch (e) {}
-        }
-        function getMergedGuide(course, chapter, section) {
-            const base = getGuide(course, chapter, section) || {};
-            const user = (loadUserGuide()[course] || {})[chapter] || {};
-            const sectionUser = user[section] || {};
-            const out = {};
-            GUIDE_FIELDS.forEach(f => {
-                const u = (sectionUser[f] || '').trim();
-                const b = (base[f] || base.objective || '').toString();
-                out[f] = u || b || '';
-            });
-            out.duration = base.duration || '';
-            return out;
-        }
-
         // ---------- 更新学习指南 ----------
         function updateGuide(course, chapter, section) {
-            const guide = getMergedGuide(course, chapter, section);
+            const guide = getGuide(course, chapter, section);
             const titleEl = document.getElementById('guideTitle');
             const durationEl = document.getElementById('guideDuration');
+            const objectiveEl = document.getElementById('guideObjective');
+            const keypointsEl = document.getElementById('guideKeypoints');
+            const masteryEl = document.getElementById('guideMastery');
             const emptyEl = document.getElementById('guideEmpty');
             const chName = getChapterName(course, chapter);
             const secName = getSectionName(course, chapter, section);
             const totalH = getChapterTotalHours(course, chapter);
-            const chSec = chName ?
-                (secName ? `第${chapter}章 ${chName} · 第${section}节 ${secName}` :
-                    `第${chapter}章 ${chName} · 第${section}节`) :
-                `第${chapter}章 第${section}节`;
-            titleEl.textContent = `📖 ${chSec} · 学习指南`;
-            durationEl.textContent = `建议时长：${guide.duration || '-'} (本章共${totalH.toFixed(1)}h)`;
 
-            const body = document.getElementById('guideBody');
-            const hasAny = GUIDE_FIELDS.some(f => (guide[f] || '').trim());
-            if (!hasAny) {
-                titleEl.textContent = `📖 ${chSec} · 学习指南`;
-                emptyEl.style.display = 'block';
-                body.style.display = 'none';
-            } else {
+            if (guide) {
+                const title = chName ?
+                    (secName ? `第${chapter}章 ${chName} · 第${section}节 ${secName}` :
+                        `第${chapter}章 ${chName} · 第${section}节`) :
+                    `第${chapter}章 第${section}节`;
+                titleEl.textContent = `📖 ${title} · 学习指南`;
+                durationEl.textContent = `建议时长：${guide.duration || '-'} (本章共${totalH.toFixed(1)}h)`;
+                objectiveEl.textContent = guide.objective || '-';
+                keypointsEl.textContent = guide.keypoints || '-';
+                const mastery = guide.mastery || '了解';
+                const badgeClass = mastery.includes('熟练') ? 'mastery-熟练掌握' :
+                    mastery.includes('掌握') ? 'mastery-掌握' : 'mastery-了解';
+                masteryEl.innerHTML = `<span class="mastery-badge ${badgeClass}">${mastery}</span>`;
                 emptyEl.style.display = 'none';
-                body.style.display = 'grid';
-                body.querySelectorAll('.item.editing').forEach(el => el.classList.remove('editing'));
-                GUIDE_FIELDS.forEach(f => {
-                    const item = body.querySelector(`.item[data-field="${f}"]`);
-                    if (!item) return;
-                    const valEl = item.querySelector('.value');
-                    const text = (guide[f] || '').trim();
-                    if (text) {
-                        valEl.textContent = text;
-                        valEl.classList.remove('empty');
-                    } else {
-                        valEl.textContent = '待补充，点击 ✏️ 补充';
-                        valEl.classList.add('empty');
-                    }
-                });
+                document.querySelector('.guide-body').style.display = 'grid';
+            } else {
+                const title = chName ? `第${chapter}章 ${chName}` : `第${chapter}章`;
+                titleEl.textContent = `📖 ${title} · 学习指南`;
+                durationEl.textContent = `建议时长：${totalH.toFixed(1)}h (总计)`;
+                emptyEl.style.display = 'block';
+                document.querySelector('.guide-body').style.display = 'none';
             }
-        }
-
-        // ---------- 指南字段编辑 ----------
-        function enterEditGuideField(field) {
-            const item = document.querySelector(`#guideBody .item[data-field="${field}"]`);
-            if (!item) return;
-            document.querySelectorAll('#guideBody .item.editing').forEach(el => {
-                if (el !== item) el.classList.remove('editing');
-            });
-            if (item.classList.contains('editing')) return;
-            item.classList.add('editing');
-            const valEl = item.querySelector('.value');
-            const current = valEl.classList.contains('empty') ? '' : (valEl.textContent || '');
-            let area = item.querySelector('.ed-area');
-            if (!area) {
-                area = document.createElement('div');
-                area.className = 'ed-area';
-                area.innerHTML = `<textarea></textarea>
-                    <div class="ed-actions">
-                        <button type="button" class="cancel">取消</button>
-                        <button type="button" class="primary save">保存</button>
-                    </div>`;
-                item.appendChild(area);
-                const ta = area.querySelector('textarea');
-                area.querySelector('.cancel').onclick = () => exitEditGuideField(item);
-                area.querySelector('.save').onclick = () => {
-                    const val = (ta.value || '').trim();
-                    if (saveGuideField(field, val)) {
-                        exitEditGuideField(item);
-                        const cs = document.getElementById('fChapter').value;
-                        const ss = document.getElementById('fSection').value;
-                        updateGuide(state.currentCourse, parseInt(cs), parseInt(ss));
-                        if (typeof toast === 'function') toast('✅ 已保存');
-                    }
-                };
-            }
-            const ta = area.querySelector('textarea');
-            ta.value = current;
-            setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 0);
-        }
-        function exitEditGuideField(item) {
-            item.classList.remove('editing');
-        }
-        function saveGuideField(field, value) {
-            const course = state.currentCourse;
-            const chapter = parseInt(document.getElementById('fChapter').value);
-            const section = parseInt(document.getElementById('fSection').value);
-            const data = loadUserGuide();
-            if (!data[course]) data[course] = {};
-            if (!data[course][chapter]) data[course][chapter] = {};
-            if (!data[course][chapter][section]) data[course][chapter][section] = {};
-            data[course][chapter][section][field] = value;
-            saveUserGuideAll(data);
-            return true;
-        }
-        function initGuideEditor() {
-            const body = document.getElementById('guideBody');
-            if (!body) return;
-            body.addEventListener('click', (e) => {
-                const btn = e.target.closest('.ed-btn');
-                if (!btn) return;
-                enterEditGuideField(btn.dataset.field);
-            });
         }
 
         // ---------- 表单初始化 ----------
@@ -2673,6 +2582,36 @@
             updateDisplay();
         }
 
+        // ---------- 字体缩放 ----------
+        let fontSizeScale = parseFloat(localStorage.getItem('cpa_font_scale') || '1');
+        const FONT_MIN = 0.8;
+        const FONT_MAX = 1.5;
+        const FONT_STEP = 0.1;
+
+        function applyFontSize() {
+            document.documentElement.style.fontSize = fontSizeScale + 'em';
+            localStorage.setItem('cpa_font_scale', fontSizeScale.toFixed(1));
+        }
+
+        function initFontZoom() {
+            // 恢复之前的字体大小
+            applyFontSize();
+
+            document.getElementById('fontZoomIn').addEventListener('click', () => {
+                if (fontSizeScale < FONT_MAX) {
+                    fontSizeScale = Math.min(FONT_MAX, fontSizeScale + FONT_STEP);
+                    applyFontSize();
+                }
+            });
+
+            document.getElementById('fontZoomOut').addEventListener('click', () => {
+                if (fontSizeScale > FONT_MIN) {
+                    fontSizeScale = Math.max(FONT_MIN, fontSizeScale - FONT_STEP);
+                    applyFontSize();
+                }
+            });
+        }
+
         // ---------- 导入导出 ----------
         function initExport() {
             document.getElementById('exportBtn').addEventListener('click', () => {
@@ -2793,7 +2732,10 @@
             initForm();
             initFilters();
             initTomato();
-            initGuideEditor();
+            initExport();
+            initImport();
+            initClear();
+            initFontZoom();
 
             if (state.records.length > 0) {
                 const most = state.records.reduce((a, b) => {
