@@ -1547,17 +1547,6 @@
             }
         }
 
-        function exportData() {
-            if (items.length === 0) { showToast('没有数据可导出', 'info'); return; }
-            const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `收纳管家备份_${new Date().toISOString().slice(0,10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('数据导出成功', 'success');
-        }
 
         function importData(file) {
             const reader = new FileReader();
@@ -2160,10 +2149,8 @@
             $('themeToggleBtn').addEventListener('click', toggleTheme);
 
             // 导出
-            $('exportBtn').addEventListener('click', exportData);
 
             // 导入
-            $('importBtn').addEventListener('click', () => $('importFileInput').click());
             $('importFileInput').addEventListener('change', function(e) {
                 if (this.files && this.files.length > 0) {
                     importData(this.files[0]);
