@@ -1297,8 +1297,13 @@
             updateWorkTypes(this.value);
         });
 
-        // 管理类别按钮
-        document.getElementById('manageCategoriesBtn').addEventListener('click', openCategoryManager);
+        // 管理类别按钮 - 在DOM就绪后绑定
+        function bindCategoryButton() {
+            const btn = document.getElementById('manageCategoriesBtn');
+            if (btn) {
+                btn.addEventListener('click', openCategoryManager);
+            }
+        }
 
         // ================================================================
         //  工时自动计算
@@ -1689,7 +1694,10 @@
         }
 
         // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', function() {
+            init();
+            bindCategoryButton();
+        });
 
         // ================================================================
         //  类别管理功能
