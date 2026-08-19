@@ -259,12 +259,8 @@ input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);flex:none
     </div>
     <div class="top-sp"></div>
     <div class="top-acts">
-      <button class="pillbtn" data-g="export" title="导出 JSON 备份">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 17v3h16v-3"/></svg>
-        <span class="lbl">导出备份</span></button>
-      <button class="pillbtn" data-g="import" title="导入恢复">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7.5 7.5 4.5-4.5 4.5 4.5"/><path d="M4 17v3h16v-3"/></svg>
-        <span class="lbl">导入恢复</span></button>
+      
+      
     </div>
   </div>
 </header>
@@ -825,7 +821,7 @@ function renderMoney(){
 
   var h='';
   h+='<div class="hd"><div class="t">记账理财</div><div class="s">'+cur.replace('-','年')+'月</div><div class="sp"></div>'+
-     '<button class="btn sec" data-act="exportCSV">'+ic('down',15)+'<span class="lbl">导出 Excel</span></button></div>';
+     '</div>';
 
   /* 录入 */
   h+='<div class="sec"><div class="panel"><form data-form="tx">'+
@@ -1436,9 +1432,9 @@ function renderData(){
   h+='<div class="sec"><div class="panel"><div class="sec-h" style="border:none;padding:0;margin-bottom:12px">'+ic('data',16)+'<h3>备份与恢复</h3></div>'+
      '<div class="sm muted" style="margin-bottom:14px">所有数据只保存在这台设备的浏览器里，不会上传到任何服务器。清理浏览器数据、换设备、换浏览器都会导致丢失，所以<b style="color:var(--ink)">请定期导出一份 JSON 存到网盘或发给自己</b>。</div>'+
      '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
-     '<button class="btn" data-g="export">'+ic('down',16)+'导出 JSON 备份</button>'+
-     '<button class="btn sec" data-g="import">'+ic('up',16)+'导入恢复（不限条数）</button>'+
-     '<button class="btn sec" data-act="exportCSV">'+ic('down',16)+'导出记账 Excel</button>'+
+     ''+
+     ''+
+     ''+
      '</div>'+
      '<div class="hr"></div>'+
      '<div class="sm"><span class="muted">上次备份：</span>'+(state.meta.lastBackup?esc(state.meta.lastBackup):'从未备份')+
