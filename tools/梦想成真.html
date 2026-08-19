@@ -1664,21 +1664,5 @@
 
 
     // 导出所有数据
-    function exportDream() {
-        const data = {
-            goals: JSON.parse(localStorage.getItem('dreamGoals') || '[]'),
-            diaries: JSON.parse(localStorage.getItem('dreamDiaries') || '[]'),
-            habits: JSON.parse(localStorage.getItem('dreamHabits') || '[]'),
-            habitRecords: JSON.parse(localStorage.getItem('dreamHabitRecords') || '[]')
-        };
-        if (!data.goals.length && !data.diaries.length) { alert('暂无数据可导出'); return; }
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = '梦想成真备份_' + new Date().toISOString().slice(0,10) + '.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    }
 </body>
 </html>
