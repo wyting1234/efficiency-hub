@@ -323,13 +323,13 @@
             flex-shrink: 0;
         }
         .record-item .ri-note {
-            font-size: 12px;
-            color: #94a3b8;
-            max-width: 100px;
+            font-size: 13px;
+            color: #475569;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            flex-shrink: 0;
+            flex: 1;
+            min-width: 0;
         }
         .record-item .ri-del {
             color: #94a3b8;
@@ -818,7 +818,8 @@
                 font-size: 12px;
             }
             .record-item .ri-note {
-                max-width: 60px;
+                flex: 1;
+                min-width: 0;
                 font-size: 11px;
             }
             .todo-input-row {
@@ -898,27 +899,7 @@
         }
     </style>
 <script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
-<script>
-(function(){
-  try{
-    var beacon=new BeaconAction({
-      appkey:'0WEB06U85YBSLJNL',
-      versionCode:'1.0.0',
-      channelID:'share',
-      delay:1000,
-      sessionDuration:30*60*1000,
-      isOversea:false,
-      needReportRqdEvent:false
-    });
-    beacon.onDirectUserAction('preview_page_view',{
-      'url':location.href,
-      'referrer':document.referrer,
-      'title':document.title,
-      'sandbox_id':'9da32fa4efeb46b7b867f769dc97b15b'
-    });
-  }catch(e){}
-})();
-</script></head>
+</head>
 <body>
 
     <div id="app">
@@ -1162,17 +1143,14 @@
                 if (saved && Array.isArray(saved) && saved.length) {
                     const result = [];
                     saved.forEach(s => {
-                        if (result.some(r => r.key === s.key)) return;
-                        const def = DEFAULT_CATEGORIES.find(d => d.key === s.key);
-                        if (def) {
-                            // 内置类别：用代码里的默认值，场景以保存的为准
-                            result.push({ ...def, scene: s.scene || def.scene || '生活' });
-                        } else {
-                            // 自定义类别（如「其他」里新增的）：必须保留，否则刷新后丢失
+                        const def = DEFAULT_CATEGORIES.find(d => d.key === s.key) ||
+                                    cats.find(d => d.key === s.key);
+                        // 允许自定义类别（不在默认列表中）
+                        if (def || s.key) {
                             result.push({
                                 key: s.key,
-                                color: s.color || CATEGORIES.find(c => c.key === s.key)?.color || '#94A3B8',
-                                scene: (s.scene && SCENE_NAMES.includes(s.scene)) ? s.scene : '生活'
+                                color: s.color || (def ? def.color : '#888888'),
+                                scene: s.scene || (def ? def.scene : '生活')
                             });
                         }
                     });
@@ -1719,7 +1697,7 @@
                             <span class="ri-cat" style="color:${color};">${r.category}</span>
                             <span class="ri-time">${timeStr}</span>
                             <span class="ri-dur">${durStr}</span>
-                            ${noteStr ? `<span class="ri-note" title="${noteStr}">${noteStr}</span>` : ''}
+                            <span class="ri-note" title="${noteStr}">${noteStr || '无备注'}</span>
                             <button class="ri-del" data-id="${r.id}" title="删除"><i class="fas fa-times"></i></button>
                         </div>
                     `;
