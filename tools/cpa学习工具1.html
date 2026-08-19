@@ -2774,34 +2774,7 @@
         }
 
         // ---------- 导入导出 ----------
-        function initExport() {
-            document.getElementById('exportBtn').addEventListener('click', () => {
-                const data = JSON.stringify({ records: state.records, tomato: { count: state.tomato.count },
-                    exportedAt: new Date().toISOString(), version: '3.0' }, null, 2);
-                const blob = new Blob([data], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `cpa_learning_export_${getToday()}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-            });
-        }
 
-        function initImport() {
-            const input = document.getElementById('importFileInput');
-            document.getElementById('importBtn').addEventListener('click', () => { input.click(); });
-            input.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    try {
-                        const data = JSON.parse(ev.target.result);
-                        if (!data.records || !Array.isArray(data.records)) {
-                            alert('无效的数据文件：缺少 records 数组');
-                            return;
-                        }
                         if (data.records.length > 0) {
                             const sample = data.records[0];
                             if (!sample.course || !sample.chapter) {
@@ -2893,8 +2866,6 @@
             initForm();
             initFilters();
             initTomato();
-            initExport();
-            initImport();
             initClear();
             initFontZoom();
 
