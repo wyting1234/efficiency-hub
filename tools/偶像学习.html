@@ -1664,21 +1664,6 @@
             }
         }
 
-        function exportData() {
-            const data = {
-                targets: getTargets(),
-                habits: getHabits(),
-                badHabits: getBadHabits(),
-                checklist: getChecklist(),
-            };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `habit_data_${getToday()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
 
         function importData(file) {
             const reader = new FileReader();
@@ -1846,8 +1831,6 @@
 
             document.getElementById('clearTodoBtn').addEventListener('click', clearTodoItems);
 
-            document.getElementById('exportBtn').addEventListener('click', exportData);
-            document.getElementById('importBtn').addEventListener('click', () => document.getElementById('fileInput').click());
             document.getElementById('fileInput').addEventListener('change', function(e) {
                 if (this.files.length) {
                     importData(this.files[0]);
