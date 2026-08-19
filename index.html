@@ -659,7 +659,7 @@ function init(){
 
   // 数据管理弹窗
   const modal=$('#dataModal');
-  $('#openData').addEventListener('click',()=>{refreshBadges();modal.classList.add('show');});
+  // #openData was removed from sidebar; data modal now opens via #dataBtn only
   $('#dataBtn').addEventListener('click',()=>{refreshBadges();modal.classList.add('show');});
   $('#closeData').addEventListener('click',()=>modal.classList.remove('show'));
   modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('show');});
