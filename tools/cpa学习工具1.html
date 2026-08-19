@@ -2948,7 +2948,6 @@
         function closeEditGuide() {
             const modal = document.getElementById('guideEditModal');
             if (modal) modal.remove();
-        }
 
         function saveEditGuide() {
             if (!editingGuideKey) return;
@@ -2971,12 +2970,9 @@
                     localStorage.setItem('cpa_custom_guides', JSON.stringify(customGuides));
                 } catch (e) {
                     console.error('保存指南失败', e);
-                }
-            }
             
             closeEditGuide();
             updateGuide(course, chapter, section);
-        }
     </script>
 </body>
 </html>
