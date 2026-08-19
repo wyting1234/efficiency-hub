@@ -1056,21 +1056,6 @@
     }
 
     // ========== 导入导出 ==========
-    function exportData() {
-        const allData = {};
-        for (const [key, storageKey] of Object.entries(KEYS)) {
-            allData[storageKey] = getData(storageKey);
-        }
-        allData[FOOD_DB_KEY] = getData(FOOD_DB_KEY); // 一并备份我的食物库
-        const json = JSON.stringify(allData, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `health_data_${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
 
     function importData(file) {
         const reader = new FileReader();
@@ -1115,7 +1100,6 @@
         reader.readAsText(file);
     }
 
-    document.getElementById('exportBtn').addEventListener('click', exportData);
 
     document.getElementById('importFileInput').addEventListener('change', function(e) {
         if (this.files.length > 0) {
