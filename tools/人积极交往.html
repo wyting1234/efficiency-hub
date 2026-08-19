@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人际交往与沟通管理 · 复盘学习体系</title>
+    <style>
+        /* ===== 全局设计令牌 ===== */
+        :root {
+            --primary: #1a3a5c;
+            --primary-light: #2a5a8c;
+            --primary-lighter: #e8f0fe;
+            --primary-gradient: linear-gradient(135deg, #1a3a5c 0%, #2a5a8c 100%);
+            --success: #0f7b3a;
+            --success-bg: #e6f5ed;
+            --warning: #b45309;
+            --warning-bg: #fef3e8;
+            --danger: #b91c1c;
+            --danger-bg: #fde8e8;
+            --text-main: #1a1a2e;
+            --text-soft: #4a4a6a;
+            --text-muted: #8a8aaa;
+            --border: #e2e8f0;
+            --bg-page: #f6f9fc;
+            --bg-card: #ffffff;
+            --bg-sidebar: #f8fafc;
+            --shadow-sm: 0 1px 3px rgba(26, 58, 92, 0.06), 0 1px 2px rgba(26, 58, 92, 0.04);
+            --shadow-md: 0 4px 20px rgba(26, 58, 92, 0.08), 0 1px 4px rgba(26, 58, 92, 0.04);
+            --shadow-lg: 0 12px 48px rgba(26, 58, 92, 0.12), 0 4px 12px rgba(26, 58, 92, 0.04);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Noto Sans SC, system-ui, sans-serif;
+        }
+
+        /* ===== 重置与基础 ===== */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font);
+            color: var(--text-main);
+            background: var(--bg-page);
+            line-height: 1.7;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== 滚动条 ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-page);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* ===== 布局 ===== */
+        .app {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* ===== 侧边栏 ===== */
+        .sidebar {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            padding: 28px 16px 32px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 8px 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .sidebar-brand .logo {
+            width: 36px;
+            height: 36px;
+            background: var(--primary-gradient);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 18px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .sidebar-brand h2 {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.3px;
+            line-height: 1.3;
+        }
+        .sidebar-brand small {
+            display: block;
+            font-size: 11px;
+            font-weight: 400;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+        }
+        .sidebar-nav ul {
+            list-style: none;
+        }
+        .sidebar-nav li {
+            margin-bottom: 2px;
+        }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-soft);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: var(--transition);
+            position: relative;
+        }
+        .sidebar-nav a:hover {
+            background: var(--primary-lighter);
+            color: var(--primary);
+        }
+        .sidebar-nav a .icon {
+            font-size: 16px;
+            width: 24px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .sidebar-nav a .badge {
+            margin-left: auto;
+            background: var(--primary-lighter);
+            color: var(--primary);
+            font-size: 11px;
+            padding: 0 8px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .sidebar-nav .section-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            padding: 16px 12px 6px;
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* ===== 移动端汉堡菜单 ===== */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 100;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+        .menu-toggle:hover {
+            box-shadow: var(--shadow-md);
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 50;
+            backdrop-filter: blur(4px);
+        }
+
+        /* ===== 主内容 ===== */
+        .main {
+            max-width: 1100px;
+            padding: 40px 40px 60px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* ===== 标题 ===== */
+        .page-header {
+            margin-bottom: 36px;
+        }
+        .page-header h1 {
+            font-size: 30px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+        .page-header p {
+            color: var(--text-soft);
+            margin-top: 6px;
+            font-size: 16px;
+        }
+
+        /* ===== 内容卡片 ===== */
+        .content-section {
+            margin-bottom: 48px;
+        }
+        .content-section>h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            scroll-margin-top: 20px;
+        }
+        .content-section>h2 .emoji {
+            font-size: 26px;
+        }
+
+        .content-section>h3 {
+            font-size: 19px;
+            font-weight: 700;
+            margin: 28px 0 12px;
+            color: var(--text-main);
+        }
+        .content-section>h3 .sub {
+            font-weight: 400;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .content-section p {
+            color: var(--text-soft);
+            margin-bottom: 14px;
+        }
+
+        /* ===== 卡片容器 ===== */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            transition: var(--transition);
+        }
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* ===== 表格 ===== */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 16px 0 20px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            background: var(--bg-card);
+        }
+        th,
+        td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--bg-sidebar);
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background: var(--primary-lighter);
+        }
+
+        /* ===== 代码块 ===== */
+        pre {
+            background: var(--bg-sidebar);
+            border-radius: var(--radius-sm);
+            padding: 16px 20px;
+            overflow-x: auto;
+            margin: 16px 0;
+            border: 1px solid var(--border);
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        pre code {
+            font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+            color: var(--text-main);
+        }
+
+        /* ===== 折叠面板 ===== */
+        details {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin: 12px 0;
+            background: var(--bg-card);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+        details:hover {
+            border-color: var(--primary-light);
+        }
+        summary {
+            padding: 14px 18px;
+            cursor: pointer;
+            font-weight: 600;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+            transition: var(--transition);
+        }
+        summary:hover {
+            background: var(--primary-lighter);
+        }
+        summary::before {
+            content: "▶";
+            font-size: 12px;
+            transition: transform var(--transition);
+            color: var(--primary);
+        }
+        details[open] summary::before {
+            transform: rotate(90deg);
+        }
+        details .detail-body {
+            padding: 0 18px 18px;
+        }
+
+        /* ===== 提示框 ===== */
+        .tip {
+            background: var(--primary-lighter);
+            border-left: 4px solid var(--primary);
+            padding: 14px 18px;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            margin: 16px 0;
+            color: var(--text-main);
+            font-size: 14px;
+        }
+        .tip-success {
+            background: var(--success-bg);
+            border-left-color: var(--success);
+        }
+        .tip-warning {
+            background: var(--warning-bg);
+            border-left-color: var(--warning);
+        }
+        .tip-danger {
+            background: var(--danger-bg);
+            border-left-color: var(--danger);
+        }
+
+        /* ===== 列表 ===== */
+        ul,
+        ol {
+            padding-left: 24px;
+            margin-bottom: 16px;
+        }
+        li {
+            margin-bottom: 6px;
+            color: var(--text-soft);
+        }
+
+        /* ===== 台账模块 ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+        .stat-card .num {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1.2;
+        }
+        .stat-card .label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        /* ===== Tabs ===== */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 2px;
+        }
+        .tab-btn {
+            padding: 8px 18px;
+            border: none;
+            background: transparent;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-soft);
+            transition: var(--transition);
+            position: relative;
+            font-family: var(--font);
+        }
+        .tab-btn:hover {
+            color: var(--primary);
+            background: var(--primary-lighter);
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            background: var(--primary-lighter);
+        }
+        .tab-btn.active::after {
+            content: "";
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px 2px 0 0;
+        }
+
+        .tab-panel {
+            display: none;
+            animation: fadeUp 0.3s ease;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== 表单 ===== */
+        .form-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+        .form-card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-main);
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+            color: var(--text-main);
+        }
+        .form-group .hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-left: 6px;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: var(--font);
+            transition: var(--transition);
+            background: var(--bg-card);
+            color: var(--text-main);
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(26, 58, 92, 0.1);
+        }
+        .form-group textarea {
+            min-height: 72px;
+            resize: vertical;
+        }
+        .form-group select {
+            appearance: auto;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .btn {
+            padding: 9px 20px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: var(--font);
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(26, 58, 92, 0.3);
+        }
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+        .btn-success:hover {
+            box-shadow: 0 4px 12px rgba(15, 123, 58, 0.3);
+        }
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+        .btn-danger:hover {
+            box-shadow: 0 4px 12px rgba(185, 28, 28, 0.3);
+        }
+        .btn-outline {
+            background: transparent;
+            color: var(--text-soft);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover {
+            background: var(--bg-sidebar);
+            border-color: var(--text-muted);
+        }
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+        }
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        /* ===== 记录列表 ===== */
+        .record-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .record-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px 18px;
+            transition: var(--transition);
+            position: relative;
+        }
+        .record-item:hover {
+            border-color: var(--primary-light);
+            box-shadow: var(--shadow-sm);
+        }
+        .record-item.done {
+            background: var(--success-bg);
+            border-left: 4px solid var(--success);
+        }
+        .record-item .record-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .record-item .record-header .tag {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 1px 10px;
+            border-radius: 20px;
+            background: var(--primary-lighter);
+            color: var(--primary);
+        }
+        .record-item .record-header .time {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        .record-item .record-body {
+            font-size: 14px;
+            color: var(--text-soft);
+        }
+        .record-item .record-body strong {
+            color: var(--text-main);
+        }
+        .record-item .record-actions {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .record-item .record-check {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--text-soft);
+            cursor: pointer;
+        }
+        .record-item .record-check input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--success);
+            cursor: pointer;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+        .empty-state p {
+            font-size: 15px;
+        }
+
+        /* ===== 工具类 ===== */
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .mt-16 {
+            margin-top: 16px;
+        }
+        .mb-8 {
+            margin-bottom: 8px;
+        }
+        .mb-16 {
+            margin-bottom: 16px;
+        }
+        .flex {
+            display: flex;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .gap-8 {
+            gap: 8px;
+        }
+        .gap-12 {
+            gap: 12px;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 1024px) {
+            .app {
+                grid-template-columns: 240px 1fr;
+            }
+            .main {
+                padding: 28px 24px 48px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+
+            .menu-toggle {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .menu-toggle span {
+                font-size: 14px;
+                font-weight: 500;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: -320px;
+                width: 300px;
+                height: 100vh;
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                z-index: 60;
+                box-shadow: var(--shadow-lg);
+                border-right: none;
+                padding: 20px 14px 24px;
+                background: #fff;
+            }
+            .sidebar.open {
+                left: 0;
+            }
+            .sidebar-overlay.active {
+                display: block;
+            }
+
+            .main {
+                padding: 72px 16px 40px;
+            }
+
+            .page-header h1 {
+                font-size: 24px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .tabs {
+                gap: 4px;
+            }
+            .tab-btn {
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+
+            table {
+                font-size: 13px;
+            }
+            th,
+            td {
+                padding: 8px 10px;
+            }
+
+            .card {
+                padding: 16px;
+            }
+            .form-card {
+                padding: 16px;
+            }
+
+            .record-item {
+                padding: 14px;
+            }
+            .record-item .record-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            .stat-card .num {
+                font-size: 20px;
+            }
+            .btn {
+                padding: 7px 14px;
+                font-size: 13px;
+            }
+            .page-header h1 {
+                font-size: 20px;
+            }
+            .content-section>h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== 移动端遮罩 ===== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ===== 移动端菜单按钮 ===== -->
+    <button class="menu-toggle" id="menuToggle" aria-label="切换导航菜单">
+        ☰ <span>菜单</span>
+    </button>
+
+    <!-- ===== 应用 ===== -->
+    <div class="app">
+
+        <!-- ===== 侧边栏 ===== -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="logo">🧠</div>
+                <div>
+                    <h2>沟通复盘体系</h2>
+                    <small>人际交往 · 能力跃迁</small>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="section-label">📋 台账</li>
+                    <li><a href="#record"><span class="icon">📝</span> 复盘台账 <span class="badge" id="dailyCountBadge">0</span></a></li>
+
+                    <li class="section-label">📚 体系</li>
+                    <li><a href="#part1"><span class="icon">📊</span> 5维能力模型</a></li>
+                    <li><a href="#part2"><span class="icon">🔄</span> 三层复盘闭环</a></li>
+                    <li><a href="#part3"><span class="icon">📖</span> 学习体系</a></li>
+                    <li><a href="#part4"><span class="icon">🧰</span> 工具与模板</a></li>
+                    <li><a href="#part5"><span class="icon">🚀</span> 进阶路径</a></li>
+                    <li><a href="#part6"><span class="icon">✅</span> 第一周行动</a></li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                v2.0 · 本地存储
+            </div>
+        </aside>
+
+        <!-- ===== 主内容 ===== -->
+        <main class="main">
+
+            <!-- 页头 -->
+            <header class="page-header">
+                <h1>🧠 人际交往与沟通管理能力 <br style="display:none;">复盘学习体系</h1>
+                <p>从每一次真实沟通中提取经验，构建可迭代的能力成长闭环。</p>
+            </header>
+
+            <!-- ========================================================= -->
+            <!-- 台账模块 -->
+            <!-- ========================================================= -->
+            <section class="content-section" id="record">
+                <h2><span class="emoji">📝</span> 复盘台账 &amp; 执行记录</h2>
+
+                <!-- 统计 -->
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card"><div class="num" id="statDaily">0</div><div class="label">日复盘事件</div></div>
+                    <div class="stat-card"><div class="num" id="statDone">0</div><div class="label">已完成</div></div>
+                    <div class="stat-card"><div class="num" id="statWeek">0</div><div class="label">周练习任务</div></div>
+                    <div class="stat-card"><div class="num" id="statMonth">0</div><div class="label">月度评估</div></div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs" id="recordTabs">
+                    <button class="tab-btn active" data-tab="tabDaily">📅 日复盘</button>
+                    <button class="tab-btn" data-tab="tabWeek">📆 周练习</button>
+                    <button class="tab-btn" data-tab="tabMonth">📈 月度评分</button>
+                </div>
+
+                <!-- ===== Tab: 日复盘 ===== -->
+                <div class="tab-panel active" id="tabDaily">
+                    <div class="flex-between mb-16">
+                        <span style="font-weight:600;color:var(--text-soft);">关键事件卡 · 记录与执行跟踪</span>
+                        <div class="btn-group">
+                            <button class="btn btn-success btn-sm" onclick="exportDaily()">📤 导出备份</button>
+                            <button class="btn btn-danger btn-sm" onclick="clearAllDaily()">🗑️ 清空全部</button>
+                        </div>
+                    </div>
+
+                    <!-- 新建表单 -->
+                    <div class="form-card">
+                        <h3>✏️ 新建关键事件卡</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>事件 <span class="hint">对象 + 话题 + 结果</span></label>
+                                <input id="d_event" placeholder="例：和客户沟通方案报价，对方提出降价诉求">
+                            </div>
+                            <div class="form-group">
+                                <label>对应维度</label>
+                                <select id="d_dim">
+                                    <option value="D1">D1 自我认知与情绪管理</option>
+                                    <option value="D2">D2 倾听与理解</option>
+                                    <option value="D3">D3 表达与说服</option>
+                                    <option value="D4">D4 冲突处理与谈判</option>
+                                    <option value="D5">D5 关系经营与人脉</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>目标 <span class="hint">我当时想达成什么？</span></label>
+                            <textarea id="d_target" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>实际 <span class="hint">对方反应 + 最终结果</span></label>
+                            <textarea id="d_actual" rows="2"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>情绪线 <span class="hint">情绪变化 &amp; 触发点</span></label>
+                                <textarea id="d_emotion" rows="2"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>假设检验 <span class="hint">判断是否准确？</span></label>
+                                <textarea id="d_check" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>改进方案 <span class="hint">如果重来，一个具体的不同做法</span></label>
+                            <textarea id="d_improve" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>执行反馈 <span class="hint">完成后填写效果与新问题</span></label>
+                            <textarea id="d_execute" rows="2"></textarea>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="saveDaily()">💾 保存事件卡</button>
+                            <button class="btn btn-outline" onclick="clearDailyForm()">清空表单</button>
+                        </div>
+                    </div>
+
+                    <!-- 记录列表 -->
+                    <div id="dailyListWrap" class="record-list"></div>
+                </div>
+
+                <!-- ===== Tab: 周练习 ===== -->
+                <div class="tab-panel" id="tabWeek">
+                    <div class="flex-between mb-16">
+                        <span style="font-weight:600;color:var(--text-soft);">每周刻意练习任务 · 执行复盘</span>
+                    </div>
+
+                    <div class="form-card">
+                        <h3>📌 新建本周任务</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>周次 <span class="hint">例：2026-W33</span></label>
+                                <input id="w_week" placeholder="2026-W33">
+                            </div>
+                            <div class="form-group">
+                                <label>主攻维度</label>
+                                <select id="w_dim">
+                                    <option value="D1">D1 自我认知与情绪管理</option>
+                                    <option value="D2">D2 倾听与理解</option>
+                                    <option value="D3">D3 表达与说服</option>
+                                    <option value="D4">D4 冲突处理与谈判</option>
+                                    <option value="D5">D5 关系经营与人脉</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>刻意练习动作 <span class="hint">2-3 个具体行动</span></label>
+                            <textarea id="w_action" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>执行复盘 <span class="hint">周末填写完成情况</span></label>
+                            <textarea id="w_result" rows="2"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveWeekTask()">💾 保存任务</button>
+                    </div>
+
+                    <div id="weekListWrap" class="record-list"></div>
+                </div>
+
+                <!-- ===== Tab: 月度评分 ===== -->
+                <div class="tab-panel" id="tabMonth">
+                    <div class="flex-between mb-16">
+                        <span style="font-weight:600;color:var(--text-soft);">月度5维能力评估 · 存档</span>
+                    </div>
+
+                    <div class="form-card">
+                        <h3>📊 本月能力评估</h3>
+                        <div class="form-group">
+                            <label>年月 <span class="hint">例：2026-08</span></label>
+                            <input id="m_month" placeholder="2026-08">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>D1 自我认知与情绪管理</label><input id="m_d1" type="number" min="1" max="5" value="3"></div>
+                            <div class="form-group"><label>D2 倾听与理解</label><input id="m_d2" type="number" min="1" max="5" value="3"></div>
+                            <div class="form-group"><label>D3 表达与说服</label><input id="m_d3" type="number" min="1" max="5" value="3"></div>
+                            <div class="form-group"><label>D4 冲突处理与谈判</label><input id="m_d4" type="number" min="1" max="5" value="3"></div>
+                            <div class="form-group"><label>D5 关系经营与人脉</label><input id="m_d5" type="number" min="1" max="5" value="3"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>小结 &amp; 下月主攻</label>
+                            <textarea id="m_note" rows="3"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveMonthScore()">💾 存档评估</button>
+                    </div>
+
+                    <div id="monthListWrap" class="record-list"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================= -->
+            <!-- 原有内容：能力模型、复盘体系、学习体系、工具、进阶、行动 -->
+            <!-- ========================================================= -->
+
+            <hr style="border:none;border-top:2px solid var(--border);margin:48px 0;">
+
+            <!-- Part 1 -->
+            <section class="content-section" id="part1">
+                <h2><span class="emoji">📊</span> 一、能力模型：5维评估框架</h2>
+                <p>先建立标尺，再谈复盘。以下五个维度构成完整的沟通能力图谱，每个维度有可观察的行为指标：</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>维度</th><th>核心能力</th><th>关键行为指标</th><th>常见盲区</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>D1 自我认知与情绪管理</strong></td><td>情绪觉察、压力调节、表达一致性</td><td>冲突中能保持语速平稳；能识别自身触发点；言行与真实意图一致</td><td>情绪上头不自知；把"就事论事"当借口伤害他人</td></tr>
+                            <tr><td><strong>D2 倾听与理解</strong></td><td>积极倾听、共情、提问澄清</td><td>不打断；能复述对方核心诉求；会用开放式提问挖掘真实需求</td><td>急于回应而非理解；听内容不听情绪；假设自己已懂</td></tr>
+                            <tr><td><strong>D3 表达与说服</strong></td><td>结构化表达、适配听众、非语言配合</td><td>结论先行、逻辑分层；能根据对象调整措辞；眼神/语气/姿态协调</td><td>自说自话；信息过载；忽略听众反应</td></tr>
+                            <tr><td><strong>D4 冲突处理与谈判</strong></td><td>分歧管理、利益平衡、达成共识</td><td>对事不对人；能找到双方共同利益；敢于表达不同意见</td><td>回避冲突或攻击性对抗；非赢即输思维；妥协后积怨</td></tr>
+                            <tr><td><strong>D5 关系经营与人脉</strong></td><td>信任建立、边界管理、长期维护</td><td>主动跟进但不过度；能区分不同关系层级；互惠而非索取</td><td>功利性社交；边界模糊；只维护"有用"的人</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Part 2 -->
+            <section class="content-section" id="part2">
+                <h2><span class="emoji">🔄</span> 二、复盘体系：三层闭环</h2>
+
+                <h3 id="part2-1">第一层：日复盘 — 关键事件卡 <span class="sub">（5分钟）</span></h3>
+                <p><strong>触发条件</strong>：当天发生了以下任一事件才做，不做无差别流水账。</p>
+                <ul>
+                    <li>一次重要的客户/上级/同事沟通</li>
+                    <li>一次冲突或不愉快的对话</li>
+                    <li>一次自我感觉"没发挥好"的表达</li>
+                    <li>一次效果超出预期的互动</li>
+                </ul>
+                <p><strong>复盘卡模板</strong>：</p>
+                <pre><code>【事件】一句话描述场景（对象+话题+结果）
+【目标】我当时想达成什么？
+【实际】实际发生了什么？（对方反应+最终结果）
+【行为拆解】我做了什么/说了什么？对应D1-D5哪个维度？
+【情绪线】过程中我的情绪变化？触发点是什么？
+【假设检验】我对对方的判断是否准确？有无证据？
+【下次改进】如果重来，一个具体的不同做法是？</code></pre>
+                <div class="tip">关键原则：只写<strong>一个</strong>改进点，贪多等于没有。</div>
+
+                <h3 id="part2-2">第二层：周复盘 — 模式识别 <span class="sub">（20分钟）</span></h3>
+                <p>每周固定时间（建议周日晚或周一早），汇总本周所有事件卡，回答三个问题：</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>问题</th><th>分析方法</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>本周高频出现的问题模式是什么？</strong></td><td>统计事件卡中重复出现的维度（如3次都卡在D4冲突回避）</td></tr>
+                            <tr><td><strong>哪个场景反复让我失控或低效？</strong></td><td>识别"触发场景"（如被质疑时、面对强势客户时）</td></tr>
+                            <tr><td><strong>本周有哪个成功经验可以固化？</strong></td><td>提取可复用的话术/策略，存入"个人武器库"</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><strong>输出</strong>：下周聚焦的<strong>1个核心改进维度</strong> + <strong>2-3个刻意练习动作</strong>。</p>
+
+                <h3 id="part2-3">第三层：月复盘 — 能力跃迁评估 <span class="sub">（40分钟）</span></h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>模块</th><th>内容</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>维度评分</strong></td><td>对D1-D5分别打1-5分，记录环比变化</td></tr>
+                            <tr><td><strong>关键事件回顾</strong></td><td>本月最值得复盘的3次沟通，深度拆解</td></tr>
+                            <tr><td><strong>关系账户盘点</strong></td><td>重要关系（客户/同事/家人）的互动频率与质量变化</td></tr>
+                            <tr><td><strong>学习输入回顾</strong></td><td>本月读了什么/学了什么，哪些真正用了？</td></tr>
+                            <tr><td><strong>下月主题</strong></td><td>选定一个主攻维度 + 一个学习资源 + 一个练习场景</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Part 3 -->
+            <section class="content-section" id="part3">
+                <h2><span class="emoji">📖</span> 三、学习体系：输入-练习-反馈三角</h2>
+
+                <h3 id="part3-1">3.1 输入：分层学习资源</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>层级</th><th>内容</th><th>推荐方向</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>基础层</strong>（建立认知）</td><td>沟通原理、心理学基础</td><td>《非暴力沟通》《关键对话》《沟通的艺术》</td></tr>
+                            <tr><td><strong>进阶层</strong>（场景技能）</td><td>谈判、说服、冲突管理</td><td>《影响力》《谈判力》《高难度谈话》</td></tr>
+                            <tr><td><strong>实战层</strong>（行业适配）</td><td>你的具体场景</td><td>销售沟通、向上管理、客户关系——找对应领域的案例和课程</td></tr>
+                            <tr><td><strong>反思层</strong>（自我认知）</td><td>情绪、人格、依恋模式</td><td>《被讨厌的勇气》MBTI/大五人格测评、情绪粒度训练</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tip">学习纪律：每读完一本书/一门课，必须输出<strong>1张可执行清单</strong>，否则不算学完。</div>
+
+                <h3 id="part3-2">3.2 练习：刻意练习场景设计</h3>
+                <p>不要只在真实沟通中"自然成长"，要设计低风险练习场：</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>练习方式</th><th>具体做法</th><th>频率建议</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>预演</strong></td><td>重要对话前写"沟通剧本"：开场-可能分歧-应对策略-目标底线</td><td>每次重要沟通前</td></tr>
+                            <tr><td><strong>角色扮演</strong></td><td>与信任的同事/朋友模拟高难度对话，互换角色</td><td>每周1次</td></tr>
+                            <tr><td><strong>录音回放</strong></td><td>征得同意后录下电话/会议，回听自己的表达习惯（口头禅、打断、语速）</td><td>每月2-3次</td></tr>
+                            <tr><td><strong>微实验</strong></td><td>每周尝试一个新行为（如"本周主动询问3个人的感受"），观察效果</td><td>每周1个</td></tr>
+                            <tr><td><strong>写作提炼</strong></td><td>把一次成功沟通写成案例，提炼可复用框架</td><td>随事件触发</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 id="part3-3">3.3 反馈：打破自我认知偏差</h3>
+                <ul>
+                    <li><strong>360度微反馈</strong>：每季度向3-5个关键关系人（上级、同事、客户、家人）问一个具体问题："你觉得我在沟通中最需要改进的一点是什么？"</li>
+                    <li><strong>沟通伙伴</strong>：找一个同样想提升的人，每周互相分享1个复盘卡，给予诚实反馈。</li>
+                    <li><strong>导师/教练</strong>：如果条件允许，找一个你欣赏其沟通风格的人，定期请教。</li>
+                </ul>
+            </section>
+
+            <!-- Part 4 -->
+            <section class="content-section" id="part4">
+                <h2><span class="emoji">🧰</span> 四、工具与模板库</h2>
+
+                <h3 id="part4-1">4.1 关键对话准备表 <span class="sub">（高 stakes 沟通前）</span></h3>
+                <pre><code>1. 对话目标：我希望达成的具体结果是？
+2. 对方目标：对方可能想要什么？他的顾虑是什么？
+3. 共同利益：我们的交集在哪里？
+4. 风险点：哪个话题可能触发情绪？我的预案是？
+5. 开场设计：第一句话怎么说能建立安全氛围？
+6. 底线与备选：我的底线是什么？Plan B是什么？</code></pre>
+
+                <h3 id="part4-2">4.2 关系账户管理表</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>关系人</th><th>关系层级</th><th>上次互动</th><th>互动质量(1-5)</th><th>对方关心的事</th><th>下次跟进动作</th></tr></thead>
+                        <tbody>
+                            <tr><td>张总</td><td>核心客户</td><td>8/15</td><td>4</td><td>孩子升学</td><td>下周发相关资讯</td></tr>
+                            <tr><td>李经理</td><td>协作同事</td><td>8/12</td><td>3</td><td>项目进度</td><td>本周同步进展</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="tip">关系层级建议分4级：核心维护(月更) / 重要维护(季更) / 普通维护(半年) / 弱连接(随缘)。</div>
+
+                <h3 id="part4-3">4.3 个人话术武器库</h3>
+                <p>按场景分类沉淀经过验证的表达：</p>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>场景</th><th>话术/策略</th><th>来源</th><th>效果验证</th></tr></thead>
+                        <tbody>
+                            <tr><td>客户质疑产品</td><td>"我理解您的顾虑，这个问题很多客户也问过，实际情况是…"</td><td>某次成功沟通</td><td>客户转信任</td></tr>
+                            <tr><td>拒绝不合理要求</td><td>"这个我需要评估一下，明天给您答复可以吗？"</td><td>书中学习</td><td>争取了缓冲</td></tr>
+                            <tr><td>向上汇报坏消息</td><td>"目前遇到X问题，我准备了两个应对方案…"</td><td>复盘提炼</td><td>上级评价专业</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Part 5 -->
+            <section class="content-section" id="part5">
+                <h2><span class="emoji">🚀</span> 五、进阶路径：从"术"到"道"</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>阶段</th><th>特征</th><th>重点</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>第一阶段：技术期</strong>（0-6月）</td><td>关注"怎么说"，依赖话术和技巧</td><td>打好D2倾听+D3表达基础，积累事件卡</td></tr>
+                            <tr><td><strong>第二阶段：觉察期</strong>（6-18月）</td><td>开始关注"为什么"，能识别自身模式</td><td>主攻D1情绪管理，引入外部反馈</td></tr>
+                            <tr><td><strong>第三阶段：融合期</strong>（18月+）</td><td>技巧内化为习惯，沟通风格自然且有效</td><td>D4冲突+D5关系经营，形成个人风格</td></tr>
+                            <tr><td><strong>第四阶段：影响力期</strong></td><td>沟通不再是"能力"而是"存在方式"</td><td>赋能他人，成为沟通教练</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Part 6 -->
+            <section class="content-section" id="part6">
+                <h2><span class="emoji">✅</span> 六、落地建议：第一周行动清单</h2>
+                <ol>
+                    <li><strong>今天</strong>：用5维模型给自己做一次初始评分，找出最弱的1个维度。</li>
+                    <li><strong>本周</strong>：准备好"事件复盘卡"模板，遇到关键沟通就填一张。</li>
+                    <li><strong>本周末</strong>：做第一次周复盘，确定下周的1个刻意练习动作。</li>
+                    <li><strong>本月内</strong>：找1个沟通伙伴，或向1个信任的人索要真实反馈。</li>
+                </ol>
+                <div class="tip tip-success">这个体系的核心不是"学更多"，而是<strong>从每一次真实沟通中提取经验</strong>。事件卡的数量和质量，决定了成长速度。</div>
+            </section>
+
+            <!-- 页脚 -->
+            <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:40px;text-align:center;color:var(--text-muted);font-size:13px;">
+                🧠 人际交往与沟通管理 · 复盘学习体系 &mdash; 数据存储在浏览器本地，放心使用
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- JavaScript -->
+    <!-- ============================================================= -->
+    <script>
+        (function() {
+            'use strict';
+
+            // ===== 工具函数 =====
+            function getStore(key) {
+                try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; }
+            }
+
+            function setStore(key, data) {
+                localStorage.setItem(key, JSON.stringify(data));
+            }
+
+            function downloadFile(text, filename) {
+                const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+            }
+
+            // ===== 数据 keys =====
+            const KEYS = {
+                DAILY: 'comm_daily',
+                WEEK: 'comm_week',
+                MONTH: 'comm_month'
+            };
+
+            // ===== 统计更新 =====
+            function updateStats() {
+                const daily = getStore(KEYS.DAILY);
+                const week = getStore(KEYS.WEEK);
+                const month = getStore(KEYS.MONTH);
+                const done = daily.filter(d => d.done).length;
+
+                document.getElementById('statDaily').textContent = daily.length;
+                document.getElementById('statDone').textContent = done;
+                document.getElementById('statWeek').textContent = week.length;
+                document.getElementById('statMonth').textContent = month.length;
+                document.getElementById('dailyCountBadge').textContent = daily.length;
+            }
+
+            // ===== 日复盘 =====
+            function getDaily() { return getStore(KEYS.DAILY); }
+
+            function setDaily(arr) { setStore(KEYS.DAILY, arr);
+                updateStats(); }
+
+            window.saveDaily = function() {
+                const data = {
+                    id: Date.now(),
+                    create: new Date().toLocaleString(),
+                    event: document.getElementById('d_event').value.trim(),
+                    target: document.getElementById('d_target').value.trim(),
+                    actual: document.getElementById('d_actual').value.trim(),
+                    dim: document.getElementById('d_dim').value,
+                    emotion: document.getElementById('d_emotion').value.trim(),
+                    check: document.getElementById('d_check').value.trim(),
+                    improve: document.getElementById('d_improve').value.trim(),
+                    execute: document.getElementById('d_execute').value.trim(),
+                    done: false
+                };
+                if (!data.event) { alert('请填写【事件】描述'); return; }
+                const list = getDaily();
+                list.unshift(data);
+                setDaily(list);
+                alert('✅ 事件卡已保存！');
+                clearDailyForm();
+                renderDaily();
+            };
+
+            window.clearDailyForm = function() {
+                document.querySelectorAll('#tabDaily input, #tabDaily textarea').forEach(el => {
+                    if (el.id !== 'd_dim') el.value = '';
+                });
+                document.getElementById('d_dim').selectedIndex = 0;
+            };
+
+            function renderDaily() {
+                const list = getDaily();
+                const wrap = document.getElementById('dailyListWrap');
+                if (!list.length) {
+                    wrap.innerHTML =
+                    `<div class="empty-state"><div class="icon">📭</div><p>还没有日复盘记录，开始添加第一条吧！</p></div>`;
+                    return;
+                }
+                let html = '';
+                list.forEach((item, idx) => {
+                    const dimLabel = item.dim || 'D?';
+                    html += `
+                    <div class="record-item ${item.done ? 'done' : ''}">
+                        <div class="record-header">
+                            <span class="tag">${dimLabel}</span>
+                            <span class="time">${item.create}</span>
+                            <label class="record-check" style="margin-left:auto;">
+                                <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleDailyDone(${idx})">
+                                已执行
+                            </label>
+                        </div>
+                        <div class="record-body">
+                            <p><strong>事件：</strong>${escHtml(item.event)}</p>
+                            ${item.target ? `<p><strong>目标：</strong>${escHtml(item.target)}</p>` : ''}
+                            ${item.improve ? `<p><strong>改进方案：</strong>${escHtml(item.improve)}</p>` : ''}
+                            ${item.execute ? `<p><strong>执行反馈：</strong>${escHtml(item.execute)}</p>` : '<p style="color:var(--text-muted);font-size:13px;">⏳ 执行反馈待填写</p>'}
+                        </div>
+                        <div class="record-actions">
+                            <button class="btn btn-danger btn-sm" onclick="delDaily(${idx})">🗑️ 删除</button>
+                        </div>
+                    </div>`;
+                });
+                wrap.innerHTML = html;
+                updateStats();
+            }
+
+            function escHtml(str) {
+                if (!str) return '';
+                const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+                return str.replace(/[&<>"']/g, m => map[m]);
+            }
+
+            window.toggleDailyDone = function(idx) {
+                const list = getDaily();
+                if (!list[idx]) return;
+                list[idx].done = !list[idx].done;
+                setDaily(list);
+                renderDaily();
+            };
+
+            window.delDaily = function(idx) {
+                if (!confirm('确定删除这条复盘记录？')) return;
+                const list = getDaily();
+                list.splice(idx, 1);
+                setDaily(list);
+                renderDaily();
+            };
+
+            window.clearAllDaily = function() {
+                if (!confirm('⚠️ 确认清空全部日复盘记录，无法恢复！')) return;
+                setDaily([]);
+                renderDaily();
+            };
+
+            window.exportDaily = function() {
+                const data = getDaily();
+                if (!data.length) { alert('暂无数据可导出'); return; }
+                downloadFile(JSON.stringify(data, null, 2), '复盘日记录备份.json');
+            };
+
+            // ===== 周练习 =====
+            function getWeek() { return getStore(KEYS.WEEK); }
+
+            function setWeek(arr) { setStore(KEYS.WEEK, arr);
+                updateStats(); }
+
+            window.saveWeekTask = function() {
+                const data = {
+                    id: Date.now(),
+                    week: document.getElementById('w_week').value.trim(),
+                    dim: document.getElementById('w_dim').value,
+                    action: document.getElementById('w_action').value.trim(),
+                    result: document.getElementById('w_result').value.trim()
+                };
+                if (!data.week) { alert('请填写周次'); return; }
+                const list = getWeek();
+                list.unshift(data);
+                setWeek(list);
+                alert('✅ 周任务已保存！');
+                document.getElementById('w_week').value = '';
+                document.getElementById('w_action').value = '';
+                document.getElementById('w_result').value = '';
+                renderWeek();
+            };
+
+            function renderWeek() {
+                const list = getWeek();
+                const wrap = document.getElementById('weekListWrap');
+                if (!list.length) {
+                    wrap.innerHTML = `<div class="empty-state"><div class="icon">📆</div><p>暂无周练习任务</p></div>`;
+                    return;
+                }
+                let html = '';
+                list.forEach(item => {
+                    html += `
+                    <div class="record-item">
+                        <div class="record-header">
+                            <span class="tag">${item.dim || 'D?'}</span>
+                            <span class="time">${escHtml(item.week)}</span>
+                        </div>
+                        <div class="record-body">
+                            <p><strong>练习动作：</strong>${escHtml(item.action) || '未填写'}</p>
+                            <p><strong>执行复盘：</strong>${escHtml(item.result) || '⏳ 待填写'}</p>
+                        </div>
+                    </div>`;
+                });
+                wrap.innerHTML = html;
+                updateStats();
+            }
+
+            // ===== 月度评分 =====
+            function getMonth() { return getStore(KEYS.MONTH); }
+
+            function setMonth(arr) { setStore(KEYS.MONTH, arr);
+                updateStats(); }
+
+            window.saveMonthScore = function() {
+                const data = {
+                    id: Date.now(),
+                    month: document.getElementById('m_month').value.trim(),
+                    d1: parseInt(document.getElementById('m_d1').value) || 0,
+                    d2: parseInt(document.getElementById('m_d2').value) || 0,
+                    d3: parseInt(document.getElementById('m_d3').value) || 0,
+                    d4: parseInt(document.getElementById('m_d4').value) || 0,
+                    d5: parseInt(document.getElementById('m_d5').value) || 0,
+                    note: document.getElementById('m_note').value.trim()
+                };
+                if (!data.month) { alert('请填写年月'); return; }
+                const list = getMonth();
+                list.unshift(data);
+                setMonth(list);
+                alert('✅ 月度评估已存档！');
+                document.getElementById('m_month').value = '';
+                document.getElementById('m_note').value = '';
+                renderMonth();
+            };
+
+            function renderMonth() {
+                const list = getMonth();
+                const wrap = document.getElementById('monthListWrap');
+                if (!list.length) {
+                    wrap.innerHTML = `<div class="empty-state"><div class="icon">📊</div><p>暂无月度评分记录</p></div>`;
+                    return;
+                }
+                let html = '';
+                list.forEach(item => {
+                    const avg = ((item.d1 || 0) + (item.d2 || 0) + (item.d3 || 0) + (item.d4 || 0) + (item.d5 || 0)) / 5;
+                    html += `
+                    <div class="record-item">
+                        <div class="record-header">
+                            <span class="tag">${escHtml(item.month)}</span>
+                            <span class="time">均分 ${avg.toFixed(1)}</span>
+                        </div>
+                        <div class="record-body">
+                            <p>D1: ${item.d1 || 0} ｜ D2: ${item.d2 || 0} ｜ D3: ${item.d3 || 0} ｜ D4: ${item.d4 || 0} ｜ D5: ${item.d5 || 0}</p>
+                            ${item.note ? `<p><strong>小结：</strong>${escHtml(item.note)}</p>` : ''}
+                        </div>
+                    </div>`;
+                });
+                wrap.innerHTML = html;
+                updateStats();
+            }
+
+            // ===== Tab 切换 =====
+            document.querySelectorAll('#recordTabs .tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('#recordTabs .tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                    this.classList.add('active');
+                    const target = document.getElementById(this.dataset.tab);
+                    if (target) target.classList.add('active');
+                    // 切换时刷新列表
+                    if (this.dataset.tab === 'tabDaily') renderDaily();
+                    else if (this.dataset.tab === 'tabWeek') renderWeek();
+                    else if (this.dataset.tab === 'tabMonth') renderMonth();
+                });
+            });
+
+            // ===== 移动端菜单 =====
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const toggleBtn = document.getElementById('menuToggle');
+
+            function toggleMenu(open) {
+                const isOpen = open !== undefined ? open : sidebar.classList.toggle('open');
+                sidebar.classList.toggle('open', isOpen);
+                overlay.classList.toggle('active', isOpen);
+                document.body.style.overflow = isOpen ? 'hidden' : '';
+            }
+
+            toggleBtn.addEventListener('click', (e) => { e.stopPropagation();
+                toggleMenu(); });
+            overlay.addEventListener('click', () => toggleMenu(false));
+
+            // 点击侧边栏链接后关闭菜单（移动端）
+            document.querySelectorAll('.sidebar-nav a').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) toggleMenu(false);
+                });
+            });
+
+            // ===== 初始化 =====
+            renderDaily();
+            renderWeek();
+            renderMonth();
+            updateStats();
+
+            // 自动设置当前周次（示例）
+            const now = new Date();
+            const year = now.getFullYear();
+            const startOfYear = new Date(year, 0, 1);
+            const days = Math.floor((now - startOfYear) / 86400000);
+            const weekNum = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+            document.getElementById('w_week').placeholder = `${year}-W${String(weekNum).padStart(2, '0')}`;
+
+            // 自动设置当前月份
+            const monthStr = `${year}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('m_month').placeholder = monthStr;
+
+            // 暴露更新统计给外部
+            window.updateStats = updateStats;
+
+        })();
+    </script>
+</body>
+</html>
