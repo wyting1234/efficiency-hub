@@ -485,7 +485,6 @@
                 <button class="btn btn-primary" id="btnNewDiary">✏️ 写日记</button>
                 <button class="btn btn-outline btn-sm" id="btnSortByDate">📅 按日期</button>
                 <button class="btn btn-outline btn-sm" id="btnSortByTitle">🔤 按标题</button>
-              <button class="btn btn-outline" onclick="exportDiary()" style="margin:10px">📤 导出JSON</button>
 </div>
             <div class="toolbar-right">
                 <div class="search-box">
@@ -954,19 +953,5 @@
 
         })();
     </script>
-
-
-    // 导出数据
-    function exportDiary() {
-        const data = JSON.parse(localStorage.getItem('diary_app_data') || '[]');
-        if (!data.length) { alert('暂无数据可导出'); return; }
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = '日记备份_' + new Date().toISOString().slice(0,10) + '.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    }
 </body>
 </html>
