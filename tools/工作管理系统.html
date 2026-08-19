@@ -1806,22 +1806,6 @@
         }
 
         // 导出所有工作数据
-        function exportWork() {
-            const data = {
-                logs: JSON.parse(localStorage.getItem('workLogs') || '[]'),
-                todos: JSON.parse(localStorage.getItem('workTodos') || '[]'),
-                weekly: JSON.parse(localStorage.getItem('workWeekly') || '[]'),
-                staff: JSON.parse(localStorage.getItem('workStaff') || '[]')
-            };
-            if (!data.logs.length) { alert('暂无数据可导出'); return; }
-            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = '工作管理备份_' + new Date().toISOString().slice(0,10) + '.json';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
     </script>
 </body>
 </html>
