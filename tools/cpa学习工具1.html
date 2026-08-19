@@ -1357,7 +1357,10 @@
         <div class="guide-panel" id="guidePanel">
             <div class="guide-header">
                 <h4 id="guideTitle">📖 学习指南</h4>
-                <button class="btn-edit-guide" id="btnEditGuide" onclick="openEditGuide()">✏️ 编辑</button>
+                <div class="guide-header-actions">
+                    <span class="badge-duration" id="guideDuration">建议时长：-</span>
+                    <button class="btn-edit-guide" id="btnEditGuide" onclick="openEditGuide()">✏️ 编辑</button>
+                </div>
             </div>
             <div class="guide-body" id="guideBody">
                 <div class="item"><span class="label">学习目标</span><span class="value" id="guideObjective">-</span></div>
