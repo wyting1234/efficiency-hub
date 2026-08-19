@@ -159,26 +159,32 @@
         /* 进度统计 */
         .progress-stats {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4px 12px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px 16px;
             margin-bottom: 16px;
             background: var(--bg);
             border-radius: var(--radius-sm);
-            padding: 10px 12px;
+            padding: 12px 16px;
             border: 1px solid var(--border);
             font-size: 12px;
         }
         .progress-stats .p-item {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
+            text-align: center;
+            gap: 4px;
             color: var(--text-secondary);
         }
-        .progress-stats .p-item .p-label { font-weight: 500; }
-        .progress-stats .p-item .p-value { font-weight: 600; color: var(--text); }
-        .progress-stats .p-item .p-value .done { color: var(--green); }
-        .progress-stats .p-item .p-value .todo { color: var(--red); }
-        .progress-stats .p-item .p-value .highlight { color: var(--primary); }
+        .progress-stats .p-item .p-label {
+            font-weight: 500;
+            font-size: 11px;
+        }
+        .progress-stats .p-item .p-value {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 14px;
+        }
 
         .course-list-title {
             font-size: 12px;
@@ -482,6 +488,26 @@
             font-size: 14px;
             font-weight: 600;
         }
+        .guide-panel .guide-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-edit-guide {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-edit-guide:hover {
+            background: var(--primary-bg);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
         .guide-panel .guide-body {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -524,6 +550,116 @@
             .guide-panel .guide-body {
                 grid-template-columns: 1fr;
             }
+        }
+
+        /* ===== 学习指南编辑模态框 ===== */
+        .guide-edit-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .guide-edit-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        .guide-edit-dialog {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        .guide-edit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .guide-edit-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+        .guide-edit-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            padding: 4px 8px;
+        }
+        .guide-edit-close:hover {
+            color: var(--text);
+        }
+        .guide-edit-body {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .edit-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .edit-field label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .edit-field textarea,
+        .edit-field select {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--text);
+            background: var(--bg);
+        }
+        .edit-field textarea:focus,
+        .edit-field select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .edit-field textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .guide-edit-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+        }
+        .btn-edit-guide.save {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .btn-edit-guide.save:hover {
+            background: var(--primary-dark);
+        }
+        .btn-edit-guide.cancel:hover {
+            background: var(--bg);
         }
 
         /* ===== 番茄时钟 ===== */
@@ -1048,10 +1184,10 @@
         </div>
         <!-- 进度统计 -->
         <div class="progress-stats" id="progressStats">
-            <div class="p-item"><span class="p-label">📚 已学科目</span><span class="p-value"><span class="done" id="doneCourses">0</span> / <span class="highlight" id="totalCourses">6</span></span></div>
-            <div class="p-item"><span class="p-label">📖 已学章节</span><span class="p-value"><span class="done" id="doneChapters">0</span> / <span class="highlight" id="totalChapters">0</span></span></div>
-            <div class="p-item"><span class="p-label">📄 已学节数</span><span class="p-value"><span class="done" id="doneSections">0</span> / <span class="highlight" id="totalSections">0</span></span></div>
-            <div class="p-item"><span class="p-label">⏳ 建议学时</span><span class="p-value"><span class="done" id="doneHoursProgress">0</span> / <span class="highlight" id="totalHoursProgress">0</span> h</span></div>
+            <div class="p-item"><span class="p-label">📚 已学科目</span><span class="p-value"><span class="done" id="doneCourses">0</span><span class="sep">/</span><span class="highlight" id="totalCourses">6</span></span></div>
+            <div class="p-item"><span class="p-label">📖 已学章节</span><span class="p-value"><span class="done" id="doneChapters">0</span><span class="sep">/</span><span class="highlight" id="totalChapters">0</span></span></div>
+            <div class="p-item"><span class="p-label">📄 已学节数</span><span class="p-value"><span class="done" id="doneSections">0</span><span class="sep">/</span><span class="highlight" id="totalSections">0</span></span></div>
+            <div class="p-item"><span class="p-label">⏳ 建议学时</span><span class="p-value"><span class="done" id="doneHoursProgress">0</span><span class="sep">/</span><span class="highlight" id="totalHoursProgress">0</span>h</span></div>
         </div>
 
         <div class="course-list-title">📚 课程进度（已学 / 建议）</div>
@@ -1215,7 +1351,10 @@
         <div class="guide-panel" id="guidePanel">
             <div class="guide-header">
                 <h4 id="guideTitle">📖 学习指南</h4>
-                <span class="badge-duration" id="guideDuration">建议时长：-</span>
+                <div class="guide-header-actions">
+                    <span class="badge-duration" id="guideDuration">建议时长：-</span>
+                    <button class="btn-edit-guide" id="btnEditGuide" style="display:none;" onclick="openEditGuide()">✏️ 编辑</button>
+                </div>
             </div>
             <div class="guide-body" id="guideBody">
                 <div class="item"><span class="label">学习目标</span><span class="value" id="guideObjective">-</span></div>
@@ -1833,6 +1972,16 @@
             if (!chapterData) return null;
             const sectionData = chapterData.sections[section];
             if (!sectionData) return null;
+            
+            // 检查是否有用户自定义的指南
+            try {
+                const customGuides = JSON.parse(localStorage.getItem('cpa_custom_guides') || '{}');
+                const key = `${course}_${chapter}_${section}`;
+                if (customGuides[key]) {
+                    return { ...sectionData, ...customGuides[key] };
+                }
+            } catch (e) {}
+            
             return sectionData;
         }
 
@@ -2004,12 +2153,18 @@
                 masteryEl.innerHTML = `<span class="mastery-badge ${badgeClass}">${mastery}</span>`;
                 emptyEl.style.display = 'none';
                 document.querySelector('.guide-body').style.display = 'grid';
+                // 显示编辑按钮
+                const btnEdit = document.getElementById('btnEditGuide');
+                if (btnEdit) btnEdit.style.display = 'inline-block';
             } else {
                 const title = chName ? `第${chapter}章 ${chName}` : `第${chapter}章`;
                 titleEl.textContent = `📖 ${title} · 学习指南`;
                 durationEl.textContent = `建议时长：${totalH.toFixed(1)}h (总计)`;
                 emptyEl.style.display = 'block';
                 document.querySelector('.guide-body').style.display = 'none';
+                // 隐藏编辑按钮
+                const btnEdit = document.getElementById('btnEditGuide');
+                if (btnEdit) btnEdit.style.display = 'none';
             }
         }
 
@@ -2758,6 +2913,93 @@
         }
 
         document.addEventListener('DOMContentLoaded', init);
+
+        // ============================================================
+        //  学习指南编辑功能
+        // ============================================================
+        let editingGuideKey = null;
+
+        function openEditGuide() {
+            const course = state.currentCourse;
+            const chapter = parseInt(document.getElementById('fChapter').value);
+            const section = parseInt(document.getElementById('fSection').value);
+            editingGuideKey = `${course}_${chapter}_${section}`;
+            
+            const guide = getGuide(course, chapter, section);
+            if (!guide) {
+                alert('该章节暂无指南数据');
+                return;
+            }
+            
+            const modal = document.createElement('div');
+            modal.className = 'guide-edit-modal';
+            modal.id = 'guideEditModal';
+            modal.innerHTML = `
+                <div class="guide-edit-overlay" onclick="closeEditGuide()"></div>
+                <div class="guide-edit-dialog">
+                    <div class="guide-edit-header">
+                        <h3>📝 编辑学习指南</h3>
+                        <button class="guide-edit-close" onclick="closeEditGuide()">✕</button>
+                    </div>
+                    <div class="guide-edit-body">
+                        <div class="edit-field">
+                            <label>学习目标</label>
+                            <textarea id="editObjective" rows="4" placeholder="输入学习目标...">${guide.objective || ''}</textarea>
+                        </div>
+                        <div class="edit-field">
+                            <label>重点难点</label>
+                            <textarea id="editKeypoints" rows="4" placeholder="输入重点难点...">${guide.keypoints || ''}</textarea>
+                        </div>
+                        <div class="edit-field">
+                            <label>掌握程度</label>
+                            <select id="editMastery">
+                                <option value="了解" ${guide.mastery === '了解' ? 'selected' : ''}>了解</option>
+                                <option value="掌握" ${guide.mastery === '掌握' ? 'selected' : ''}>掌握</option>
+                                <option value="熟练掌握" ${guide.mastery === '熟练掌握' ? 'selected' : ''}>熟练掌握</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="guide-edit-footer">
+                        <button class="btn-edit-guide cancel" onclick="closeEditGuide()">取消</button>
+                        <button class="btn-edit-guide save" onclick="saveEditGuide()">保存</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function closeEditGuide() {
+            const modal = document.getElementById('guideEditModal');
+            if (modal) modal.remove();
+        }
+
+        function saveEditGuide() {
+            if (!editingGuideKey) return;
+            
+            const [course, chapter, section] = editingGuideKey.split('_').map(s => s === editingGuideKey.split('_')[0] ? s : parseInt(s));
+            const objective = document.getElementById('editObjective').value.trim();
+            const keypoints = document.getElementById('editKeypoints').value.trim();
+            const mastery = document.getElementById('editMastery').value;
+            
+            // 更新 GUIDE_DATA
+            if (GUIDE_DATA[course] && GUIDE_DATA[course].chapters[chapter] && GUIDE_DATA[course].chapters[chapter].sections[section]) {
+                GUIDE_DATA[course].chapters[chapter].sections[section].objective = objective || '待补充';
+                GUIDE_DATA[course].chapters[chapter].sections[section].keypoints = keypoints || '待补充';
+                GUIDE_DATA[course].chapters[chapter].sections[section].mastery = mastery;
+                
+                // 保存到 localStorage
+                try {
+                    const customGuides = JSON.parse(localStorage.getItem('cpa_custom_guides') || '{}');
+                    customGuides[editingGuideKey] = { objective, keypoints, mastery };
+                    localStorage.setItem('cpa_custom_guides', JSON.stringify(customGuides));
+                } catch (e) {
+                    console.error('保存指南失败', e);
+                }
+            }
+            
+            closeEditGuide();
+            updateGuide(course, chapter, section);
+        }
     </script>
 </body>
 </html>
