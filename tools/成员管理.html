@@ -314,16 +314,5 @@
 </script>
 
     // 导出成员数据
-    function exportMembers() {
-        const data = JSON.parse(localStorage.getItem('teamMembers_v1') || '[]');
-        if (!data.length) { alert('暂无数据可导出'); return; }
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = '成员管理备份_' + new Date().toISOString().slice(0,10) + '.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    }
 </body>
 </html>
