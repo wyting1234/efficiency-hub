@@ -2006,7 +2006,13 @@ const STORAGE_KEY = 'multi_info_records';
 
 
 
-    document.addEventListener('DOMContentLoaded', init);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        init();
+        // 绑定类别管理按钮
+        const btn = document.getElementById('manageCategoriesBtn');
+        if (btn) btn.addEventListener('click', openCategoryManager);
+    });
 
 
     // ========== 类别管理功能 ==========
