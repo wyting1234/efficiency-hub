@@ -1026,8 +1026,8 @@
 
     // ========== 子分类联动映射 (仅投资大类有详细细分) ==========
 
-    const // 类别管理
-        function getCategoryData() {
+    // 类别管理
+    function getCategoryData() {
             try {
                 const saved = localStorage.getItem(STORAGE_CATEGORIES);
                 if (saved) return JSON.parse(saved);
