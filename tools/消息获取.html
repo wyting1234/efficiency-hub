@@ -2017,14 +2017,15 @@ const STORAGE_KEY = 'multi_info_records';
     // ========== 类别管理功能 ==========
     function openCategoryManager() {
         const modal = document.createElement('div');
+        modal.id = 'categoryManagerModal';
         modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;';
         modal.innerHTML = `
             <div style="background:white;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-                <h2 style="margin:0 0 16px;font-size:20px">⚙ 管理类别</h2>
+                <h2 style="margin:0 0 16px;font-size:20px"><i class="fas fa-tags"></i> 管理类别</h2>
                 <div id="categoryList"></div>
                 <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;gap:10px">
-                    <button id="addCategoryBtn" class="btn btn-primary" style="padding:8px 16px;font-size:14px">+ 添加一级类别</button>
-                    <button id="closeCategoryBtn" class="btn btn-outline" style="padding:8px 16px;font-size:14px">关闭</button>
+                    <button id="addCategoryBtn" class="btn btn-primary"><i class="fas fa-plus"></i> 添加一级类别</button>
+                    <button id="closeCategoryBtn" class="btn btn-outline">关闭</button>
                 </div>
             </div>`;
         document.body.appendChild(modal);
@@ -2035,6 +2036,75 @@ const STORAGE_KEY = 'multi_info_records';
     }
 
     function renderCategoryList() {
+        const cats = subCategoryMap;
+        const list = document.getElementById('categoryList');
+        if (!list) return;
+        list.innerHTML = '';
+        if (Object.keys(cats).length === 0) {
+            list.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px">暂无类别，点击"添加一级类别"开始</p>';
+            return;
+        }
+        Object.entries(cats).forEach(([parent, children]) => {
+            const item = document.createElement('div');
+            item.style.cssText = 'margin-bottom:12px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;';
+            item.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <strong>${parent}</strong>
+                    <button class="btn btn-sm btn-danger" onclick="removeCategory('${parent}')" style="padding:4px 8px;font-size:12px">删除</button>
+                </div>
+                <div style="padding-left:16px">
+                    ${(children || []).map(c => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9">
+                            <span>${c}</span>
+                            <button class="btn btn-sm" onclick="removeSubCategory('${parent}', '${c}')" style="padding:2px 6px;font-size:11px;color:#ef4444">✕</button>
+                        </div>
+                    `).join('')}
+                    <button onclick="addSubCategory('${parent}')" style="margin-top:8px;padding:4px 12px;border:1px dashed #cbd5e1;border-radius:4px;background:none;cursor:pointer;color:#64748b;font-size:12px">+ 添加子类别</button>
+                </div>`;
+            list.appendChild(item);
+        });
+    }
+
+    function addNewCategory() {
+        const name = prompt('请输入一级类别名称：');
+        if (!name || !name.trim()) return;
+        const cat = name.trim();
+        if (subCategoryMap[cat]) { alert('该类别已存在'); return; }
+        subCategoryMap[cat] = [];
+        saveCategoryData(subCategoryMap);
+        renderCategoryList();
+        refreshCategorySelect();
+    }
+
+    function addSubCategory(parent) {
+        const name = prompt('请输入子类别名称：', '');
+        if (!name || !name.trim()) return;
+        if (!subCategoryMap[parent]) subCategoryMap[parent] = [];
+        const list = subCategoryMap[parent];
+        if (list.includes(name.trim())) { alert('该子类别已存在'); return; }
+        list.push(name.trim());
+        subCategoryMap[parent] = list;
+        saveCategoryData(subCategoryMap);
+        renderCategoryList();
+        refreshCategorySelect();
+    }
+
+    function removeCategory(parent) {
+        if (!confirm('确定删除类别「' + parent + '」及其所有子类别？')) return;
+        delete subCategoryMap[parent];
+        saveCategoryData(subCategoryMap);
+        renderCategoryList();
+        refreshCategorySelect();
+    }
+
+    function removeSubCategory(parent, child) {
+        if (!confirm('确定删除「' + parent + '」下的「' + child + '」？')) return;
+        const list = subCategoryMap[parent] || [];
+        subCategoryMap[parent] = list.filter(c => c !== child);
+        saveCategoryData(subCategoryMap);
+        renderCategoryList();
+        refreshCategorySelect();
+    }function renderCategoryList() {
         const cats = subCategoryMap;
         const list = document.getElementById('categoryList');
         if (!list) return;
