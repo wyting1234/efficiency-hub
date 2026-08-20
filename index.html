@@ -1986,6 +1986,19 @@ function saveModuleManager(){
 
 
 function init(){
+  // 自动修复：如果所有内置模块都被隐藏，清除隐藏配置
+  try {
+    const hiddenKeys = JSON.parse(localStorage.getItem('hub_module_hidden') || '[]');
+    const allModuleIds = ['cpa','work','diary','time','dream','info','box','reading','life','star','idle','idol','health','members','social','market','learning'];
+    if (hiddenKeys.length >= allModuleIds.length - 2) {  // 如果隐藏了太多模块
+      console.warn('检测到所有模块被隐藏，自动恢复...');
+      localStorage.removeItem('hub_module_hidden');
+      localStorage.removeItem('hub_nav_order');
+    }
+  } catch(e) {
+    // 忽略解析错误
+  }
+
 
 
   buildNav();
