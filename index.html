@@ -200,6 +200,11 @@
 
 
   .nav-item .badge.empty{background:transparent;color:#475569}
+  /* 拖拽排序样式 */
+  .nav-item.dragging{opacity:0.5;background:rgba(99,102,241,.2)}
+  .nav-item.drag-over{border-top:2px solid var(--accent)}
+  .drag-handle{cursor:grab;color:#7c8aa5;font-size:14px;margin-right:6px;flex:0 0 auto}
+  .drag-handle:active{cursor:grabbing}
 
 
   .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)}
@@ -993,7 +998,7 @@ const MODULES = [
 
   {id:'members', name:'成员管理',       file:'tools/成员管理.html',        icon:'👥', desc:'团队成员增删改查、角色与状态管理',   keys:['teamMembers_v1']},
   {id:'social',     name:'人际交往与沟通',   file:'tools/人积极交往.html',      icon:'🤝', desc:'人际沟通管理 · 日/周/月复盘与统计', keys:['comm_daily','comm_week','comm_month']},
-  {id:'market',     name:'股市复盘研究',     file:'tools/stock-review.html',           icon:'📊', desc:'股市复盘 · 研究 · 交易系统（专业增强版）', keys:['stockReviewData','lastTab','reviewTheme']},
+  {id:'market',     name:'股市复盘研究',     file:'tools/股市复盘研究.html',           icon:'📊', desc:'股市复盘 · 研究 · 交易系统（专业增强版）', keys:['stockReviewData','lastTab','reviewTheme']},
   {id:'learning',   name:'学习目标管理',   file:'tools/学习目标管理台.html',  icon:'🎯', desc:'WorkBuddy 学习目标管理台', keys:[]},
 
 
@@ -1136,6 +1141,124 @@ function toast(msg){
 /* ============== 构建导航 & 仪表盘 ============== */
 
 
+
+/* ============== 拖拽排序 ============== */
+const HUB_ORDER_KEY = 'hub_nav_order'; // localStorage key for custom order
+
+function getCustomOrder(){
+  try{
+    const order = JSON.parse(localStorage.getItem(HUB_ORDER_KEY) || '[]');
+    return order.length > 0 ? order : null;
+  }catch(e){ return null; }
+}
+
+function saveCustomOrder(order){
+  localStorage.setItem(HUB_ORDER_KEY, JSON.stringify(order));
+}
+
+function buildNav(){
+  const list=$('#navList');
+  list.innerHTML='';
+  const customOrder = getCustomOrder();
+  const modules = getModules();
+  
+  // 按自定义顺序或默认顺序排列
+  const sortedModules = customOrder 
+    ? customOrder.map(id => modules.find(m => m.id === id)).filter(Boolean)
+    : modules;
+  
+  sortedModules.forEach(m=>{
+    const el=document.createElement('div');
+    el.className='nav-item';
+    el.dataset.target='tool';
+    el.dataset.id=m.id;
+    el.draggable=true;
+    el.innerHTML=`<span class="drag-handle" title="拖拽排序">⠿</span><span class="ico">${m.icon}</span><span>${m.name}</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
+    el.addEventListener('click',(e)=>{
+      if(e.target.classList.contains('drag-handle')) return;
+      openModule('tool',m.id);
+    });
+    
+    // 拖拽事件
+    el.addEventListener('dragstart', handleDragStart);
+    el.addEventListener('dragend', handleDragEnd);
+    el.addEventListener('dragover', handleDragOver);
+    el.addEventListener('dragenter', handleDragEnter);
+    el.addEventListener('dragleave', handleDragLeave);
+    el.addEventListener('drop', handleDrop);
+    
+    list.appendChild(el);
+  });
+  
+  refreshBadges();
+}
+
+let draggedItem = null;
+let placeholder = null;
+
+function handleDragStart(e){
+  draggedItem = this;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', this.dataset.id);
+}
+
+function handleDragEnd(e){
+  this.classList.remove('dragging');
+  // 清除所有占位符和标记
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.classList.remove('drag-over');
+  });
+  if(placeholder && placeholder.parentNode) {
+    placeholder.parentNode.removeChild(placeholder);
+  }
+  placeholder = null;
+  draggedItem = null;
+}
+
+function handleDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function handleDragEnter(e){
+  e.preventDefault();
+  if(this !== draggedItem && this.classList.contains('nav-item')) {
+    this.classList.add('drag-over');
+  }
+}
+
+function handleDragLeave(e){
+  this.classList.remove('drag-over');
+}
+
+function handleDrop(e){
+  e.preventDefault();
+  if(this !== draggedItem && this.classList.contains('nav-item')) {
+    const list = $('#navList');
+    const items = Array.from(list.querySelectorAll('.nav-item'));
+    const fromIndex = items.indexOf(draggedItem);
+    const toIndex = items.indexOf(this);
+    
+    if(fromIndex < toIndex) {
+      list.insertBefore(draggedItem, this.nextSibling);
+    } else {
+      list.insertBefore(draggedItem, this);
+    }
+    
+    // 保存新顺序
+    saveNavOrder();
+  }
+  this.classList.remove('drag-over');
+}
+
+function saveNavOrder(){
+  const list = $('#navList');
+  const items = list.querySelectorAll('.nav-item');
+  const order = Array.from(items).map(item => item.dataset.id);
+  saveCustomOrder(order);
+}
+
 function buildNav(){
 
 
@@ -1160,7 +1283,7 @@ function buildNav(){
     el.dataset.id=m.id;
 
 
-    el.innerHTML=`<span class="ico">${m.icon}</span><span>${m.name}</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
+    el.innerHTML=`<span class="drag-handle" title="拖拽排序">⠿</span><span class="ico">${m.icon}</span><span>${m.name}</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
 
 
     el.addEventListener('click',()=>openModule('tool',m.id));
