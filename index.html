@@ -383,18 +383,31 @@ function toast(msg){
 }
 
 /* ============== 构建导航 & 仪表盘 ============== */
-function buildNav(){
-  const list=$('#navList');
-  list.innerHTML='';
-  getModules().forEach(m=>{
-    const el=document.createElement('div');
-    el.className='nav-item';
-    el.dataset.target='tool';
-    el.dataset.id=m.id;
-    el.innerHTML=`<span class="ico">${m.icon}</span><span>${m.name}</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
-    el.addEventListener('click',()=>openModule('tool',m.id));
-    list.appendChild(el);
-  });
+function buildNav(){
+  const list=$('#navList');
+  list.innerHTML='';
+  const order=getModuleOrder();
+  const modules=getModules();
+  modules.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));
+  modules.forEach(m=>{
+    const el=document.createElement('div');
+    el.className='nav-item';
+    el.draggable=true;
+    el.dataset.target='tool';
+    el.dataset.id=m.id;
+    el.innerHTML=`<span class="ico">${m.icon}</span><span>${m.name}</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
+    el.addEventListener('click',()=>openModule('tool',m.id));
+    el.addEventListener('dragstart',(e)=>{e.dataTransfer.setData('text/plain',m.id);el.style.opacity='0.5';});
+    el.addEventListener('dragend',()=>{el.style.opacity='1';document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('drag-over'));});
+    el.addEventListener('dragover',(e)=>{e.preventDefault();el.classList.add('drag-over');});
+    el.addEventListener('dragleave',()=>el.classList.remove('drag-over'));
+    el.addEventListener('drop',(e)=>{e.preventDefault();el.classList.remove('drag-over');const fromId=e.dataTransfer.getData('text/plain');const toId=m.id;if(fromId!==toId){let order=getModuleOrder();const fromIdx=order.indexOf(fromId);const toIdx=order.indexOf(toId);order.splice(fromIdx,1);order.splice(toIdx,0,fromId);saveModuleOrder(order);buildNav();}});
+    list.appendChild(el);
+  });
+}
+
+function getModuleOrder(){try{const saved=localStorage.getItem('module_order');if(saved)return JSON.parse(saved);}catch(e){}return[];}
+function saveModuleOrder(order){localStorage.setItem('module_order',JSON.stringify(order));});
 }
 function buildCards(){
   const wrap=$('#cards');
