@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<!--pnid:XZfzYoQWWla9UeduVwsPnU--><!-- 本工作台通过 WorkBuddy 资料库能力（library skill）搭建、存储和部署 -->
+<html data-page-node-id="efETOhdwgRPj0wu5Urep6E" lang="zh-CN">
+<head data-page-node-id="pAbHrcwpYh7DGiZbxPj0NZ">
+<script data-page-node-id="eWaRUPP3AvPbhurPqpbZhj" src="/page/page_comm/inject.js"></script>
+<meta data-page-node-id="PdEIpGbde4hOHxl3yO6AoD" charset="UTF-8">
+<meta data-page-node-id="3nGhrhgidZBG7wp08NG79R" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" name="viewport">
+<title data-page-node-id="ORX16T8unXKEdaxPKDBGX0" data-pnid-children="mySLF5ZQtiA9flSOc7tSo7">学习目标管理台</title>
+<style data-page-node-id="89QYcTfGop7numD1HayXyE" data-pnid-children="YxZveVxw8IWX4mx3ZxciFw">
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f8f8fc;--card:#fff;--pri:#7c3aed;--pri-l:#a855f7;--grn:#10b981;--red:#ef4444;--amb:#f59e0b;--txt:#1f2937;--txt2:#6b7280;--brd:#e5e7eb;--shd:0 1px 3px rgba(0,0,0,.08);--rd:12px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+#app{min-height:100vh}
+/* Nav: desktop sidebar */
+.nav-sidebar{position:fixed;left:0;top:0;bottom:0;width:200px;background:#fff;border-right:1px solid var(--brd);padding:20px 0;display:flex;flex-direction:column;z-index:100}
+.nav-sidebar .logo{padding:0 20px 20px;font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--pri),var(--pri-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px}
+.nav-sidebar .nav-items{flex:1;display:flex;flex-direction:column;gap:4px;padding:0 12px}
+.nav-sidebar .nav-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-size:15px;color:var(--txt2);transition:all .2s;width:100%;text-align:left}
+.nav-sidebar .nav-item.active{background:linear-gradient(135deg,var(--pri),var(--pri-l));color:#fff;font-weight:600}
+.nav-sidebar .nav-item:hover:not(.active){background:#f3f0ff}
+/* Nav: tablet top */
+.nav-top{display:none;background:#fff;border-bottom:1px solid var(--brd);padding:0 16px;position:sticky;top:0;z-index:100}
+.nav-top .nav-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:8px;height:56px}
+.nav-top .logo{font-size:17px;font-weight:700;background:linear-gradient(135deg,var(--pri),var(--pri-l));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-right:auto}
+.nav-top .nav-item{display:flex;align-items:center;gap:6px;padding:8px 16px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-size:14px;color:var(--txt2);border-bottom:2px solid transparent}
+.nav-top .nav-item.active{color:var(--pri);border-bottom-color:var(--pri);font-weight:600}
+/* Nav: mobile bottom */
+.nav-bottom{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--brd);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.nav-bottom .nav-items{display:flex;height:56px}
+.nav-bottom .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:transparent;cursor:pointer;font-size:11px;color:var(--txt2);padding:4px}
+.nav-bottom .nav-item.active{color:var(--pri);font-weight:600}
+.nav-bottom .nav-item svg{width:22px;height:22px}
+/* Main content */
+.main{margin-left:200px;padding:24px;min-height:100vh}
+.main-tab-top{padding-top:70px}
+.main-tab-bottom{padding-bottom:70px}
+.tab-content{display:none;animation:fadeIn .3s ease}
+.tab-content.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* Cards */
+.card{background:var(--card);border-radius:var(--rd);box-shadow:var(--shd);padding:16px;margin-bottom:12px;border:1px solid var(--brd)}
+.card-overdue{border-left:4px solid var(--red);background:#fef2f2}
+.card-rest{border-left:4px solid var(--amb);background:#fffbeb}
+.card-broken{border-left:4px solid var(--red);background:#fef2f2}
+.card-complete{border-left:4px solid var(--grn);background:#f0fdf4}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;min-height:44px}
+.btn-primary{background:linear-gradient(135deg,var(--pri),var(--pri-l));color:#fff}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-success{background:var(--grn);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.btn-warning{background:var(--amb);color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--brd);color:var(--txt2)}
+.btn-ghost:hover{background:#f9fafb}
+.btn-sm{padding:6px 12px;font-size:13px;min-height:36px}
+.btn-block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+/* Forms */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:14px;font-weight:600;margin-bottom:6px;color:var(--txt)}
+.form-input,.form-select,.form-textarea{width:100%;padding:10px 12px;border:1px solid var(--brd);border-radius:8px;font-size:16px;font-family:inherit;background:#fff;color:var(--txt);outline:none;transition:border-color .2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--pri)}
+.form-textarea{resize:vertical;min-height:80px}
+.form-hint{font-size:13px;color:var(--txt2);margin-top:4px}
+.form-row{display:flex;gap:12px}
+.form-row .form-group{flex:1}
+/* Color picker */
+.color-picker{display:flex;gap:8px;flex-wrap:wrap}
+.color-opt{width:36px;height:36px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:all .2s}
+.color-opt.selected{border-color:#fff;box-shadow:0 0 0 2px var(--pri)}
+/* Progress ring */
+.progress-ring{display:inline-block;vertical-align:middle}
+/* Stats */
+.stat-row{display:flex;gap:16px;flex-wrap:wrap}
+.stat-item{text-align:center;flex:1;min-width:80px}
+.stat-num{font-size:22px;font-weight:700;color:var(--txt)}
+.stat-label{font-size:12px;color:var(--txt2);margin-top:2px}
+/* Today handle */
+.handle-item{display:flex;align-items:center;gap:10px;padding:12px;border-radius:8px;margin-bottom:8px;font-size:14px}
+.handle-item .handle-icon{flex-shrink:0}
+.handle-item .handle-text{flex:1}
+.handle-item .handle-action{flex-shrink:0}
+/* Record item */
+.record-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:#f9fafb;margin-bottom:6px;font-size:13px}
+.record-item .rec-date{font-weight:600;min-width:70px}
+.record-item .rec-amount{color:var(--pri);font-weight:600}
+.record-item .rec-time{color:var(--txt2)}
+.record-item .rec-badge{background:var(--amb);color:#fff;font-size:11px;padding:2px 6px;border-radius:4px;font-weight:600}
+.record-item .rec-del{margin-left:auto;cursor:pointer;color:var(--txt2);background:none;border:none;padding:4px}
+.record-item .rec-del:hover{color:var(--red)}
+/* Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:#fff;border-radius:16px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;animation:slideUp .3s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.modal-close{margin-left:auto;cursor:pointer;background:none;border:none;font-size:20px;color:var(--txt2);padding:4px}
+/* Toast */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:300;animation:toastIn .3s ease;max-width:90vw;text-align:center}
+.toast.error{background:var(--red)}
+.toast.success{background:var(--grn)}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+/* Sync status */
+.sync-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600}
+.sync-synced{background:#f0fdf4;color:var(--grn)}
+.sync-syncing{background:#fef3c7;color:var(--amb)}
+.sync-error{background:#fef2f2;color:var(--red)}
+.sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+/* Loading */
+.loading{text-align:center;padding:40px;color:var(--txt2)}
+.loading .spinner{width:32px;height:32px;border:3px solid var(--brd);border-top-color:var(--pri);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Empty state */
+.empty{text-align:center;padding:32px 16px;color:var(--txt2)}
+.empty svg{width:48px;height:48px;margin:0 auto 12px;opacity:.4}
+/* Confetti */
+.confetti-piece{position:fixed;top:-10px;width:10px;height:10px;z-index:400;pointer-events:none}
+@keyframes confettiFall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+/* Section title */
+.section-title{font-size:16px;font-weight:700;margin:20px 0 12px;display:flex;align-items:center;gap:8px}
+.section-title .count{background:var(--pri);color:#fff;font-size:12px;padding:2px 8px;border-radius:10px}
+/* Weekly */
+.week-selector{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.week-arrow{cursor:pointer;background:none;border:none;padding:8px;color:var(--pri);font-size:18px}
+.week-label{font-weight:600;font-size:15px}
+.week-compare{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.week-compare .wc-item{flex:1;min-width:100px;background:#f9fafb;border-radius:8px;padding:12px;text-align:center}
+.wc-num{font-size:20px;font-weight:700}
+.wc-label{font-size:12px;color:var(--txt2);margin-top:2px}
+.wc-delta{font-size:13px;font-weight:600;margin-top:4px}
+.wc-delta.up{color:var(--grn)}
+.wc-delta.down{color:var(--red)}
+.wc-delta.flat{color:var(--txt2)}
+/* Guide steps */
+.guide-step{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start}
+.guide-num{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--pri),var(--pri-l));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.guide-text{flex:1;font-size:14px;color:var(--txt);line-height:1.5}
+/* Chart container */
+.chart-container{overflow-x:auto;padding:4px 0}
+/* Responsive */
+@media(max-width:1024px){
+.nav-sidebar{display:none}
+.nav-top{display:block}
+.main{margin-left:0;max-width:900px;margin:0 auto;padding:16px}
+.main-tab-top{padding-top:72px}
+}
+@media(max-width:768px){
+.nav-top{display:none}
+.nav-bottom{display:block}
+.main{margin-left:0;padding:12px;padding-bottom:80px}
+.form-row{flex-direction:column}
+.stat-row{gap:8px}
+.stat-item{min-width:60px}
+.stat-num{font-size:18px}
+.goal-card-grid{grid-template-columns:1fr!important}
+}
+/* Goal card grid */
+.goal-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+/* Obstacle plan */
+.obstacle-plan{background:#f5f3ff;border-radius:8px;padding:12px;margin-top:12px;font-size:13px}
+.obstacle-plan .op-label{font-weight:600;color:var(--pri);margin-bottom:4px}
+.obstacle-plan .op-text{color:var(--txt)}
+</style>
+</head>
+<body data-page-node-id="lRYy8T6yNbP0B7CbuY6BxK">
+<div data-page-node-id="cyW1mtnO0CtlGTQ6m9Ao0a" id="app">
+<!--pnid:IhVWKgi8YxT6Gw7gQfNxEn--><!-- Desktop Sidebar -->
+<nav data-page-node-id="AHC4w6SCWNMZomBa0N2eFc" class="nav-sidebar">
+<div data-page-node-id="ZKYgbigjURZAT36ETX1fpp" class="logo">
+<svg data-page-node-id="zXgsE1Y4sGfAxShsASflWb" fill="none" height="24" viewBox="0 0 24 24" width="24"><path data-page-node-id="Z2B0HH3LuV4GGHC9Kv9XIG" d="M12 2L3 7v10l9 5 9-5V7l-9-5z" fill="url(#g2)" stroke="url(#g1)" stroke-width="2"/><defs data-page-node-id="aCPjlpwgRCDCqKXAv8gLhs"><linearGradient data-page-node-id="udkie3VON7dA6ygQdXq1ph" id="g1" x1="0" x2="24" y1="0" y2="24"><stop data-page-node-id="yEx3raWhHvBKQA4WczwZfR" offset="0" stop-color="#7c3aed"/><stop data-page-node-id="wzPiAG6XyV1rs3Tuupr3Py" offset="1" stop-color="#a855f7"/></linearGradient><linearGradient data-page-node-id="jAc9VbQC1PVQeTtd4AFkmq" id="g2" x1="0" x2="24" y1="0" y2="24"><stop data-page-node-id="7z8Uo1VhfZYN3KBdKt9P08" offset="0" stop-color="#7c3aed" stop-opacity=".15"/><stop data-page-node-id="wjEpQEC1WjvWgx2nK8kVUK" offset="1" stop-color="#a855f7" stop-opacity=".15"/></linearGradient></defs></svg><!--pnid:R3B37P5QD8fOCkHB6jT10y-->
+学习目标台
+</div>
+<div data-page-node-id="n6kirVqr1rfNSWODEdlG6s" class="nav-items" id="nav-items-desktop"></div>
+</nav>
+<!--pnid:cFlgv1BMoWaKIh6SG22jSK--><!-- Tablet Top -->
+<nav data-page-node-id="nutMUWB6b988zcLik8wcUm" class="nav-top">
+<div data-page-node-id="p7xul8KnhrUdazi03JOjtb" class="nav-inner">
+<span data-page-node-id="FuV7kOZ4xqvnK7aInmhBtU" class="logo"><!--pnid:wbpYVvsCIJCpWLjck6PGB5-->学习目标台</span>
+<div data-page-node-id="C9XXTQLNu3H3FKmZffdqJS" id="nav-items-top" style="display:flex; gap:4px"></div>
+</div>
+</nav>
+<!--pnid:eHCrD8U4hZSG4Lf2nWeOS2--><!-- Mobile Bottom -->
+<nav data-page-node-id="IrzjUTGd2WlOEWsuceSUYY" class="nav-bottom">
+<div data-page-node-id="CvgkxrbH6QR55yFQC1yi7U" class="nav-items" id="nav-items-bottom"></div>
+</nav>
+<!--pnid:u70lrX2EUCfVLcaCvrD7KB--><!-- Main -->
+<main data-page-node-id="FPzrYs1PWqkpbUeKXQxIr9" class="main main-tab-top main-tab-bottom">
+<!--pnid:ijrKI5eBd8O2qLN2QhFJyL--><!-- Today Tab -->
+<section data-page-node-id="jNdvIqpHYxckwRly5vAj1S" class="tab-content active" id="tab-today">
+<div data-page-node-id="79SPz3Exku4MKtizJfVHhZ" style="align-items:center; display:flex; justify-content:space-between; margin-bottom:16px">
+<h1 data-page-node-id="JfP8aAhRcnYIXqmK7R0Vhf" style="font-size:22px; font-weight:700"><!--pnid:vxNOmmuFFiLZmY8JIVrNAY-->今日</h1>
+<button data-page-node-id="0xkvfrq2u9il1d1jwSh63J" class="btn btn-primary" onclick="openGoalModal()">
+<svg data-page-node-id="1LNs06KVcIuUaL4IejNiKc" fill="none" height="18" viewBox="0 0 24 24" width="18"><path data-page-node-id="noTaeo8VZDGyRIOmUy0FWM" d="M12 5v14M5 12h14" stroke="#fff" stroke-linecap="round" stroke-width="2.5"/></svg><!--pnid:zg1xYaRaZpRu4KHC0c3w4z-->
+新建目标
+</button>
+</div>
+<div data-page-node-id="iHVllRs8qHFmjWXDQH663R" data-sp-bindable="database" data-sp-database-id="aQ30PniGrtqPO5G2WXMytn" id="today-handle"></div>
+<div data-page-node-id="ztLCkgkhO2AEIbmOwu7zDa" data-sp-bindable="database" data-sp-database-id="aQ30PniGrtqPO5G2WXMytn" id="today-list"></div>
+<div data-page-node-id="GxP1NrJxbGvfID5C6wmkQO" style="margin-top:20px; text-align:center">
+<button data-page-node-id="nw8cwm2YcNDWDr4SVFPfsz" class="btn btn-primary btn-block" onclick="openGoalModal()" style="margin:0 auto; max-width:300px">
+<svg data-page-node-id="QEToYkPftQrCs5aYBexYRQ" fill="none" height="18" viewBox="0 0 24 24" width="18"><path data-page-node-id="kzFvsjTjk3fz7fRWueaUjL" d="M12 5v14M5 12h14" stroke="#fff" stroke-linecap="round" stroke-width="2.5"/></svg><!--pnid:pWfW5y2LajurFMSGhYRybt-->
+新建学习目标
+</button>
+</div>
+</section>
+<!--pnid:gzXqJhIabGZknKH5IQXi9D--><!-- Board Tab -->
+<section data-page-node-id="oqgs1AqaXT8xdyt2gcUY6d" class="tab-content" id="tab-board">
+<h1 data-page-node-id="L3HDAeO9WCaRfCnULbqRs0" style="font-size:22px; font-weight:700; margin-bottom:16px"><!--pnid:FTHxhIL7fu2HmoEIx2BkpW-->看板</h1>
+<div data-page-node-id="gO897GLY5shKm4pdFbJ7tj" data-sp-bindable="database" data-sp-database-id="aQ30PniGrtqPO5G2WXMytn" id="board-list"></div>
+<div data-page-node-id="fpz7P6tupvaYowwXHkZkoO" class="section-title"><!--pnid:tUEuB9BbpoguCqtS4AW0DS-->近14天投入分钟</div>
+<div data-page-node-id="opE4jKM6nD75jUK4JvxEbt" class="card chart-container" id="chart-card">
+<div data-page-node-id="R8v7pwccMuggQhqiaQ6Ueq" data-sp-bindable="database" data-sp-database-id="lDwfOkEJ5IdAoNYzUEzwMx" id="chart-area"></div>
+</div>
+</section>
+<!--pnid:FEct0Nt54hjFemmBooPaCj--><!-- Weekly Tab -->
+<section data-page-node-id="KuNJARnoh9ftIqJcwxXHjb" class="tab-content" id="tab-weekly">
+<h1 data-page-node-id="7dJp59PlE0s3Q0gGLVlRbT" style="font-size:22px; font-weight:700; margin-bottom:16px"><!--pnid:3Z6WqHmndCsxqZfCpmidZM-->周报</h1>
+<div data-page-node-id="qQwebgfTZIgSWEY0xMuIck" class="week-selector">
+<button data-page-node-id="8Fc3oc3HyyAUmmw927zbv1" class="week-arrow" onclick="changeWeek(-1)"><!--pnid:11qinpPsyi2lPMrSiLKGSn-->&larr;</button>
+<span data-page-node-id="DADa7FJeFIlo4PbgDijYR3" class="week-label" id="week-label"><!--pnid:MRRlTFFt442qiEE1S2x2by-->本周</span>
+<button data-page-node-id="EitNcCx9yGa2Jiw6dRb8ls" class="week-arrow" onclick="changeWeek(1)"><!--pnid:pCiu4vlzLE2HCJiMEk5B6v-->&rarr;</button>
+</div>
+<div data-page-node-id="hTnR8n2jm4B04I9iwQPwpK" class="card" data-sp-bindable="database" data-sp-database-id="lDwfOkEJ5IdAoNYzUEzwMx" id="weekly-summary"></div>
+<div data-page-node-id="hyX7Nb6FJG3S6NNfFscYzc" class="card">
+<h3 data-page-node-id="zukTSFBQcalC6cFMqQNZCO" style="font-size:16px; font-weight:600; margin-bottom:12px"><!--pnid:NRSYqL7n5SWXHrQYM5HLie-->周复盘</h3>
+<div data-page-node-id="aIOMDLAwNLi2d2st0LgeKN" class="form-group"><label data-page-node-id="9DciWiE8CgGPLrlutQYVVK" class="form-label"><!--pnid:D4Yfy95eaB6LNe4ux9UdG3-->保持</label><textarea data-page-node-id="jUjk162S6kI7ah6z9MzTHw" class="form-textarea" id="rev-keep" placeholder="本周做得好的，下周继续保持"></textarea></div>
+<div data-page-node-id="4DVHx4cfnZ0Rc6zLSXxtEu" class="form-group"><label data-page-node-id="oB1yxFadWCiRROgJUFYucH" class="form-label"><!--pnid:Re82YEOsDVKQpQLs3MCYyb-->问题</label><textarea data-page-node-id="bdhuPy0SOl7GpL173TOj3R" class="form-textarea" id="rev-problem" placeholder="遇到的困难和问题"></textarea></div>
+<div data-page-node-id="AnKiRDtVtMdMiszr54kVFR" class="form-group"><label data-page-node-id="qdUw6P1o6pEFjVWGSYkzLo" class="form-label"><!--pnid:R4EVsN5hL9zvrkWwnD6wJn-->尝试</label><textarea data-page-node-id="0IlxYX37HWON9wqlcnnvk6" class="form-textarea" id="rev-try" placeholder="尝试过的方法和效果"></textarea></div>
+<div data-page-node-id="d8GV2mj4atR7rAtksJkDfZ" class="form-group"><label data-page-node-id="Q4IRvpDEUN9jDefHjp7tjD" class="form-label"><!--pnid:SxzxYutqN4Xq0xRL3wRMHC-->下周预案</label><textarea data-page-node-id="tyJeB8HwkuqJ0kEC1LvUYf" class="form-textarea" id="rev-plan" placeholder="下周的计划和对策"></textarea></div>
+<div data-page-node-id="rbrO40l6D17QPgZ525KrWn" style="display:flex; gap:8px">
+<button data-page-node-id="M1wcw6y5XQQB2FGT4Ippe3" class="btn btn-primary" onclick="saveWeeklyReview()"><!--pnid:UKswa7cexFQEeD8vw35F4e-->保存复盘</button>
+<button data-page-node-id="DVizc224UvA7QSSotzpahG" class="btn btn-ghost" onclick="generateReportText()"><!--pnid:HbkdI5Czp60ZihqfOVcxhu-->生成周报文本</button>
+</div>
+</div>
+<div data-page-node-id="p1KdA5t3YXl0TZDOLyi9Bv" id="report-output" style="display:none; margin-top:12px"></div>
+</section>
+<!--pnid:QkhvvZCw2HT1UoPUJqCK3x--><!-- Mine Tab -->
+<section data-page-node-id="8pRNlTY7sGir03pmEtXaw1" class="tab-content" id="tab-mine">
+<h1 data-page-node-id="qGqXSbeyDBhZtB0ExwcNWZ" style="font-size:22px; font-weight:700; margin-bottom:16px"><!--pnid:LxVY4YWVjMeAQe6QHr61oQ-->我的</h1>
+<div data-page-node-id="IW2kzsjAKV7gDH4MawsxnM" class="card">
+<h3 data-page-node-id="ZgoA07AVBtuVxphQpKiy7k" style="font-size:16px; font-weight:600; margin-bottom:12px"><!--pnid:BMCoouFfYZPHgqwIwbjGf4-->数据同步</h3>
+<div data-page-node-id="dncsJEKnirmfvgCvbS46BE" data-sp-bindable="database" data-sp-database-id="aQ30PniGrtqPO5G2WXMytn" id="sync-status-area"></div>
+<button data-page-node-id="ed297BCY9pMBIpbptplWef" class="btn btn-ghost btn-block" onclick="manualSync()" style="margin-top:12px">
+<svg data-page-node-id="duu2FSEad0PEMCkmS814Pq" fill="none" height="16" viewBox="0 0 24 24" width="16"><path data-page-node-id="AkjOymoAU5fvIcWo4rRdrv" d="M4 12a8 8 0 0 1 13.66-5.66L20 8M20 4v4h-4M20 12a8 8 0 0 1-13.66 5.66L4 16M4 20v-4h4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg><!--pnid:AxDagCYRuhAzgNsg9wo86L-->
+手动重新同步
+</button>
+</div>
+<div data-page-node-id="9Hp8WsxcvYjmLv0efNdOI0" class="card">
+<h3 data-page-node-id="eh9Gph9LV72ECBUBhdaulC" style="font-size:16px; font-weight:600; margin-bottom:12px"><!--pnid:pYPs5lE3E7i5Hbiox9gqPM-->数据管理</h3>
+<button data-page-node-id="tr0giYZbcdYnn7LvOu6Y9O" class="btn btn-ghost btn-block" onclick="clearExamples()" style="margin-bottom:8px"><!--pnid:5FxC8lETku2Ypr1syetIfg-->清空示例数据</button>
+<div data-page-node-id="re2zKlIbiK6ACzX1SMR322" style="margin-top:12px">
+<label data-page-node-id="oQ7LjTibwYpSiuVsvJeU9f" class="form-label"><!--pnid:FEHy4gADlu1mEGnpqGzlmU-->输入"清空"后清空全部数据</label>
+<div data-page-node-id="wNzOQP9W3wue5nN1G1jAJe" style="display:flex; gap:8px">
+<input data-page-node-id="WBqKzGBGs5Ccq0rCv1cxS6" class="form-input" id="clear-input" placeholder="输入"清空"" type="text" style="flex:1">
+<button data-page-node-id="t0ItZ9D6VQytD94c0GzFaM" class="btn btn-danger" onclick="clearAllData()"><!--pnid:o4UiBKHWCGUqxY87NfmiVi-->清空</button>
+</div>
+</div>
+</div>
+<div data-page-node-id="iZ16q5gr63bna1pY6ruQu6" class="card">
+<h3 data-page-node-id="iz2s3BrSo3BdC9dlUxDElw" style="font-size:16px; font-weight:600; margin-bottom:12px"><!--pnid:J0f3eEI80E4e7DjFwRqdFZ-->添加到手机主屏幕</h3>
+<div data-page-node-id="bhhisYr8f1sCHsHMmTzhHs" class="guide-step"><span data-page-node-id="1J9AaPUPHhMuBBO9g2LEEp" class="guide-num"><!--pnid:mofRbRlnmd0tjfFy8lFrwz-->1</span><span data-page-node-id="mbg5wu5hcIyfV1jwNCnsay" class="guide-text"><!--pnid:TkB6dm1t0Pfy6VjAxVT4xx-->在手机浏览器中打开本页面链接</span></div>
+<div data-page-node-id="XrnMze7FZpAdnGVxkeg18u" class="guide-step"><span data-page-node-id="KYdrPBwjw2RL38y3Me7ZbR" class="guide-num"><!--pnid:xzkEBrCAfsACp8RPqBF2oY-->2</span><span data-page-node-id="bOSJ2R5npGMRoMR5pPv42c" class="guide-text"><!--pnid:S11V6r7VnCnJtMiNUj23DS-->点击浏览器菜单按钮（通常是右上角或右下角的三个点）</span></div>
+<div data-page-node-id="tjusioSuTudjdsOo4aAenG" class="guide-step"><span data-page-node-id="kCqeoOPj6GfDD2IfW9mWrQ" class="guide-num"><!--pnid:Q1VxydFJC4XuJ9I5l8XiAc-->3</span><span data-page-node-id="khWNzPlg7hhAHC47jkttqd" class="guide-text"><!--pnid:TYnR7QC33u4kx2tXI97ZG1-->选择"添加到主屏幕"或"添加到主屏幕"，即可像 APP 一样使用</span></div>
+</div>
+</section>
+</main>
+</div>
+<!--pnid:86V5txjvejOhefZBsdEPTB--><!-- Modal: New/Edit Goal -->
+<div data-page-node-id="qI3F3IsDTOESkK22cYgSjR" class="modal-overlay" id="modal-goal">
+<div data-page-node-id="EG96A7NQCHHzwfs0llXgdE" class="modal">
+<div data-page-node-id="xab0Ta1B91R8I8owqLxr8l" class="modal-title"><span data-page-node-id="wuJLbcZTJKDO329sFbGcHi" id="goal-modal-title"><!--pnid:gFI36mCKNHf13wFqGeTE7d-->新建学习目标</span><button data-page-node-id="slzD9cT6fDTLrokj0Sfyea" class="modal-close" onclick="closeModal('modal-goal')"><!--pnid:wD4lZVulEnTeLgICRnEk7S-->&times;</button></div>
+<input data-page-node-id="FjdrXGp2uxfMrAckw033jy" id="goal-edit-id" type="hidden">
+<div data-page-node-id="FGSq7xyrk2pXsHCpdznvDE" class="form-group"><label data-page-node-id="uOifjNSirYIdRG7rnciyXo" class="form-label"><!--pnid:y20YTc3hM7rfL18jzznyGo-->目标名称</label><input data-page-node-id="jv3ykati2S0KPjledhUZ3v" class="form-input" id="goal-name" maxlength="30" placeholder="如：背英语单词" type="text"></div>
+<div data-page-node-id="z35qV4KkqrRm62yyyO3bpU" class="form-row">
+<div data-page-node-id="BqHf4B0kOZ1AxZBVgvKx4M" class="form-group"><label data-page-node-id="q5PphTcqVkwkY0ugoiSUfr" class="form-label"><!--pnid:4AmSCtW647zwwe1mT0ZCsC-->单位</label><input data-page-node-id="jO9JRdNUSAnY4Y5Vd5WZvE" class="form-input" id="goal-unit" maxlength="10" placeholder="个/页/节" type="text"></div>
+<div data-page-node-id="G361yKjimK0T9hH3HbzcR5" class="form-group"><label data-page-node-id="9hGC5iOcLJVzoocFDDThf6" class="form-label"><!--pnid:im9iiGKEd43dKKfMmyinO0-->总量</label><input data-page-node-id="CG89aHYfwkmtehZjvr6Njw" class="form-input" id="goal-total" min="1" placeholder="2000" type="number"></div>
+</div>
+<div data-page-node-id="8TaNm2e3GOXJWQExMt6Ayc" class="form-group"><label data-page-node-id="e8U8ESrE4nwtijvpolbAN2" class="form-label"><!--pnid:2RQxfrkVkAANrQwTtTpTZ0-->截止日期</label><input data-page-node-id="BmV5VvwAfPCICNR8gd6Eto" class="form-input" id="goal-deadline" type="date"></div>
+<div data-page-node-id="QifAbc7SPsfCghKnhUiKk4" class="form-group"><label data-page-node-id="0btgQdR6yXpS23CWTmnqQp" class="form-label"><!--pnid:1XX9Rc68AGGM4V7BFuCx6T-->配色</label><div data-page-node-id="wDizoCR1MrEWURdlFybUai" class="color-picker" id="color-picker"></div></div>
+<div data-page-node-id="tsCXtNCKxxhIR0agavtUa0" class="form-group"><label data-page-node-id="fwbPB6i4L8RsmfOFF1Spqq" class="form-label"><!--pnid:5FIAtSuzF7kpAFhjEFOe9A-->最容易拦住我的障碍（选填）</label><input data-page-node-id="fk1e0jBpC2gvZAH2rAQVyY" class="form-input" id="goal-obstacle" maxlength="50" placeholder="如：手机推送打断" type="text"></div>
+<div data-page-node-id="H6ukDtiGv7OwXjiqljODmr" class="form-group"><label data-page-node-id="3AFEnjVS6aIfYTCgGuKw2D" class="form-label"><!--pnid:oRMAI6RdNmh0uDKo0Kn9bY-->对策（选填）</label><input data-page-node-id="Q9QMVeDgpJ4py3l8CHgMlA" class="form-input" id="goal-strategy" maxlength="80" placeholder="如：如果手机推送出现，我就把它翻面扣放" type="text"></div>
+<div data-page-node-id="oUUDYWrWuT7O1J8TEjB415" style="display:flex; gap:8px; margin-top:16px">
+<button data-page-node-id="xXbvKfvpwXJHjGibxb1pdA" class="btn btn-primary btn-block" onclick="saveGoal()"><!--pnid:b2tphaZUWI0I4gKXcjXX1Q-->保存</button>
+</div>
+<div data-page-node-id="WTX2GBZ0oUShMyOrk9GfPu" id="goal-delete-area" style="display:none; margin-top:8px">
+<button data-page-node-id="sVdjCPhy2lcwpES0qsew23" class="btn btn-danger btn-block btn-sm" onclick="confirmDeleteGoal()"><!--pnid:hp518bH6rwOnDifilFHL0K-->删除此目标</button>
+</div>
+</div>
+</div>
+<!--pnid:5rTAxdKOSIKfskKi2880xn--><!-- Modal: Check-in -->
+<div data-page-node-id="hP435ZIcYSoHKjAaW5P84C" class="modal-overlay" id="modal-checkin">
+<div data-page-node-id="izoOY6bKSQewGtpjHbWJNs" class="modal">
+<div data-page-node-id="vZTH9HfA0m9ZNQsRSQbeOE" class="modal-title"><span data-page-node-id="E7icyIDyOWQgEHbigpwiT9" id="checkin-goal-name"><!--pnid:DHZFkT8b5QSNlMpak7M4B7-->打卡</span><button data-page-node-id="SysB2mxTpqOP2QmZKXmlNj" class="modal-close" onclick="closeModal('modal-checkin')"><!--pnid:sHl0XGidl5s99jBTaXQHnz-->&times;</button></div>
+<input data-page-node-id="giHTMOFkzQEBR8iCI4DVFO" id="checkin-goal-id" type="hidden">
+<div data-page-node-id="TMPqUA1AN76jjBXMyBT7Fy" class="form-group"><label data-page-node-id="N8CBsoNRrakAyFXV6u16eF" class="form-label"><!--pnid:TiSu6Ftydsh0cKjWi1ella-->日期（可补记最近6天）</label><input data-page-node-id="KGKs3DrBbbhB3O13Vyb0KC" class="form-input" id="checkin-date" type="date"></div>
+<div data-page-node-id="WUvSZmVkNQDGghaHGYpcot" class="form-group"><label data-page-node-id="5BhxkxWGqfBX76yYdTVlFf" class="form-label"><!--pnid:NmEhZ2MxxeJh5Hb9UnJteh-->数量</label><input data-page-node-id="K5UC5ZiTFFk0igAmEF6usQ" class="form-input" id="checkin-amount" min="0" placeholder="本次完成量" step="0.5" type="number"></div>
+<div data-page-node-id="t9UZUTLqUIQ8DKhbW1E5ch" class="form-group"><label data-page-node-id="DujZBWQCUhWx9Ynz5sFXWh" class="form-label"><!--pnid:YTr6eRmvIFJ9gBv2ZI36ZC-->投入分钟（选填）</label><input data-page-node-id="Mvii2UtNaov9xY6trg38q9" class="form-input" id="checkin-minutes" min="0" placeholder="如：30" type="number"></div>
+<div data-page-node-id="C5CiHSeOwNO1iCAD5nVR28" style="display:flex; gap:8px; margin-top:16px">
+<button data-page-node-id="374ZGmx2EUwdfC81PZLe2C" class="btn btn-primary btn-block" onclick="saveCheckin()"><!--pnid:XfcQZ48szIYLYAGOofq1Va-->打卡</button>
+</div>
+</div>
+</div>
+<!--pnid:Sdpr1EVuo2ZovXxyHrHYCu--><!-- Modal: Confirm Delete -->
+<div data-page-node-id="zlmUf6fKIQyuP7Xx3jYvPN" class="modal-overlay" id="modal-confirm">
+<div data-page-node-id="Eqsc54YGvCCBN6ZZkmi1rg" class="modal">
+<div data-page-node-id="IPhK7ifEa6kc3yhmbjMp8N" class="modal-title"><!--pnid:JCSWAUsM3Di14OxCm0YqYf-->确认删除<button data-page-node-id="45AlWvafDvVjuoT2O29COh" class="modal-close" onclick="closeModal('modal-confirm')"><!--pnid:vHdTrixvylJ04T1DrVMu9p-->&times;</button></div>
+<p data-page-node-id="YnwWkJ14Ccx4ywkK6O56OZ" id="confirm-text" style="color:var(--txt2); margin-bottom:16px"></p>
+<div data-page-node-id="YhmphTfJFyhaG6VvS876le" style="display:flex; gap:8px">
+<button data-page-node-id="HF2l6WaBkJ63Tr0sRmgJ6X" class="btn btn-danger btn-block" id="confirm-btn"><!--pnid:QpTnl2eKX82uV9qmX0BFJh-->确认删除</button>
+<button data-page-node-id="ihXmA1GEJ6jOF4v3q8nk7Q" class="btn btn-ghost btn-block" onclick="closeModal('modal-confirm')"><!--pnid:l9VDKxQ0Gvkfh2TiyDSdTF-->取消</button>
+</div>
+</div>
+</div>
+<div data-page-node-id="ZADbXzbOfYpx2kid6WuMgn" id="confetti-container"></div>
+<div data-page-node-id="1rvgu0tLNqNIB4MCqy9nut" id="toast-area"></div>
+<script data-page-node-id="d0Mi2vD7ur6Srwa77FvqXP" data-pnid-children="vvB1BH1Oo2RRFDStzbsBOw">
+(function(){
+'use strict';
+/* ====== Database IDs ====== */
+var GOALS_DB_ID='aQ30PniGrtqPO5G2WXMytn';
+var RECORDS_DB_ID='lDwfOkEJ5IdAoNYzUEzwMx';
+var REVIEWS_DB_ID='ZydW7zJ43qTtNjfa1TUi7W';
+/* ====== Color mapping ====== */
+var COLOR_MAP={
+'紫色':{c1:'#7c3aed',c2:'#a855f7',light:'#f5f3ff'},
+'蓝色':{c1:'#3b82f6',c2:'#60a5fa',light:'#eff6ff'},
+'绿色':{c1:'#10b981',c2:'#34d399',light:'#f0fdf4'},
+'橙色':{c1:'#f59e0b',c2:'#fbbf24',light:'#fffbeb'},
+'粉色':{c1:'#ec4899',c2:'#f472b6',light:'#fdf2f8'}
+};
+/* ====== SVG Icons ====== */
+var ICON={
+today:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+board:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="9" rx="1" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="5" rx="1" stroke="currentColor" stroke-width="2"/><rect x="14" y="12" width="7" height="9" rx="1" stroke="currentColor" stroke-width="2"/><rect x="3" y="16" width="7" height="5" rx="1" stroke="currentColor" stroke-width="2"/></svg>',
+weekly:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+mine:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+plus:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
+check:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+trash:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+fire:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2s4 3 4 8a4 4 0 0 1-8 0c0-1 .5-2 1-3-2 1-4 4-4 7a7 7 0 0 0 14 0c0-6-4-9-7-12z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+clock:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+target:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>',
+warn:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 20h20L12 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 9v5M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+sync:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12a8 8 0 0 1 13.66-5.66L20 8M20 4v4h-4M20 12a8 8 0 0 1-13.66 5.66L4 16M4 20v-4h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+edit:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+/* ====== State ====== */
+var db=null;
+var goals=[];
+var records=[];
+var reviews=[];
+var currentTab='today';
+var syncStatus='idle';
+var lastSyncTime=null;
+var selectedColor='紫色';
+var weekOffset=0;
+var editingGoalId=null;
+var checkingInGoalId=null;
+var pendingDeleteCallback=null;
+/* ====== Form cache (localStorage) ====== */
+var FC_KEY='wb_sg_cache_';
+function fcSet(form,field,val){try{localStorage.setItem(FC_KEY+form+'_'+field,val)}catch(e){}}
+function fcGet(form,field){try{return localStorage.getItem(FC_KEY+form+'_'+field)}catch(e){return null}}
+function fcClear(form){try{for(var i=localStorage.length-1;i>=0;i--){var k=localStorage.key(i);if(k&&k.indexOf(FC_KEY+form+'_')===0)localStorage.removeItem(k)}}catch(e){}}
+function fcBindInputs(form,fields){
+fields.forEach(function(f){
+var el=document.getElementById(f);
+if(el){
+el.addEventListener('input',function(){fcSet(form,f,el.value)});
+}
+});
+}
+/* ====== Date utils ====== */
+function pad(n){return n<10?'0'+n:''+n}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function parseDate(s){if(!s)return null;var p=s.split('T')[0].split('-');return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]))}
+function dateStr(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function dateCN(d){return(d.getMonth()+1)+'月'+d.getDate()+'日'}
+function daysBetween(d1,d2){return Math.round((d2-d1)/86400000)}
+function getMonday(d){var r=new Date(d);var day=r.getDay();var diff=r.getDate()-day+(day===0?-6:1);r.setDate(diff);r.setHours(0,0,0,0);return r}
+function getSunday(m){var r=new Date(m);r.setDate(r.getDate()+6);return r}
+function addDays(d,n){var r=new Date(d);r.setDate(r.getDate()+n);return r}
+function isSameDay(d1,d2){return dateStr(d1)===dateStr(d2)}
+/* ====== DB query all ====== */
+function queryAll(dbId,sorts,filter){
+var DATABASE_ID=dbId;
+var all=[];
+function page(cursor){
+var p={databaseId:DATABASE_ID,pageSize:100};
+if(sorts)p.sorts=sorts;
+if(filter)p.filter=filter;
+if(cursor)p.startCursor=cursor;
+return db.query(p).then(function(r){
+all=all.concat(r.results||[]);
+if(r.hasMore&&r.nextCursor)return page(r.nextCursor);
+return all;
+});
+}
+return page(null);
+}
+/* ====== Load all data ====== */
+function loadAllData(){
+syncStatus='syncing';renderSyncStatus();
+if(!db){showError('资料库数据服务未加载，请通过资料库链接访问此页面');syncStatus='error';renderSyncStatus();return}
+Promise.all([
+queryAll('aQ30PniGrtqPO5G2WXMytn',[{property:'截止日',direction:'ascending'}]),
+queryAll('lDwfOkEJ5IdAoNYzUEzwMx',[{property:'日期',direction:'descending'}]),
+queryAll('ZydW7zJ43qTtNjfa1TUi7W',[{property:'周起始日',direction:'descending'}])
+]).then(function(results){
+goals=results[0]||[];
+records=results[1]||[];
+reviews=results[2]||[];
+syncStatus='synced';lastSyncTime=new Date();renderSyncStatus();
+renderCurrentTab();
+}).catch(function(err){
+console.error('Data load failed:',err);
+syncStatus='error';renderSyncStatus();
+showError('数据加载失败，请点击重新同步重试');
+});
+}
+/* ====== Render sync status ====== */
+function renderSyncStatus(){
+var el=document.getElementById('sync-status-area');
+if(!el)return;
+if(syncStatus==='syncing'){
+el.innerHTML='<div class="sync-badge sync-syncing"><span class="sync-dot" style="background:#f59e0b"></span>同步中...</div>';
+}else if(syncStatus==='synced'){
+el.innerHTML='<div class="sync-badge sync-synced"><span class="sync-dot" style="background:#10b981"></span>已同步</div><p style="margin-top:8px;font-size:13px;color:#6b7280">最近同步：'+(lastSyncTime?lastSyncTime.toLocaleString('zh-CN'):'—')+'</p>';
+}else if(syncStatus==='error'){
+el.innerHTML='<div class="sync-badge sync-error"><span class="sync-dot" style="background:#ef4444"></span>同步失败</div><p style="margin-top:8px;font-size:13px;color:#ef4444">数据同步异常，请点击下方按钮重试</p>';
+}
+}
+/* ====== Nav setup ====== */
+function setupNav(){
+var tabs=[
+{id:'today',label:'今日',icon:ICON.today},
+{id:'board',label:'看板',icon:ICON.board},
+{id:'weekly',label:'周报',icon:ICON.weekly},
+{id:'mine',label:'我的',icon:ICON.mine}
+];
+var desk=document.getElementById('nav-items-desktop');
+var top=document.getElementById('nav-items-top');
+var bot=document.getElementById('nav-items-bottom');
+desk.innerHTML='';top.innerHTML='';bot.innerHTML='';
+tabs.forEach(function(t){
+var b1=document.createElement('button');
+b1.className='nav-item'+(t.id===currentTab?' active':'');
+b1.innerHTML=t.icon+'<span>'+t.label+'</span>';
+b1.onclick=function(){switchTab(t.id)};
+desk.appendChild(b1);
+var b2=document.createElement('button');
+b2.className='nav-item'+(t.id===currentTab?' active':'');
+b2.innerHTML=t.icon+'<span>'+t.label+'</span>';
+b2.onclick=function(){switchTab(t.id)};
+bot.appendChild(b2);
+var b3=document.createElement('button');
+b3.className='nav-item'+(t.id===currentTab?' active':'');
+b3.innerHTML=t.icon+'<span>'+t.label+'</span>';
+b3.onclick=function(){switchTab(t.id)};
+top.appendChild(b3);
+});
+}
+function switchTab(tab){
+currentTab=tab;
+document.querySelectorAll('.tab-content').forEach(function(s){s.classList.remove('active')});
+var el=document.getElementById('tab-'+tab);
+if(el)el.classList.add('active');
+document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active')});
+document.querySelectorAll('.nav-item').forEach(function(n){
+if(n.textContent.indexOf(tabs_label(tab))>-1)n.classList.add('active');
+});
+setupNav();
+renderCurrentTab();
+}
+function tabs_label(tab){var m={today:'今日',board:'看板',weekly:'周报',mine:'我的'};return m[tab]||''}
+function renderCurrentTab(){
+if(currentTab==='today')renderToday();
+else if(currentTab==='board')renderBoard();
+else if(currentTab==='weekly')renderWeekly();
+else if(currentTab==='mine')renderMine();
+}
+/* ====== Business logic ====== */
+function getGoalRecords(gid){
+return records.filter(function(r){return r['目标ID']===gid});
+}
+function getCompletedAmount(gid){
+var recs=getGoalRecords(gid);
+var sum=0;
+recs.forEach(function(r){sum+=(r['数量']||0)});
+return sum;
+}
+function getGoalById(gid){
+return goals.find(function(g){return g._id===gid});
+}
+function calcTodaySuggested(goal){
+var total=goal['总量']||0;
+var completed=getCompletedAmount(goal._id);
+var remaining=total-completed;
+if(remaining<=0)return 0;
+var deadline=parseDate(goal['截止日']);
+var today=new Date();today.setHours(0,0,0,0);
+var days=daysBetween(today,deadline)+1;
+if(days<=0)return remaining;
+return Math.ceil(remaining/days*10)/10;
+}
+/* Consecutive days with rest day logic */
+function calcConsecutiveDays(gid){
+var recs=getGoalRecords(gid);
+var recDates={};
+recs.forEach(function(r){
+var d=parseDate(r['日期']);
+if(d){var key=dateStr(d);recDates[key]=(recDates[key]||0)+(r['数量']||0)}
+});
+var today=new Date();today.setHours(0,0,0,0);
+var streak=0;
+var d=new Date(today);
+while(true){
+var ds=dateStr(d);
+var hasRec=recDates[ds]>0;
+if(hasRec){streak++;d=addDays(d,-1);continue}
+/* No record - check if rest day */
+var monday=getMonday(d);
+var misses=0;
+var wkEnd=getSunday(monday);
+var cd=new Date(monday);
+while(cd<=d&&cd<=today){
+if(cd<today){
+var cds=dateStr(cd);
+if(!(recDates[cds]>0))misses++;
+}
+cd=addDays(cd,1);
+}
+if(misses===1){streak++;d=addDays(d,-1);continue}
+/* second miss or more - break */
+break;
+}
+return streak;
+}
+/* Check if yesterday was missed and what type */
+function checkYesterdayMiss(gid){
+var recs=getGoalRecords(gid);
+var recDates={};
+recs.forEach(function(r){var d=parseDate(r['日期']);if(d)recDates[dateStr(d)]=true});
+var today=new Date();today.setHours(0,0,0,0);
+var yesterday=addDays(today,-1);
+var ydStr=dateStr(yesterday);
+if(recDates[ydStr])return null; /* checked in */
+/* Yesterday missed - determine rest day or broken */
+var monday=getMonday(yesterday);
+var misses=0;
+var cd=new Date(monday);
+while(cd<=yesterday){
+if(!(recDates[dateStr(cd)]))misses++;
+cd=addDays(cd,1);
+}
+if(misses===1)return'rest'; /* first miss = rest day */
+return'broken';
+}
+/* Estimated completion date */
+function calcEstimatedCompletion(gid){
+var recs=getGoalRecords(gid);
+var today=new Date();today.setHours(0,0,0,0);
+var sevenAgo=addDays(today,-6);
+var totalQty=0;
+var hasRecords=false;
+recs.forEach(function(r){
+var d=parseDate(r['日期']);
+if(d&&d>=sevenAgo&&d<=today){totalQty+=(r['数量']||0);hasRecords=true}
+});
+if(!hasRecords)return null;
+var avg=totalQty/7;
+if(avg<=0)return null;
+var goal=getGoalById(gid);
+if(!goal)return null;
+var remaining=(goal['总量']||0)-getCompletedAmount(gid);
+if(remaining<=0)return{date:today,done:true};
+var days=Math.ceil(remaining/avg);
+var estDate=addDays(today,days);
+return{date:estDate,done:false,avg:avg};
+}
+/* ====== Render: Today ====== */
+function renderToday(){
+var handleEl=document.getElementById('today-handle');
+var listEl=document.getElementById('today-list');
+if(goals.length===0&&records.length===0){
+listEl.innerHTML='<div class="empty"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><p>还没有学习目标，点击上方按钮创建第一个吧</p></div>';
+handleEl.innerHTML='';
+return;
+}
+/* Today to handle section */
+var handleItems=[];
+var activeGoals=goals.filter(function(g){return g['状态']!=='已完成'});
+activeGoals.forEach(function(g){
+var deadline=parseDate(g['截止日']);
+var today=new Date();today.setHours(0,0,0,0);
+var completed=getCompletedAmount(g._id);
+var remaining=(g['总量']||0)-completed;
+/* Overdue */
+if(deadline<today&&remaining>0){
+var daysLate=daysBetween(deadline,today);
+handleItems.push({type:'overdue',goal:g,daysLate:daysLate});
+return;
+}
+/* Yesterday missed */
+var yMiss=checkYesterdayMiss(g._id);
+if(yMiss==='rest'){
+handleItems.push({type:'rest',goal:g});
+}else if(yMiss==='broken'){
+handleItems.push({type:'broken',goal:g});
+}
+});
+var handleHtml='';
+if(handleItems.length>0){
+handleHtml='<div class="section-title">'+ICON.warn+' 今天要处理 <span class="count">'+handleItems.length+'</span></div>';
+handleItems.forEach(function(item){
+var g=item.goal;
+var cm=COLOR_MAP[g['配色']]||COLOR_MAP['紫色'];
+if(item.type==='overdue'){
+handleHtml+='<div class="handle-item card-overdue">'+
+'<span class="handle-icon" style="color:#ef4444">'+ICON.warn+'</span>'+
+'<span class="handle-text"><b>'+g['目标名称']+'</b> 已逾期 '+item.daysLate+' 天，剩余 '+(g['总量']-getCompletedAmount(g._id))+g['单位']+'</span>'+
+'<span class="handle-action"><button class="btn btn-danger btn-sm" onclick="openCheckinModal(\''+g._id+'\')">立即打卡</button>'+
+'<button class="btn btn-ghost btn-sm" onclick="openGoalModal(\''+g._id+'\')">调整计划</button></span></div>';
+}else if(item.type==='rest'){
+handleHtml+='<div class="handle-item card-rest">'+
+'<span class="handle-icon" style="color:#f59e0b">'+ICON.clock+'</span>'+
+'<span class="handle-text"><b>'+g['目标名称']+'</b> 昨天休息（本周休息日已使用），今天继续</span>'+
+'<span class="handle-action"><button class="btn btn-warning btn-sm" onclick="openCheckinModal(\''+g._id+'\')">打卡</button></span></div>';
+}else if(item.type==='broken'){
+handleHtml+='<div class="handle-item card-broken">'+
+'<span class="handle-icon" style="color:#ef4444">'+ICON.warn+'</span>'+
+'<span class="handle-text"><b>'+g['目标名称']+'</b> 连续漏打已中断，今天重新开始</span>'+
+'<span class="handle-action"><button class="btn btn-danger btn-sm" onclick="openCheckinModal(\''+g._id+'\')">立即打卡</button></span></div>';
+}
+});
+}
+handleEl.innerHTML=handleHtml;
+/* Goal cards */
+var html='';
+var checkinGoals=goals.filter(function(g){return g['状态']!=='已完成'});
+if(checkinGoals.length===0){
+html='<div class="empty"><p>所有目标已完成</p></div>';
+}else{
+checkinGoals.forEach(function(g){
+var cm=COLOR_MAP[g['配色']]||COLOR_MAP['紫色'];
+var total=g['总量']||0;
+var completed=getCompletedAmount(g._id);
+var rate=total>0?Math.round(completed/total*100):0;
+var suggested=calcTodaySuggested(g);
+var streak=calcConsecutiveDays(g._id);
+var est=calcEstimatedCompletion(g._id);
+var deadline=parseDate(g['截止日']);
+var today=new Date();today.setHours(0,0,0,0);
+var daysLeft=daysBetween(today,deadline)+1;
+var isComplete=completed>=total;
+var cardClass=isComplete?'card card-complete':'card';
+var borderColor=cm.c1;
+html+='<div class="'+cardClass+'" style="border-left:4px solid '+borderColor+'">'+
+'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+
+'<div style="display:flex;align-items:center;gap:8px">'+
+'<span style="font-size:18px;font-weight:700">'+g['目标名称']+'</span>'+
+(isComplete?'<span style="background:#10b981;color:#fff;font-size:11px;padding:2px8px;border-radius:4px">已完成</span>':'')+
+'</div>'+
+'<div style="display:flex;gap:4px">'+
+'<button class="btn btn-ghost btn-sm" onclick="openGoalModal(\''+g._id+'\')">'+ICON.edit+' 编辑</button>'+
+'</div></div>'+
+'<div class="stat-row" style="margin-bottom:10px">'+
+'<div class="stat-item"><div class="stat-num" style="color:'+cm.c1+'">'+completed+'/'+total+'</div><div class="stat-label">'+g['单位']+'</div></div>'+
+'<div class="stat-item"><div class="stat-num" style="color:'+cm.c1+'">'+rate+'%</div><div class="stat-label">完成率</div></div>'+
+'<div class="stat-item"><div class="stat-num" style="color:'+cm.c1+'">'+streak+'</div><div class="stat-label">连续天数</div></div>'+
+'</div>'+
+(!isComplete?'<div style="background:'+cm.light+';border-radius:8px;padding:10px;margin-bottom:10px">'+
+'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+'<span style="font-size:13px;color:#6b7280">今日建议</span>'+
+'<span style="font-size:14px;font-weight:600;color:'+cm.c1+'">约 '+suggested+g['单位']+'</span></div>'+
+'<div style="font-size:12px;color:#6b7280">剩余 '+(total-completed)+g['单位']+' / 剩余 '+daysLeft+'天'+(est?' / 预计 '+dateCN(est.date)+(est.done?' 完成':''):' / 暂无推算')+'</div>'+
+(est&&!est.done&&deadline?
+(est.date<=deadline?'<div style="font-size:12px;color:#10b981;margin-top:4px">预计提前 '+daysBetween(est.date,deadline)+'天完成</div>':
+'<div style="font-size:12px;color:#ef4444;margin-top:4px">预计拖后 '+daysBetween(deadline,est.date)+'天</div>'):'')+
+'</div>':'')+
+(g['障碍']?'<div class="obstacle-plan"><div class="op-label">障碍</div><div class="op-text">'+g['障碍']+'</div>'+(g['对策']?'<div class="op-label" style="margin-top:8px">对策</div><div class="op-text">'+g['对策']+'</div>':'')+'</div>':'')+
+'<button class="btn btn-primary btn-block" style="margin-top:10px" onclick="openCheckinModal(\''+g._id+'\')">'+ICON.check+' 打卡</button>'+
+'</div>';
+});
+}
+listEl.innerHTML=html;
+}
+/* ====== Render: Board ====== */
+function renderBoard(){
+var el=document.getElementById('board-list');
+if(goals.length===0){
+el.innerHTML='<div class="empty"><p>还没有目标，去今日创建吧</p></div>';
+renderChart();
+return;
+}
+var html='<div class="goal-card-grid">';
+goals.forEach(function(g){
+var cm=COLOR_MAP[g['配色']]||COLOR_MAP['紫色'];
+var total=g['总量']||0;
+var completed=getCompletedAmount(g._id);
+var rate=total>0?Math.round(completed/total*100):0;
+var streak=calcConsecutiveDays(g._id);
+var est=calcEstimatedCompletion(g._id);
+var deadline=parseDate(g['截止日']);
+var isComplete=completed>=total;
+var borderColor=cm.c1;
+/* Progress ring SVG */
+var ringR=42;
+var circ=2*Math.PI*ringR;
+var offset=circ*(1-rate/100);
+var ring='<svg width="110" height="110" viewBox="0 0 110 110">'+
+'<circle cx="55" cy="55" r="'+ringR+'" fill="none" stroke="#e5e7eb" stroke-width="7"/>'+
+'<circle cx="55" cy="55" r="'+ringR+'" fill="none" stroke="'+cm.c1+'" stroke-width="7" stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset+'" transform="rotate(-90 55 55)" stroke-linecap="round"/>'+
+'<text x="55" y="52" text-anchor="middle" font-size="20" font-weight="700" fill="#1f2937">'+rate+'%</text>'+
+'<text x="55" y="70" text-anchor="middle" font-size="11" fill="#6b7280">完成率</text></svg>';
+/* Recent 10 records */
+var goalRecs=getGoalRecords(g._id).sort(function(a,b){
+var da=parseDate(a['日期']),db2=parseDate(b['日期']);
+return db2-da;
+}).slice(0,10);
+var recHtml='';
+if(goalRecs.length>0){
+recHtml='<div style="margin-top:12px">';
+goalRecs.forEach(function(r){
+var rd=parseDate(r['日期']);
+var isBack=r['是否补记'];
+var mins=r['分钟']||0;
+recHtml+='<div class="record-item">'+
+'<span class="rec-date">'+(rd.getMonth()+1)+'/'+rd.getDate()+'</span>'+
+'<span class="rec-amount">+'+r['数量']+g['单位']+'</span>'+
+(mins>0?'<span class="rec-time">'+ICON.clock+' '+mins+'min</span>':'')+
+(isBack?'<span class="rec-badge">补</span>':'')+
+(r['备注']?'<span class="rec-time">'+r['备注']+'</span>':'')+
+'<button class="rec-del" onclick="deleteRecord(\''+r._id+'\')">'+ICON.trash+'</button></div>';
+});
+recHtml+='</div>';
+}
+html+='<div class="card" style="border-left:4px solid '+borderColor+'">'+
+'<div style="display:flex;gap:16px;align-items:center">'+
+ring+
+'<div style="flex:1">'+
+'<div style="font-size:17px;font-weight:700;margin-bottom:8px">'+g['目标名称']+(isComplete?'<span style="background:#10b981;color:#fff;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px">已完成</span>':'')+'</div>'+
+'<div class="stat-row">'+
+'<div class="stat-item"><div class="stat-num" style="color:'+cm.c1+'">'+completed+'/'+total+'</div><div class="stat-label">已完成/'+g['单位']+'</div></div>'+
+'<div class="stat-item"><div class="stat-num" style="color:'+cm.c1+'">'+streak+'</div><div class="stat-label">连续天数</div></div>'+
+'<div class="stat-item"><div class="stat-num" style="color:'+(est&&est.date<=deadline?'#10b981':'#ef4444')+';font-size:14px">'+(est?dateCN(est.date):'暂无推算')+'</div><div class="stat-label">'+(est&&!est.done?(est.date<=deadline?'提前'+daysBetween(est.date,deadline)+'天':'拖后'+daysBetween(deadline,est.date)+'天'):'预计完成')+'</div></div>'+
+'</div></div></div>'+
+(g['障碍']?'<div class="obstacle-plan"><div class="op-label">障碍：'+g['障碍']+'</div>'+(g['对策']?'<div class="op-text" style="margin-top:4px">对策：'+g['对策']+'</div>':'')+'</div>':'')+
+recHtml+
+'</div>';
+});
+html+='</div>';
+el.innerHTML=html;
+renderChart();
+}
+/* ====== Render: Stacked bar chart ====== */
+function renderChart(){
+var el=document.getElementById('chart-area');
+if(!el)return;
+var today=new Date();today.setHours(0,0,0,0);
+var days=[];
+for(var i=13;i>=0;i--){
+days.push(addDays(today,-i));
+}
+var maxMins=0;
+var dayData=days.map(function(d){
+var ds=dateStr(d);
+var goalMins={};
+records.forEach(function(r){
+if(dateStr(parseDate(r['日期']))===ds&&r['分钟']>0){
+var gn=r['目标名称']||'未知';
+goalMins[gn]=(goalMins[gn]||0)+r['分钟'];
+}
+});
+var total=0;
+for(var k in goalMins)total+=goalMins[k];
+if(total>maxMins)maxMins=total;
+return{date:d,goals:goalMins,total:total};
+});
+if(maxMins===0){
+el.innerHTML='<div class="empty"><p>近14天还没有填写投入分钟的记录</p></div>';
+return;
+}
+var barW=28,gap=14,chartH=160,labelH=24,padding=10;
+var totalW=days.length*(barW+gap);
+var svgW=Math.max(totalW,300);
+var colors=['#7c3aed','#3b82f6','#10b981','#f59e0b','#ec4899'];
+var colorIdx={};
+var ci=0;
+goals.forEach(function(g){if(!(g['目标名称']in colorIdx)){colorIdx[g['目标名称']]=colors[ci%colors.length];ci++}});
+var svg='<svg viewBox="0 0 '+svgW+' '+(chartH+labelH+20)+' width="'+svgW+'" height="'+(chartH+labelH+20)+'" style="max-width:100%">';
+days.forEach(function(dd,i){
+var x=i*(barW+gap)+gap/2;
+var y=chartH;
+for(var gn in dd.goals){
+var h=maxMins>0?(dd.goals[gn]/maxMins*chartH):0;
+y-=h;
+svg+='<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+h+'" fill="'+(colorIdx[gn]||'#7c3aed')+'" rx="2"/>';
+}
+svg+='<text x="'+(x+barW/2)+'" y="'+(chartH+labelH)+'" text-anchor="middle" font-size="10" fill="#6b7280">'+(dd.date.getMonth()+1)+'/'+dd.date.getDate()+'</text>';
+});
+svg+='</svg>';
+el.innerHTML=svg;
+}
+/* ====== Render: Weekly ====== */
+function renderWeekly(){
+var today=new Date();today.setHours(0,0,0,0);
+var thisMonday=getMonday(today);
+var targetMonday=addDays(thisMonday,weekOffset*7);
+var targetSunday=getSunday(targetMonday);
+var label=weekOffset===0?'本周':(weekOffset===-1?'上周':dateCN(targetMonday));
+document.getElementById('week-label').textContent=label+' ('+dateCN(targetMonday)+' - '+dateCN(targetSunday)+')';
+var el=document.getElementById('weekly-summary');
+/* This week stats */
+var weekRecs=records.filter(function(r){
+var d=parseDate(r['日期']);
+return d>=targetMonday&&d<=targetSunday;
+});
+var totalQty=0,checkinDays={},totalMins=0;
+var goalStats={};
+weekRecs.forEach(function(r){
+totalQty+=(r['数量']||0);
+totalMins+=(r['分钟']||0);
+checkinDays[dateStr(parseDate(r['日期']))]=true;
+var gn=r['目标名称']||'未知';
+if(!goalStats[gn])goalStats[gn]={qty:0,mins:0};
+goalStats[gn].qty+=(r['数量']||0);
+goalStats[gn].mins+=(r['分钟']||0);
+});
+var dayCount=Object.keys(checkinDays).length;
+/* Last week stats */
+var lastMonday=addDays(targetMonday,-7);
+var lastSunday=addDays(targetSunday,-7);
+var lastRecs=records.filter(function(r){
+var d=parseDate(r['日期']);
+return d>=lastMonday&&d<=lastSunday;
+});
+var lastQty=0,lastDays={},lastMins=0;
+lastRecs.forEach(function(r){
+lastQty+=(r['数量']||0);
+lastMins+=(r['分钟']||0);
+lastDays[dateStr(parseDate(r['日期']))]=true;
+});
+var lastDayCount=Object.keys(lastDays).length;
+/* Compare */
+function delta(cur,prev){
+if(prev===0)return cur>0?'+∞':'持平';
+var pct=Math.round((cur-prev)/prev*100);
+if(pct>0)return'+'+pct+'%';
+if(pct<0)return pct+'%';
+return'持平';
+}
+function deltaClass(d){return d.indexOf('+')===0?'up':(d.indexOf('-')===0?'down':'flat')}
+var qtyDelta=delta(totalQty,lastQty);
+var dayDelta=delta(dayCount,lastDayCount);
+var minDelta=delta(totalMins,lastMins);
+var html='<div class="week-compare">'+
+'<div class="wc-item"><div class="wc-num" style="color:#7c3aed">'+totalQty+'</div><div class="wc-label">本周投入量</div><div class="wc-delta '+deltaClass(qtyDelta)+'">环比 '+qtyDelta+'</div></div>'+
+'<div class="wc-item"><div class="wc-num" style="color:#7c3aed">'+dayCount+'</div><div class="wc-label">打卡天数</div><div class="wc-delta '+deltaClass(dayDelta)+'">环比 '+dayDelta+'</div></div>'+
+'<div class="wc-item"><div class="wc-num" style="color:#7c3aed">'+totalMins+'</div><div class="wc-label">投入分钟</div><div class="wc-delta '+deltaClass(minDelta)+'">环比 '+minDelta+'</div></div>'+
+'</div>';
+if(totalQty>0){
+html+='<div style="margin-top:12px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">分目标投入</div>';
+for(var gn in goalStats){
+html+='<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid #f3f4f6">'+
+'<span>'+gn+'</span><span>'+goalStats[gn].qty+' / '+goalStats[gn].mins+'min</span></div>';
+}
+html+='</div>';
+}
+el.innerHTML=html;
+/* Load review for this week */
+var weekReview=reviews.find(function(r){
+var d=parseDate(r['周起始日']);
+return isSameDay(d,targetMonday);
+});
+document.getElementById('rev-keep').value=weekReview?weekReview['保持']||'':'';
+document.getElementById('rev-problem').value=weekReview?weekReview['问题']||'':'';
+document.getElementById('rev-try').value=weekReview?weekReview['尝试']||'':'';
+document.getElementById('rev-plan').value=weekReview?weekReview['下周预案']||'':'';
+window._currentWeekReviewId=weekReview?weekReview._id:null;
+window._currentWeekStart=dateStr(targetMonday);
+document.getElementById('report-output').style.display='none';
+}
+function changeWeek(dir){
+weekOffset+=dir;
+renderWeekly();
+}
+/* ====== Render: Mine ====== */
+function renderMine(){
+renderSyncStatus();
+}
+/* ====== Goal modal ====== */
+window.openGoalModal=function(gid){
+editingGoalId=gid||null;
+var modal=document.getElementById('modal-goal');
+var title=document.getElementById('goal-modal-title');
+var delArea=document.getElementById('goal-delete-area');
+var picker=document.getElementById('color-picker');
+picker.innerHTML='';
+Object.keys(COLOR_MAP).forEach(function(c){
+var cm=COLOR_MAP[c];
+var div=document.createElement('div');
+div.className='color-opt'+(c===selectedColor?' selected':'');
+div.style.background='linear-gradient(135deg,'+cm.c1+','+cm.c2+')';
+div.onclick=function(){
+selectedColor=c;
+document.querySelectorAll('.color-opt').forEach(function(el){el.classList.remove('selected')});
+div.classList.add('selected');
+};
+picker.appendChild(div);
+});
+if(gid){
+var g=getGoalById(gid);
+if(g){
+title.textContent='编辑目标';
+document.getElementById('goal-edit-id').value=gid;
+document.getElementById('goal-name').value=g['目标名称']||'';
+document.getElementById('goal-unit').value=g['单位']||'';
+document.getElementById('goal-total').value=g['总量']||'';
+document.getElementById('goal-deadline').value=g['截止日']?g['截止日'].split('T')[0]:'';
+document.getElementById('goal-obstacle').value=g['障碍']||'';
+document.getElementById('goal-strategy').value=g['对策']||'';
+selectedColor=g['配色']||'紫色';
+document.querySelectorAll('.color-opt').forEach(function(el){el.classList.remove('selected')});
+var selIdx=Object.keys(COLOR_MAP).indexOf(selectedColor);
+if(selIdx>=0)picker.children[selIdx].classList.add('selected');
+delArea.style.display='block';
+}
+}else{
+title.textContent='新建学习目标';
+document.getElementById('goal-edit-id').value='';
+document.getElementById('goal-name').value='';
+document.getElementById('goal-unit').value='';
+document.getElementById('goal-total').value='';
+document.getElementById('goal-deadline').value=todayStr();
+document.getElementById('goal-obstacle').value='';
+document.getElementById('goal-strategy').value='';
+selectedColor='紫色';
+document.querySelectorAll('.color-opt').forEach(function(el){el.classList.remove('selected')});
+picker.children[0].classList.add('selected');
+delArea.style.display='none';
+var _cn=fcGet('goal','goal-name');if(_cn)document.getElementById('goal-name').value=_cn;
+var _cu=fcGet('goal','goal-unit');if(_cu)document.getElementById('goal-unit').value=_cu;
+var _ct=fcGet('goal','goal-total');if(_ct)document.getElementById('goal-total').value=_ct;
+var _co=fcGet('goal','goal-obstacle');if(_co)document.getElementById('goal-obstacle').value=_co;
+var _cs=fcGet('goal','goal-strategy');if(_cs)document.getElementById('goal-strategy').value=_cs;
+}
+modal.classList.add('active');
+};
+window.saveGoal=function(){
+var name=document.getElementById('goal-name').value.trim();
+var unit=document.getElementById('goal-unit').value.trim();
+var total=parseFloat(document.getElementById('goal-total').value);
+var deadline=document.getElementById('goal-deadline').value;
+var obstacle=document.getElementById('goal-obstacle').value.trim();
+var strategy=document.getElementById('goal-strategy').value.trim();
+if(!name){showToast('请输入目标名称','error');return}
+if(!unit){showToast('请输入单位','error');return}
+if(!total||total<=0){showToast('请输入有效的总量','error');return}
+if(!deadline){showToast('请选择截止日期','error');return}
+var props={
+'目标名称':{text:name},
+'单位':{text:unit},
+'总量':{number:total},
+'截止日':{date:deadline+'T00:00:00Z'},
+'配色':{select:selectedColor},
+'障碍':{text:obstacle},
+'对策':{text:strategy},
+'状态':{select:'进行中'},
+'是否示例':{checkbox:false}
+};
+if(editingGoalId){
+db.updateRecord({databaseId:'aQ30PniGrtqPO5G2WXMytn',recordId:editingGoalId,properties:props}).then(function(){
+showToast('目标已更新','success');
+fcClear('goal');
+closeModal('modal-goal');
+loadAllData();
+}).catch(function(err){showToast('更新失败，请重试','error')});
+}else{
+db.addRecord({databaseId:'aQ30PniGrtqPO5G2WXMytn',properties:props}).then(function(){
+showToast('目标已创建','success');
+fcClear('goal');
+closeModal('modal-goal');
+loadAllData();
+}).catch(function(err){showToast('创建失败，请重试','error')});
+}
+};
+window.confirmDeleteGoal=function(){
+var g=getGoalById(editingGoalId);
+if(!g)return;
+closeModal('modal-goal');
+showConfirm('确认删除目标「'+g['目标名称']+'」？所有相关打卡记录也会删除，此操作不可恢复。',function(){
+/* Delete goal */
+db.deleteRecord({databaseId:'aQ30PniGrtqPO5G2WXMytn',recordId:editingGoalId}).then(function(){
+/* Delete related records */
+var recs=getGoalRecords(editingGoalId);
+var promises=recs.map(function(r){
+return db.deleteRecord({databaseId:'lDwfOkEJ5IdAoNYzUEzwMx',recordId:r._id});
+});
+return Promise.all(promises);
+}).then(function(){
+showToast('目标已删除','success');
+loadAllData();
+}).catch(function(err){showToast('删除失败，请重试','error')});
+});
+};
+/* ====== Checkin modal ====== */
+window.openCheckinModal=function(gid){
+checkingInGoalId=gid;
+var g=getGoalById(gid);
+if(!g)return;
+document.getElementById('checkin-goal-name').textContent=g['目标名称'];
+document.getElementById('checkin-goal-id').value=gid;
+document.getElementById('checkin-date').value=todayStr();
+document.getElementById('checkin-date').max=todayStr();
+var sixAgo=addDays(new Date(),-6);
+document.getElementById('checkin-date').min=dateStr(sixAgo);
+var suggested=calcTodaySuggested(g);
+document.getElementById('checkin-amount').value=suggested>0?suggested:'';
+document.getElementById('checkin-minutes').value='';
+document.getElementById('modal-checkin').classList.add('active');
+};
+window.saveCheckin=function(){
+var gid=document.getElementById('checkin-goal-id').value;
+var dateVal=document.getElementById('checkin-date').value;
+var amount=parseFloat(document.getElementById('checkin-amount').value);
+var minutes=parseFloat(document.getElementById('checkin-minutes').value)||0;
+if(!amount||amount<=0){showToast('请输入有效的数量','error');return}
+if(!dateVal){showToast('请选择日期','error');return}
+var g=getGoalById(gid);
+if(!g)return;
+var isBack=dateVal!==todayStr();
+var props={
+'目标ID':{text:gid},
+'目标名称':{text:g['目标名称']},
+'日期':{date:dateVal+'T00:00:00Z'},
+'数量':{number:amount},
+'分钟':{number:minutes},
+'是否补记':{checkbox:isBack},
+'备注':{text:''},
+'是否示例':{checkbox:false}
+};
+db.addRecord({databaseId:'lDwfOkEJ5IdAoNYzUEzwMx',properties:props}).then(function(){
+/* Check if goal is now complete */
+var completed=getCompletedAmount(gid)+amount;
+var total=g['总量']||0;
+if(completed>=total){
+/* Update goal status to completed */
+db.updateRecord({databaseId:'aQ30PniGrtqPO5G2WXMytn',recordId:gid,properties:{'状态':{select:'已完成'}}}).then(function(){
+showConfetti();
+showToast('恭喜！目标「'+g['目标名称']+'」已完成！','success');
+}).catch(function(){});
+}else{
+showToast('打卡成功','success');
+}
+fcClear('checkin');
+closeModal('modal-checkin');
+loadAllData();
+}).catch(function(err){showToast('打卡失败，请重试','error')});
+};
+/* ====== Delete record ====== */
+window.deleteRecord=function(rid){
+showConfirm('确认删除这条打卡记录？',function(){
+db.deleteRecord({databaseId:'lDwfOkEJ5IdAoNYzUEzwMx',recordId:rid}).then(function(){
+showToast('记录已删除','success');
+loadAllData();
+}).catch(function(err){showToast('删除失败，请重试','error')});
+});
+};
+/* ====== Weekly review ====== */
+window.saveWeeklyReview=function(){
+var keep=document.getElementById('rev-keep').value.trim();
+var problem=document.getElementById('rev-problem').value.trim();
+var tryText=document.getElementById('rev-try').value.trim();
+var plan=document.getElementById('rev-plan').value.trim();
+var weekStart=window._currentWeekStart;
+if(!keep&&!problem&&!tryText&&!plan){showToast('请至少填写一栏','error');return}
+var props={
+'周起始日':{date:weekStart+'T00:00:00Z'},
+'保持':{text:keep},
+'问题':{text:problem},
+'尝试':{text:tryText},
+'下周预案':{text:plan},
+'是否示例':{checkbox:false}
+};
+if(window._currentWeekReviewId){
+db.updateRecord({databaseId:'ZydW7zJ43qTtNjfa1TUi7W',recordId:window._currentWeekReviewId,properties:props}).then(function(){
+showToast('周复盘已保存','success');loadAllData();
+}).catch(function(){showToast('保存失败，请重试','error')});
+}else{
+db.addRecord({databaseId:'ZydW7zJ43qTtNjfa1TUi7W',properties:props}).then(function(){
+showToast('周复盘已保存','success');loadAllData();
+}).catch(function(){showToast('保存失败，请重试','error')});
+}
+};
+window.generateReportText=function(){
+var today=new Date();today.setHours(0,0,0,0);
+var targetMonday=addDays(getMonday(today),weekOffset*7);
+var targetSunday=getSunday(targetMonday);
+var weekRecs=records.filter(function(r){
+var d=parseDate(r['日期']);
+return d>=targetMonday&&d<=targetSunday;
+});
+var totalQty=0,checkinDays={},totalMins=0;
+var goalStats={};
+weekRecs.forEach(function(r){
+totalQty+=(r['数量']||0);
+totalMins+=(r['分钟']||0);
+checkinDays[dateStr(parseDate(r['日期']))]=true;
+var gn=r['目标名称']||'未知';
+if(!goalStats[gn])goalStats[gn]={qty:0,mins:0};
+goalStats[gn].qty+=(r['数量']||0);
+goalStats[gn].mins+=(r['分钟']||0);
+});
+var dayCount=Object.keys(checkinDays).length;
+/* Last week */
+var lastMonday=addDays(targetMonday,-7);
+var lastSunday=addDays(targetSunday,-7);
+var lastRecs=records.filter(function(r){
+var d=parseDate(r['日期']);
+return d>=lastMonday&&d<=lastSunday;
+});
+var lastQty=0,lastDays={},lastMins=0;
+lastRecs.forEach(function(r){
+lastQty+=(r['数量']||0);
+lastMins+=(r['分钟']||0);
+lastDays[dateStr(parseDate(r['日期']))]=true;
+});
+var lastDayCount=Object.keys(lastDays).length;
+function deltaStr(cur,prev){
+if(prev===0)return cur>0?'（新增）':'';
+var pct=Math.round((cur-prev)/prev*100);
+return'环比'+(pct>0?'+'+pct:pct)+'%';
+}
+var text='学习周报\n';
+text+=dateCN(targetMonday)+' - '+dateCN(targetSunday)+'\n\n';
+text+='本周投入：';
+var parts=[];
+for(var gn in goalStats){
+parts.push(gn+' '+goalStats[gn].qty);
+}
+text+=parts.join(' / ')+'\n';
+text+='打卡天数：'+dayCount+'天\n';
+text+='总投入时间：'+totalMins+'分钟\n\n';
+text+='上周对比：投入量'+deltaStr(totalQty,lastQty);
+text+='，打卡天数'+deltaStr(dayCount,lastDayCount);
+text+='，时间'+deltaStr(totalMins,lastMins)+'\n\n';
+text+='【保持】'+(document.getElementById('rev-keep').value||'—')+'\n';
+text+='【问题】'+(document.getElementById('rev-problem').value||'—')+'\n';
+text+='【尝试】'+(document.getElementById('rev-try').value||'—')+'\n';
+text+='【下周预案】'+(document.getElementById('rev-plan').value||'—');
+var el=document.getElementById('report-output');
+el.style.display='block';
+el.className='card';
+el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>周报文本</b><button class="btn btn-ghost btn-sm" onclick="copyReport()">复制</button></div><pre style="white-space:pre-wrap;font-size:13px;line-height:1.8;background:#f9fafb;padding:12px;border-radius:8px">'+text.replace(/</g,'&lt;')+'</pre>';
+window._reportText=text;
+};
+window.copyReport=function(){
+if(window._reportText){
+var ta=document.createElement('textarea');
+ta.value=window._reportText;
+document.body.appendChild(ta);
+ta.select();
+try{document.execCommand('copy');showToast('已复制到剪贴板','success')}catch(e){showToast('复制失败','error')}
+document.body.removeChild(ta);
+}
+};
+/* ====== Clear data ====== */
+window.clearExamples=function(){
+showConfirm('确认清空所有示例数据？你的自定义数据不受影响。',function(){
+syncStatus='syncing';renderSyncStatus();
+/* Delete example goals */
+var exGoals=goals.filter(function(g){return g['是否示例']});
+var exRecs=records.filter(function(r){return r['是否示例']});
+var exReviews=reviews.filter(function(r){return r['是否示例']});
+var allDeletes=[];
+exGoals.forEach(function(g){allDeletes.push(db.deleteRecord({databaseId:'aQ30PniGrtqPO5G2WXMytn',recordId:g._id}))});
+exRecs.forEach(function(r){allDeletes.push(db.deleteRecord({databaseId:'lDwfOkEJ5IdAoNYzUEzwMx',recordId:r._id}))});
+exReviews.forEach(function(r){allDeletes.push(db.deleteRecord({databaseId:'ZydW7zJ43qTtNjfa1TUi7W',recordId:r._id}))});
+Promise.all(allDeletes).then(function(){
+showToast('示例数据已清空','success');
+loadAllData();
+}).catch(function(){showToast('部分删除失败，请重试','error');loadAllData()});
+});
+};
+window.clearAllData=function(){
+var input=document.getElementById('clear-input').value.trim();
+if(input!=='清空'){showToast('请输入"清空"以确认','error');return}
+showConfirm('确认清空全部数据？所有目标、打卡记录和周复盘都将删除，此操作不可恢复。',function(){
+syncStatus='syncing';renderSyncStatus();
+var allDeletes=[];
+goals.forEach(function(g){allDeletes.push(db.deleteRecord({databaseId:'aQ30PniGrtqPO5G2WXMytn',recordId:g._id}))});
+records.forEach(function(r){allDeletes.push(db.deleteRecord({databaseId:'lDwfOkEJ5IdAoNYzUEzwMx',recordId:r._id}))});
+reviews.forEach(function(r){allDeletes.push(db.deleteRecord({databaseId:'ZydW7zJ43qTtNjfa1TUi7W',recordId:r._id}))});
+Promise.all(allDeletes).then(function(){
+showToast('全部数据已清空','success');
+document.getElementById('clear-input').value='';
+loadAllData();
+}).catch(function(){showToast('部分删除失败，请重试','error');loadAllData()});
+});
+};
+/* ====== Manual sync ====== */
+window.manualSync=function(){
+loadAllData();
+};
+/* ====== Modal helpers ====== */
+window.closeModal=function(id){
+document.getElementById(id).classList.remove('active');
+};
+function showConfirm(text,callback){
+pendingDeleteCallback=callback;
+document.getElementById('confirm-text').textContent=text;
+document.getElementById('modal-confirm').classList.add('active');
+}
+document.getElementById('confirm-btn').onclick=function(){
+closeModal('modal-confirm');
+if(pendingDeleteCallback){pendingDeleteCallback();pendingDeleteCallback=null}
+};
+/* ====== Color picker init ====== */
+function initColorPicker(){
+var picker=document.getElementById('color-picker');
+Object.keys(COLOR_MAP).forEach(function(c){
+var cm=COLOR_MAP[c];
+var div=document.createElement('div');
+div.className='color-opt'+(c===selectedColor?' selected':'');
+div.style.background='linear-gradient(135deg,'+cm.c1+','+cm.c2+')';
+div.onclick=function(){
+selectedColor=c;
+document.querySelectorAll('.color-opt').forEach(function(el){el.classList.remove('selected')});
+div.classList.add('selected');
+};
+picker.appendChild(div);
+});
+}
+/* ====== Toast & confetti ====== */
+function showToast(msg,type){
+var area=document.getElementById('toast-area');
+var t=document.createElement('div');
+t.className='toast'+(type?' '+type:'');
+t.textContent=msg;
+area.appendChild(t);
+setTimeout(function(){t.remove()},3000);
+}
+window.showToast=showToast;
+function showError(msg){showToast(msg,'error')}
+function showConfetti(){
+var container=document.getElementById('confetti-container');
+var colors=['#7c3aed','#a855f7','#10b981','#f59e0b','#ef4444','#3b82f6','#ec4899'];
+for(var i=0;i<50;i++){
+var piece=document.createElement('div');
+piece.className='confetti-piece';
+piece.style.left=Math.random()*100+'%';
+piece.style.background=colors[Math.floor(Math.random()*colors.length)];
+piece.style.borderRadius=Math.random()>0.5?'50%':'0';
+piece.style.animation='confettiFall '+(2+Math.random()*2)+'s ease-in forwards';
+piece.style.animationDelay=Math.random()*0.5+'s';
+container.appendChild(piece);
+(function(p){setTimeout(function(){p.remove()},4500)})(piece);
+}
+}
+/* ====== Init ====== */
+function init(){
+db=window.__SMART_PAGE__?window.__SMART_PAGE__.database:null;
+setupNav();
+initColorPicker();
+fcBindInputs('goal',['goal-name','goal-unit','goal-total','goal-deadline','goal-obstacle','goal-strategy']);
+fcBindInputs('checkin',['checkin-amount','checkin-minutes']);
+/* Render UI skeleton first, then load data */
+renderCurrentTab();
+if(!db){
+document.getElementById('today-list').innerHTML='<div class="card" style="text-align:center;padding:40px"><p style="color:#ef4444;font-size:16px;margin-bottom:8px">资料库数据服务未加载</p><p style="color:#6b7280">请通过资料库链接访问此页面以使用在线数据同步功能</p></div>';
+syncStatus='error';renderSyncStatus();
+return;
+}
+loadAllData();
+}
+if(document.readyState==='loading'){
+document.addEventListener('DOMContentLoaded',init);
+}else{
+init();
+}
+})();
+</script>
+</body>
+</html>
