@@ -2011,7 +2011,7 @@ const STORAGE_KEY = 'multi_info_records';
         init();
         // 绑定类别管理按钮
         const btn = document.getElementById('manageCategoriesBtn');
-        if (btn) btn.addEventListener('click', openCategoryManager);
+        if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); openCategoryManager(); });
     });
 
 
