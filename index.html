@@ -176,11 +176,7 @@
     .brand #collapseBtn{display:inline-flex}
     .app.collapsed .sidebar{flex-basis:0;width:0;padding-left:0;padding-right:0;overflow:hidden;border:none}
   }
-
-        .nav-item.drag-over{background:rgba(91,155,213,0.15);border-radius:8px;}
-        .nav-item[draggable="true"]{cursor:grab;}
-        .nav-item[draggable="true"]:active{cursor:grabbing;}
-    </style>
+</style>
 <script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
 <script>
 (function(){
@@ -334,7 +330,7 @@ const MODULES = [
   {id:'idol',    name:'偶像学习',       file:'tools/偶像学习.html',        icon:'🎯', desc:'偶像模仿 · 习惯养成与打卡',     keys:['imitation_targets','good_habits','daily_checklist','bad_habits']},
   {id:'health',  name:'健康管理',       file:'tools/健康管理.html',        icon:'💪', desc:'睡眠·运动·体重·血压·饮水·饮食记录', keys:['mySleepData','mySportData','myWeightData','myBpData','myWaterData','myDietData','healthFoodDB']},
   {id:'members', name:'成员管理',       file:'tools/成员管理.html',        icon:'👥', desc:'团队成员增删改查、角色与状态管理',   keys:['teamMembers_v1']},
-  {id:'social',     name:'人际交往与沟通',   file:'tools/人积极交往.html',      icon:'🤝', desc:'人际沟通管理 · 日/周/月复盘与统计', keys:['social_daily','social_week','social_month','social_actions','social_categories','social_wisdom','social_dialog','social_relation','social_script']},
+  {id:'social',     name:'人际交往与沟通',   file:'tools/人积极交往.html',      icon:'🤝', desc:'人际沟通管理 · 日/周/月复盘与统计', keys:['comm_daily','comm_week','comm_month']},
   {id:'market',     name:'股市复盘研究',     file:'tools/市场复盘.html',           icon:'📊', desc:'股市复盘 · 研究 · 交易系统（专业增强版）', keys:['stockReviewData','lastTab','reviewTheme']},
 
 ];
@@ -383,31 +379,18 @@ function toast(msg){
 }
 
 /* ============== 构建导航 & 仪表盘 ============== */
-function buildNav(){
-  const list=$('#navList');
-  list.innerHTML='';
-  const order=getModuleOrder();
-  const modules=getModules();
-  modules.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));
-  modules.forEach(m=>{
-    const el=document.createElement('div');
-    el.className='nav-item';
-    el.draggable=true;
-    el.dataset.target='tool';
-    el.dataset.id=m.id;
-    el.innerHTML=`<span class="ico">${m.icon}</span><span>${m.name}</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
-    el.addEventListener('click',()=>openModule('tool',m.id));
-    el.addEventListener('dragstart',(e)=>{e.dataTransfer.setData('text/plain',m.id);el.style.opacity='0.5';});
-    el.addEventListener('dragend',()=>{el.style.opacity='1';document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('drag-over'));});
-    el.addEventListener('dragover',(e)=>{e.preventDefault();el.classList.add('drag-over');});
-    el.addEventListener('dragleave',()=>el.classList.remove('drag-over'));
-    el.addEventListener('drop',(e)=>{e.preventDefault();el.classList.remove('drag-over');const fromId=e.dataTransfer.getData('text/plain');const toId=m.id;if(fromId!==toId){let order=getModuleOrder();const fromIdx=order.indexOf(fromId);const toIdx=order.indexOf(toId);order.splice(fromIdx,1);order.splice(toIdx,0,fromId);saveModuleOrder(order);buildNav();}});
-    list.appendChild(el);
-  });
-}
-
-function getModuleOrder(){try{const saved=localStorage.getItem('module_order');if(saved)return JSON.parse(saved);}catch(e){}return[];}
-function saveModuleOrder(order){localStorage.setItem('module_order',JSON.stringify(order));}
+function buildNav(){
+  const list=$('#navList');
+  list.innerHTML='';
+  getModules().forEach(m=>{
+    const el=document.createElement('div');
+    el.className='nav-item';
+    el.dataset.target='tool';
+    el.dataset.id=m.id;
+    el.innerHTML=`<span class="ico">${m.icon}</span><span>${m.name}</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
+    el.addEventListener('click',()=>openModule('tool',m.id));
+    list.appendChild(el);
+  });
 }
 function buildCards(){
   const wrap=$('#cards');
