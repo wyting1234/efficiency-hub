@@ -4117,7 +4117,7 @@
             
             // 绑定类别管理按钮
             const catBtn = document.getElementById('manageCategoriesBtn');
-            if (catBtn) catBtn.addEventListener('click', openCategoryManager);});
+            if (catBtn) catBtn.addEventListener('click', (e) => { e.preventDefault(); openCategoryManager(); });});
 
             OWNERS.forEach(o => {
 
