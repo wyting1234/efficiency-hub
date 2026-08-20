@@ -1259,31 +1259,7 @@ function saveNavOrder(){
   saveCustomOrder(order);
 }
 
-function buildNav(){
-
-
-  const list=$('#navList');
-
-
-  list.innerHTML='';
-
-
-  getModules().forEach(m=>{
-
-
-    const el=document.createElement('div');
-
-
-    el.className='nav-item';
-
-
-    el.dataset.target='tool';
-
-
-    el.dataset.id=m.id;
-
-
-    el.innerHTML=`<span class="drag-handle" title="拖拽排序">⠿</span><span class="ico">${m.icon}</span><span>${m.name}</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
+</span><span class="badge empty" data-badge="${m.id}">未使用</span>`;
 
 
     el.addEventListener('click',()=>openModule('tool',m.id));
