@@ -176,7 +176,11 @@
     .brand #collapseBtn{display:inline-flex}
     .app.collapsed .sidebar{flex-basis:0;width:0;padding-left:0;padding-right:0;overflow:hidden;border:none}
   }
-</style>
+
+        .nav-item.drag-over{background:rgba(91,155,213,0.15);border-radius:8px;}
+        .nav-item[draggable="true"]{cursor:grab;}
+        .nav-item[draggable="true"]:active{cursor:grabbing;}
+    </style>
 <script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
 <script>
 (function(){
