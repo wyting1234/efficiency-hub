@@ -4114,7 +4114,10 @@
 
                 formRoom.appendChild(opt);
 
-            });
+            
+            // 绑定类别管理按钮
+            const catBtn = document.getElementById('manageCategoriesBtn');
+            if (catBtn) catBtn.addEventListener('click', openCategoryManager);});
 
             OWNERS.forEach(o => {
 
