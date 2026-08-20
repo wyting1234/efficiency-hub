@@ -1027,7 +1027,10 @@ const HUB_HIDDEN_KEY = 'hub_module_hidden';    // 隐藏的内置模块 id
 function getCustomModules(){
 
 
-  try{ return JSON.parse(localStorage.getItem(HUB_CUSTOM_KEY)||'[]'); }catch(e){ return []; }
+  try{
+    const v=JSON.parse(localStorage.getItem(HUB_CUSTOM_KEY)||'[]');
+    return Array.isArray(v)?v:[];
+  }catch(e){ return []; }
 
 
 }
@@ -1036,7 +1039,10 @@ function getCustomModules(){
 function getHiddenModules(){
 
 
-  try{ return JSON.parse(localStorage.getItem(HUB_HIDDEN_KEY)||'[]'); }catch(e){ return []; }
+  try{
+    const v=JSON.parse(localStorage.getItem(HUB_HIDDEN_KEY)||'[]');
+    return Array.isArray(v)?v:[];
+  }catch(e){ return []; }
 
 
 }
@@ -1051,7 +1057,10 @@ function getModules(){
   const builtin=MODULES.filter(m=>!hidden.includes(m.id));
 
 
-  return builtin.concat(getCustomModules());
+  const custom=getCustomModules().filter(m=>m&&m.id&&m.name&&m.file);
+
+
+  return builtin.concat(custom);
 
 
 }
@@ -1986,17 +1995,30 @@ function saveModuleManager(){
 
 
 function init(){
-  // 自动修复：如果所有内置模块都被隐藏，清除隐藏配置
+  // 自动修复：如果模块隐藏配置异常（非数组 / 隐藏过多 / 导致0模块），清除隐藏配置
   try {
-    const hiddenKeys = JSON.parse(localStorage.getItem('hub_module_hidden') || '[]');
-    const allModuleIds = ['cpa','work','diary','time','dream','info','box','reading','life','star','idle','idol','health','members','social','market','learning'];
-    if (hiddenKeys.length >= allModuleIds.length - 2) {  // 如果隐藏了太多模块
-      console.warn('检测到所有模块被隐藏，自动恢复...');
+    const rawHidden = localStorage.getItem('hub_module_hidden');
+    let needReset = false;
+    if (rawHidden) {
+      let hiddenKeys;
+      try { hiddenKeys = JSON.parse(rawHidden); } catch(e) { hiddenKeys = null; }
+      const allIds = MODULES.map(m => m.id);
+      if (!Array.isArray(hiddenKeys)) {
+        needReset = true;  // 格式异常（存成了对象/字符串等）
+      } else {
+        const validHidden = hiddenKeys.filter(id => allIds.includes(id));
+        if (validHidden.length >= allIds.length - 1) {
+          needReset = true;  // 几乎所有模块都被隐藏
+        }
+      }
+    }
+    if (needReset) {
+      console.warn('[修复] 检测到模块隐藏配置异常，已自动恢复');
       localStorage.removeItem('hub_module_hidden');
       localStorage.removeItem('hub_nav_order');
     }
   } catch(e) {
-    // 忽略解析错误
+    // 忽略修复过程中的错误
   }
 
 
