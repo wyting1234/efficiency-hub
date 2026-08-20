@@ -407,7 +407,7 @@ function buildNav(){
 }
 
 function getModuleOrder(){try{const saved=localStorage.getItem('module_order');if(saved)return JSON.parse(saved);}catch(e){}return[];}
-function saveModuleOrder(order){localStorage.setItem('module_order',JSON.stringify(order));});
+function saveModuleOrder(order){localStorage.setItem('module_order',JSON.stringify(order));}
 }
 function buildCards(){
   const wrap=$('#cards');
