@@ -4374,26 +4374,29 @@
     
     // ========== 类别管理功能 ==========
     function openCategoryManager() {
+        // Remove any existing modal first
+        const existing = document.getElementById('categoryManagerModal');
+        if (existing) existing.remove();
+
         const modal = document.createElement('div');
         modal.id = 'categoryManagerModal';
         modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;';
-        modal.innerHTML = `
-            <div style="background:white;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-                <h2 style="margin:0 0 16px;font-size:20px"><i class="fas fa-tags"></i> 管理分类</h2>
-                <div id="categoryList"></div>
-                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;gap:10px">
-                    <button id="addCategoryBtn" class="btn btn-primary"><i class="fas fa-plus"></i> 添加主分类</button>
-                    <button id="closeCategoryBtn" class="btn btn-outline">关闭</button>
-                </div>
-            </div>`;
+
+        const inner = document.createElement('div');
+        inner.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)';
+        inner.innerHTML = '<h2 style="margin:0 0 16px;font-size:20px"><i class="fas fa-tags"></i> 管理分类</h2><div id="categoryList"></div><div style="margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;gap:10px"><button id="addCategoryBtn" style="padding:8px 16px;font-size:14px;background:#4A6CF7;color:white;border:none;border-radius:8px;cursor:pointer">+ 添加主分类</button><button id="closeCategoryBtn" style="padding:8px 16px;font-size:14px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer">关闭</button></div>';
+
+        modal.appendChild(inner);
         document.body.appendChild(modal);
         renderCategoryList();
-        modal.querySelector('#closeCategoryBtn').onclick = () => modal.remove();
-        modal.querySelector('#addCategoryBtn').onclick = addNewCategory;
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+        // Robust event binding using addEventListener
+        modal.querySelector('#closeCategoryBtn').addEventListener('click', function() { modal.remove(); });
+        modal.querySelector('#addCategoryBtn').addEventListener('click', function() { addNewCategory(); });
+        modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
     }
 
-    function renderCategoryList() {
+function renderCategoryList() {
         const cats = CATEGORIES;
         const list = document.getElementById('categoryList');
         if (!list) return;
