@@ -635,14 +635,18 @@
         .eisenhower-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 12px;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            height: 100%;
         }
         .eisenhower-quadrant {
             background: #f8fafc;
             border-radius: 12px;
             padding: 12px;
-            min-height: 120px;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         .eisenhower-quadrant h4 {
             font-size: 12px;
@@ -651,6 +655,7 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            flex-shrink: 0;
         }
         .eisenhower-quadrant.q1 h4 { color: #dc2626; }
         .eisenhower-quadrant.q2 h4 { color: #2563eb; }
@@ -682,6 +687,31 @@
         .eisenhower-quadrant .mini-todo .done {
             text-decoration: line-through;
             opacity: 0.5;
+        }
+        .quadrant-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+        .quadrant-list::-webkit-scrollbar { width: 4px; }
+        .quadrant-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        /* 四象限视图：占满可用视口高度，四等分 */
+        #eisenhowerView {
+            height: calc(100vh - 320px);
+            min-height: 380px;
+            max-height: calc(100vh - 260px);
+        }
+        @media (max-width: 600px) {
+            #eisenhowerView {
+                height: calc(100vh - 300px);
+                min-height: 320px;
+            }
+            .eisenhower-grid {
+                gap: 6px;
+            }
+            .eisenhower-quadrant {
+                padding: 8px;
+            }
         }
 
         /* ===== TIMER HISTORY ===== */
@@ -1158,19 +1188,19 @@
                 <div class="eisenhower-grid">
                     <div class="eisenhower-quadrant q1">
                         <h4><i class="fas fa-fire"></i> 重要且紧急 <span class="quadrant-count" id="q1Count">0</span></h4>
-                        <div id="q1List"></div>
+                        <div class="quadrant-list" id="q1List"></div>
                     </div>
                     <div class="eisenhower-quadrant q2">
                         <h4><i class="fas fa-star"></i> 重要不紧急 <span class="quadrant-count" id="q2Count">0</span></h4>
-                        <div id="q2List"></div>
+                        <div class="quadrant-list" id="q2List"></div>
                     </div>
                     <div class="eisenhower-quadrant q3">
                         <h4><i class="fas fa-bolt"></i> 紧急不重要 <span class="quadrant-count" id="q3Count">0</span></h4>
-                        <div id="q3List"></div>
+                        <div class="quadrant-list" id="q3List"></div>
                     </div>
                     <div class="eisenhower-quadrant q4">
                         <h4><i class="fas fa-minus"></i> 不重要不紧急 <span class="quadrant-count" id="q4Count">0</span></h4>
-                        <div id="q4List"></div>
+                        <div class="quadrant-list" id="q4List"></div>
                     </div>
                 </div>
             </div>
