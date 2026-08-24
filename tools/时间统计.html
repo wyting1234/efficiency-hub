@@ -1709,33 +1709,25 @@
                         btn.innerHTML = `<span class="dot" style="background:${cat.color};"></span>${cat.key}`;
                         btn.addEventListener('click', () => {
                             const prevCategory = timerState.category;
-                            if (timerState.running) {
-                                if (confirm('正在计时，切换类别将停止当前记录，是否继续？')) {
-                                    stopTimerAndSave();
-                                }
+                            // 切换类别：保留已运行时间，不清零、不停止，只改类别
+                            if (prevCategory !== cat.key && timerState.elapsedMs > 0) {
+                                timerHistory.push({
+                                    category: prevCategory,
+                                    duration: timerState.elapsedMs,
+                                    time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                                });
+                                renderTimerHistory();
                             }
-                            // 切换类别时保留已运行的时间
-                            if (timerState.running || timerState.elapsedMs > 0) {
-                                // 记录切换历史
-                                if (timerState.elapsedMs > 0 && !timerState.running) {
-                                    timerHistory.push({
-                                        category: prevCategory,
-                                        duration: timerState.elapsedMs,
-                                        time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-                                    });
-                                    renderTimerHistory();
-                                }
-                                // 保存当前 elapsedMs 到新类别
-                                timerState.category = cat.key;
-                                // 不清零，保留时间
-                            } else {
-                                timerState.category = cat.key;
-                                timerState.startTime = null;
-                                timerState.elapsedMs = 0;
-                                updateTimerDisplay(0);
-                            }
+                            timerState.category = cat.key;
+                            persistTimer();
                             renderCategoryButtons();
                             currentCategoryLabel.textContent = cat.key;
+                            // 显示保留的时间：运行中显示实时累计，暂停时显示已累计
+                            if (timerState.running) {
+                                tick();
+                            } else {
+                                updateTimerDisplay(timerState.elapsedMs || 0);
+                            }
                         });
                         categoryContainer.appendChild(btn);
                     });
