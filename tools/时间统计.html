@@ -30,6 +30,96 @@
             width: 100%;
         }
 
+        /* ===== HAMBURGER MENU ===== */
+        .hamburger-menu {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 1000;
+        }
+        .hamburger-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: #fff;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .hamburger-btn:hover {
+            background: #f8f9fa;
+            transform: scale(1.05);
+        }
+        .hamburger-btn span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: #333;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+        .hamburger-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(4px, 4px);
+        }
+        .hamburger-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+        .hamburger-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(4px, -4px);
+        }
+        .hamburger-dropdown {
+            position: absolute;
+            top: 54px;
+            right: 0;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            min-width: 180px;
+            display: none;
+            animation: slideDown 0.2s ease;
+        }
+        .hamburger-dropdown.show {
+            display: block;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .hamburger-dropdown button {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            text-align: left;
+            font-size: 14px;
+            color: #333;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.15s;
+        }
+        .hamburger-dropdown button:hover {
+            background: #f5f5f5;
+        }
+        .hamburger-dropdown button i {
+            width: 20px;
+            color: #3b82f6;
+        }
+
         /* ===== HEADER ===== */
         .app-header {
             display: flex;
@@ -520,6 +610,113 @@
             font-size: 13px;
         }
 
+        /* ===== EISENHOWER MATRIX ===== */
+        .eisenhower-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .eisenhower-toggle button {
+            padding: 6px 12px;
+            border: 2px solid #e2e8f0;
+            background: transparent;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: #475569;
+        }
+        .eisenhower-toggle button.active {
+            border-color: #3b82f6;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        .eisenhower-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .eisenhower-quadrant {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 12px;
+            min-height: 120px;
+        }
+        .eisenhower-quadrant h4 {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .eisenhower-quadrant.q1 h4 { color: #dc2626; }
+        .eisenhower-quadrant.q2 h4 { color: #2563eb; }
+        .eisenhower-quadrant.q3 h4 { color: #d97706; }
+        .eisenhower-quadrant.q4 h4 { color: #6b7280; }
+        .eisenhower-quadrant .quadrant-count {
+            margin-left: auto;
+            font-size: 11px;
+            background: rgba(0,0,0,0.06);
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        .eisenhower-quadrant .empty-msg {
+            font-size: 12px;
+            color: #94a3b8;
+            text-align: center;
+            padding: 8px 0;
+        }
+        .eisenhower-quadrant .mini-todo {
+            font-size: 12px;
+            padding: 4px 8px;
+            background: #fff;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .eisenhower-quadrant .mini-todo .done {
+            text-decoration: line-through;
+            opacity: 0.5;
+        }
+
+        /* ===== TIMER HISTORY ===== */
+        .timer-history {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .timer-history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 12px;
+        }
+        .timer-history-item:last-child {
+            border-bottom: none;
+        }
+        .timer-history-item .cat {
+            font-weight: 500;
+            color: #334155;
+        }
+        .timer-history-item .time {
+            color: #64748b;
+            font-family: monospace;
+        }
+        .timer-history-item .duration {
+            font-weight: 600;
+            color: #0f172a;
+        }
+
         /* ===== EDIT MODAL ===== */
         .modal-overlay {
             position: fixed;
@@ -903,6 +1100,22 @@
 <body>
 
     <div id="app">
+        <!-- HAMBURGER MENU -->
+        <div class="hamburger-menu">
+            <button class="hamburger-btn" id="hamburgerBtn" title="菜单">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="hamburger-dropdown" id="hamburgerDropdown">
+                <button id="menuTimeDist"><i class="fas fa-chart-pie"></i> 时间分布</button>
+                <button id="menuStats"><i class="fas fa-chart-bar"></i> 琐碎时间统计</button>
+                <button id="menuActStats"><i class="fas fa-chart-line"></i> 按活动统计</button>
+                <button id="menuRecords"><i class="fas fa-list"></i> 时间记录</button>
+                <button id="menuTodos"><i class="fas fa-tasks"></i> 待办清单</button>
+            </div>
+        </div>
+
         <!-- HEADER -->
         <div class="app-header">
             <h1><i class="fas fa-clock" style="color:#3b82f6;margin-right:6px;"></i>时间统计</h1>
@@ -910,7 +1123,7 @@
         </div>
 
         <!-- TIMER CARD -->
-        <div class="card">
+        <div class="card" id="timerSection">
             <div class="card-title"><i class="fas fa-play-circle"></i> 计时器</div>
             <div class="timer-categories" id="categoryContainer">
                 <!-- 由 JS 动态生成 -->
@@ -924,10 +1137,15 @@
             <div class="timer-current-label" id="timerLabel">
                 当前类别：<span id="currentCategoryLabel">学习</span>
             </div>
+            <!-- 计时历史 -->
+            <div class="timer-history" id="timerHistory" style="display:none;">
+                <div style="font-size:12px;color:#64748b;margin-bottom:6px;">📋 本次会话计时历史</div>
+                <div id="timerHistoryList"></div>
+            </div>
         </div>
 
         <!-- CHART CARD -->
-        <div class="card">
+        <div class="card" id="chartSection">
             <div class="card-title"><i class="fas fa-chart-pie"></i> 时间分布</div>
             <div class="chart-dim-tabs" id="chartDimTabs">
                 <button class="dim-tab active" data-dim="day">本日</button>
@@ -946,7 +1164,7 @@
         </div>
 
         <!-- STATISTICS CARD -->
-        <div class="stats-card">
+        <div class="stats-card" id="statsSection">
             <div class="card-title"><i class="fas fa-chart-bar"></i> 琐碎时间统计</div>
 
             <!-- Filter Row -->
@@ -1002,7 +1220,7 @@
             </div>
 
             <!-- Per-Activity Statistics -->
-            <div class="stats-section-title">
+            <div class="stats-section-title" id="actStatsTitle">
                 <i class="fas fa-chart-line" style="color:#3b82f6;"></i>
                 按活动统计（日/周/月/年）
             </div>
@@ -1028,7 +1246,7 @@
         </div>
 
         <!-- RECORDS CARD -->
-        <div class="card">
+        <div class="card" id="recordsSection">
             <div class="card-title" style="justify-content:space-between;">
                 <span><i class="fas fa-list-ul"></i> 时间记录</span>
                 <span style="font-size:13px;font-weight:400;color:#94a3b8;" id="recordCount">0 条</span>
@@ -1039,24 +1257,62 @@
         </div>
 
         <!-- TODO CARD -->
-        <div class="card">
-            <div class="card-title"><i class="fas fa-tasks"></i> 待办清单</div>
-            <div class="todo-input-row">
-                <input type="text" id="todoInput" placeholder="写一个待办..." />
-                <div class="todo-type-group">
-                    <button class="active" data-mode="deadline" id="todoModeDeadline">截止</button>
-                    <button data-mode="countdown" id="todoModeCountdown">倒计时</button>
-                </div>
-                <input type="datetime-local" id="todoDeadlineInput" class="todo-time-input" />
-                <div id="todoCountdownGroup" style="display:none;flex-shrink:0;display:none;gap:4px;align-items:center;">
-                    <input type="number" id="todoCountdownHours" placeholder="时" min="0" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
-                    <span style="color:#94a3b8;">:</span>
-                    <input type="number" id="todoCountdownMinutes" placeholder="分" min="0" max="59" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
-                </div>
-                <button class="todo-add-btn" id="todoAddBtn"><i class="fas fa-plus"></i> 添加</button>
+        <div class="card" id="todoSection">
+            <div class="card-title">
+                <i class="fas fa-tasks"></i> 待办清单
+                <button id="eisenhowerToggleBtn" style="margin-left:auto;font-size:12px;padding:4px 10px;border:1px solid #3b82f6;background:#eff6ff;color:#2563eb;border-radius:12px;cursor:pointer;">
+                    <i class="fas fa-th"></i> 四象限视图
+                </button>
             </div>
-            <div class="todo-list" id="todoList">
-                <!-- 由 JS 动态渲染 -->
+            
+            <!-- 四象限视图切换 -->
+            <div id="eisenhowerView" style="display:none;">
+                <div class="eisenhower-grid">
+                    <div class="eisenhower-quadrant q1">
+                        <h4><i class="fas fa-fire"></i> 重要且紧急 <span class="quadrant-count" id="q1Count">0</span></h4>
+                        <div id="q1List"></div>
+                    </div>
+                    <div class="eisenhower-quadrant q2">
+                        <h4><i class="fas fa-star"></i> 重要不紧急 <span class="quadrant-count" id="q2Count">0</span></h4>
+                        <div id="q2List"></div>
+                    </div>
+                    <div class="eisenhower-quadrant q3">
+                        <h4><i class="fas fa-bolt"></i> 紧急不重要 <span class="quadrant-count" id="q3Count">0</span></h4>
+                        <div id="q3List"></div>
+                    </div>
+                    <div class="eisenhower-quadrant q4">
+                        <h4><i class="fas fa-minus"></i> 不重要不紧急 <span class="quadrant-count" id="q4Count">0</span></h4>
+                        <div id="q4List"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 正常列表视图 -->
+            <div id="normalTodoView">
+                <div class="todo-input-row">
+                    <input type="text" id="todoInput" placeholder="写一个待办..." />
+                    <div class="todo-type-group">
+                        <button class="active" data-mode="deadline" id="todoModeDeadline">截止</button>
+                        <button data-mode="countdown" id="todoModeCountdown">倒计时</button>
+                    </div>
+                    <input type="datetime-local" id="todoDeadlineInput" class="todo-time-input" />
+                    <div id="todoCountdownGroup" style="display:none;flex-shrink:0;display:none;gap:4px;align-items:center;">
+                        <input type="number" id="todoCountdownHours" placeholder="时" min="0" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
+                        <span style="color:#94a3b8;">:</span>
+                        <input type="number" id="todoCountdownMinutes" placeholder="分" min="0" max="59" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
+                    </div>
+                    <!-- 四象限选择 -->
+                    <select id="todoQuadrant" style="padding:6px 10px;border:2px solid #e2e8f0;border-radius:10px;font-size:13px;background:#fafbfc;min-width:100px;">
+                        <option value="q1">🔥 重要且紧急</option>
+                        <option value="q2">⭐ 重要不紧急</option>
+                        <option value="q3">⚡ 紧急不重要</option>
+                        <option value="q4" selected>⭕ 不重要不紧急</option>
+                    </select>
+                    <button class="todo-add-btn" id="todoAddBtn"><i class="fas fa-plus"></i> 添加</button>
+                </div>
+                <div class="todo-list" id="todoList">
+                    <!-- 由 JS 动态渲染 -->
+                </div>
             </div>
         </div>
 
@@ -1209,6 +1465,9 @@
         // Chart instance
         let chartInstance = null;
 
+        // 计时历史
+        let timerHistory = [];
+
         // ============================================================
         //  DOM REFS
         // ============================================================
@@ -1237,6 +1496,16 @@
         const todoModeCountdown = $('todoModeCountdown');
         const todoAddBtn = $('todoAddBtn');
         const todoList = $('todoList');
+        const todoQuadrant = $('todoQuadrant');
+        
+        // 汉堡菜单
+        const hamburgerBtn = $('hamburgerBtn');
+        const hamburgerDropdown = $('hamburgerDropdown');
+        
+        // 四象限视图
+        const eisenhowerToggleBtn = $('eisenhowerToggleBtn');
+        const eisenhowerView = $('eisenhowerView');
+        const normalTodoView = $('normalTodoView');
 
         // ============================================================
         //  HELPERS
@@ -1409,24 +1678,34 @@
                         btn.dataset.cat = cat.key;
                         btn.innerHTML = `<span class="dot" style="background:${cat.color};"></span>${cat.key}`;
                         btn.addEventListener('click', () => {
+                            const prevCategory = timerState.category;
                             if (timerState.running) {
                                 if (confirm('正在计时，切换类别将停止当前记录，是否继续？')) {
                                     stopTimerAndSave();
-                                    timerState.category = cat.key;
-                                    renderCategoryButtons();
-                                    currentCategoryLabel.textContent = cat.key;
-                                    updateTimerDisplay(0);
-                                }
-                            } else {
-                                timerState.category = cat.key;
-                                renderCategoryButtons();
-                                currentCategoryLabel.textContent = cat.key;
-                                if (!timerState.running && timerState.startTime) {
-                                    timerState.startTime = null;
-                                    timerState.elapsedMs = 0;
-                                    updateTimerDisplay(0);
                                 }
                             }
+                            // 切换类别时保留已运行的时间
+                            if (timerState.running || timerState.elapsedMs > 0) {
+                                // 记录切换历史
+                                if (timerState.elapsedMs > 0 && !timerState.running) {
+                                    timerHistory.push({
+                                        category: prevCategory,
+                                        duration: timerState.elapsedMs,
+                                        time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                                    });
+                                    renderTimerHistory();
+                                }
+                                // 保存当前 elapsedMs 到新类别
+                                timerState.category = cat.key;
+                                // 不清零，保留时间
+                            } else {
+                                timerState.category = cat.key;
+                                timerState.startTime = null;
+                                timerState.elapsedMs = 0;
+                                updateTimerDisplay(0);
+                            }
+                            renderCategoryButtons();
+                            currentCategoryLabel.textContent = cat.key;
                         });
                         categoryContainer.appendChild(btn);
                     });
@@ -1571,6 +1850,57 @@
                 const btn = e.target.closest('.cat-btn');
                 if (btn) { e.preventDefault(); openTagManager(); }
             });
+        }
+
+        // ============================================================
+        //  HAMBURGER MENU
+        // ============================================================
+        function setupHamburgerMenu() {
+            hamburgerBtn.addEventListener('click', () => {
+                hamburgerBtn.classList.toggle('active');
+                hamburgerDropdown.classList.toggle('show');
+            });
+            
+            // 菜单项点击后关闭并滚动到对应区域
+            $('menuTimeDist').addEventListener('click', () => {
+                closeHamburger();
+                scrollToElement('chartSection');
+            });
+            $('menuStats').addEventListener('click', () => {
+                closeHamburger();
+                scrollToElement('statsSection');
+            });
+            $('menuActStats').addEventListener('click', () => {
+                closeHamburger();
+                $('actStatsTitle')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+            $('menuRecords').addEventListener('click', () => {
+                closeHamburger();
+                scrollToElement('recordsSection');
+            });
+            $('menuTodos').addEventListener('click', () => {
+                closeHamburger();
+                scrollToElement('todoSection');
+            });
+            
+            // 点击外部关闭
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.hamburger-menu')) {
+                    closeHamburger();
+                }
+            });
+        }
+        
+        function closeHamburger() {
+            hamburgerBtn.classList.remove('active');
+            hamburgerDropdown.classList.remove('show');
+        }
+        
+        function scrollToElement(id) {
+            const el = $(id);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
 
         // ============================================================
@@ -1842,6 +2172,71 @@
         }
 
         // ============================================================
+        //  EISENHOWER MATRIX (四象限视图)
+        // ============================================================
+        function setupEisenhower() {
+            eisenhowerToggleBtn.addEventListener('click', () => {
+                const isShowing = eisenhowerView.style.display === 'grid';
+                eisenhowerView.style.display = isShowing ? 'none' : 'grid';
+                normalTodoView.style.display = isShowing ? 'block' : 'none';
+                eisenhowerToggleBtn.innerHTML = isShowing 
+                    ? '<i class="fas fa-th"></i> 四象限视图' 
+                    : '<i class="fas fa-list"></i> 列表视图';
+                if (!isShowing) renderEisenhowerView();
+            });
+        }
+        
+        function renderEisenhowerView() {
+            const quadrants = { q1: [], q2: [], q3: [], q4: [] };
+            todos.forEach(t => {
+                const q = t.quadrant || 'q4';
+                quadrants[q].push(t);
+            });
+            
+            Object.keys(quadrants).forEach(q => {
+                const listEl = $(q + 'List');
+                const countEl = $(q + 'Count');
+                if (!listEl || !countEl) return;
+                
+                countEl.textContent = quadrants[q].filter(t => !t.isCompleted).length;
+                
+                if (quadrants[q].length === 0) {
+                    listEl.innerHTML = '<div class="empty-msg">暂无待办</div>';
+                    return;
+                }
+                
+                let html = '';
+                quadrants[q].slice(0, 5).forEach(t => {
+                    html += `
+                        <div class="mini-todo ${t.isCompleted ? 'done' : ''}">
+                            <input type="checkbox" ${t.isCompleted ? 'checked' : ''} onchange="toggleTodo('${t.id}')" />
+                            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${t.title}</span>
+                        </div>
+                    `;
+                });
+                if (quadrants[q].length > 5) {
+                    html += `<div style="font-size:11px;color:#94a3b8;text-align:center;padding:4px;">...等${quadrants[q].length - 5}条</div>`;
+                }
+                listEl.innerHTML = html;
+            });
+        }
+        
+        window.toggleTodo = function(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.isCompleted = !todo.isCompleted;
+                if (todo.isCompleted) {
+                    todo.completedAt = new Date().toISOString();
+                } else {
+                    todo.completedAt = null;
+                }
+                saveTodos();
+                renderTodos();
+                renderEisenhowerView();
+            }
+        };
+
+        // ============================================================
         //  RENDER: TODO
         // ============================================================
         function renderTodos() {
@@ -1981,6 +2376,33 @@
         }
 
         // ============================================================
+        //  TIMER HISTORY
+        // ============================================================
+        function renderTimerHistory() {
+            const container = $('timerHistoryList');
+            const historyDiv = $('timerHistory');
+            if (!container || !historyDiv) return;
+            
+            if (timerHistory.length === 0) {
+                historyDiv.style.display = 'none';
+                return;
+            }
+            
+            historyDiv.style.display = 'block';
+            let html = '';
+            timerHistory.slice(-10).reverse().forEach(item => {
+                html += `
+                    <div class="timer-history-item">
+                        <span class="cat">${item.category}</span>
+                        <span class="time">${item.time}</span>
+                        <span class="duration">${formatDurationShort(item.duration)}</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // ============================================================
         //  TODO: ADD
         // ============================================================
         function addTodo() {
@@ -2019,6 +2441,7 @@
                 createdAt: new Date().toISOString(),
                 isCompleted: false,
                 completedAt: null,
+                quadrant: todoQuadrant?.value || 'q4',
             };
             todos.push(todo);
             saveTodos();
@@ -2458,6 +2881,15 @@
             buildCategoryData(); // 初始化类别数据（顺序/删除/自定义/场景）
             loadData();
             restoreTimer(); // 恢复可能仍在运行的计时（刷新/被杀后也能续上）
+            
+            // 从localStorage加载计时历史
+            try {
+                const savedHistory = localStorage.getItem('timeTimerHistory');
+                if (savedHistory) {
+                    timerHistory = JSON.parse(savedHistory);
+                    renderTimerHistory();
+                }
+            } catch (e) {}
 
             // 标签管理：关闭按钮 + 点击遮罩关闭
             $('tagManagerClose')?.addEventListener('click', closeTagManager);
@@ -2465,6 +2897,9 @@
                 if (e.target === $('tagManagerModal')) closeTagManager();
             });
             setupTagLongPress(); // 长按/右键标签进入管理
+            
+            // 保存计时历史到 localStorage
+            localStorage.setItem('timeTimerHistory', JSON.stringify(timerHistory));
 
             // 设置默认截止时间
             const now = new Date();
@@ -2527,6 +2962,12 @@
 
             // 初始化统计功能
             initStatistics();
+            
+            // 初始化汉堡菜单
+            setupHamburgerMenu();
+            
+            // 初始化四象限视图
+            setupEisenhower();
 
             // 回到前台时：startTime 才是真实起点，直接用真实时间刷新显示，绝不丢弃后台流逝的时间
             document.addEventListener('visibilitychange', () => {
