@@ -1109,10 +1109,10 @@
             </button>
             <div class="hamburger-dropdown" id="hamburgerDropdown">
                 <button id="menuTimeDist"><i class="fas fa-chart-pie"></i> 时间分布</button>
+                <button id="menuTodos"><i class="fas fa-tasks"></i> 待办清单</button>
+                <button id="menuRecords"><i class="fas fa-list"></i> 时间记录</button>
                 <button id="menuStats"><i class="fas fa-chart-bar"></i> 琐碎时间统计</button>
                 <button id="menuActStats"><i class="fas fa-chart-line"></i> 按活动统计</button>
-                <button id="menuRecords"><i class="fas fa-list"></i> 时间记录</button>
-                <button id="menuTodos"><i class="fas fa-tasks"></i> 待办清单</button>
             </div>
         </div>
 
@@ -1160,6 +1160,77 @@
             <div class="chart-legend-custom" id="chartLegend"></div>
             <div id="chartEmpty" class="chart-empty" style="display:none;margin-top:8px;">
                 暂无时间记录，开始计时吧！
+            </div>
+        </div>
+
+        <!-- TODO CARD -->
+        <div class="card" id="todoSection">
+            <div class="card-title">
+                <i class="fas fa-tasks"></i> 待办清单
+                <button id="eisenhowerToggleBtn" style="margin-left:auto;font-size:12px;padding:4px 10px;border:1px solid #3b82f6;background:#eff6ff;color:#2563eb;border-radius:12px;cursor:pointer;">
+                    <i class="fas fa-th"></i> 四象限视图
+                </button>
+            </div>
+            
+            <!-- 四象限视图切换 -->
+            <div id="eisenhowerView" style="display:none;">
+                <div class="eisenhower-grid">
+                    <div class="eisenhower-quadrant q1">
+                        <h4><i class="fas fa-fire"></i> 重要且紧急 <span class="quadrant-count" id="q1Count">0</span></h4>
+                        <div id="q1List"></div>
+                    </div>
+                    <div class="eisenhower-quadrant q2">
+                        <h4><i class="fas fa-star"></i> 重要不紧急 <span class="quadrant-count" id="q2Count">0</span></h4>
+                        <div id="q2List"></div>
+                    </div>
+                    <div class="eisenhower-quadrant q3">
+                        <h4><i class="fas fa-bolt"></i> 紧急不重要 <span class="quadrant-count" id="q3Count">0</span></h4>
+                        <div id="q3List"></div>
+                    </div>
+                    <div class="eisenhower-quadrant q4">
+                        <h4><i class="fas fa-minus"></i> 不重要不紧急 <span class="quadrant-count" id="q4Count">0</span></h4>
+                        <div id="q4List"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 正常列表视图 -->
+            <div id="normalTodoView">
+                <div class="todo-input-row">
+                    <input type="text" id="todoInput" placeholder="写一个待办..." />
+                    <div class="todo-type-group">
+                        <button class="active" data-mode="deadline" id="todoModeDeadline">截止</button>
+                        <button data-mode="countdown" id="todoModeCountdown">倒计时</button>
+                    </div>
+                    <input type="datetime-local" id="todoDeadlineInput" class="todo-time-input" />
+                    <div id="todoCountdownGroup" style="display:none;flex-shrink:0;display:none;gap:4px;align-items:center;">
+                        <input type="number" id="todoCountdownHours" placeholder="时" min="0" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
+                        <span style="color:#94a3b8;">:</span>
+                        <input type="number" id="todoCountdownMinutes" placeholder="分" min="0" max="59" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
+                    </div>
+                    <!-- 四象限选择 -->
+                    <select id="todoQuadrant" style="padding:6px 10px;border:2px solid #e2e8f0;border-radius:10px;font-size:13px;background:#fafbfc;min-width:100px;">
+                        <option value="q1">🔥 重要且紧急</option>
+                        <option value="q2">⭐ 重要不紧急</option>
+                        <option value="q3">⚡ 紧急不重要</option>
+                        <option value="q4" selected>⭕ 不重要不紧急</option>
+                    </select>
+                    <button class="todo-add-btn" id="todoAddBtn"><i class="fas fa-plus"></i> 添加</button>
+                </div>
+                <div class="todo-list" id="todoList">
+                    <!-- 由 JS 动态渲染 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- RECORDS CARD -->
+        <div class="card" id="recordsSection">
+            <div class="card-title" style="justify-content:space-between;">
+                <span><i class="fas fa-list-ul"></i> 时间记录</span>
+                <span style="font-size:13px;font-weight:400;color:#94a3b8;" id="recordCount">0 条</span>
+            </div>
+            <div class="record-list" id="recordList">
+                <!-- 由 JS 动态渲染 -->
             </div>
         </div>
 
@@ -1242,77 +1313,6 @@
             </div>
             <div class="stats-chart-area" style="height:200px;">
                 <canvas id="actStatChart"></canvas>
-            </div>
-        </div>
-
-        <!-- RECORDS CARD -->
-        <div class="card" id="recordsSection">
-            <div class="card-title" style="justify-content:space-between;">
-                <span><i class="fas fa-list-ul"></i> 时间记录</span>
-                <span style="font-size:13px;font-weight:400;color:#94a3b8;" id="recordCount">0 条</span>
-            </div>
-            <div class="record-list" id="recordList">
-                <!-- 由 JS 动态渲染 -->
-            </div>
-        </div>
-
-        <!-- TODO CARD -->
-        <div class="card" id="todoSection">
-            <div class="card-title">
-                <i class="fas fa-tasks"></i> 待办清单
-                <button id="eisenhowerToggleBtn" style="margin-left:auto;font-size:12px;padding:4px 10px;border:1px solid #3b82f6;background:#eff6ff;color:#2563eb;border-radius:12px;cursor:pointer;">
-                    <i class="fas fa-th"></i> 四象限视图
-                </button>
-            </div>
-            
-            <!-- 四象限视图切换 -->
-            <div id="eisenhowerView" style="display:none;">
-                <div class="eisenhower-grid">
-                    <div class="eisenhower-quadrant q1">
-                        <h4><i class="fas fa-fire"></i> 重要且紧急 <span class="quadrant-count" id="q1Count">0</span></h4>
-                        <div id="q1List"></div>
-                    </div>
-                    <div class="eisenhower-quadrant q2">
-                        <h4><i class="fas fa-star"></i> 重要不紧急 <span class="quadrant-count" id="q2Count">0</span></h4>
-                        <div id="q2List"></div>
-                    </div>
-                    <div class="eisenhower-quadrant q3">
-                        <h4><i class="fas fa-bolt"></i> 紧急不重要 <span class="quadrant-count" id="q3Count">0</span></h4>
-                        <div id="q3List"></div>
-                    </div>
-                    <div class="eisenhower-quadrant q4">
-                        <h4><i class="fas fa-minus"></i> 不重要不紧急 <span class="quadrant-count" id="q4Count">0</span></h4>
-                        <div id="q4List"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 正常列表视图 -->
-            <div id="normalTodoView">
-                <div class="todo-input-row">
-                    <input type="text" id="todoInput" placeholder="写一个待办..." />
-                    <div class="todo-type-group">
-                        <button class="active" data-mode="deadline" id="todoModeDeadline">截止</button>
-                        <button data-mode="countdown" id="todoModeCountdown">倒计时</button>
-                    </div>
-                    <input type="datetime-local" id="todoDeadlineInput" class="todo-time-input" />
-                    <div id="todoCountdownGroup" style="display:none;flex-shrink:0;display:none;gap:4px;align-items:center;">
-                        <input type="number" id="todoCountdownHours" placeholder="时" min="0" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
-                        <span style="color:#94a3b8;">:</span>
-                        <input type="number" id="todoCountdownMinutes" placeholder="分" min="0" max="59" style="width:50px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
-                    </div>
-                    <!-- 四象限选择 -->
-                    <select id="todoQuadrant" style="padding:6px 10px;border:2px solid #e2e8f0;border-radius:10px;font-size:13px;background:#fafbfc;min-width:100px;">
-                        <option value="q1">🔥 重要且紧急</option>
-                        <option value="q2">⭐ 重要不紧急</option>
-                        <option value="q3">⚡ 紧急不重要</option>
-                        <option value="q4" selected>⭕ 不重要不紧急</option>
-                    </select>
-                    <button class="todo-add-btn" id="todoAddBtn"><i class="fas fa-plus"></i> 添加</button>
-                </div>
-                <div class="todo-list" id="todoList">
-                    <!-- 由 JS 动态渲染 -->
-                </div>
             </div>
         </div>
 
