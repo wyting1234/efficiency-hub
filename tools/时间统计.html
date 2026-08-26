@@ -1762,24 +1762,27 @@
                         btn.innerHTML = `<span class="dot" style="background:${cat.color};"></span>${cat.key}`;
                         btn.addEventListener('click', () => {
                             const prevCategory = timerState.category;
-                            // 切换类别：保留已运行时间，不清零、不停止，只改类别
-                            if (prevCategory !== cat.key && timerState.elapsedMs > 0) {
-                                timerHistory.push({
-                                    category: prevCategory,
-                                    duration: timerState.elapsedMs,
-                                    time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-                                });
-                                renderTimerHistory();
-                            }
-                            timerState.category = cat.key;
-                            persistTimer();
-                            renderCategoryButtons();
-                            currentCategoryLabel.textContent = cat.key;
-                            // 显示保留的时间：运行中显示实时累计，暂停时显示已累计
-                            if (timerState.running) {
-                                tick();
-                            } else {
-                                updateTimerDisplay(timerState.elapsedMs || 0);
+                            // 切换类别：采用柳比歇夫法，把上一类别时段存为一条记录，新类别从零无缝续计
+                            if (prevCategory !== cat.key) {
+                                const committedDuration = commitCurrentSegment();
+                                if (committedDuration > 0) {
+                                    timerHistory.push({
+                                        category: prevCategory,
+                                        duration: committedDuration,
+                                        time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+                                    });
+                                    renderTimerHistory();
+                                }
+                                timerState.category = cat.key;
+                                persistTimer();
+                                renderCategoryButtons();
+                                currentCategoryLabel.textContent = cat.key;
+                                // 运行中继续计时，暂停则显示 0
+                                if (timerState.running) {
+                                    tick();
+                                } else {
+                                    updateTimerDisplay(timerState.elapsedMs || 0);
+                                }
                             }
                         });
                         categoryContainer.appendChild(btn);
@@ -2035,6 +2038,39 @@
             timerState.intervalId = setInterval(tick, 500);
             tick(); // 立即刷新一次
             persistTimer();
+        }
+
+        // 柳比歇夫法：把当前类别的已计时段提交为一条记录，并准备下一段
+        function commitCurrentSegment() {
+            const duration = timerState.running
+                ? Math.max(0, Date.now() - timerState.startTime)
+                : (timerState.elapsedMs || 0);
+            if (duration > 500) { // 至少0.5秒才保存
+                const now = Date.now();
+                const startTs = timerState.running ? timerState.startTime : (now - duration);
+                const startTime = new Date(startTs);
+                const endTime = new Date(now);
+                const record = {
+                    id: generateId(),
+                    category: timerState.category,
+                    startTime: startTime.toISOString(),
+                    endTime: endTime.toISOString(),
+                    duration: duration,
+                    note: '',
+                    date: startTime.toISOString().slice(0, 10),
+                };
+                records.push(record);
+                saveRecords();
+                renderAll();
+            }
+            // 重置当前段，便于新类别无缝续计
+            timerState.elapsedMs = 0;
+            if (timerState.running) {
+                timerState.startTime = Date.now();
+            } else {
+                timerState.startTime = null;
+            }
+            return duration;
         }
 
         function stopTimerAndSave() {
