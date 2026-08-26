@@ -1141,6 +1141,11 @@
         .gap-1 {
             gap: 4px;
         }
+            /* ===== 待办编辑弹窗 模式选择 ===== */
+        .todo-edit-group { display: flex; gap: 4px; background: #f1f5f9; border-radius: 10px; padding: 2px; width: fit-content; }
+        .todo-edit-group button { padding: 5px 12px; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; background: transparent; color: #64748b; transition: all 0.15s; }
+        .todo-edit-group button.active { background: #fff; color: #1e293b; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
+
     </style>
 <script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
 </head>
@@ -1374,6 +1379,37 @@
                 <div class="modal-actions">
                     <button class="btn-cancel" id="editCancel">取消</button>
                     <button class="btn-save" id="editSave">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TODO EDIT MODAL -->
+        <div class="modal-overlay" id="todoEditModal">
+            <div class="modal-box">
+                <h3><i class="fas fa-pen" style="color:#3b82f6;margin-right:8px;"></i>编辑待办</h3>
+                <label>内容</label>
+                <input type="text" id="todoEditTitle" style="width:100%;padding:9px 12px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;background:#fafbfc;color:#334155;font-family:inherit;" />
+                <label style="margin-top:10px;">模式</label>
+                <div class="todo-edit-group">
+                    <button type="button" data-mode="deadline" id="todoEditModeDeadline">截止</button>
+                    <button type="button" data-mode="countdown" id="todoEditModeCountdown">倒计时</button>
+                </div>
+                <input type="datetime-local" id="todoEditDeadline" style="margin-top:10px;padding:6px 10px;border:2px solid #e2e8f0;border-radius:10px;font-size:13px;background:#fafbfc;min-width:160px;" />
+                <div id="todoEditCountdownGroup" style="display:none;gap:4px;align-items:center;margin-top:10px;">
+                    <input type="number" id="todoEditCountdownHours" placeholder="时" min="0" style="width:60px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
+                    <span style="color:#94a3b8;">:</span>
+                    <input type="number" id="todoEditCountdownMinutes" placeholder="分" min="0" max="59" style="width:60px;padding:6px 4px;border:2px solid #e2e8f0;border-radius:8px;font-size:13px;background:#fafbfc;text-align:center;" />
+                </div>
+                <label style="margin-top:10px;">四象限</label>
+                <select id="todoEditQuadrant" style="width:100%;padding:9px 12px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;background:#fafbfc;color:#334155;font-family:inherit;">
+                    <option value="q1">🔥 重要且紧急</option>
+                    <option value="q2">⭐ 重要不紧急</option>
+                    <option value="q3">⚡ 紧急不重要</option>
+                    <option value="q4">⭕ 不重要不紧急</option>
+                </select>
+                <div class="modal-actions">
+                    <button class="btn-cancel" id="todoEditCancel">取消</button>
+                    <button class="btn-save" id="todoEditSave">保存</button>
                 </div>
             </div>
         </div>
@@ -2334,7 +2370,7 @@
                 const doneClass = t.isCompleted ? 'done' : '';
                 const titleClass = t.isCompleted ? 'done-text' : '';
                 html += `
-                        <div class="todo-item" style="${isUrgent && !t.isCompleted ? 'border-left-color:#ef4444;' : ''}">
+                        <div class="todo-item" data-id="${t.id}" style="${isUrgent && !t.isCompleted ? 'border-left-color:#ef4444;' : ''}">
                             <button class="todo-check ${doneClass}" data-id="${t.id}">
                                 ${t.isCompleted ? '<i class="fas fa-check"></i>' : ''}
                             </button>
@@ -2376,6 +2412,11 @@
                     }
                 });
             });
+
+            // 点击待办项 → 再次编辑
+            todoList.querySelectorAll('.todo-item').forEach(el => {
+                el.addEventListener('click', () => openTodoEditModal(el.dataset.id));
+            });
         }
 
         // ============================================================
@@ -2412,6 +2453,69 @@
             saveRecords();
             closeEditModal();
             renderAll();
+        }
+
+        // ============================================================
+        //  TODO: EDIT MODAL（点击待办再次编辑）
+        // ============================================================
+        let editingTodoId = null;
+        function setTodoEditMode(mode) {
+            const d = $('todoEditModeDeadline'), c = $('todoEditModeCountdown');
+            if (mode === 'deadline') {
+                d.classList.add('active'); c.classList.remove('active');
+                $('todoEditDeadline').style.display = 'inline-block';
+                $('todoEditCountdownGroup').style.display = 'none';
+            } else {
+                c.classList.add('active'); d.classList.remove('active');
+                $('todoEditDeadline').style.display = 'none';
+                $('todoEditCountdownGroup').style.display = 'flex';
+            }
+        }
+        function openTodoEditModal(id) {
+            const t = todos.find(x => x.id === id);
+            if (!t) return;
+            editingTodoId = id;
+            $('todoEditTitle').value = t.title || '';
+            const mode = t.type || 'deadline';
+            setTodoEditMode(mode);
+            if (mode === 'deadline') {
+                $('todoEditDeadline').value = (t.deadline || '').slice(0, 16);
+            } else {
+                const cs = t.countdownSeconds || 0;
+                $('todoEditCountdownHours').value = Math.floor(cs / 3600);
+                $('todoEditCountdownMinutes').value = Math.floor((cs % 3600) / 60);
+            }
+            $('todoEditQuadrant').value = t.quadrant || 'q4';
+            $('todoEditModal').classList.add('open');
+        }
+        function closeTodoEditModal() {
+            $('todoEditModal').classList.remove('open');
+            editingTodoId = null;
+        }
+        function saveTodoEditModal() {
+            if (!editingTodoId) return;
+            const t = todos.find(x => x.id === editingTodoId);
+            if (!t) return;
+            const title = $('todoEditTitle').value.trim();
+            if (!title) { alert('请输入待办内容'); return; }
+            const mode = $('todoEditModeDeadline').classList.contains('active') ? 'deadline' : 'countdown';
+            t.title = title;
+            t.type = mode;
+            if (mode === 'deadline') {
+                const val = $('todoEditDeadline').value;
+                t.deadline = val ? new Date(val).toISOString() : null;
+                t.countdownSeconds = null;
+            } else {
+                const h = parseInt($('todoEditCountdownHours').value) || 0;
+                const m = parseInt($('todoEditCountdownMinutes').value) || 0;
+                t.countdownSeconds = h * 3600 + m * 60;
+                t.deadline = null;
+                t.createdAt = new Date().toISOString(); // 重置倒计时起点
+            }
+            t.quadrant = $('todoEditQuadrant').value || 'q4';
+            saveTodos();
+            closeTodoEditModal();
+            renderTodos();
         }
 
         // ============================================================
@@ -2963,6 +3067,15 @@
             editModal.addEventListener('click', (e) => {
                 if (e.target === editModal) closeEditModal();
             });
+
+            // 待办编辑弹窗（点击待办再次编辑）
+            $('todoEditCancel').addEventListener('click', closeTodoEditModal);
+            $('todoEditSave').addEventListener('click', saveTodoEditModal);
+            $('todoEditModal').addEventListener('click', (e) => {
+                if (e.target === $('todoEditModal')) closeTodoEditModal();
+            });
+            $('todoEditModeDeadline').addEventListener('click', () => setTodoEditMode('deadline'));
+            $('todoEditModeCountdown').addEventListener('click', () => setTodoEditMode('countdown'));
 
             // 新增类别弹窗
             const catModal = $('catModal');
