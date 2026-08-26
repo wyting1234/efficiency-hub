@@ -622,13 +622,7 @@
                     <label>主分类 <span class="required">*</span></label>
 
                     <select id="infoCategory" required>
-
-                        <option value="投资大类">投资大类</option>
-
-                        <option value="工作技能">工作技能</option>
-
-                        <option value="生活技能">生活技能</option>
-
+                        <!-- 由 refreshCategorySelect() 从 subCategoryMap 动态填充 -->
                     </select>
                     <button id="manageCategoriesBtn" type="button" class="btn btn-sm" onclick="openCategoryManager(event)" style="margin-top:8px;padding:4px 10px;font-size:12px;background:#f0f4ff;color:#5B6ABF;border:1px solid #5B6ABF;border-radius:6px;cursor:pointer">⚙ 管理类别</button>
 
@@ -755,15 +749,8 @@
                 </select>
 
                 <select id="filterCategory" style="padding:6px 12px;border:1.5px solid #dce1ea;border-radius:10px;font-size:13px;">
-
                     <option value="">全部分类</option>
-
-                    <option value="投资大类">投资大类</option>
-
-                    <option value="工作技能">工作技能</option>
-
-                    <option value="生活技能">生活技能</option>
-
+                    <!-- 其余选项由 refreshCategorySelect() 从 subCategoryMap 动态填充 -->
                 </select>
 
                 <button class="btn btn-sm btn-success" onclick="generateSummary()"><i class="fas fa-file-alt"></i> 生成总结</button>
@@ -913,13 +900,7 @@
                         <label>主分类 <span class="required">*</span></label>
 
                         <select id="editCategory" required>
-
-                            <option value="投资大类">投资大类</option>
-
-                            <option value="工作技能">工作技能</option>
-
-                            <option value="生活技能">生活技能</option>
-
+                            <!-- 由 refreshCategorySelect() 从 subCategoryMap 动态填充 -->
                         </select>
 
                     </div>
@@ -1492,6 +1473,9 @@ const STORAGE_KEY = 'multi_info_records';
 
         document.getElementById('editSource').value = record.source || '微博';
 
+        // 确保编辑表单主分类选项与当前类别数据同步
+        refreshCategorySelect();
+
         document.getElementById('editCategory').value = record.category || '投资大类';
 
         // 更新子分类下拉
@@ -1968,6 +1952,9 @@ const STORAGE_KEY = 'multi_info_records';
 
         updateSubCategorySelect('editSubCategory', '投资大类');
 
+        // 同步初始化主分类与筛选分类下拉
+        refreshCategorySelect();
+
 
 
         loadRecords();
@@ -2179,18 +2166,44 @@ function renderCategoryList() {
     }
 
     function refreshCategorySelect() {
-        const sel = document.getElementById('infoCategory');
-        if (!sel) return;
-        const current = sel.value;
-        sel.innerHTML = '';
-        Object.keys(subCategoryMap).forEach(k => {
-            const opt = document.createElement('option');
-            opt.value = k;
-            opt.textContent = k;
-            sel.appendChild(opt);
+        // 同步更新新增/编辑表单主分类与列表筛选分类
+        const mainSel = document.getElementById('infoCategory');
+        const editSel = document.getElementById('editCategory');
+        const filterSel = document.getElementById('filterCategory');
+        const categories = Object.keys(subCategoryMap);
+
+        [mainSel, editSel].forEach(sel => {
+            if (!sel) return;
+            const current = sel.value;
+            sel.innerHTML = '';
+            categories.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.textContent = k;
+                sel.appendChild(opt);
+            });
+            if (current && subCategoryMap[current]) sel.value = current;
         });
-        if (current && subCategoryMap[current]) sel.value = current;
-        updateSubCategorySelect();
+
+        if (mainSel) {
+            updateSubCategorySelect('infoSubCategory', mainSel.value);
+        }
+
+        if (filterSel) {
+            const current = filterSel.value;
+            filterSel.innerHTML = '';
+            const allOpt = document.createElement('option');
+            allOpt.value = '';
+            allOpt.textContent = '全部分类';
+            filterSel.appendChild(allOpt);
+            categories.forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.textContent = k;
+                filterSel.appendChild(opt);
+            });
+            if (current && subCategoryMap[current]) filterSel.value = current;
+        }
     }
 </script>
 
