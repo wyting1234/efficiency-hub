@@ -1394,6 +1394,10 @@ function buildIframes(){
 
     f.setAttribute('title',m.name);
 
+    // 允许工具页（如日记的全屏写作）使用浏览器原生全屏
+    f.setAttribute('allowfullscreen','');
+    f.setAttribute('allow','fullscreen');
+
 
     box.appendChild(f);
 
