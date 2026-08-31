@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>旅行助手 · 漫游助手</title>
+  <meta name="description" content="结构化旅游规划：初始城市信息、天气、衣/食/住/行/玩六大模块，数据本地保存。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E">
+  <style>
+:root {
+  --bg: #f3f7fb;
+  --surface: #ffffff;
+  --surface-2: #f7fafc;
+  --text: #1f2d3d;
+  --text-soft: #5b6b7b;
+  --text-faint: #93a3b3;
+  --primary: #1ea7a0;
+  --primary-dark: #0f7f7a;
+  --accent: #ff8a3d;
+  --accent-soft: #fff1e6;
+  --danger: #e35d6a;
+  --border: #e4ebf1;
+  --shadow: 0 8px 24px rgba(31, 45, 61, .08);
+  --shadow-sm: 0 2px 8px rgba(31, 45, 61, .06);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --grad: linear-gradient(135deg, #1ea7a0 0%, #2b8fd6 100%);
+  --grad-warm: linear-gradient(135deg, #ff8a3d 0%, #ff5e7e 100%);
+}
+
+/* 确保 HTML hidden 属性始终生效（避免被 display:flex 等规则覆盖） */
+[hidden] { display: none !important; }
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-bottom: 32px;
+}
+h1, h2, h3, h4 { margin: 0; font-weight: 700; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; font-size: 15px; }
+
+/* ---------- Header ---------- */
+.app-header {
+  background: var(--grad);
+  color: #fff;
+  padding: 20px 18px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: var(--shadow);
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-logo { font-size: 34px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.2)); }
+.brand-text h1 { font-size: 20px; letter-spacing: .5px; }
+.brand-text p { margin: 2px 0 0; font-size: 12px; opacity: .9; }
+.header-actions { display: flex; gap: 8px; }
+.ghost-btn {
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.35);
+  color: #fff;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  transition: background .2s;
+}
+.ghost-btn:hover { background: rgba(255,255,255,.3); }
+
+/* ---------- 行程切换栏 ---------- */
+.trip-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 0;
+  max-width: 860px;
+  margin: 0 auto;
+}
+.trip-chips { display: flex; gap: 8px; overflow-x: auto; flex: 1; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.trip-chips::-webkit-scrollbar { display: none; }
+.trip-chip {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s;
+}
+.trip-chip.active { background: var(--grad); color: #fff; border-color: transparent; box-shadow: var(--shadow-sm); }
+.trip-chip.add { border-style: dashed; color: var(--primary); background: transparent; }
+.trip-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+.trip-btn {
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s;
+}
+.trip-btn:hover { border-color: var(--primary); color: var(--primary); }
+.trip-btn.danger { color: #dc2626; border-color: #f1c6c6; }
+.trip-btn.danger:hover { background: #fdecec; }
+
+/* ---------- Tabs ---------- */
+.tab-nav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 12px 14px;
+  position: sticky;
+  top: 78px;
+  z-index: 15;
+  background: var(--bg);
+  scrollbar-width: none;
+}
+.tab-nav::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex: 0 0 auto;
+  border: none;
+  background: var(--surface);
+  color: var(--text-soft);
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  transition: all .2s;
+  white-space: nowrap;
+}
+.tab-btn.active {
+  background: var(--grad);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+/* ---------- Layout ---------- */
+.app-main { max-width: 860px; margin: 0 auto; padding: 4px 14px 0; }
+.tab-panel { display: none; animation: fade .25s ease; }
+.tab-panel.active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Cards & primitives ---------- */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.card-title { font-size: 16px; display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.muted { color: var(--text-soft); }
+.faint { color: var(--text-faint); font-size: 13px; }
+.empty {
+  text-align: center;
+  color: var(--text-faint);
+  padding: 40px 16px;
+  font-size: 14px;
+}
+.empty .big { font-size: 40px; display: block; margin-bottom: 10px; }
+
+.btn {
+  background: var(--grad);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  transition: transform .12s, opacity .2s;
+}
+.btn:active { transform: scale(.97); }
+.btn.block { width: 100%; }
+.btn.soft { background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+.btn.ghost { background: transparent; color: var(--primary); border: 1px solid var(--border); box-shadow: none; }
+.btn.danger { background: var(--danger); }
+.btn.sm { padding: 6px 12px; font-size: 13px; }
+
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 13px; color: var(--text-soft); margin-bottom: 5px; font-weight: 600; }
+.field input, .field select, .field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+  transition: border .2s, box-shadow .2s;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30,167,160,.15);
+  background: #fff;
+}
+.field textarea { resize: vertical; min-height: 70px; }
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+.flex { display: flex; align-items: center; }
+.between { justify-content: space-between; }
+.wrap { flex-wrap: wrap; }
+.gap8 { gap: 8px; }
+
+.chip {
+  display: inline-block;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(31,45,61,.92);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s, transform .25s;
+  z-index: 50;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- Modal ---------- */
+.modal-mask {
+  position: fixed; inset: 0;
+  background: rgba(15,25,40,.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px; z-index: 40;
+  animation: fade .2s ease;
+}
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  width: 100%; max-width: 460px;
+  max-height: 88vh; overflow-y: auto;
+  padding: 22px;
+  animation: pop .25s ease;
+}
+@keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal h3 { font-size: 17px; margin-bottom: 16px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.modal-actions .btn { flex: 1; }
+
+/* ---------- Trip timeline ---------- */
+.trip-hero {
+  background: var(--grad);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+.trip-hero h2 { font-size: 22px; }
+.trip-hero .meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; opacity: .95; }
+.trip-hero .meta span { background: rgba(255,255,255,.18); padding: 4px 10px; border-radius: 999px; }
+.trip-day {
+  border-left: 3px solid var(--primary);
+  padding-left: 16px;
+  margin-left: 6px;
+  position: relative;
+  margin-bottom: 18px;
+}
+.trip-day::before {
+  content: ""; position: absolute; left: -8px; top: 4px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--primary); box-shadow: 0 0 0 4px rgba(30,167,160,.18);
+}
+.trip-day h4 { font-size: 15px; margin-bottom: 8px; color: var(--primary-dark); }
+.sched-item {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.sched-time { font-weight: 700; color: var(--primary-dark); font-size: 14px; min-width: 46px; }
+.sched-body { flex: 1; }
+.sched-title { font-weight: 600; }
+.sched-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+
+/* ---------- Packing ---------- */
+.progress-wrap { margin-bottom: 14px; }
+.progress-bar { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+.progress-fill { height: 100%; background: var(--grad); width: 0; transition: width .3s; }
+.progress-text { font-size: 13px; color: var(--text-soft); margin-top: 6px; }
+.pack-cat { margin-bottom: 16px; }
+.pack-cat h4 { font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.pack-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 4px; border-bottom: 1px solid var(--border);
+}
+.pack-item:last-child { border-bottom: none; }
+.pack-item .cb {
+  width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 14px; flex: 0 0 auto; transition: all .15s;
+}
+.pack-item.done .cb { background: var(--primary); border-color: var(--primary); }
+.pack-item.done .pack-label { text-decoration: line-through; color: var(--text-faint); }
+.pack-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pack-item .del { color: var(--text-faint); background: none; border: none; font-size: 16px; }
+/* 数量步进器 */
+.qty-step { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.qty-btn { width: 26px; height: 26px; border: none; background: transparent; color: var(--primary); font-size: 16px; font-weight: 700; cursor: pointer; line-height: 1; }
+.qty-btn:active { background: var(--border); }
+.qty-num { min-width: 22px; text-align: center; font-size: 13px; font-weight: 700; color: var(--text); }
+
+/* ---------- Budget ---------- */
+.stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+.stat-box { background: var(--surface-2); border-radius: var(--radius-sm); padding: 14px; border: 1px solid var(--border); }
+.stat-box .v { font-size: 22px; font-weight: 800; }
+.stat-box .l { font-size: 12px; color: var(--text-soft); }
+.stat-box.warn .v { color: var(--danger); }
+.budget-bar { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); margin: 8px 0 4px; }
+.budget-bar > i { display: block; height: 100%; background: var(--grad-warm); }
+.cat-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.cat-row:last-child { border-bottom: none; }
+.cat-dot { width: 10px; height: 10px; border-radius: 50%; }
+.cat-row .amt { margin-left: auto; font-weight: 700; }
+.cat-row .pct { color: var(--text-faint); font-size: 12px; min-width: 42px; text-align: right; }
+
+/* ---------- Explore ---------- */
+.dest-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.dest-card {
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+  background: var(--surface); cursor: pointer; transition: transform .15s;
+  border: 1px solid var(--border);
+}
+.dest-card:active { transform: scale(.98); }
+.dest-cover { height: 92px; display: flex; align-items: flex-end; padding: 10px; color: #fff; font-weight: 700; font-size: 15px; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.dest-card .info { padding: 10px 12px; }
+.dest-card .info .season { font-size: 12px; color: var(--accent); font-weight: 600; }
+.dest-card .info .desc { font-size: 12px; color: var(--text-soft); margin-top: 4px; line-height: 1.45; }
+.filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.filter-bar button { border: 1px solid var(--border); background: var(--surface); color: var(--text-soft); padding: 6px 14px; border-radius: 999px; font-size: 13px; }
+.filter-bar button.on { background: var(--grad); color: #fff; border-color: transparent; }
+
+/* ---------- Tools ---------- */
+.tool-card { margin-bottom: 14px; }
+.result-line { font-size: 26px; font-weight: 800; color: var(--primary-dark); margin: 8px 0; }
+.weather-box { display: flex; align-items: center; gap: 14px; }
+.weather-temp { font-size: 38px; font-weight: 800; }
+.weather-meta { font-size: 13px; color: var(--text-soft); }
+
+/* ---------- Journal ---------- */
+.journal-entry { border-left: 3px solid var(--accent); padding: 12px 14px; background: var(--surface-2); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-bottom: 12px; }
+.journal-entry .jd-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.journal-entry .jd-date { font-weight: 700; font-size: 14px; }
+.journal-entry .jd-mood { font-size: 18px; }
+.journal-entry .jd-text { font-size: 14px; color: var(--text); white-space: pre-wrap; }
+.journal-entry .jd-stars { color: var(--accent); font-size: 14px; margin-top: 4px; }
+
+/* ---------- 初始信息：出游人 ---------- */
+.traveler-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.est-summary { margin-top: 12px; padding: 10px 12px; background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius-sm); font-size: 14px; color: var(--text-soft); }
+.est-summary b { color: var(--primary-dark); font-size: 16px; }
+
+/* ---------- 预计费用输入 ---------- */
+.cost-input { width: 76px !important; flex: 0 0 auto; padding: 6px 8px !important; font-size: 13px !important; }
+
+/* ---------- 筛选栏下拉 ---------- */
+.filter-bar select.mini, .filter-bar input.mini {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-soft);
+  border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600;
+}
+.filter-bar select.mini:focus, .filter-bar input.mini:focus { border-color: var(--primary); }
+
+/* ---------- 玩：内部项目 / 子表单 ---------- */
+.proj-item { background: var(--surface); border-left: 3px solid var(--primary); padding: 8px 12px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin: 6px 0; font-size: 13px; }
+.proj-item b { font-size: 14px; }
+.proj-item .chip { margin-left: 6px; }
+.sub-block { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 10px; }
+.sub-block h4 { font-size: 14px; color: var(--primary-dark); }
+.sub-row { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin: 8px 0; background: var(--surface-2); }
+.sub-row .field { margin-bottom: 8px; }
+.sub-row .btn.soft { font-size: 12px; padding: 4px 10px; }
+
+@media (min-width: 600px) {
+  .dest-grid { grid-template-columns: repeat(3, 1fr); }
+  .stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* 隐藏 datalist（移动端浏览器可能渲染为可见块） */
+datalist { display: none !important; }
+
+/* ============ 总览首页 ============ */
+.ov-hero { background: linear-gradient(135deg, #0ea5a4, #2563eb); color: #fff; border: none; }
+.ov-hero .faint { color: rgba(255,255,255,.8); }
+.ov-hero-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: nowrap; overflow: hidden; }
+.ov-label { font-size: 13px; opacity: .85; white-space: nowrap; flex-shrink: 0; }
+.ov-daterange { font-size: 18px; font-weight: 700; white-space: nowrap; letter-spacing: 0.5px; overflow: hidden; text-overflow: ellipsis; }
+.ov-people-row { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+.ov-people { font-size: 14px; font-weight: 600; }
+.ov-cities { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.ov-cities .city-chip { background: rgba(255,255,255,.22); border: 1px solid rgba(255,255,255,.35); color: #fff; cursor: pointer; }
+.ov-cities .city-chip .role { color: rgba(255,255,255,.85); }
+.ov-cities .city-chip .x { color: #fff; }
+.ov-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+.ov-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px 8px; background: #fff; border: 1px solid var(--bd); border-radius: 14px; cursor: pointer; transition: transform .12s, box-shadow .12s; }
+.ov-stat:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(15,23,42,.1); }
+.ov-stat-ico { font-size: 22px; }
+.ov-stat-val { font-size: 22px; font-weight: 700; color: var(--primary); }
+.ov-stat-label { font-size: 12px; color: var(--mut); }
+.ov-budget-status { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #e6f7f2; color: var(--primary); font-weight: 600; }
+.ov-budget-status.warn { background: #fdecec; color: #dc2626; }
+.ov-budget-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; }
+.ov-budget-row b { color: var(--ink); }
+.ov-weather { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.ov-w-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #f6f9fb; border-radius: 10px; cursor: pointer; }
+.ov-w-ico { font-size: 20px; }
+.ov-w-city { font-weight: 600; flex: 0 0 auto; }
+.ov-w-temp { font-weight: 700; margin-left: auto; }
+.ov-must { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.ov-must-item { display: flex; align-items: center; gap: 8px; padding: 9px 10px; background: #f6f9fb; border-radius: 10px; cursor: pointer; }
+.ov-must-item .faint { margin-left: 2px; }
+.ov-journal { margin-top: 6px; }
+.ov-journal .jd-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+
+/* ---------- 评分 / 来源 / 工具标签 ---------- */
+.rating-badge {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  color: #fff; font-size: 12px; font-weight: 700;
+}
+.source-chip { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-soft); border-radius: 999px; padding: 2px 9px; font-size: 12px; }
+.tool-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tool-tags .tag { background: var(--grad); color: #fff; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+.city-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.85); border: 1px solid var(--border);
+  border-radius: 999px; padding: 5px 6px 5px 12px; font-size: 13px; margin: 0 8px 8px 0;
+}
+.city-chip .role { font-size: 11px; color: var(--text-faint); }
+.city-chip .x { cursor: pointer; color: var(--text-faint); border: none; background: none; font-size: 15px; line-height: 1; }
+.city-chip .x:hover { color: var(--danger); }
+
+/* ---------- 天气列表 ---------- */
+.wx-item { padding: 14px; border: 1px solid var(--border); border-radius: 14px; margin-bottom: 12px; background: var(--surface); }
+.wx-item:last-child { margin-bottom: 0; }
+.wx-top { display: flex; align-items: center; gap: 12px; }
+.wx-icon { font-size: 32px; flex: 0 0 auto; }
+.wx-info { flex: 1; min-width: 0; }
+.wx-info .c { font-weight: 700; font-size: 15px; }
+.wx-info .d { font-size: 12px; color: var(--text-soft); }
+.wx-temp { font-size: 28px; font-weight: 800; color: var(--primary-dark); flex: 0 0 auto; }
+.wx-meta { font-size: 11px; color: var(--text-faint); text-align: right; flex: 0 0 auto; max-width: 130px; }
+.wx-info + .wx-temp + .wx-meta + .del { flex: 0 0 auto; }
+.wx-item .del { background: none; border: none; color: var(--text-faint); font-size: 16px; cursor: pointer; padding: 2px 4px; margin-left: 4px; }
+/* 行程期间预报表格 */
+.wx-forecast { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.wx-fc-title { font-size: 13px; font-weight: 600; color: var(--text-soft); margin-bottom: 8px; }
+.wx-fc-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.wx-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 260px; }
+.wx-table th { text-align: left; padding: 7px 8px; color: var(--text-faint); font-weight: 600; border-bottom: 1px solid var(--border); }
+.wx-table td { padding: 7px 8px; border-bottom: 1px solid #f0f3f6; white-space: nowrap; }
+.wx-table tbody tr:last-child td { border-bottom: none; }
+.wx-table tbody tr:nth-child(even) { background: #f8fbfd; }
+.wx-date { font-weight: 600; color: var(--text); }
+.wx-fc-w { color: var(--text-soft); }
+.wx-hot { color: #e0533d; font-weight: 700; }
+.wx-cold { color: #2f7de1; font-weight: 700; }
+
+/* ---------- 餐饮 / 住宿卡片 ---------- */
+.record-card { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 12px; background: var(--surface-2); }
+.record-card .rc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.record-card .rc-title { font-weight: 700; font-size: 15px; }
+.record-card .rc-sub { font-size: 12px; color: var(--text-faint); }
+.meal-row { display: flex; gap: 8px; padding: 8px 0; border-top: 1px dashed var(--border); align-items: flex-start; }
+.meal-row:first-of-type { border-top: none; }
+.meal-row .mk { font-weight: 700; color: var(--accent); min-width: 34px; font-size: 13px; }
+.meal-row .mb { flex: 1; font-size: 13px; }
+.meal-row .mb .rname { font-weight: 600; }
+.meal-row .mb .meta { color: var(--text-soft); font-size: 12px; margin-top: 2px; }
+.must-badge { background: #ffe9d6; color: var(--accent); border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 700; }
+.back-badge { background: var(--surface); border: 1px solid var(--border); color: var(--text-soft); border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 700; }
+
+/* ---------- 多选 checkbox ---------- */
+.chk-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.chk { display: inline-flex; align-items: center; gap: 5px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.chk input { accent-color: var(--primary); }
+
+/* ---------- 途径站 ---------- */
+.via-item { border-left: 3px solid var(--accent); padding: 8px 12px; margin: 8px 0; background: var(--surface); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.via-item .vi-head { display: flex; justify-content: space-between; align-items: center; }
+.via-item .vi-name { font-weight: 700; font-size: 14px; }
+.via-item .vi-body { font-size: 13px; color: var(--text-soft); margin-top: 4px; }
+.meal-block { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin: 8px 0; background: var(--surface-2); }
+.meal-block h4 { font-size: 14px; margin-bottom: 8px; color: var(--accent); }
+
+</style>
+
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-logo">🧭</span>
+      <div class="brand-text">
+        <h1>漫游助手</h1>
+        <p>你的随身旅游小助手</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-export" class="ghost-btn" title="导出全部数据">⬇ 导出</button>
+      <button id="btn-import" class="ghost-btn" title="导入数据">⬆ 导入</button>
+      <input type="file" id="import-file" accept="application/json" hidden />
+    </div>
+  </header>
+
+  <div class="trip-bar" id="trip-bar"></div>
+
+  <nav class="tab-nav" id="tab-nav">
+    <button class="tab-btn active" data-tab="overview">🏠 总览</button>
+    <button class="tab-btn" data-tab="init">📌 初始</button>
+    <button class="tab-btn" data-tab="weather">🌤 天气</button>
+    <button class="tab-btn" data-tab="pack">🎒 衣</button>
+    <button class="tab-btn" data-tab="food">🍜 食</button>
+    <button class="tab-btn" data-tab="stay">🏨 住</button>
+    <button class="tab-btn" data-tab="transit">🚆 行</button>
+    <button class="tab-btn" data-tab="play">📸 玩</button>
+    <button class="tab-btn" data-tab="budget">💰 预算</button>
+    <button class="tab-btn" data-tab="tools">🛠 工具</button>
+    <button class="tab-btn" data-tab="journal">📓 日记</button>
+  </nav>
+
+  <main class="app-main">
+    <section class="tab-panel active" id="panel-overview"></section>
+    <section class="tab-panel" id="panel-init"></section>
+    <section class="tab-panel" id="panel-weather"></section>
+    <section class="tab-panel" id="panel-pack"></section>
+    <section class="tab-panel" id="panel-food"></section>
+    <section class="tab-panel" id="panel-stay"></section>
+    <section class="tab-panel" id="panel-transit"></section>
+    <section class="tab-panel" id="panel-play"></section>
+    <section class="tab-panel" id="panel-budget"></section>
+    <section class="tab-panel" id="panel-tools"></section>
+    <section class="tab-panel" id="panel-journal"></section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <div class="modal-mask" id="modal-mask" hidden>
+    <div class="modal" id="modal"></div>
+  </div>
+  <datalist id="global-city-list"></datalist>
+
+  <script>
+/* 本地存储封装：所有数据保存在浏览器 localStorage，无后端、离线可用。
+   支持多行程：每个行程拥有独立的命名空间（roam_assistant_<行程ID>_<key>），
+   通过 Store.namespace(id) 切换当前行程。全局键（trips / active_trip）不受影响。 */
+(function (global) {
+  const PREFIX = 'roam_assistant_';
+  let ns = null; // 当前行程命名空间（行程 ID）；null 表示旧版全局模式
+
+  function fullKey(k) { return ns ? ns + '_' + k : k; }
+
+  const storage = {
+    /* —— 当前行程命名空间下的读写 —— */
+    get(key, fallback) {
+      try {
+        const raw = localStorage.getItem(PREFIX + fullKey(key));
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (e) {
+        console.warn('读取失败', key, e);
+        return fallback;
+      }
+    },
+    set(key, value) {
+      try {
+        localStorage.setItem(PREFIX + fullKey(key), JSON.stringify(value));
+        return true;
+      } catch (e) {
+        console.warn('写入失败', key, e);
+        return false;
+      }
+    },
+    remove(key) {
+      localStorage.removeItem(PREFIX + fullKey(key));
+    },
+
+    /* —— 全局键（不随行程切换，如行程列表 / 当前行程） —— */
+    gget(key, fallback) {
+      try {
+        const raw = localStorage.getItem(PREFIX + key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    },
+    gset(key, value) {
+      try {
+        localStorage.setItem(PREFIX + key, JSON.stringify(value));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    gremove(key) {
+      localStorage.removeItem(PREFIX + key);
+    },
+
+    /* —— 命名空间控制 —— */
+    namespace(id) { ns = id; },
+    nsOf() { return ns; },
+
+    /* 清空当前命名空间下的所有键（不删除全局键） */
+    clearNamespace() {
+      const prefix = PREFIX + (ns ? ns + '_' : '');
+      const toRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(prefix)) toRemove.push(k);
+      }
+      toRemove.forEach((k) => localStorage.removeItem(k));
+    },
+
+    /* 物理拷贝一个键（用于行程间复制，不经过当前命名空间） */
+    rget(key, fallback) {
+      try {
+        const raw = localStorage.getItem(PREFIX + key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    },
+    rset(key, value) {
+      try {
+        localStorage.setItem(PREFIX + key, JSON.stringify(value));
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    /* 导出全部数据为一个对象（键为原始存储键，不含 PREFIX） */
+    exportAll() {
+      const out = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(PREFIX)) {
+          out[k.slice(PREFIX.length)] = JSON.parse(localStorage.getItem(k));
+        }
+      }
+      return out;
+    },
+    /* 导入数据（覆盖同名键，绕过命名空间） */
+    importAll(obj) {
+      if (!obj || typeof obj !== 'object') return false;
+      Object.keys(obj).forEach((k) => storage.rset(k, obj[k]));
+      return true;
+    }
+  };
+
+  global.Store = storage;
+})(window);
+
+
+/* 内置数据：物品清单模板、来源/评价/工具/人群等常量、预算分类、参考汇率 */
+(function (global) {
+  // 物品清单分类：衣 / 食 / 住 / 行 / 其他（自定义）
+  const PACK_CATS = ['衣', '食', '住', '行', '其他'];
+  const PACK_TEMPLATES = {
+    衣: ['内衣袜子', '外套', 'T恤/衬衫', '裤子', '睡衣', '运动鞋', '帽子', '墨镜', '防晒衣'],
+    食: ['零食', '水杯', '保温杯', '便携餐具', '茶叶/咖啡', '常备肠胃药'],
+    住: ['洗漱用品', '护肤品', '毛巾', '拖鞋', '洗衣袋', '衣架'],
+    行: ['身份证', '护照/签证', '机票/车票', '酒店订单', '充电宝', '充电器/数据线', '现金/信用卡', '转换插头', '随身WiFi', '驾照'],
+    其他: ['雨伞', '纸巾/湿巾', '口罩', '购物袋', '笔+本子', '常用药品']
+  };
+
+  // 餐次
+  const MEALS = ['早餐', '午餐', '晚餐'];
+
+  // 信息来源（食、住共用）
+  const FOOD_SOURCES = ['小红书', '百度', '大众点评', '其他人推荐'];
+
+  // 评价：优 / 良 / 差
+  const RATINGS = [
+    { key: 'good', label: '优', color: '#2fae66' },
+    { key: 'mid', label: '良', color: '#ff8a3d' },
+    { key: 'bad', label: '差', color: '#e35d6a' }
+  ];
+
+  // 出行工具（可多选）
+  const TRANSIT_TOOLS = ['飞机', '火车', '出租车', '自行车', '地铁', '步行'];
+
+  // 景点类型：必玩 / 备选
+  const PLAY_TYPES = ['必玩', '备选'];
+
+  // 事宜人群
+  const CROWDS = ['亲子', '情侣', '老人', '朋友', '独自', '家庭'];
+
+  // 游玩时间（时段口径，用于筛选）
+  const PLAY_PERIODS = ['上午', '下午', '晚上', '全天'];
+
+  // 项目可玩度
+  const PLAYABILITY = [
+    { key: 'high', label: '高', color: '#2fae66' },
+    { key: 'mid', label: '中', color: '#ff8a3d' },
+    { key: 'low', label: '低', color: '#93a3b3' }
+  ];
+
+  // 预算分类与配色
+  const BUDGET_CATS = [
+    { key: 'traffic', label: '交通', color: '#1ea7a0' },
+    { key: 'hotel', label: '住宿', color: '#2b8fd6' },
+    { key: 'food', label: '餐饮', color: '#ff8a3d' },
+    { key: 'ticket', label: '门票', color: '#a569d6' },
+    { key: 'shopping', label: '购物', color: '#e35d6a' },
+    { key: 'other', label: '其他', color: '#93a3b3' }
+  ];
+
+  // 参考汇率（以 1 人民币 CNY 为基准，近似值，可手动修改）
+  const RATES = {
+    CNY: 1, USD: 0.14, EUR: 0.13, JPY: 21.5, HKD: 1.09, GBP: 0.11, KRW: 190, THB: 5.0, AUD: 0.21, SGD: 0.19
+  };
+  const CURRENCY_LABEL = {
+    CNY: '人民币', USD: '美元', EUR: '欧元', JPY: '日元', HKD: '港币', GBP: '英镑', KRW: '韩元', THB: '泰铢', AUD: '澳元', SGD: '新加坡元'
+  };
+
+  global.DB = {
+    PACK_CATS, PACK_TEMPLATES, MEALS, FOOD_SOURCES, RATINGS, TRANSIT_TOOLS,
+    PLAY_TYPES, CROWDS, PLAY_PERIODS, PLAYABILITY, BUDGET_CATS, RATES, CURRENCY_LABEL
+  };
+})(window);
+
+
+/* 漫游助手 · 主逻辑（结构化：初始/天气/衣/食/住/行/玩 + 预算/工具/日记） */
+(function () {
+  'use strict';
+
+  /* ============ 通用工具 ============ */
+  const H = {
+    uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); },
+    esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    },
+    $(sel, root) { return (root || document).querySelector(sel); },
+    $all(sel, root) { return Array.from((root || document).querySelectorAll(sel)); },
+    toast(msg) {
+      const t = H.$('#toast');
+      t.textContent = msg; t.classList.add('show');
+      clearTimeout(H._tt); H._tt = setTimeout(() => t.classList.remove('show'), 1800);
+    },
+    openModal(html) {
+      const mask = H.$('#modal-mask'), m = H.$('#modal');
+      m.innerHTML = html; mask.hidden = false;
+      mask.onclick = (e) => { if (e.target === mask) H.closeModal(); };
+      return m;
+    },
+    closeModal() { H.$('#modal-mask').hidden = true; H.$('#modal').innerHTML = ''; },
+    fmtMoney(n) { return (Math.round((parseFloat(n) || 0) * 100) / 100).toLocaleString('zh-CN', { maximumFractionDigits: 2 }); }
+  };
+
+  /* ============ 城市联动 ============ */
+  function getCities() {
+    const ini = Store.get('initial', { cities: [] });
+    return (ini.cities || []).map((c) => c.name);
+  }
+  function refreshCities() {
+    const dl = document.getElementById('global-city-list');
+    if (dl) dl.innerHTML = getCities().map((n) => `<option value="${H.esc(n)}">`).join('');
+  }
+  function cityField(id, val) {
+    return `<input list="global-city-list" id="${id}" value="${H.esc(val || '')}" placeholder="选择或输入城市">`;
+  }
+  function cityOptions(sel) {
+    const cs = getCities();
+    if (!cs.length) return `<option value="">（先在「初始」添加城市）</option>`;
+    return cs.map((c) => `<option value="${H.esc(c)}" ${c === sel ? 'selected' : ''}>${H.esc(c)}</option>`).join('');
+  }
+
+  /* ============ 选项/徽章辅助 ============ */
+  function ratingBadge(key) { const r = DB.RATINGS.find((x) => x.key === key); return r ? `<span class="rating-badge" style="background:${r.color}">${r.label}</span>` : ''; }
+  function playabilityBadge(key) { const r = DB.PLAYABILITY.find((x) => x.key === key); return r ? `<span class="rating-badge" style="background:${r.color}">${r.label}</span>` : ''; }
+  function sourceOptions(sel) { return DB.FOOD_SOURCES.map((s) => `<option ${s === sel ? 'selected' : ''}>${H.esc(s)}</option>`).join(''); }
+  function ratingOptions(sel) { return DB.RATINGS.map((r) => `<option value="${r.key}" ${r.key === sel ? 'selected' : ''}>${r.label}</option>`).join(''); }
+  function playabilityOptions(sel) { return DB.PLAYABILITY.map((r) => `<option value="${r.key}" ${r.key === sel ? 'selected' : ''}>${r.label}</option>`).join(''); }
+  function playTypeOptions(sel) { return DB.PLAY_TYPES.map((t) => `<option ${t === sel ? 'selected' : ''}>${H.esc(t)}</option>`).join(''); }
+  function periodOptions(sel) { return ['', ...DB.PLAY_PERIODS].map((p) => `<option value="${p}" ${p === sel ? 'selected' : ''}>${p || '—'}</option>`).join(''); }
+  function toolChecks(name, selected) {
+    const sel = selected || [];
+    return `<div class="chk-group">` + DB.TRANSIT_TOOLS.map((t) =>
+      `<label class="chk"><input type="checkbox" name="${name}" value="${t}" ${sel.includes(t) ? 'checked' : ''}>${H.esc(t)}</label>`).join('') + `</div>`;
+  }
+  function readToolChecks(root, name) { return H.$all(`input[name="${name}"]:checked`, root).map((i) => i.value); }
+
+  /* ============ 天气查询（Open-Meteo，免密钥） ============ */
+  const WMO = { 0: '☀️ 晴', 1: '🌤 晴间多云', 2: '⛅ 多云', 3: '☁️ 阴', 45: '🌫 雾', 48: '🌫 雾凇', 51: '🌦 毛毛雨', 53: '🌦 小雨', 55: '🌧 中雨', 56: '🌧 冻雨', 61: '🌧 小雨', 63: '🌧 中雨', 65: '🌧 大雨', 66: '🌧 冻雨', 71: '🌨 小雪', 73: '🌨 中雪', 75: '❄️ 大雪', 77: '🌨 雪粒', 80: '🌦 阵雨', 81: '🌦 阵雨', 82: '⛈ 强阵雨', 85: '🌨 阵雪', 86: '🌨 阵雪', 95: '⛈ 雷阵雨', 96: '⛈ 雷阵雨冰雹', 99: '⛈ 雷阵雨冰雹' };
+  function wmoIcon(code) { return (WMO[code] || '🌡').split(' ')[0]; }
+  function wmoDesc(code) { return (WMO[code] || '未知').split(' ').slice(1).join(' ') || '—'; }
+  async function fetchWeather(city) {
+    const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&language=zh&count=1`);
+    const gj = await g.json();
+    if (!gj.results || !gj.results.length) throw new Error('nf');
+    const geo = gj.results[0];
+    const f = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${geo.latitude}&longitude=${geo.longitude}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&timezone=auto`);
+    const fj = await f.json();
+    if (!fj.current) throw new Error('nw');
+    const cur = fj.current;
+    return {
+      temp: Math.round(cur.temperature_2m), code: cur.weather_code,
+      wind: cur.wind_speed_10m, humidity: cur.relative_humidity_2m,
+      disp: geo.name + (geo.country ? ('，' + geo.country) : ''),
+      lat: geo.latitude, lon: geo.longitude
+    };
+  }
+  async function fetchForecast(lat, lon, start, end) {
+    const f = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${start}&end_date=${end}`);
+    const fj = await f.json();
+    if (!fj.daily) throw new Error('nw');
+    const d = fj.daily;
+    return d.time.map((date, i) => ({ date, code: d.weather_code[i], tmax: Math.round(d.temperature_2m_max[i]), tmin: Math.round(d.temperature_2m_min[i]) }));
+  }
+  function fmtMD(ds) {
+    const p = String(ds).split('-');
+    if (p.length < 3) return ds;
+    return `${parseInt(p[1], 10)}/${parseInt(p[2], 10)}`;
+  }
+
+  /* ============ 预计花费汇总（衣/食/住/行/玩） ============ */
+  function estTotals() {
+    const grab = (k) => Store.get(k, []);
+    const sum = (arr) => (arr || []).reduce((s, x) => s + (parseFloat(x.cost) || 0), 0);
+    const clothes = sum(grab('clothes')), food = sum(grab('food')), stay = sum(grab('stay')), transit = sum(grab('transit')), play = sum(grab('play'));
+    return { clothes, food, stay, transit, play, total: clothes + food + stay + transit + play };
+  }
+
+  /* ============ 模块容器 ============ */
+  const MOD = {};
+
+  /* ============ 初始信息 ============ */
+  MOD.init = {
+    render(panel) {
+      const ini = Store.get('initial', { cities: [], dateStart: '', dateEnd: '', travelers: { adults: 0, children: 0, elders: 0 } });
+      if (!ini.cities) ini.cities = [];
+      if (!ini.travelers) ini.travelers = { adults: 0, children: 0, elders: 0 };
+      const t = ini.travelers;
+      const total = (parseInt(t.adults) || 0) + (parseInt(t.children) || 0) + (parseInt(t.elders) || 0);
+
+      let html = `<div class="card">
+        <h3 class="card-title">📌 行程基础信息</h3>
+        <p class="faint" style="margin-bottom:12px">先添加城市，将作为「天气 / 衣 / 食 / 住 / 行 / 玩」的城市下拉与默认选项</p>
+        <div>${ini.cities.length ? ini.cities.map((c) => `<span class="city-chip">${H.esc(c.name)}<span class="role">· ${H.esc(c.role || '')}</span><button class="x" data-del="${c.id}">✕</button></span>`).join('') : `<div class="faint">还没有城市，在下方添加出发地或目的地</div>`}</div>
+        <div class="row" style="margin-top:10px">
+          <div class="field" style="flex:1.4"><label>城市名称</label><input id="ci-name" placeholder="如：东京"></div>
+          <div class="field" style="flex:1"><label>角色</label><select id="ci-role"><option value="目的地">目的地</option><option value="出发地">出发地</option><option value="途经">途经</option></select></div>
+          <div class="field" style="flex:0 0 auto"><label>&nbsp;</label><button class="btn sm" id="ci-add">添加</button></div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div class="field"><label>行程开始日期</label><input type="date" id="ci-ds" value="${H.esc(ini.dateStart || '')}"></div>
+          <div class="field"><label>行程结束日期</label><input type="date" id="ci-de" value="${H.esc(ini.dateEnd || '')}"></div>
+        </div>
+      </div>`;
+
+      html += `<div class="card">
+        <h3 class="card-title">👥 出游人</h3>
+        <div class="traveler-grid">
+          <div class="field"><label>大人</label><input type="number" id="tv-adult" min="0" value="${t.adults || 0}"></div>
+          <div class="field"><label>小孩</label><input type="number" id="tv-child" min="0" value="${t.children || 0}"></div>
+          <div class="field"><label>老人</label><input type="number" id="tv-elder" min="0" value="${t.elders || 0}"></div>
+        </div>
+        <div class="est-summary">合计出行人数：<b id="tv-total">${total}</b> 人</div>
+      </div>`;
+
+      panel.innerHTML = html;
+
+      H.$('#ci-add', panel).onclick = () => {
+        const n = H.$('#ci-name', panel).value.trim();
+        if (!n) return H.toast('请输入城市名');
+        ini.cities.push({ id: H.uid(), name: n, role: H.$('#ci-role', panel).value });
+        Store.set('initial', ini); refreshCities(); this.render(panel);
+      };
+      H.$all('[data-del]', panel).forEach((el) => el.onclick = () => {
+        ini.cities = ini.cities.filter((c) => c.id !== el.dataset.del);
+        Store.set('initial', ini); refreshCities(); this.render(panel);
+      });
+      const saveDates = () => { ini.dateStart = H.$('#ci-ds', panel).value; ini.dateEnd = H.$('#ci-de', panel).value; Store.set('initial', ini); H.toast('已保存日期'); };
+      H.$('#ci-ds', panel).onchange = saveDates;
+      H.$('#ci-de', panel).onchange = saveDates;
+      const saveTravelers = () => {
+        const a = parseInt(H.$('#tv-adult', panel).value) || 0, c = parseInt(H.$('#tv-child', panel).value) || 0, e = parseInt(H.$('#tv-elder', panel).value) || 0;
+        ini.travelers = { adults: a, children: c, elders: e }; Store.set('initial', ini);
+        const tt = H.$('#tv-total', panel); if (tt) tt.textContent = (a + c + e);
+      };
+      ['#tv-adult', '#tv-child', '#tv-elder'].forEach((id) => H.$(id, panel).onchange = saveTravelers);
+    }
+  };
+
+  /* ============ 天气看板 ============ */
+  MOD.weather = {
+    render(panel) {
+      const list = Store.get('weather', []);
+      const ini = Store.get('initial', { dateStart: '', dateEnd: '' });
+      const hasDates = !!(ini.dateStart && ini.dateEnd);
+      let html = `<div class="card">
+        <div class="flex between wrap"><h3 class="card-title">🌤 城市天气</h3>
+          <div class="flex gap6">
+            <button class="btn soft sm" id="wx-refresh">🔄 刷新行程天气</button>
+            <button class="btn sm" id="wx-add">+ 添加城市</button>
+          </div></div>
+        <p class="faint" style="margin-bottom:10px">实时天气 + 行程期间逐日预报（数据：Open-Meteo）${hasDates ? ` · 行程 <b>${H.esc(ini.dateStart)} ~ ${H.esc(ini.dateEnd)}</b>` : ' · <b>提示</b>：去「初始信息」设置出发 / 返回日期可看逐日预报'}</p>`;
+      if (!list.length) {
+        html += `<div class="empty"><span class="big">🌥</span>还没有城市<br>点击右上角添加，或从「初始信息」里的城市快速添加</div>`;
+      } else {
+        html += list.map((it) => this.cityCard(it, hasDates)).join('');
+      }
+      html += `</div>`;
+      const cities = getCities();
+      if (cities.length) {
+        html += `<div class="card"><h3 class="card-title">📍 从初始信息快速添加</h3><div class="tool-tags" id="wx-quick">${cities.map((c) => `<button class="tag" data-q="${H.esc(c)}">+ ${H.esc(c)}</button>`).join('')}</div></div>`;
+      }
+      panel.innerHTML = html;
+
+      H.$('#wx-add', panel).onclick = () => {
+        const c = prompt('输入城市名称（出发地或目的地）：');
+        if (c && c.trim()) this.addCity(panel, c.trim());
+      };
+      H.$('#wx-refresh', panel).onclick = () => this.refreshAll(panel);
+      H.$all('[data-q]', panel).forEach((b) => b.onclick = () => this.addCity(panel, b.dataset.q));
+      H.$all('[data-del]', panel).forEach((el) => el.onclick = () => {
+        Store.set('weather', Store.get('weather', []).filter((x) => x.id !== el.dataset.del));
+        this.render(panel);
+      });
+      H.$all('[data-fc]', panel).forEach((el) => el.onclick = () => this.fetchFc(panel, el.dataset.fc));
+    },
+    cityCard(it, hasDates) {
+      const icon = it.loading ? '⏳' : (it.error ? '⚠️' : wmoIcon(it.code));
+      const desc = it.loading ? '查询中…' : (it.error ? '获取失败' : wmoDesc(it.code));
+      const temp = it.loading ? '…' : (it.error ? '—' : it.temp + '°');
+      const meta = it.loading ? '请稍候' : (it.error ? '请检查城市名' : `${it.disp || it.city}<br>💨 ${it.wind} km/h · 💧 ${it.humidity}%`);
+      let fc = '';
+      if (it.forecast && it.forecast.length) {
+        const rows = it.forecast.map((d) => `<tr>
+          <td class="wx-date">${fmtMD(d.date)}</td>
+          <td class="wx-fc-w">${wmoIcon(d.code)} ${wmoDesc(d.code)}</td>
+          <td class="wx-hot">${d.tmax}°</td>
+          <td class="wx-cold">${d.tmin}°</td></tr>`).join('');
+        fc = `<div class="wx-forecast"><div class="wx-fc-title">🗓 行程期间逐日预报</div>
+          <div class="wx-fc-scroll"><table class="wx-table"><thead><tr><th>日期</th><th>天气</th><th>最高</th><th>最低</th></tr></thead>
+          <tbody>${rows}</tbody></table></div></div>`;
+      } else if (hasDates && !it.error) {
+        fc = `<div class="wx-forecast"><button class="btn soft xs" data-fc="${it.id}">⟳ 获取行程期间预报</button></div>`;
+      } else if (it.fcError) {
+        fc = `<div class="wx-forecast faint">该行程日期超出预报范围（Open-Meteo 仅支持约 16 天内）</div>`;
+      } else {
+        fc = `<div class="wx-forecast faint">设置行程日期后显示逐日预报</div>`;
+      }
+      return `<div class="wx-item">
+        <div class="wx-top">
+          <div class="wx-icon">${icon}</div>
+          <div class="wx-info"><div class="c">${H.esc(it.city)}</div><div class="d">${desc}</div></div>
+          <div class="wx-temp">${temp}</div>
+          <div class="wx-meta">${meta}</div>
+          <button class="del" data-del="${it.id}" title="删除">✕</button>
+        </div>
+        ${fc}
+      </div>`;
+    },
+    async addCity(panel, city) {
+      const list = Store.get('weather', []);
+      if (list.some((x) => x.city === city)) return H.toast('该城市已存在');
+      const item = { id: H.uid(), city, loading: true };
+      list.push(item); Store.set('weather', list);
+      this.render(panel);
+      try {
+        const w = await fetchWeather(city);
+        Object.assign(item, w, { loading: false, error: false });
+        const ini = Store.get('initial', {});
+        if (ini.dateStart && ini.dateEnd) {
+          try { item.forecast = await fetchForecast(w.lat, w.lon, ini.dateStart, ini.dateEnd); }
+          catch (e) { item.fcError = true; }
+        }
+      } catch (e) { item.error = true; item.loading = false; }
+      const cur = Store.get('weather', []);
+      const idx = cur.findIndex((x) => x.id === item.id);
+      if (idx >= 0) { cur[idx] = item; Store.set('weather', cur); }
+      this.render(panel);
+      H.toast(item.error ? '天气获取失败' : '已添加');
+    },
+    async fetchFc(panel, id) {
+      const list = Store.get('weather', []);
+      const it = list.find((x) => x.id === id);
+      if (!it || it.lat == null) return H.toast('请刷新该城市');
+      const ini = Store.get('initial', {});
+      if (!ini.dateStart || !ini.dateEnd) return H.toast('请先在初始信息设置行程日期');
+      const btn = H.$('[data-fc="' + id + '"]', panel); if (btn) btn.textContent = '获取中…';
+      try { it.forecast = await fetchForecast(it.lat, it.lon, ini.dateStart, ini.dateEnd); Store.set('weather', list); }
+      catch (e) { H.toast('预报获取失败'); }
+      this.render(panel);
+    },
+    async refreshAll(panel) {
+      const ini = Store.get('initial', {});
+      if (!ini.dateStart || !ini.dateEnd) return H.toast('请先在初始信息设置行程日期');
+      const list = Store.get('weather', []);
+      if (!list.length) return H.toast('还没有城市');
+      H.toast('正在刷新行程天气…');
+      await Promise.all(list.map(async (it) => {
+        if (it.lat == null) { try { Object.assign(it, await fetchWeather(it.city)); } catch (e) {} }
+        if (it.lat != null) { try { it.forecast = await fetchForecast(it.lat, it.lon, ini.dateStart, ini.dateEnd); } catch (e) {} }
+      }));
+      Store.set('weather', list);
+      this.render(panel);
+      H.toast('行程天气已刷新');
+    }
+  };
+
+  /* ============ 衣（物品清单 + 预计费用） ============ */
+  MOD.pack = {
+    render(panel) {
+      let items = Store.get('clothes', null);
+      if (items === null) {
+        items = [];
+        DB.PACK_CATS.forEach((cat) => (DB.PACK_TEMPLATES[cat] || []).forEach((it) =>
+          items.push({ id: H.uid(), cat, label: it, done: false, cost: '', qty: 1 })));
+        Store.set('clothes', items);
+      }
+      const total = items.length;
+      const done = items.filter((x) => x.done).length;
+      const totalQty = items.reduce((s, x) => s + (parseInt(x.qty, 10) || 1), 0);
+      const pct = total ? Math.round(done / total * 100) : 0;
+      const cats = DB.PACK_CATS.filter((c) => items.some((x) => x.cat === c));
+      items.forEach((x) => { if (!cats.includes(x.cat)) cats.push(x.cat); });
+
+      let html = `<div class="card">
+        <div class="flex between"><h3 class="card-title">🎒 物品清单（衣）</h3><button class="btn soft sm" id="reset-pack">套用模板</button></div>
+        <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div class="progress-text">已备 ${done}/${total} 项 · 共 ${totalQty} 件（${pct}%）</div></div>
+        <div class="flex gap8" style="margin-bottom:6px">
+          <input id="new-item" placeholder="添加物品…" style="flex:1">
+          <select id="new-cat" style="flex:0 0 auto">${DB.PACK_CATS.map((c) => `<option>${c}</option>`).join('')}<option>自定义</option></select>
+          <button class="btn sm" id="add-item">添加</button>
+        </div>`;
+
+      cats.forEach((cat) => {
+        const list = items.filter((x) => x.cat === cat);
+        const catCost = list.reduce((s, x) => s + (parseFloat(x.cost) || 0), 0);
+        const catQty = list.reduce((s, x) => s + (parseInt(x.qty, 10) || 1), 0);
+        html += `<div class="pack-cat"><h4>📁 ${H.esc(cat)} <span class="faint">(${list.filter((x) => x.done).length}/${list.length} 项 · ${catQty} 件)</span>${catCost ? `<span class="chip" style="margin-left:auto">约 ¥${H.fmtMoney(catCost)}</span>` : ''}</h4>`;
+        list.forEach((it) => {
+          const qty = parseInt(it.qty, 10) || 1;
+          html += `<div class="pack-item ${it.done ? 'done' : ''}" data-id="${it.id}">
+            <div class="cb" data-toggle="${it.id}">${it.done ? '✓' : ''}</div>
+            <span class="pack-label">${H.esc(it.label)}</span>
+            <span class="qty-step">
+              <button class="qty-btn" data-qm="${it.id}" title="减一">−</button>
+              <span class="qty-num">${qty}</span>
+              <button class="qty-btn" data-qp="${it.id}" title="加一">+</button>
+            </span>
+            <input class="cost-input" data-cost="${it.id}" type="number" min="0" step="0.01" value="${H.esc(it.cost || '')}" placeholder="费用">
+            <button class="del" data-rm="${it.id}" title="删除">✕</button>
+          </div>`;
+        });
+        html += `</div>`;
+      });
+      const grand = items.reduce((s, x) => s + (parseFloat(x.cost) || 0), 0);
+      html += `<div class="est-summary">📦 物品预计总花费：<b>¥${H.fmtMoney(grand)}</b></div></div>`;
+      panel.innerHTML = html;
+
+      H.$('#reset-pack', panel).onclick = () => {
+        if (confirm('套用模板将覆盖当前清单，确定？')) {
+          const fresh = [];
+          DB.PACK_CATS.forEach((cat) => (DB.PACK_TEMPLATES[cat] || []).forEach((it) =>
+            fresh.push({ id: H.uid(), cat, label: it, done: false, cost: '', qty: 1 })));
+          Store.set('clothes', fresh); H.toast('已套用模板'); this.render(panel);
+        }
+      };
+      const addItem = () => {
+        const v = H.$('#new-item', panel).value.trim();
+        if (!v) return;
+        const arr = Store.get('clothes', []);
+        arr.push({ id: H.uid(), cat: H.$('#new-cat', panel).value, label: v, done: false, cost: '', qty: 1 });
+        Store.set('clothes', arr); H.$('#new-item', panel).value = ''; this.render(panel);
+      };
+      H.$('#add-item', panel).onclick = addItem;
+      H.$('#new-item', panel).addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
+      H.$all('[data-toggle]', panel).forEach((el) => el.onclick = () => {
+        const arr = Store.get('clothes', []);
+        const it = arr.find((x) => x.id === el.dataset.toggle);
+        if (it) { it.done = !it.done; Store.set('clothes', arr); this.render(panel); }
+      });
+      H.$all('[data-cost]', panel).forEach((el) => el.addEventListener('change', () => {
+        const arr = Store.get('clothes', []);
+        const it = arr.find((x) => x.id === el.dataset.cost);
+        if (it) { it.cost = el.value; Store.set('clothes', arr); this.render(panel); }
+      }));
+      H.$all('[data-rm]', panel).forEach((el) => el.onclick = () => {
+        Store.set('clothes', Store.get('clothes', []).filter((x) => x.id !== el.dataset.rm));
+        this.render(panel);
+      });
+      const bump = (id, delta) => {
+        const arr = Store.get('clothes', []);
+        const it = arr.find((x) => x.id === id);
+        if (it) { it.qty = Math.max(1, (parseInt(it.qty, 10) || 1) + delta); Store.set('clothes', arr); this.render(panel); }
+      };
+      H.$all('[data-qp]', panel).forEach((el) => el.onclick = () => bump(el.dataset.qp, 1));
+      H.$all('[data-qm]', panel).forEach((el) => el.onclick = () => bump(el.dataset.qm, -1));
+    }
+  };
+
+  /* ============ 食 ============ */
+  MOD.food = {
+    render(panel) {
+      const list = Store.get('food', []);
+      let html = `<div class="card"><div class="flex between"><h3 class="card-title">🍜 餐饮计划</h3><button class="btn sm" id="add-food">+ 添加餐饮</button></div>`;
+      if (!list.length) {
+        html += `<div class="empty"><span class="big">🍱</span>还没有餐饮记录<br>按城市 / 景点 / 日期记录早中晚餐厅</div>`;
+      } else {
+        list.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach((r) => {
+          html += `<div class="record-card">
+            <div class="rc-head"><span class="rc-title">${H.esc(r.meal || '')} · ${H.esc(r.restaurant || '未命名')}</span>
+              <div><span class="source-chip">${H.esc(r.source || '')}</span> ${ratingBadge(r.rating)}</div></div>
+            <div class="rc-sub">📍 ${H.esc(r.city || '—')} · ${H.esc(r.scenic || '—')} · ${H.esc(r.date || '—')}</div>
+            ${r.foodType ? `<div class="faint" style="margin-top:6px">🍽 食物类别：${H.esc(r.foodType)}</div>` : ''}
+            ${r.reason ? `<div class="faint">💬 评价理由：${H.esc(r.reason)}</div>` : ''}
+            <div class="rc-sub" style="margin-top:6px">💰 预计费用：¥${H.fmtMoney(parseFloat(r.cost) || 0)}</div>
+            <div class="flex gap8" style="margin-top:8px"><button class="btn soft sm" data-edit="${r.id}">编辑</button><button class="del" data-del="${r.id}">删除</button></div>
+          </div>`;
+        });
+      }
+      html += `</div>`;
+      panel.innerHTML = html;
+      H.$('#add-food', panel).onclick = () => this.form(panel, null);
+      H.$all('[data-edit]', panel).forEach((el) => el.onclick = () => { const rec = Store.get('food', []).find((x) => x.id === el.dataset.edit); if (rec) this.form(panel, rec); });
+      H.$all('[data-del]', panel).forEach((el) => el.onclick = () => { if (confirm('删除该餐饮记录？')) { Store.set('food', Store.get('food', []).filter((x) => x.id !== el.dataset.del)); H.toast('已删除'); this.render(panel); } });
+    },
+    form(panel, rec) {
+      const isEdit = !!rec;
+      const d = rec || { city: '', scenic: '', date: '', meal: '午餐', restaurant: '', foodType: '', source: '小红书', rating: 'good', reason: '', cost: '' };
+      const m = H.openModal(`<h3>${isEdit ? '编辑餐饮' : '添加餐饮'}</h3>
+        <div class="field"><label>城市</label><select id="f-city">${cityOptions(d.city)}</select></div>
+        <div class="row"><div class="field"><label>景点</label><input id="f-scenic" value="${H.esc(d.scenic)}" placeholder="如：浅草寺"></div>
+          <div class="field"><label>日期</label><input type="date" id="f-date" value="${H.esc(d.date)}"></div></div>
+        <div class="row"><div class="field"><label>餐次</label><select id="f-meal">${DB.MEALS.map((x) => `<option ${x === d.meal ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+          <div class="field"><label>餐厅</label><input id="f-rest" value="${H.esc(d.restaurant)}" placeholder="餐厅名"></div></div>
+        <div class="field"><label>食物类别</label><input id="f-type" value="${H.esc(d.foodType)}" placeholder="如：拉面 / 寿司"></div>
+        <div class="row"><div class="field"><label>来源</label><select id="f-source">${sourceOptions(d.source)}</select></div>
+          <div class="field"><label>评价</label><select id="f-rating">${ratingOptions(d.rating)}</select></div></div>
+        <div class="field"><label>评价理由</label><textarea id="f-reason" placeholder="为什么打这个评价">${H.esc(d.reason)}</textarea></div>
+        <div class="field"><label>预计费用（¥）</label><input type="number" id="f-cost" min="0" step="0.01" value="${H.esc(d.cost)}"></div>
+        <div class="modal-actions"><button class="btn ghost" id="cancel">取消</button><button class="btn" id="save">保存</button></div><span class="modal-close" hidden></span>`);
+      H.$('#cancel', m).onclick = H.closeModal;
+      H.$('#save', m).onclick = () => {
+        const obj = { city: H.$('#f-city', m).value, scenic: H.$('#f-scenic', m).value.trim(), date: H.$('#f-date', m).value, meal: H.$('#f-meal', m).value, restaurant: H.$('#f-rest', m).value.trim(), foodType: H.$('#f-type', m).value.trim(), source: H.$('#f-source', m).value, rating: H.$('#f-rating', m).value, reason: H.$('#f-reason', m).value.trim(), cost: H.$('#f-cost', m).value };
+        if (!obj.restaurant) return H.toast('请填写餐厅');
+        const list = Store.get('food', []);
+        if (isEdit) {
+          const idx = list.findIndex((x) => x.id === rec.id);
+          if (idx >= 0) list[idx] = Object.assign({}, list[idx], obj);
+          else list.push(Object.assign({}, rec, obj));
+        } else { obj.id = H.uid(); list.push(obj); }
+        Store.set('food', list); H.closeModal(); H.toast('已保存'); this.render(panel);
+      };
+    }
+  };
+
+  /* ============ 住 ============ */
+  MOD.stay = {
+    render(panel) {
+      const list = Store.get('stay', []);
+      let html = `<div class="card"><div class="flex between"><h3 class="card-title">🏨 住宿计划</h3><button class="btn sm" id="add-stay">+ 添加住宿</button></div>`;
+      if (!list.length) {
+        html += `<div class="empty"><span class="big">🛏</span>还没有住宿记录</div>`;
+      } else {
+        list.forEach((r) => {
+          html += `<div class="record-card">
+            <div class="rc-head"><span class="rc-title">${H.esc(r.hotel || '未命名')}</span>
+              <div><span class="source-chip">${H.esc(r.source || '')}</span> ${ratingBadge(r.rating)}</div></div>
+            <div class="rc-sub">📍 ${H.esc(r.city || '—')}${r.room ? ` · 🚪 房间 ${H.esc(r.room)}` : ''}</div>
+            ${r.address ? `<div class="faint">🏠 ${H.esc(r.address)}</div>` : ''}
+            ${r.reason ? `<div class="faint">💬 评价理由：${H.esc(r.reason)}</div>` : ''}
+            <div class="rc-sub" style="margin-top:6px">💰 预计费用：¥${H.fmtMoney(parseFloat(r.cost) || 0)}</div>
+            <div class="flex gap8" style="margin-top:8px"><button class="btn soft sm" data-edit="${r.id}">编辑</button><button class="del" data-del="${r.id}">删除</button></div>
+          </div>`;
+        });
+      }
+      html += `</div>`;
+      panel.innerHTML = html;
+      H.$('#add-stay', panel).onclick = () => this.form(panel, null);
+      H.$all('[data-edit]', panel).forEach((el) => el.onclick = () => { const rec = Store.get('stay', []).find((x) => x.id === el.dataset.edit); if (rec) this.form(panel, rec); });
+      H.$all('[data-del]', panel).forEach((el) => el.onclick = () => { if (confirm('删除该住宿？')) { Store.set('stay', Store.get('stay', []).filter((x) => x.id !== el.dataset.del)); H.toast('已删除'); this.render(panel); } });
+    },
+    form(panel, rec) {
+      const isEdit = !!rec;
+      const d = rec || { city: '', hotel: '', room: '', address: '', source: '小红书', rating: 'good', reason: '', cost: '' };
+      const m = H.openModal(`<h3>${isEdit ? '编辑住宿' : '添加住宿'}</h3>
+        <div class="field"><label>城市</label><select id="s-city">${cityOptions(d.city)}</select></div>
+        <div class="row"><div class="field"><label>酒店名称</label><input id="s-hotel" value="${H.esc(d.hotel)}"></div>
+          <div class="field"><label>房间号</label><input id="s-room" value="${H.esc(d.room)}" placeholder="如：1208"></div></div>
+        <div class="field"><label>地址</label><input id="s-addr" value="${H.esc(d.address)}" placeholder="酒店地址"></div>
+        <div class="row"><div class="field"><label>信息来源</label><select id="s-source">${sourceOptions(d.source)}</select></div>
+          <div class="field"><label>评价</label><select id="s-rating">${ratingOptions(d.rating)}</select></div></div>
+        <div class="field"><label>评价理由</label><textarea id="s-reason" placeholder="为什么推荐 / 不推荐">${H.esc(d.reason)}</textarea></div>
+        <div class="field"><label>预计费用（¥）</label><input type="number" id="s-cost" min="0" step="0.01" value="${H.esc(d.cost)}"></div>
+        <div class="modal-actions"><button class="btn ghost" id="cancel">取消</button><button class="btn" id="save">保存</button></div><span class="modal-close" hidden></span>`);
+      H.$('#cancel', m).onclick = H.closeModal;
+      H.$('#save', m).onclick = () => {
+        const obj = { city: H.$('#s-city', m).value, hotel: H.$('#s-hotel', m).value.trim(), room: H.$('#s-room', m).value.trim(), address: H.$('#s-addr', m).value.trim(), source: H.$('#s-source', m).value, rating: H.$('#s-rating', m).value, reason: H.$('#s-reason', m).value.trim(), cost: H.$('#s-cost', m).value };
+        if (!obj.hotel) return H.toast('请填写酒店名称');
+        const list = Store.get('stay', []);
+        if (isEdit) {
+          const idx = list.findIndex((x) => x.id === rec.id);
+          if (idx >= 0) list[idx] = Object.assign({}, list[idx], obj);
+          else list.push(Object.assign({}, rec, obj));
+        } else { obj.id = H.uid(); list.push(obj); }
+        Store.set('stay', list); H.closeModal(); H.toast('已保存'); this.render(panel);
+      };
+    }
+  };
+
+  /* ============ 行 ============ */
+  MOD.transit = {
+    render(panel) {
+      const list = Store.get('transit', []);
+      let html = `<div class="card"><div class="flex between"><h3 class="card-title">🚆 出行交通</h3><button class="btn sm" id="add-tr">+ 添加行程</button></div>`;
+      if (!list.length) {
+        html += `<div class="empty"><span class="big">🚉</span>还没有交通安排</div>`;
+      } else {
+        list.forEach((r) => {
+          html += `<div class="record-card">
+            <div class="rc-head"><span class="rc-title">${H.esc(r.from || '?')} → ${H.esc(r.to || '?')}</span>
+              <span class="chip">💰 ¥${H.fmtMoney(parseFloat(r.cost) || 0)}</span></div>
+            <div class="rc-sub">📍 ${H.esc(r.city || '—')}${r.duration ? ` · ⏱ ${H.esc(r.duration)}` : ''}</div>
+            ${r.tools && r.tools.length ? `<div class="tool-tags" style="margin-top:6px">${r.tools.map((t) => `<span class="tag">${H.esc(t)}</span>`).join('')}</div>` : ''}
+            <div class="flex gap8" style="margin-top:8px"><button class="btn soft sm" data-edit="${r.id}">编辑</button><button class="del" data-del="${r.id}">删除</button></div>
+          </div>`;
+        });
+      }
+      html += `</div>`;
+      panel.innerHTML = html;
+      H.$('#add-tr', panel).onclick = () => this.form(panel, null);
+      H.$all('[data-edit]', panel).forEach((el) => el.onclick = () => { const rec = Store.get('transit', []).find((x) => x.id === el.dataset.edit); if (rec) this.form(panel, rec); });
+      H.$all('[data-del]', panel).forEach((el) => el.onclick = () => { if (confirm('删除该交通安排？')) { Store.set('transit', Store.get('transit', []).filter((x) => x.id !== el.dataset.del)); H.toast('已删除'); this.render(panel); } });
+    },
+    form(panel, rec) {
+      const isEdit = !!rec;
+      const d = rec || { city: '', from: '', to: '', duration: '', tools: [], cost: '' };
+      const m = H.openModal(`<h3>${isEdit ? '编辑交通' : '添加交通'}</h3>
+        <div class="field"><label>城市</label><select id="t-city">${cityOptions(d.city)}</select></div>
+        <div class="row"><div class="field"><label>起点</label><input id="t-from" value="${H.esc(d.from)}"></div>
+          <div class="field"><label>终点</label><input id="t-to" value="${H.esc(d.to)}"></div></div>
+        <div class="row"><div class="field"><label>预计时长</label><input id="t-dur" value="${H.esc(d.duration)}" placeholder="如：2小时"></div>
+          <div class="field"><label>预计费用（¥）</label><input type="number" id="t-cost" min="0" step="0.01" value="${H.esc(d.cost)}"></div></div>
+        <div class="field"><label>出行工具（可多选）</label>${toolChecks('t-tools', d.tools)}</div>
+        <div class="modal-actions"><button class="btn ghost" id="cancel">取消</button><button class="btn" id="save">保存</button></div><span class="modal-close" hidden></span>`);
+      H.$('#cancel', m).onclick = H.closeModal;
+      H.$('#save', m).onclick = () => {
+        const obj = { city: H.$('#t-city', m).value, from: H.$('#t-from', m).value.trim(), to: H.$('#t-to', m).value.trim(), duration: H.$('#t-dur', m).value.trim(), tools: readToolChecks(m, 't-tools'), cost: H.$('#t-cost', m).value };
+        if (!obj.from && !obj.to) return H.toast('请填写起点或终点');
+        const list = Store.get('transit', []);
+        if (isEdit) {
+          const idx = list.findIndex((x) => x.id === rec.id);
+          if (idx >= 0) list[idx] = Object.assign({}, list[idx], obj);
+          else list.push(Object.assign({}, rec, obj));
+        } else { obj.id = H.uid(); list.push(obj); }
+        Store.set('transit', list); H.closeModal(); H.toast('已保存'); this.render(panel);
+      };
+    }
+  };
+
+  /* ============ 玩 ============ */
+  MOD.play = {
+    filter: { period: '', crowd: '', maxCost: '' },
+    render(panel) {
+      const all = Store.get('play', []);
+      const list = all.filter((p) => {
+        if (this.filter.period && p.period !== this.filter.period) return false;
+        if (this.filter.crowd && p.suitCrowd !== this.filter.crowd) return false;
+        if (this.filter.maxCost !== '' && (parseFloat(p.cost) || 0) > parseFloat(this.filter.maxCost)) return false;
+        return true;
+      });
+      let html = `<div class="card">
+        <div class="flex between"><h3 class="card-title">📸 景点游玩计划</h3><button class="btn sm" id="add-play">+ 添加景点</button></div>
+        <div class="filter-bar">
+          <select id="f-period" class="mini">${['', ...DB.PLAY_PERIODS].map((p) => `<option value="${p}" ${this.filter.period === p ? 'selected' : ''}>${p ? '游玩:' + p : '全部时间'}</option>`).join('')}</select>
+          <select id="f-crowd" class="mini">${['', ...DB.CROWDS].map((c) => `<option value="${c}" ${this.filter.crowd === c ? 'selected' : ''}>${c ? '人群:' + c : '全部人群'}</option>`).join('')}</select>
+          <input id="f-cost" class="mini" type="number" placeholder="费用≤¥" value="${this.filter.maxCost || ''}">
+          <button class="btn ghost sm" id="f-reset">重置</button>
+        </div>
+      </div>`;
+      if (!all.length) {
+        html += `<div class="card empty"><span class="big">🗺</span>还没有景点<br>点击右上角添加，记录必玩 / 备选与内部项目</div>`;
+      } else if (!list.length) {
+        html += `<div class="card empty">没有符合筛选条件的景点，试试重置筛选</div>`;
+      } else {
+        list.forEach((p) => {
+          html += `<div class="record-card play-card">
+            <div class="rc-head"><span class="rc-title">${H.esc(p.name || '未命名')}</span>
+              <span class="${p.type === '必玩' ? 'must-badge' : 'back-badge'}">${H.esc(p.type || '必玩')}</span></div>
+            <div class="rc-sub">📍 ${H.esc(p.city || '—')}${p.period ? ` · 🕒 ${H.esc(p.period)}` : ''}${p.suitCrowd ? ` · 👥 ${H.esc(p.suitCrowd)}` : ''}</div>
+            ${p.openTime || p.closeTime ? `<div class="faint">🕐 营业：${H.esc(p.openTime || '?')} - ${H.esc(p.closeTime || '?')}</div>` : ''}
+            ${p.tools && p.tools.length ? `<div class="tool-tags" style="margin:6px 0">${p.tools.map((t) => `<span class="tag">${H.esc(t)}</span>`).join('')}</div>` : ''}
+            ${p.startStation ? `<div class="faint">🚩 始发站：${H.esc(p.startStation)}</div>` : ''}
+            ${(p.hotelTools && p.hotelTools.length) || p.travelTime ? `<div class="faint">🏨→📍 出行工具：${(p.hotelTools || []).map((t) => H.esc(t)).join('/') || '—'}${p.travelTime ? ` · ⏱ ${H.esc(p.travelTime)}` : ''}</div>` : ''}
+            ${p.viaStations && p.viaStations.length ? `<div style="margin-top:6px"><div class="faint" style="font-size:12px">🚏 途径站 / 附近景点</div>${p.viaStations.map((v) => `<div class="via-item"><div class="vi-head"><span class="vi-name">${H.esc(v.name || '—')}</span>${v.rating ? ratingBadge(v.rating) : ''}</div><div class="vi-body">${v.nearby ? `附近：${H.esc(v.nearby)}` : ''}${v.note ? ` · ${H.esc(v.note)}` : ''}</div></div>`).join('')}</div>` : ''}
+            ${p.projects && p.projects.length ? `<div style="margin-top:6px"><div class="faint" style="font-size:12px">🎡 内部项目</div>${p.projects.map((pr) => `<div class="proj-item"><b>${H.esc(pr.name)}</b> ${pr.playability ? playabilityBadge(pr.playability) : ''}${pr.suit ? `<span class="chip">${H.esc(pr.suit)}</span>` : ''}<div class="faint">${H.esc(pr.detail || '')}</div></div>`).join('')}</div>` : ''}
+            ${p.extra ? `<div class="faint" style="margin-top:6px">📝 ${H.esc(p.extra)}</div>` : ''}
+            <div class="rc-sub" style="margin-top:6px">💰 预计费用：¥${H.fmtMoney(parseFloat(p.cost) || 0)}</div>
+            <div class="flex gap8" style="margin-top:8px"><button class="btn soft sm" data-edit="${p.id}">编辑</button><button class="del" data-del="${p.id}">删除</button></div>
+          </div>`;
+        });
+      }
+      panel.innerHTML = html;
+      H.$('#add-play', panel).onclick = () => this.form(panel, null);
+      H.$('#f-reset', panel).onclick = () => { this.filter = { period: '', crowd: '', maxCost: '' }; this.render(panel); };
+      H.$('#f-period', panel).onchange = (e) => { this.filter.period = e.target.value; this.render(panel); };
+      H.$('#f-crowd', panel).onchange = (e) => { this.filter.crowd = e.target.value; this.render(panel); };
+      H.$('#f-cost', panel).oninput = (e) => { this.filter.maxCost = e.target.value; this.render(panel); };
+      H.$all('[data-edit]', panel).forEach((el) => el.onclick = () => { const rec = Store.get('play', []).find((x) => x.id === el.dataset.edit); if (rec) this.form(panel, rec); });
+      H.$all('[data-del]', panel).forEach((el) => el.onclick = () => { if (confirm('删除该景点？')) { Store.set('play', Store.get('play', []).filter((x) => x.id !== el.dataset.del)); H.toast('已删除'); this.render(panel); } });
+    },
+    form(panel, rec) {
+      const isEdit = !!rec;
+      const data = rec ? JSON.parse(JSON.stringify(rec)) : { city: '', name: '', type: '必玩', period: '', tools: [], openTime: '', closeTime: '', startStation: '', viaStations: [], hotelTools: [], travelTime: '', extra: '', cost: '', suitCrowd: '', projects: [] };
+      let viaData = (data.viaStations || []).slice();
+      let projData = (data.projects || []).slice();
+
+      const viaHTML = (v, i) => `<div class="sub-row" data-via="${i}">
+        <div class="row"><div class="field"><label>途径站名</label><input data-k="name" value="${H.esc(v.name || '')}"></div>
+          <div class="field"><label>附近景点</label><input data-k="nearby" value="${H.esc(v.nearby || '')}"></div></div>
+        <div class="row"><div class="field"><label>评分</label><select data-k="rating">${ratingOptions(v.rating)}</select></div>
+          <div class="field"><label>备注</label><input data-k="note" value="${H.esc(v.note || '')}"></div></div>
+        <button type="button" class="btn soft sm" data-rmvia="${i}">删除</button>
+      </div>`;
+      const projHTML = (p, i) => `<div class="sub-row" data-proj="${i}">
+        <div class="row"><div class="field"><label>项目名称</label><input data-k="name" value="${H.esc(p.name || '')}"></div>
+          <div class="field"><label>可玩度</label><select data-k="playability">${playabilityOptions(p.playability)}</select></div></div>
+        <div class="field"><label>项目明细</label><textarea data-k="detail" placeholder="如：时长 / 看点 / Tips">${H.esc(p.detail || '')}</textarea></div>
+        <div class="field"><label>事宜人群</label><input data-k="suit" value="${H.esc(p.suit || '')}" placeholder="如：亲子、老人"></div>
+        <button type="button" class="btn soft sm" data-rmproj="${i}">删除</button>
+      </div>`;
+
+      const m = H.openModal(`<h3>${isEdit ? '编辑景点' : '添加景点'}</h3>
+        <div class="field"><label>城市</label>${cityField('p-city', data.city)}</div>
+        <div class="row"><div class="field"><label>景点名称</label><input id="p-name" value="${H.esc(data.name)}" placeholder="如：浅草寺"></div>
+          <div class="field"><label>类型</label><select id="p-type">${playTypeOptions(data.type)}</select></div></div>
+        <div class="row"><div class="field"><label>营业开始</label><input type="time" id="p-open" value="${H.esc(data.openTime || '')}"></div>
+          <div class="field"><label>营业结束</label><input type="time" id="p-close" value="${H.esc(data.closeTime || '')}"></div></div>
+        <div class="row"><div class="field"><label>游玩时间</label><select id="p-period">${periodOptions(data.period)}</select></div>
+          <div class="field"><label>事宜人群</label><select id="p-crowd">${['', ...DB.CROWDS].map((c) => `<option value="${c}" ${data.suitCrowd === c ? 'selected' : ''}>${c || '—'}</option>`).join('')}</select></div></div>
+        <div class="field"><label>游玩交通工具（可多选）</label>${toolChecks('p-tools', data.tools)}</div>
+        <div class="row"><div class="field"><label>始发站</label><input id="p-start" value="${H.esc(data.startStation || '')}"></div>
+          <div class="field"><label>出行时间</label><input id="p-travel" value="${H.esc(data.travelTime || '')}" placeholder="如：30分钟"></div></div>
+        <div class="field"><label>酒店到景点出行工具（可多选）</label>${toolChecks('p-htools', data.hotelTools)}</div>
+        <div class="field"><label>其他补充信息</label><textarea id="p-extra" placeholder="如：需预约 / 门票价格 / 交通提示">${H.esc(data.extra || '')}</textarea></div>
+        <div class="field"><label>预计费用（¥）</label><input type="number" id="p-cost" min="0" step="0.01" value="${H.esc(data.cost || '')}"></div>
+
+        <div class="sub-block"><div class="flex between"><h4>🚏 途径站 / 附近景点</h4><button type="button" class="btn soft sm" id="add-via">+ 添加途径站</button></div><div id="via-wrap"></div></div>
+        <div class="sub-block"><div class="flex between"><h4>🎡 景点内部项目</h4><button type="button" class="btn soft sm" id="add-proj">+ 添加项目</button></div><div id="proj-wrap"></div></div>
+
+        <div class="modal-actions"><button class="btn ghost" id="cancel">取消</button><button class="btn" id="save">保存</button></div><span class="modal-close" hidden></span>`);
+
+      const syncVia = () => { viaData = H.$all('[data-via]', m).map((row) => ({ name: H.$('[data-k="name"]', row).value.trim(), nearby: H.$('[data-k="nearby"]', row).value.trim(), rating: H.$('[data-k="rating"]', row).value, note: H.$('[data-k="note"]', row).value.trim() })); };
+      const syncProj = () => { projData = H.$all('[data-proj]', m).map((row) => ({ name: H.$('[data-k="name"]', row).value.trim(), detail: H.$('[data-k="detail"]', row).value.trim(), playability: H.$('[data-k="playability"]', row).value, suit: H.$('[data-k="suit"]', row).value.trim() })); };
+      const renderVia = () => {
+        const w = H.$('#via-wrap', m);
+        if (!viaData.length) w.innerHTML = `<div class="faint" style="margin:6px 0">暂无途径站</div>`;
+        else w.innerHTML = viaData.map((v, i) => viaHTML(v, i)).join('');
+        H.$all('[data-rmvia]', w).forEach((b) => b.onclick = () => { syncVia(); viaData.splice(+b.dataset.rmvia, 1); renderVia(); });
+      };
+      const renderProj = () => {
+        const w = H.$('#proj-wrap', m);
+        if (!projData.length) w.innerHTML = `<div class="faint" style="margin:6px 0">暂无内部项目</div>`;
+        else w.innerHTML = projData.map((p, i) => projHTML(p, i)).join('');
+        H.$all('[data-rmproj]', w).forEach((b) => b.onclick = () => { syncProj(); projData.splice(+b.dataset.rmproj, 1); renderProj(); });
+      };
+      H.$('#add-via', m).onclick = () => { syncVia(); viaData.push({}); renderVia(); };
+      H.$('#add-proj', m).onclick = () => { syncProj(); projData.push({}); renderProj(); };
+      renderVia(); renderProj();
+      H.$('#cancel', m).onclick = H.closeModal;
+      H.$('#save', m).onclick = () => {
+        syncVia(); syncProj();
+        const obj = {
+          city: H.$('#p-city', m).value.trim(),
+          name: H.$('#p-name', m).value.trim(),
+          type: H.$('#p-type', m).value,
+          period: H.$('#p-period', m).value,
+          suitCrowd: H.$('#p-crowd', m).value,
+          tools: readToolChecks(m, 'p-tools'),
+          openTime: H.$('#p-open', m).value,
+          closeTime: H.$('#p-close', m).value,
+          startStation: H.$('#p-start', m).value.trim(),
+          travelTime: H.$('#p-travel', m).value.trim(),
+          hotelTools: readToolChecks(m, 'p-htools'),
+          extra: H.$('#p-extra', m).value.trim(),
+          cost: H.$('#p-cost', m).value,
+          viaStations: viaData.filter((v) => v.name || v.nearby).map((v) => ({ name: v.name, nearby: v.nearby, rating: v.rating, note: v.note })),
+          projects: projData.filter((p) => p.name).map((p) => ({ name: p.name, detail: p.detail, playability: p.playability, suit: p.suit }))
+        };
+        if (!obj.name) return H.toast('请填写景点名称');
+        const list = Store.get('play', []);
+        if (isEdit) {
+          const idx = list.findIndex((x) => x.id === rec.id);
+          if (idx >= 0) list[idx] = Object.assign({}, list[idx], obj);
+          else list.push(Object.assign({}, rec, obj));
+        } else { obj.id = H.uid(); list.push(obj); }
+        Store.set('play', list); H.closeModal(); H.toast('已保存'); this.render(panel);
+      };
+    }
+  };
+
+  /* ============ 预算（预计 vs 实际） ============ */
+  MOD.budget = {
+    render(panel) {
+      const data = Store.get('budget', { limit: 0, records: [] });
+      const recs = data.records || [];
+      const catMap = {}; DB.BUDGET_CATS.forEach((c) => catMap[c.key] = c);
+      const total = recs.reduce((s, r) => s + (r.amount || 0), 0);
+      const limit = data.limit || 0;
+      const est = estTotals();
+      const byCat = {}; recs.forEach((r) => byCat[r.cat] = (byCat[r.cat] || 0) + (r.amount || 0));
+
+      let html = `<div class="card">
+        <div class="flex between"><h3 class="card-title">💰 预算与记账</h3><button class="btn sm" id="add-rec">+ 记一笔</button></div>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="v">¥${H.fmtMoney(est.total)}</div><div class="l">预计总花费</div></div>
+          <div class="stat-box"><div class="v">¥${H.fmtMoney(total)}</div><div class="l">实际已记</div></div>
+          <div class="stat-box"><div class="v">${limit ? '¥' + H.fmtMoney(limit) : '—'}</div><div class="l">预算上限</div></div>
+          <div class="stat-box ${limit && total > limit ? 'warn' : ''}"><div class="v">${limit ? H.fmtMoney(Math.max(0, limit - total)) : '—'}</div><div class="l">${limit ? (total > limit ? '已超支' : '剩余') : '未设上限'}</div></div>
+        </div>
+        ${limit ? `<div class="budget-bar"><i style="width:${Math.min(100, Math.round(total / limit * 100))}%"></i></div><div class="faint" style="font-size:12px">实际已用 ${Math.min(100, Math.round(total / limit * 100))}%${total > limit ? ' ⚠ 超出' : ''}</div>` : ''}
+        <button class="btn ghost sm" id="set-limit" style="margin-top:8px">${limit ? '修改预算上限' : '设置预算上限'}</button>
+      </div>`;
+
+      html += `<div class="card"><h3 class="card-title">📊 预计花费（衣/食/住/行/玩）</h3>`;
+      [['衣', 'clothes'], ['食', 'food'], ['住', 'stay'], ['行', 'transit'], ['玩', 'play']].forEach(([label, key]) => {
+        html += `<div class="cat-row"><span class="cat-dot" style="background:var(--primary)"></span><span>${label}</span><span class="amt">¥${H.fmtMoney(est[key])}</span></div>`;
+      });
+      html += `<div class="cat-row" style="border-top:2px solid var(--border);margin-top:4px;padding-top:10px"><b>合计</b><span class="amt">¥${H.fmtMoney(est.total)}</span></div></div>`;
+
+      html += `<div class="card"><h3 class="card-title">🧾 实际记账明细</h3>`;
+      if (!recs.length) {
+        html += `<div class="empty"><span class="big">🪙</span>还没有记账记录</div>`;
+      } else {
+        DB.BUDGET_CATS.forEach((c) => {
+          const amt = byCat[c.key] || 0; if (!amt) return;
+          const pct = Math.round(amt / total * 100);
+          html += `<div class="cat-row"><span class="cat-dot" style="background:${c.color}"></span><span>${c.label}</span><span class="amt">¥${H.fmtMoney(amt)}</span><span class="pct">${pct}%</span></div>`;
+        });
+        html += `<h4 style="margin:14px 0 8px;font-size:14px">最近记录</h4>`;
+        recs.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 6).forEach((r) => {
+          const c = catMap[r.cat];
+          html += `<div class="cat-row"><span class="cat-dot" style="background:${c ? c.color : '#ccc'}"></span><span>${H.esc(r.note || (c ? c.label : '其他'))}<br><span class="faint" style="font-size:12px">${r.date || ''}</span></span><span class="amt">¥${H.fmtMoney(r.amount)}</span><button class="del" data-del="${r.id}" title="删除">✕</button></div>`;
+        });
+      }
+      html += `</div>`;
+      panel.innerHTML = html;
+
+      H.$('#add-rec', panel).onclick = () => this.form(panel, null);
+      H.$('#set-limit', panel).onclick = () => {
+        const mm = H.openModal(`<h3>设置预算上限</h3><div class="field"><label>总预算（人民币 ¥）</label><input type="number" id="lim" value="${limit || ''}" placeholder="如：8000"></div><div class="modal-actions"><button class="btn ghost" id="cancel">取消</button><button class="btn" id="ok">保存</button></div><span class="modal-close" hidden></span>`);
+        H.$('#cancel', mm).onclick = H.closeModal;
+        H.$('#ok', mm).onclick = () => { const v = parseFloat(H.$('#lim', mm).value); data.limit = isNaN(v) ? 0 : v; Store.set('budget', data); H.closeModal(); H.toast('已保存'); this.render(panel); };
+      };
+      H.$all('[data-del]', panel).forEach((el) => el.onclick = () => { data.records = data.records.filter((x) => x.id !== el.dataset.del); Store.set('budget', data); H.toast('已删除'); this.render(panel); });
+    },
+    form(panel, rec) {
+      const data = Store.get('budget', { limit: 0, records: [] });
+      const opts = DB.BUDGET_CATS.map((c) => `<option value="${c.key}" ${rec && rec.cat === c.key ? 'selected' : ''}>${c.label}</option>`).join('');
+      const curOpts = Object.keys(DB.RATES).map((k) => `<option value="${k}" ${k === 'CNY' ? 'selected' : ''}>${k} · ${DB.CURRENCY_LABEL[k]}</option>`).join('');
+      const m = H.openModal(`<h3>记一笔</h3>
+        <div class="row"><div class="field"><label>分类</label><select id="r-cat">${opts}</select></div>
+          <div class="field"><label>金额</label><input type="number" id="r-amt" placeholder="0.00" value="${rec ? rec.amount : ''}"></div></div>
+        <div class="row"><div class="field"><label>币种</label><select id="r-cur">${curOpts}</select></div>
+          <div class="field"><label>日期</label><input type="date" id="r-date" value="${rec ? rec.date : new Date().toISOString().slice(0, 10)}"></div></div>
+        <div class="field"><label>备注</label><input id="r-note" placeholder="如：机票/酒店名" value="${rec ? H.esc(rec.note) : ''}"></div>
+        <div class="modal-actions"><button class="btn ghost" id="cancel">取消</button><button class="btn" id="save">保存</button></div><span class="modal-close" hidden></span>`);
+      H.$('#cancel', m).onclick = H.closeModal;
+      H.$('#save', m).onclick = () => {
+        const amt = parseFloat(H.$('#r-amt', m).value);
+        if (isNaN(amt) || amt <= 0) return H.toast('请输入有效金额');
+        const cur = H.$('#r-cur', m).value;
+        const cny = amt * (DB.RATES[cur] || 1);
+        const recs = data.records || [];
+        if (rec) { Object.assign(rec, { amount: cny, cat: H.$('#r-cat', m).value, date: H.$('#r-date', m).value, note: H.$('#r-note', m).value.trim(), currency: cur, raw: amt }); }
+        else { recs.push({ id: H.uid(), amount: cny, cat: H.$('#r-cat', m).value, date: H.$('#r-date', m).value, note: H.$('#r-note', m).value.trim(), currency: cur, raw: amt }); }
+        data.records = recs; Store.set('budget', data); H.closeModal(); H.toast('已记录'); this.render(panel);
+      };
+    }
+  };
+
+  /* ============ 实用工具 ============ */
+  MOD.tools = {
+    render(panel) {
+      const fromOpts = Object.keys(DB.RATES).map((k) => `<option value="${k}" ${k === 'CNY' ? 'selected' : ''}>${k} · ${DB.CURRENCY_LABEL[k]}</option>`).join('');
+      const toOpts = Object.keys(DB.RATES).map((k) => `<option value="${k}" ${k === 'USD' ? 'selected' : ''}>${k} · ${DB.CURRENCY_LABEL[k]}</option>`).join('');
+      panel.innerHTML = `
+      <div class="card tool-card">
+        <h3 class="card-title">💱 汇率换算</h3>
+        <div class="row"><div class="field"><label>金额</label><input type="number" id="fx-amt" value="100"></div>
+          <div class="field"><label>从</label><select id="fx-from">${fromOpts}</select></div></div>
+        <div class="row"><div class="field"><label>到</label><select id="fx-to">${toOpts}</select></div>
+          <div class="field"><label>&nbsp;</label><div class="result-line" id="fx-result">—</div></div></div>
+        <p class="faint">参考汇率，1 CNY = 各币种；可在 data.js 调整。</p>
+      </div>
+      <div class="card tool-card">
+        <h3 class="card-title">📏 常用单位换算</h3>
+        <div class="field"><label>长度（公里 ↔ 英里）</label><div class="row"><input type="number" id="u-km" value="1" placeholder="公里"><input type="number" id="u-mi" placeholder="英里"></div></div>
+        <div class="field"><label>重量（千克 ↔ 磅）</label><div class="row"><input type="number" id="u-kg" value="1" placeholder="千克"><input type="number" id="u-lb" placeholder="磅"></div></div>
+        <div class="field"><label>温度（℃ ↔ ℉）</label><div class="row"><input type="number" id="u-c" value="25" placeholder="摄氏度"><input type="number" id="u-f" placeholder="华氏度"></div></div>
+      </div>
+      <div class="card tool-card">
+        <h3 class="card-title">🌐 时区换算</h3>
+        <div class="row"><div class="field"><label>本地时间</label><input type="time" id="tz-local" value="09:00"></div>
+          <div class="field"><label>本地时区偏移</label><input type="number" id="tz-off" value="8" step="0.5"></div></div>
+        <div class="field"><label>目标时区偏移</label><input type="number" id="tz-target" value="0" step="0.5"></div>
+        <div class="result-line" id="tz-result">—</div>
+      </div>
+      <div class="card tool-card">
+        <h3 class="card-title">🌤 天气查询（城市名）</h3>
+        <div class="row"><div class="field" style="flex:2"><label>城市</label><input id="wx-city" placeholder="如：东京"></div>
+          <div class="field" style="flex:0 0 auto"><label>&nbsp;</label><button class="btn sm" id="wx-go">查询</button></div></div>
+        <div id="wx-out"><div class="empty" style="padding:20px">输入城市查询实时天气（需联网）</div></div>
+      </div>`;
+
+      const fxCalc = () => {
+        const amt = parseFloat(H.$('#fx-amt', panel).value);
+        const from = H.$('#fx-from', panel).value, to = H.$('#fx-to', panel).value;
+        if (isNaN(amt)) { H.$('#fx-result', panel).textContent = '—'; return; }
+        const rf = DB.RATES[from] || 1, rt = DB.RATES[to] || 1;
+        H.$('#fx-result', panel).textContent = `${H.fmtMoney(amt * (rt / rf))} ${to}`;
+      };
+      ['fx-amt', 'fx-from', 'fx-to'].forEach((id) => H.$('#' + id, panel).addEventListener('input', fxCalc));
+      fxCalc();
+
+      const km = H.$('#u-km', panel), mi = H.$('#u-mi', panel), kg = H.$('#u-kg', panel), lb = H.$('#u-lb', panel), c = H.$('#u-c', panel), f = H.$('#u-f', panel);
+      km.addEventListener('input', () => mi.value = km.value === '' ? '' : (km.value * 0.621371).toFixed(2));
+      mi.addEventListener('input', () => km.value = mi.value === '' ? '' : (mi.value / 0.621371).toFixed(2));
+      kg.addEventListener('input', () => lb.value = kg.value === '' ? '' : (kg.value * 2.20462).toFixed(2));
+      lb.addEventListener('input', () => kg.value = lb.value === '' ? '' : (lb.value / 2.20462).toFixed(2));
+      c.addEventListener('input', () => f.value = c.value === '' ? '' : (c.value * 9 / 5 + 32).toFixed(1));
+      f.addEventListener('input', () => c.value = f.value === '' ? '' : ((f.value - 32) * 5 / 9).toFixed(1));
+      mi.value = (1 * 0.621371).toFixed(2); lb.value = (1 * 2.20462).toFixed(2); f.value = (25 * 9 / 5 + 32).toFixed(1);
+
+      const tzCalc = () => {
+        const t = H.$('#tz-local', panel).value;
+        const off = parseFloat(H.$('#tz-off', panel).value), tar = parseFloat(H.$('#tz-target', panel).value);
+        if (!t || isNaN(off) || isNaN(tar)) { H.$('#tz-result', panel).textContent = '—'; return; }
+        let total = (() => { const [hh, mm] = t.split(':').map(Number); return hh * 60 + mm; })() + (tar - off) * 60;
+        total = ((total % 1440) + 1440) % 1440;
+        H.$('#tz-result', panel).textContent = `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+      };
+      ['tz-local', 'tz-off', 'tz-target'].forEach((id) => H.$('#' + id, panel).addEventListener('input', tzCalc));
+      tzCalc();
+
+      H.$('#wx-go', panel).onclick = () => {
+        const city = H.$('#wx-city', panel).value.trim();
+        const out = H.$('#wx-out', panel);
+        if (!city) return H.toast('请输入城市');
+        out.innerHTML = `<div class="empty" style="padding:20px">查询中…</div>`;
+        fetchWeather(city).then((w) => {
+          out.innerHTML = `<div class="weather-box"><div class="weather-temp">${w.temp}°</div>
+            <div class="weather-meta"><div style="font-weight:600;font-size:15px">${wmoIcon(w.code)} ${w.disp}</div>
+            <div>${wmoDesc(w.code)}</div><div>💨 风速 ${w.wind} km/h</div><div>💧 湿度 ${w.humidity}%</div><div class="faint">数据：Open-Meteo</div></div></div>`;
+        }).catch(() => { out.innerHTML = `<div class="empty" style="padding:20px">⚠ 天气获取失败，请检查城市名或网络</div>`; });
+      };
+    }
+  };
+
+  /* ============ 旅行日记 ============ */
+  MOD.journal = {
+    render(panel) {
+      const entries = Store.get('journal', []);
+      let html = `<div class="card"><div class="flex between"><h3 class="card-title">📓 旅行日记</h3><button class="btn sm" id="new-j">+ 写日记</button></div>`;
+      if (!entries.length) {
+        html += `<div class="empty"><span class="big">✍️</span>记录旅途中的风景与心情<br>每一段旅程都值得被记住</div>`;
+      } else {
+        entries.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).forEach((e) => {
+          const stars = '★'.repeat(e.stars || 0) + '☆'.repeat(5 - (e.stars || 0));
+          html += `<div class="journal-entry">
+            <div class="jd-head"><span class="jd-date">${H.esc(e.date || '')}</span><span class="jd-mood">${e.mood || '🙂'}</span></div>
+            <div class="jd-text">${H.esc(e.text)}</div>
+            <div class="jd-stars">${stars}</div>
+            <button class="del" data-del="${e.id}" style="float:right;margin-top:-4px">删除</button>
+          </div>`;
+        });
+      }
+      html += `</div>`;
+      panel.innerHTML = html;
+      H.$('#new-j', panel).onclick = () => this.form(panel);
+      H.$all('[data-del]', panel).forEach((el) => el.onclick = () => { if (confirm('删除这篇日记？')) { Store.set('journal', Store.get('journal', []).filter((x) => x.id !== el.dataset.del)); H.toast('已删除'); this.render(panel); } });
+    },
+    form(panel) {
+      const moods = ['😊', '🥰', '😌', '🤩', '😋', '😴', '😅', '🥺', '😎', '🤔'];
+      const m = H.openModal(`<h3>写日记</h3>
+        <div class="field"><label>日期</label><input type="date" id="j-date" value="${new Date().toISOString().slice(0, 10)}"></div>
+        <div class="field"><label>心情</label><div id="j-moods" class="wrap gap8">${moods.map((x, i) => `<button type="button" data-m="${x}" style="font-size:22px;background:none;border:2px solid ${i === 0 ? 'var(--primary)' : 'transparent'};border-radius:10px;padding:4px 6px">${x}</button>`).join('')}</div></div>
+        <div class="field"><label>评分 <span id="j-star-val" class="faint">3 星</span></label><input type="range" id="j-stars" min="0" max="5" value="3" style="width:100%"></div>
+        <div class="field"><label>今天的故事</label><textarea id="j-text" placeholder="今天去了哪里？遇到了什么有趣的事？"></textarea></div>
+        <div class="modal-actions"><button class="btn ghost" id="cancel">取消</button><button class="btn" id="save">保存</button></div><span class="modal-close" hidden></span>`);
+      let mood = moods[0];
+      H.$('#j-moods', m).addEventListener('click', (e) => {
+        const b = e.target.closest('[data-m]'); if (!b) return;
+        mood = b.dataset.m;
+        H.$all('[data-m]', m).forEach((x) => x.style.borderColor = 'transparent');
+        b.style.borderColor = 'var(--primary)';
+      });
+      H.$('#j-stars', m).addEventListener('input', () => { H.$('#j-star-val', m).textContent = H.$('#j-stars', m).value + ' 星'; });
+      H.$('#cancel', m).onclick = H.closeModal;
+      H.$('#save', m).onclick = () => {
+        const text = H.$('#j-text', m).value.trim();
+        if (!text) return H.toast('写点什么吧');
+        const entries = Store.get('journal', []);
+        entries.push({ id: H.uid(), date: H.$('#j-date', m).value, mood, stars: parseInt(H.$('#j-stars', m).value), text });
+        Store.set('journal', entries); H.closeModal(); H.toast('已保存'); this.render(panel);
+      };
+    }
+  };
+
+  /* ============ 总览首页 ============ */
+  MOD.overview = {
+    render(panel) {
+      const ini = Store.get('initial', { cities: [], dateStart: '', dateEnd: '', travelers: { adults: 0, children: 0, elders: 0 } });
+      ini.cities = ini.cities || [];
+      ini.travelers = ini.travelers || { adults: 0, children: 0, elders: 0 };
+      const t = ini.travelers;
+      const total = (parseInt(t.adults) || 0) + (parseInt(t.children) || 0) + (parseInt(t.elders) || 0);
+
+      const play = Store.get('play', []), food = Store.get('food', []), stay = Store.get('stay', []),
+        transit = Store.get('transit', []), clothes = Store.get('clothes', []), journal = Store.get('journal', []),
+        weather = Store.get('weather', []);
+      const doneCount = clothes.filter((c) => c.done).length;
+      const est = estTotals();
+      const budget = Store.get('budget', { limit: 0, records: [] });
+      const actual = (budget.records || []).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+      const limit = parseFloat(budget.limit) || 0;
+
+      const dateRange = (ini.dateStart && ini.dateEnd) ? `${ini.dateStart} ~ ${ini.dateEnd}` : (ini.dateStart || ini.dateEnd || '未设置行程日期');
+
+      let html = `<div class="card ov-hero">
+        <div class="ov-hero-top">
+          <span class="ov-label">行程概览</span><span class="ov-daterange">${H.esc(dateRange)}</span>
+        </div>
+        <div class="ov-people-row">
+          <div class="ov-people">👥 ${total} 人<span class="faint"> ${t.adults || 0}大人 · ${t.children || 0}小孩 · ${t.elders || 0}老人</span></div>
+        </div>
+        ${ini.cities.length ? `<div class="ov-cities">${ini.cities.map((c) => `<span class="city-chip" data-goto="init">${H.esc(c.name)}<span class="role">· ${H.esc(c.role || '')}</span></span>`).join('')}</div>` : `<div class="faint" style="margin-top:8px">还没有城市，去「初始」添加出发地 / 目的地 →</div>`}
+      </div>`;
+
+      const stats = [
+        { tab: 'play', icon: '📸', label: '景点', val: play.length },
+        { tab: 'food', icon: '🍜', label: '餐饮', val: food.length },
+        { tab: 'stay', icon: '🏨', label: '住宿', val: stay.length },
+        { tab: 'transit', icon: '🚆', label: '交通', val: transit.length },
+        { tab: 'pack', icon: '🎒', label: '物品', val: `${doneCount}/${clothes.length}` },
+        { tab: 'journal', icon: '📓', label: '日记', val: journal.length },
+      ];
+      html += `<div class="ov-stats">${stats.map((s) => `<button class="ov-stat" data-goto="${s.tab}"><span class="ov-stat-ico">${s.icon}</span><span class="ov-stat-val">${s.val}</span><span class="ov-stat-label">${s.label}</span></button>`).join('')}</div>`;
+
+      /* 预算快照 */
+      const over = limit && actual > limit;
+      const pct = limit ? Math.min(100, Math.round(actual / limit * 100)) : 0;
+      html += `<div class="card ov-budget">
+        <div class="flex between"><h3 class="card-title">💰 预算快照</h3><span class="ov-budget-status ${over ? 'warn' : ''}">${over ? '已超支' : (limit ? '预算内' : '未设上限')}</span></div>
+        <div class="ov-budget-row"><span>预计花费</span><b>¥${H.fmtMoney(est.total)}</b></div>
+        <div class="ov-budget-row"><span>实际已记</span><b>¥${H.fmtMoney(actual)}</b></div>
+        ${limit ? `<div class="ov-budget-row"><span>预算上限</span><b>¥${H.fmtMoney(limit)}</b></div>
+          <div class="progress"><div class="bar ${over ? 'over' : ''}" style="width:${pct}%"></div></div>
+          <div class="faint" style="margin-top:4px">已用 ${pct}%</div>` : `<div class="faint" style="margin-top:6px">去「预算」设置上限并记账</div>`}
+      </div>`;
+
+      /* 天气速览 */
+      if (weather.length) {
+        html += `<div class="card"><h3 class="card-title">🌤 天气速览</h3><div class="ov-weather">${weather.map((w) => `<div class="ov-w-item" data-goto="weather"><span class="ov-w-ico">${w.error ? '⚠️' : wmoIcon(w.code)}</span><span class="ov-w-city">${H.esc(w.city)}</span><span class="ov-w-temp">${w.error ? '获取失败' : (w.temp + '°')}</span><span class="faint">${w.error ? '' : wmoDesc(w.code)}</span></div>`).join('')}</div></div>`;
+      }
+
+      /* 必玩清单 */
+      const must = play.filter((p) => p.type === '必玩');
+      if (must.length) {
+        html += `<div class="card"><h3 class="card-title">📸 必玩清单</h3><div class="ov-must">${must.map((p) => `<div class="ov-must-item" data-goto="play"><b>${H.esc(p.name)}</b><span class="faint">${H.esc(p.city || '')}</span>${p.period ? `<span class="tag">${H.esc(p.period)}</span>` : ''}</div>`).join('')}</div></div>`;
+      }
+
+      /* 近期日记 */
+      if (journal.length) {
+        const last = journal.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+        html += `<div class="card"><div class="flex between"><h3 class="card-title">📓 近期日记</h3><span class="faint" data-goto="journal" style="cursor:pointer">全部 →</span></div>
+          <div class="ov-journal"><div class="jd-head"><span class="jd-date">${H.esc(last.date || '')}</span><span class="jd-mood">${last.mood || '🙂'}</span>${last.rating ? `<span class="faint">${'★'.repeat(last.rating)}${'☆'.repeat(5 - last.rating)}</span>` : ''}</div>
+          <div class="faint">${H.esc((last.content || '').slice(0, 60) || '（无内容）')}</div></div></div>`;
+      }
+
+      panel.innerHTML = html;
+      H.$all('[data-goto]', panel).forEach((el) => el.addEventListener('click', () => switchTab(el.dataset.goto)));
+    }
+  };
+
+  /* ============ 标签页路由 ============ */
+  const panels = {
+    init: 'panel-init', weather: 'panel-weather', pack: 'panel-pack', food: 'panel-food',
+    stay: 'panel-stay', transit: 'panel-transit', play: 'panel-play',
+    budget: 'panel-budget', tools: 'panel-tools', journal: 'panel-journal', overview: 'panel-overview'
+  };
+  function switchTab(name) {
+    H.$all('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+    H.$all('.tab-panel').forEach((p) => p.classList.remove('active'));
+    const panel = H.$('#' + panels[name]);
+    panel.classList.add('active');
+    MOD[name].render(panel);
+    try { localStorage.setItem('roam_last_tab', name); } catch (e) {}
+  }
+
+  /* ============ 多行程管理 ============ */
+  const TRIP_KEYS = ['initial', 'weather', 'clothes', 'food', 'stay', 'transit', 'play', 'budget', 'journal'];
+  const Trips = {
+    all() { return Store.gget('trips', []); },
+    save(list) { Store.gset('trips', list); },
+    current() { return Store.gget('active_trip', null); },
+    get(id) { return this.all().find((t) => t.id === id); },
+    setCurrent(id) { Store.gset('active_trip', id); Store.namespace(id); },
+    /* 首次启动：初始化行程列表，并把旧版（无行程）数据迁移到「行程1」 */
+    ensure() {
+      let list = Store.gget('trips', null);
+      if (!list) {
+        const legacy = TRIP_KEYS.some((k) => localStorage.getItem('roam_assistant_' + k) !== null);
+        const id = 'trip1';
+        list = [{ id, name: '行程1' }];
+        Store.gset('trips', list);
+        Store.gset('active_trip', id);
+        if (legacy) {
+          TRIP_KEYS.forEach((k) => {
+            const raw = localStorage.getItem('roam_assistant_' + k);
+            if (raw !== null) {
+              localStorage.setItem('roam_assistant_' + id + '_' + k, raw);
+              localStorage.removeItem('roam_assistant_' + k);
+            }
+          });
+        }
+      }
+      const cur = Store.gget('active_trip', null);
+      const id = cur && this.get(cur) ? cur : (list[0] || {}).id;
+      if (id) this.setCurrent(id);
+      return id;
+    },
+    create(name) {
+      const list = this.all();
+      const id = 'trip' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      list.push({ id, name: (name && name.trim()) || ('行程' + (list.length + 1)) });
+      this.save(list);
+      this.setCurrent(id);
+      return id;
+    }
+  };
+
+  function renderTripBar() {
+    const list = Trips.all();
+    const cur = Trips.current();
+    const bar = H.$('#trip-bar');
+    if (!bar) return;
+    bar.innerHTML = `
+      <div class="trip-chips">
+        ${list.map((t) => `<button class="trip-chip${t.id === cur ? ' active' : ''}" data-trip="${H.esc(t.id)}">${H.esc(t.name)}</button>`).join('')}
+        <button class="trip-chip add" id="trip-add">＋ 新行程</button>
+      </div>
+      <div class="trip-actions">
+        <button class="trip-btn" id="trip-copy" title="把其他行程的物品清单复制到当前行程">📋 复制物品</button>
+        <button class="trip-btn danger" id="trip-clear" title="清空当前行程的全部信息">🗑 清空</button>
+      </div>`;
+    H.$all('[data-trip]', bar).forEach((b) => b.addEventListener('click', () => switchTrip(b.dataset.trip)));
+    H.$('#trip-add', bar).addEventListener('click', newTripModal);
+    H.$('#trip-clear', bar).addEventListener('click', clearTrip);
+    H.$('#trip-copy', bar).addEventListener('click', copyItemsModal);
+  }
+
+  function switchTrip(id) {
+    if (!Trips.get(id)) return;
+    Trips.setCurrent(id);
+    refreshCities();
+    renderTripBar();
+    const active = H.$('.tab-btn.active');
+    switchTab(active ? active.dataset.tab : 'overview');
+    H.toast('已切换：' + Trips.get(id).name);
+  }
+
+  function newTripModal() {
+    const m = H.openModal(`
+      <div class="modal-title">✈️ 新建行程</div>
+      <p class="faint" style="margin-bottom:10px">新行程从零开始，创建后可在「衣」模块通过「📋 复制物品」把其他行程的物品带过来。</p>
+      <div class="field"><label>行程名称</label><input id="nt-name" placeholder="如：十一日本行" maxlength="20"></div>
+      <div class="row" style="justify-content:flex-end;margin-top:12px">
+        <button class="btn soft" id="nt-cancel">取消</button>
+        <button class="btn" id="nt-ok">创建并进入</button>
+      </div>`);
+    H.$('#nt-cancel', m).addEventListener('click', H.closeModal);
+    H.$('#nt-ok', m).addEventListener('click', () => {
+      const name = H.$('#nt-name', m).value.trim();
+      Trips.create(name);
+      H.closeModal();
+      refreshCities();
+      renderTripBar();
+      switchTab('init');
+      H.toast('已创建新行程');
+    });
+  }
+
+  function clearTrip() {
+    const cur = Trips.get(Trips.current());
+    const name = cur ? cur.name : '当前行程';
+    if (!confirm(`确定清空「${name}」的全部信息吗？
+
+物品 / 餐饮 / 住宿 / 交通 / 景点 / 预算 / 天气 / 日记 将全部删除，不可恢复。`)) return;
+    Store.clearNamespace();
+    const active = H.$('.tab-btn.active');
+    switchTab(active ? active.dataset.tab : 'overview');
+    H.toast('已清空「' + name + '」');
+  }
+
+  function copyItemsModal() {
+    const cur = Trips.current();
+    const others = Trips.all().filter((t) => t.id !== cur);
+    if (!others.length) return H.toast('还没有其他行程可复制');
+    const m = H.openModal(`
+      <div class="modal-title">📋 复制物品清单</div>
+      <p class="faint" style="margin-bottom:12px">从下面行程复制「衣」模块的物品清单到 <b>${H.esc((Trips.get(cur) || {}).name || '')}</b>：</p>
+      ${others.map((t) => `<button class="btn block soft" data-src="${t.id}" style="width:100%;margin-bottom:8px">${H.esc(t.name)}</button>`).join('')}
+      <button class="btn soft" id="cp-cancel">取消</button>`);
+    H.$all('[data-src]', m).forEach((b) => b.addEventListener('click', () => { copyItems(b.dataset.src); H.closeModal(); }));
+    H.$('#cp-cancel', m).addEventListener('click', H.closeModal);
+  }
+
+  function copyItems(srcId) {
+    const curNs = Store.nsOf();
+    Store.namespace(srcId);
+    const src = Store.get('clothes', null) || [];
+    Store.namespace(curNs);
+    const target = Store.get('clothes', null) || [];
+    const have = new Set(target.map((x) => x.label));
+    const added = [];
+    src.forEach((x) => { if (x.label && !have.has(x.label)) { added.push({ id: H.uid(), cat: x.cat || '其他', label: x.label, done: false, cost: '', qty: parseInt(x.qty, 10) || 1 }); } });
+    if (!added.length) return H.toast('物品清单已包含全部项目，无需复制');
+    Store.set('clothes', target.concat(added));
+    const active = H.$('.tab-btn.active');
+    switchTab(active ? active.dataset.tab : 'overview');
+    H.toast('已复制 ' + added.length + ' 项物品');
+  }
+
+  /* ============ 导入/导出 ============ */
+  function exportData() {
+    const data = Store.exportAll();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `漫游助手数据_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    H.toast('已导出');
+  }
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const obj = JSON.parse(reader.result);
+        if (Store.importAll(obj)) { H.toast('导入成功'); Trips.ensure(); renderTripBar(); refreshCities(); switchTab('init'); }
+        else H.toast('导入失败：格式不正确');
+      } catch (e) { H.toast('导入失败：不是有效 JSON'); }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ============ 初始化 ============ */
+  function init() {
+    Trips.ensure();
+    refreshCities();
+    renderTripBar();
+    H.$all('.tab-btn').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    H.$('#btn-export').addEventListener('click', exportData);
+    H.$('#btn-import').addEventListener('click', () => H.$('#import-file').click());
+    H.$('#import-file').addEventListener('change', (e) => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ''; });
+    const last = (() => { try { return localStorage.getItem('roam_last_tab'); } catch (e) { return null; } })();
+    switchTab(panels[last] ? last : 'overview');
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+
+</script>
+</body>
+</html>
