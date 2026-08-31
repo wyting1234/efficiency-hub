@@ -175,6 +175,21 @@
   .nav-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5b6b86;padding:14px 10px 6px}
 
 
+  #toggleTools{width:22px;height:22px;padding:0;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--side-text);font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s ease,background .15s}
+
+
+  #toggleTools:hover{background:rgba(255,255,255,.14);color:#fff}
+
+
+  #toggleTools.collapsed{transform:rotate(180deg)}
+
+
+  #navList{overflow:hidden;transition:max-height .25s ease,opacity .25s ease;max-height:3000px;opacity:1}
+
+
+  #navList.collapsed{max-height:0;opacity:0;pointer-events:none}
+
+
   .nav-item{
 
 
@@ -666,7 +681,16 @@
       <span>我的工具</span>
 
 
-      <button id="manageModules" class="mini-btn" title="管理显示的模块">管理</button>
+      <div style="display:flex;align-items:center;gap:4px">
+
+
+        <button id="toggleTools" class="mini-btn" title="收起/展开工具列表" aria-label="收起/展开工具列表">▲</button>
+
+
+        <button id="manageModules" class="mini-btn" title="管理显示的模块">管理</button>
+
+
+      </div>
 
 
     </div>
@@ -1201,6 +1225,26 @@ function buildNav(){
   });
   
   refreshBadges();
+}
+
+function applyToolsCollapse(){
+  try{
+    const collapsed = localStorage.getItem('hub_tools_collapsed') === '1';
+    const btn = $('#toggleTools');
+    const list = $('#navList');
+    if(btn) btn.classList.toggle('collapsed', collapsed);
+    if(list) list.classList.toggle('collapsed', collapsed);
+  }catch(e){}
+}
+
+function toggleToolsList(){
+  const btn = $('#toggleTools');
+  const list = $('#navList');
+  if(!btn || !list) return;
+  const collapsed = !list.classList.contains('collapsed');
+  btn.classList.toggle('collapsed', collapsed);
+  list.classList.toggle('collapsed', collapsed);
+  try{ localStorage.setItem('hub_tools_collapsed', collapsed ? '1' : '0'); }catch(e){}
 }
 
 let draggedItem = null;
@@ -2017,6 +2061,9 @@ function init(){
   buildNav();
 
 
+  applyToolsCollapse();
+
+
   buildCards();
 
 
@@ -2144,6 +2191,9 @@ function init(){
 
 
   $('#manageModules').addEventListener('click',openModuleManager);
+
+
+  $('#toggleTools').addEventListener('click',toggleToolsList);
 
 
   $('#closeModuleModal').addEventListener('click',()=>mmModal.classList.remove('show'));
