@@ -314,12 +314,12 @@
   }
 
   function reloadActiveIframe() {
-    const active = document.querySelector('#toolContainer .tool-container.active') ||
-                   document.querySelector('#toolContainer iframe');
-    if (active) {
-      const iframe = active.tagName === 'IFRAME' ? active : active.querySelector('iframe');
-      if (iframe && iframe.src) iframe.src = iframe.src;
-    }
+    // v2：下载覆盖后必须刷新【全部】工具 iframe —— 所有 iframe 在 buildIframes 时
+    // 已带 src 常驻，只刷当前激活的话，其余 iframe 内存里仍是旧数据，
+    // 用户切回去一旦编辑保存，旧数据会覆盖刚下载的新数据
+    document.querySelectorAll('#toolContainer iframe').forEach(function (f) {
+      if (f.src) f.src = f.src;
+    });
   }
 
   // ============ 动作：上传 / 下载 ============
