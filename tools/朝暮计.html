@@ -2390,6 +2390,30 @@
         .focus-back-btn.ft-dragover {
             box-shadow: 0 0 0 2px var(--main), 0 2px 10px rgba(0,0,0,.10);
         }
+        /* v36：拖动把柄 —— 每个可拖部件右上角一枚 ⠿ 小把柄，按住即拖（无需长按），
+           松手自动保存；部件本体上长按 500ms 拖动的老习惯保持兼容 */
+        .ft-grip {
+            position: absolute;
+            top: -10px; right: -10px;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: rgba(255,255,255,.92);
+            color: var(--main);
+            font-size: 12px; line-height: 22px; text-align: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,.18);
+            cursor: grab;
+            z-index: 10;
+            opacity: .4;
+            transition: opacity .15s, transform .12s;
+            user-select: none;
+            pointer-events: auto;
+            touch-action: none;
+        }
+        .ft-grip:hover { opacity: 1; transform: scale(1.15); }
+        .ft-grip:active { cursor: grabbing; opacity: 1; }
+        .focus-page.dark .ft-grip { background: rgba(48,48,62,.92); color: #a29bfe; }
+        /* 勉励语是全宽条，把柄收进文字区右上，不顶到屏幕边 */
+        .focus-page > .ft-quote .ft-grip { right: 30px; top: -8px; }
         /* v18: 移动端让「返回」与控制模块不打架 —— 返回按钮贴左偏上
            v22: 这两个值必须带上 --ox/--oy，否则小屏下长按拖动改了变量、
                 位置却被这段固定值覆盖 → 控制模块和返回按钮"挪不动"。 */
@@ -3652,6 +3676,17 @@
         body.zp-parts .stat-seg{background:rgba(255,255,255,var(--zp-bar,1))}
         body.zp-parts .rv-tools{background:rgba(255,255,255,var(--zp-bar,1))}
         body.zp-parts .sub{background:rgba(255,255,255,var(--zp-card,1))}
+        /* v36：视图页日/周/月/年网格容器补全透明化 —— 此前只有字浮(ink-on)覆盖了这些
+           容器，栏目透明度(zp-parts)漏掉，导致设了底图后日历/时间轴仍是实心白块 */
+        body.zp-parts .dw-bar{background:rgba(255,255,255,var(--zp-bar,1))}
+        body.zp-parts .dw-allday{background:rgba(255,255,255,var(--zp-card,1))}
+        body.zp-parts .dw-body{background:rgba(255,255,255,var(--zp-card,1))}
+        body.zp-parts .month-grid{background:rgba(255,255,255,var(--zp-card,1))}
+        body.zp-parts .sched-grid{background:rgba(255,255,255,var(--zp-card,1))}
+        body.zp-parts .sched-drawer{background:rgba(255,255,255,var(--zp-card,1))}
+        body.zp-parts .year-month{background:rgba(255,255,255,var(--zp-card,1))}
+        /* 当前月高亮：把主色混进已透明化的卡片底上，避免 zp 规则吃掉高亮 */
+        body.zp-parts .year-month.cur{background:color-mix(in srgb, var(--main) 10%, rgba(255,255,255,var(--zp-card,1)))}
         /* ===== v31：边线与字浮（单独入口「✒️ 边线与字浮」）=====
            目标效果：只能看到页面背景和栏目上的字，就好像字直接写在背景上。
            · 字浮：内容卡片白底按 --ink-card 透明化，白底浓度 0 = 纯字浮
@@ -10943,17 +10978,24 @@
             let pressT = null, dragging = false, moved = false, swallow = false;
             let sx = 0, sy = 0, ox = 0, oy = 0;
             const getOxOy = () => [+el.style.getPropertyValue('--ox').replace('px','').trim()||0, +el.style.getPropertyValue('--oy').replace('px','').trim()||0];
+            /* v36：进入拖动模式的统一入口 —— 把柄按下立即调用；部件本体长按 500ms 后调用 */
+            const beginDrag = () => {
+                if (dragging) return;
+                clearTimeout(pressT); pressT = null;
+                dragging = true;
+                el.classList.add('ft-dragover');
+                try { showToast('拖动中 · 松手自动保存'); } catch (ex) {}
+            };
             const start = (e) => {
+                /* v36：从把柄发起 → 跳过 500ms 长按等待，立即拖动 */
+                const viaHandle = !!(e.target && e.target.closest && e.target.closest('.ft-grip'));
                 const pt = e.touches ? e.touches[0] : e;
                 sx = pt.clientX; sy = pt.clientY;
                 [ox, oy] = getOxOy();
                 moved = false;
                 swallow = false; moved = false;
-                pressT = setTimeout(() => {
-                    dragging = true;
-                    el.classList.add('ft-dragover');
-                    try { showToast('开始挪动 · 松开保存位置'); } catch (ex) {}
-                }, 500);
+                if (viaHandle) { beginDrag(); return; }
+                pressT = setTimeout(beginDrag, 500);
             };
             const move = (e) => {
                 const pt = e.touches ? e.touches[0] : e;
@@ -10980,8 +11022,10 @@
                     dragging = false;
                     swallow = moved;          // 真的挪动过才吞掉这一次 click
                     el.classList.remove('ft-dragover');
-                    saveFocusLayoutTo();
-                    try { showToast('已保存部件位置'); } catch (ex) {}
+                    if (moved) {
+                        saveFocusLayoutTo();   // v36：自动保存，无任何手动确认步骤
+                        try { showToast('✓ 位置已保存'); } catch (ex) {}
+                    }
                 }
             };
             /* v22: mousemove / mouseup 挂到页面容器而非单个元素 —— 元素被拖走后
@@ -11001,6 +11045,14 @@
             el.addEventListener('click', (e) => {
                 if (swallow) { e.stopPropagation(); e.preventDefault(); swallow = false; }
             }, true);
+            /* v36：注入拖动把柄 —— 绑定层统一补齐，渲染函数不感知 */
+            if (!el.querySelector('.ft-grip')) {
+                const grip = document.createElement('div');
+                grip.className = 'ft-grip';
+                grip.textContent = '⠿';
+                grip.title = '拖动把柄：按住即拖，松手自动保存';
+                el.appendChild(grip);
+            }
         });
     }
     /* v21: 实测「计时圈底边」与「控制模块顶边」，把勉励语精确摆在这段空档的正中 */
@@ -11335,7 +11387,7 @@
     }
     function focusCfgLayoutBody() {
         return `
-            <div class="fc-tip">在计时页任一部件（计时圈 / 勉励语 / 控制模块）上 <b>长按 500ms</b>，可拖动位置；松手后自动保存。<br>控制模块包含最左侧的「‹ 返回」图标，整体一起挪。</div>
+            <div class="fc-tip">拖动任一部件（计时圈 / 勉励语 / 控制模块）右上角的 <b>⠿ 把柄</b> 即可挪动位置，松手<b>自动保存</b>（也可以在部件上长按 500ms 拖动，效果相同）。<br>控制模块包含最左侧的「‹ 返回」图标，整体一起挪。</div>
             <div class="fc-row"><span>计时圈</span><span>${focusLayout.ring?.ox||0}, ${focusLayout.ring?.oy||0}</span></div>
             <div class="fc-row"><span>勉励语</span><span>${focusLayout.quote?.ox||0}, ${focusLayout.quote?.oy||0}</span></div>
             <div class="fc-row"><span>控制模块（含‹返回）</span><span>${focusLayout.control?.ox||0}, ${focusLayout.control?.oy||0}</span></div>
