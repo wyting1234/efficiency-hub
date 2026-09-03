@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>消息源巡检工作台</title>
+<style>
+  :root{
+    --navy:#16324f; --navy-light:#1e4468; --blue:#2d6ca2;
+    --bg:#f4f6f9; --card:#ffffff; --border:#dde4ec;
+    --text:#22303e; --muted:#7a8899;
+    --green:#1e8e5a; --orange:#d97b29; --red:#c0392b;
+    --radius:10px; --shadow:0 1px 4px rgba(22,50,79,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+  header{background:var(--navy);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  header h1{font-size:18px;font-weight:600}
+  .stats{display:flex;gap:16px;font-size:13px}
+  .stats b{font-size:16px;margin-right:3px}
+  .progress-bar{height:6px;background:rgba(255,255,255,.2);border-radius:3px;width:160px;overflow:hidden}
+  .progress-bar i{display:block;height:100%;background:#4fc08d;transition:width .3s}
+  .toolbar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .toolbar input[type=text]{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;width:200px}
+  button{cursor:pointer;border:none;border-radius:6px;padding:7px 14px;font-size:13px;font-family:inherit;transition:opacity .15s}
+  button:hover{opacity:.85}
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-green{background:var(--green);color:#fff}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+  .btn-danger{background:transparent;border:1px solid var(--border);color:var(--red)}
+  main{padding:20px 24px;max-width:1200px;margin:0 auto}
+  .category{margin-bottom:26px}
+  .category h2{font-size:15px;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .category h2 .count{font-size:12px;color:var(--muted);font-weight:400}
+  .subcat-title{font-size:13px;color:var(--muted);margin:12px 0 8px;padding-left:2px}
+  .subcat-title .count{font-size:11px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+  .src-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;position:relative}
+  .src-card.checked-today{border-left:3px solid var(--green)}
+  .src-card.stale{border-left:3px solid var(--orange)}
+  .src-name{font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+  .src-domain{font-size:12px;color:var(--muted)}
+  .src-time{font-size:12px;color:var(--muted)}
+  .src-time.ok{color:var(--green)}
+  .titles{border-top:1px dashed var(--border);padding-top:6px;display:flex;flex-direction:column;gap:4px}
+  .titles a{font-size:12px;color:var(--text);text-decoration:none;line-height:1.4;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  .titles a:hover{color:var(--blue)}
+  .titles .t-time{font-size:11px;color:var(--muted)}
+  .titles .fetching{font-size:12px;color:var(--muted)}
+  .src-actions{display:flex;gap:6px;margin-top:4px}
+  .src-actions button{padding:5px 10px;font-size:12px;flex:1}
+  .badge{font-size:11px;padding:2px 8px;border-radius:10px;background:#eef2f7;color:var(--muted)}
+  .empty{text-align:center;color:var(--muted);padding:60px 0}
+  /* 弹窗 */
+  .modal-mask{display:none;position:fixed;inset:0;background:rgba(20,35,50,.45);z-index:50;align-items:center;justify-content:center}
+  .modal-mask.show{display:flex}
+  .modal{background:#fff;border-radius:12px;padding:22px;width:380px;max-width:92vw}
+  .modal h3{margin-bottom:14px;color:var(--navy)}
+  .modal label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  .modal input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px}
+  .modal .row{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+  dialog::backdrop{background:rgba(20,35,50,.45)}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <h1>📡 消息源巡检工作台</h1>
+  <div class="stats">
+    <span><b id="statDone">0</b>/<span id="statTotal">0</span> 今日已看</span>
+    <div class="progress-bar"><i id="progressFill" style="width:0%"></i></div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn-green" id="btnOpenAll">⚡ 一键打开未看</button>
+  <button class="btn-primary" id="btnFetch">🔄 刷新标题</button>
+  <button class="btn-primary" id="btnAdd">＋ 添加信息源</button>
+  <input type="text" id="search" placeholder="搜索信息源…">
+  <span style="flex:1"></span>
+  <button class="btn-ghost" id="btnExport">导出</button>
+  <button class="btn-ghost" id="btnImport">导入</button>
+  <button class="btn-ghost" id="btnSeed">载入示例</button>
+</div>
+
+<main id="main"></main>
+
+<dialog id="dlg">
+  <h3 id="dlgTitle">添加信息源</h3>
+  <label>名称（格式：站点-一级分类-二级分类）</label><input id="fName" placeholder="如：东方财富-宏观-国内" list="catList"><datalist id="catList"></datalist>
+  <label>网址</label><input id="fUrl" placeholder="https://…">
+  <label>RSS 地址（可选，填了才能在工作台内直接刷标题）</label><input id="fRss" placeholder="https://…/rss.xml">
+  <div class="hint" id="parsePreview">解析结果将显示在这里。</div>
+  <div class="row">
+    <button class="btn-ghost" id="dlgCancel">取消</button>
+    <button class="btn-primary" id="dlgSave">保存</button>
+  </div>
+</dialog>
+<input type="file" id="fileInput" accept=".json" style="display:none">
+<div class="hint" style="max-width:1200px;margin:0 auto 20px;padding:0 24px">
+  说明：点击「打开」会在新标签页打开该信息源并自动记录查看时间；橙标 = 超过 1 天未看，绿标 = 今日已看。
+  「一键打开未看」可能被浏览器拦截弹窗，若只开出一个，请允许弹窗后再点一次。
+  为信息源填入 RSS 地址后，点「刷新标题」可直接在卡片内看最新标题（经公共代理抓取，个别源可能失败，重试即可）。
+</div>
+
+<script>
+const KEY='msgSourceBoard_v1';
+let sources=JSON.parse(localStorage.getItem(KEY)||'[]');
+let editingId=null;
+
+function save(){localStorage.setItem(KEY,JSON.stringify(sources))}
+function today(){return new Date().toDateString()}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function domain(u){try{return new URL(u).hostname}catch(e){return ''}}
+// 解析 "东方财富-宏观-国内" 格式：名称-一级分类-二级分类
+function parseName(raw){
+  const parts=raw.split(/[-－—]+/).map(s=>s.trim()).filter(Boolean);
+  return {name:parts[0]||raw,cat:parts[1]||'未分类',subcat:parts.slice(2).join('-')||''};
+}
+function fullName(s){return s.full||[s.name,(s.cat&&s.cat!=='未分类')?s.cat:'',s.subcat||''].filter(Boolean).join('-')}
+
+// 卡片内的最新标题区
+function titlesHtml(s){
+  if(!s.rss)return '';
+  if(s.fetching)return `<div class="titles"><span class="fetching">⏳ 正在获取标题…</span></div>`;
+  if(!s.titles||!s.titles.length)return `<div class="titles"><span class="fetching">暂无标题，点「刷新标题」获取</span></div>`;
+  const at=s.titlesAt?new Date(s.titlesAt).toTimeString().slice(0,5):'';
+  return `<div class="titles">`+s.titles.slice(0,3).map(t=>
+    `<a href="${esc(t.link||s.url)}" target="_blank" rel="noopener" onclick="markSeen('${s.id}',true)">${esc(t.title)}</a>`).join('')
+    +`<span class="t-time">共 ${s.titles.length} 条 · ${at} 抓取</span></div>`;
+}
+
+// RSS 抓取：rss2json 优先，allorigins 兜底
+async function fetchFeed(s){
+  try{
+    const r=await fetch('https://api.rss2json.com/v1/api.json?count=10&rss_url='+encodeURIComponent(s.rss));
+    if(r.ok){
+      const d=await r.json();
+      if(d.status==='ok'&&d.items&&d.items.length)
+        return d.items.map(i=>({title:i.title,link:i.link,date:i.pubDate}));
+    }
+  }catch(e){}
+  try{
+    const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(s.rss));
+    if(r.ok){
+      const txt=await r.text();
+      const doc=new DOMParser().parseFromString(txt,'text/xml');
+      return [...doc.querySelectorAll('item, entry')].slice(0,10).map(n=>{
+        const linkEl=n.querySelector('link');
+        const link=linkEl?(linkEl.textContent||linkEl.getAttribute('href')||''):'';
+        const dateEl=n.querySelector('pubDate, updated, published');
+        return {title:(n.querySelector('title')||{}).textContent||'',link,date:dateEl?dateEl.textContent:''};
+      }).filter(t=>t.title);
+    }
+  }catch(e){}
+  return null;
+}
+async function refreshTitles(){
+  const targets=sources.filter(s=>s.rss);
+  if(!targets.length){alert('还没有信息源配置 RSS 地址。编辑信息源，填入 RSS 地址后即可在卡片内直接看标题。');return}
+  const btn=document.getElementById('btnFetch');btn.disabled=true;btn.textContent='⏳ 抓取中…';
+  let ok=0;
+  await Promise.all(targets.map(async s=>{
+    s.fetching=true;render();
+    const t=await fetchFeed(s);
+    if(t&&t.length){s.titles=t;s.titlesAt=Date.now();ok++}
+    s.fetching=false;
+  }));
+  save();render();
+  btn.disabled=false;btn.textContent='🔄 刷新标题';
+  alert(`抓取完成：成功 ${ok}/${targets.length}。失败的源可能是 RSS 地址失效或代理限流，可稍后重试。`);
+}
+
+function render(){
+  const q=document.getElementById('search').value.trim().toLowerCase();
+  const main=document.getElementById('main');
+  const list=sources.filter(s=>!q||(s.name+s.url+(s.cat||'')+(s.subcat||'')+(s.full||'')).toLowerCase().includes(q));
+  // 两级分组：一级分类 -> 二级分类
+  const cats={};
+  list.forEach(s=>{
+    const c=s.cat||'未分类',sub=s.subcat||'';
+    (cats[c]=cats[c]||{});(cats[c][sub]=cats[c][sub]||[]).push(s);
+  });
+  let html='';
+  Object.keys(cats).sort().forEach(cat=>{
+    const subs=cats[cat];
+    const subNames=Object.keys(subs).sort((a,b)=>(a===''?1:b===''?-1:a.localeCompare(b)));
+    const total=Object.values(subs).reduce((n,arr)=>n+arr.length,0);
+    html+=`<div class="category"><h2>${esc(cat)} <span class="count">${total} 个源</span></h2>`;
+    subNames.forEach(sub=>{
+      if(sub)html+=`<div class="subcat-title">▸ ${esc(sub)} <span class="count">${subs[sub].length}</span></div>`;
+      html+=`<div class="grid">`;
+      subs[sub].forEach(s=>{
+      const seenToday=s.lastSeen&&new Date(s.lastSeen).toDateString()===today();
+      const stale=!seenToday&&s.lastSeen&&(Date.now()-s.lastSeen>864e5);
+      const never=!s.lastSeen;
+      const cls=seenToday?'checked-today':(stale||never?'stale':'');
+      const timeTxt=seenToday?'今日已看 '+(new Date(s.lastSeen).toTimeString().slice(0,5))
+        :stale?(never?'从未查看':'上次查看 '+new Date(s.lastSeen).toLocaleDateString())
+        :(s.lastSeen?'上次查看 '+new Date(s.lastSeen).toLocaleDateString():'从未查看');
+      html+=`<div class="src-card ${cls}">
+        <div class="src-name"><span>${esc(s.name)}</span>${seenToday?'<span class="badge" style="color:var(--green)">✓</span>':''}</div>
+        <div class="src-domain">${esc(domain(s.url))}</div>
+        <div class="src-time ${seenToday?'ok':''}">${timeTxt}</div>
+        ${titlesHtml(s)}
+        <div class="src-actions">
+          <button class="btn-primary" onclick="openSrc('${s.id}')">打开</button>
+          <button class="btn-ghost" onclick="markSeen('${s.id}')">标记已看</button>
+          <button class="btn-ghost" onclick="editSrc('${s.id}')">编辑</button>
+          <button class="btn-danger" onclick="delSrc('${s.id}')">删除</button>
+        </div></div>`;
+      });
+      html+=`</div>`;
+    });
+    html+='</div>';
+  });
+  main.innerHTML=html||'<div class="empty">还没有信息源，点击右上角「＋ 添加信息源」或「载入示例」开始。</div>';
+  // 统计
+  const total=sources.length;
+  const done=sources.filter(s=>s.lastSeen&&new Date(s.lastSeen).toDateString()===today()).length;
+  document.getElementById('statDone').textContent=done;
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('progressFill').style.width=total?(done/total*100)+'%':'0%';
+  // 名称联想（已保存的完整名称）
+  document.getElementById('catList').innerHTML=[...new Set(sources.map(s=>fullName(s)))].map(v=>`<option value="${esc(v)}">`).join('');
+}
+
+function openSrc(id){
+  const s=sources.find(x=>x.id===id);if(!s)return;
+  window.open(s.url,'_blank');
+  markSeen(id,true);
+}
+function markSeen(id,silent){
+  const s=sources.find(x=>x.id===id);if(!s)return;
+  s.lastSeen=Date.now();save();render();
+}
+function delSrc(id){
+  if(!confirm('确定删除该信息源？'))return;
+  sources=sources.filter(x=>x.id!==id);save();render();
+}
+function editSrc(id){
+  const s=sources.find(x=>x.id===id);if(!s)return;
+  editingId=id;
+  document.getElementById('dlgTitle').textContent='编辑信息源';
+  fName.value=fullName(s);fUrl.value=s.url;fRss.value=s.rss||'';
+  updatePreview();
+  dlg.showModal();
+}
+
+// 添加/编辑弹窗
+const dlg=document.getElementById('dlg');
+function updatePreview(){
+  const raw=fName.value.trim();
+  const p=document.getElementById('parsePreview');
+  if(!raw){p.textContent='解析结果将显示在这里。';return}
+  const r=parseName(raw);
+  p.innerHTML=`解析为：名称 <b>「${esc(r.name)}」</b> / 一级分类 <b>「${esc(r.cat)}」</b> / 二级分类 <b>「${esc(r.subcat||'（无）')}」</b>`;
+}
+document.getElementById('fName').oninput=updatePreview;
+document.getElementById('btnAdd').onclick=()=>{editingId=null;document.getElementById('dlgTitle').textContent='添加信息源';
+  fName.value='';fUrl.value='';fRss.value='';updatePreview();dlg.showModal()};
+document.getElementById('dlgCancel').onclick=()=>dlg.close();
+document.getElementById('dlgSave').onclick=()=>{
+  const raw=fName.value.trim(),url=fUrl.value.trim(),rss=fRss.value.trim();
+  if(!raw||!url){alert('名称和网址必填');return}
+  const fixed=/^https?:\/\//i.test(url)?url:'https://'+url;
+  const fixedRss=rss&&!/^https?:\/\//i.test(rss)?'https://'+rss:rss;
+  const p=parseName(raw);
+  if(editingId){Object.assign(sources.find(x=>x.id===editingId),{name:p.name,cat:p.cat,subcat:p.subcat,full:raw,url:fixed,rss:fixedRss})}
+  else sources.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:p.name,cat:p.cat,subcat:p.subcat,full:raw,url:fixed,rss:fixedRss,lastSeen:null});
+  save();render();dlg.close();
+};
+document.getElementById('btnFetch').onclick=refreshTitles;
+document.getElementById('search').oninput=render;
+
+// 一键打开未看（间隔打开降低拦截概率）
+document.getElementById('btnOpenAll').onclick=()=>{
+  const todo=sources.filter(s=>!(s.lastSeen&&new Date(s.lastSeen).toDateString()===today()));
+  if(!todo.length){alert('今天全部看完 ✅');return}
+  if(!confirm(`将打开 ${todo.length} 个未看的标签页，继续？`))return;
+  todo.forEach((s,i)=>setTimeout(()=>window.open(s.url,'_blank'),i*350));
+};
+
+// 导入导出
+document.getElementById('btnExport').onclick=()=>{
+  const blob=new Blob([JSON.stringify(sources,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='消息源配置_'+new Date().toISOString().slice(0,10)+'.json';a.click();
+};
+document.getElementById('btnImport').onclick=()=>fileInput.click();
+fileInput.onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(Array.isArray(d)){sources=d;save();render();alert('导入成功')}else alert('格式不正确')}catch(err){alert('解析失败')}};
+  r.readAsText(f);
+};
+// 示例源
+document.getElementById('btnSeed').onclick=()=>{
+  const seed=[
+    ['财联社-快讯-电报','https://www.cls.cn/telegraph','https://www.cls.cn/rss/telegraph.xml'],
+    ['东方财富-快讯-全球','https://kuaixun.eastmoney.com/',''],
+    ['东方财富-要闻-综合','https://finance.eastmoney.com/',''],
+    ['同花顺-快讯-热点','https://news.10jqka.com.cn/realtimenews.html',''],
+    ['新浪财经-宏观-国内','https://finance.sina.com.cn/macrolife/',''],
+    ['证券时报-要闻-综合','https://www.stcn.com/','']
+  ];
+  seed.forEach(([full,url,rss])=>{
+    const p=parseName(full);
+    sources.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:p.name,cat:p.cat,subcat:p.subcat,full,url,rss,lastSeen:null});
+  });
+  save();render();
+};
+
+render();
+</script>
+</body>
+</html>
