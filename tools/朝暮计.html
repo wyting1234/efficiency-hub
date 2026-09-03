@@ -4785,7 +4785,7 @@
             <label data-page-node-id="grZoDYDq5W4lrNXapwOOPv" class="bg-upload-btn" id="bgUploadBtn" for="bgFile">
                 <span data-page-node-id="hLoaKYrErdkGERjIpjGhhz" class="bg-upload-ico"><!--pnid:nmqpsaspnoTdzC46o7laHg-->📁</span>
                 <span data-page-node-id="BV83hLFZcBASDn6MMKhzKX" class="bg-upload-main"><!--pnid:EwoZV3VsSyP5eIqECMHR0g-->点击上传本地图片</span>
-                <span data-page-node-id="4ZNu2lIoqofB4gZ0mptuIA" class="bg-upload-sub"><!--pnid:k4XyidmOckfNnBsB41zPfv-->支持 JPG / PNG，原图保存</span>
+                <span data-page-node-id="4ZNu2lIoqofB4gZ0mptuIA" class="bg-upload-sub"><!--pnid:k4XyidmOckfNnBsB41zPfv-->支持 JPG / PNG，保存方式可选原图或压缩</span>
             </label>
             <img data-page-node-id="zmjBgImgBlur" class="bg-blur" alt id="bgImgBlur" style="display:none">
             <img data-page-node-id="ukxGjmhIIn1HQFNhR8gl2e" alt id="bgImg" style="display:none">
@@ -4810,6 +4810,13 @@
             <span data-page-node-id="cRiZJITLcNjQbyH6se9T78" data-f="16:9" onclick="pickBgFit('16:9')"><!--pnid:DqWssvE9qn8igqlYwnp7Bs-->16:9</span>
             <span data-page-node-id="FlxiUKA89s3U66ee0Skhrm" data-f="4:3" onclick="pickBgFit('4:3')"><!--pnid:iT2tnenLDS00UakfyIvIY3-->4:3</span>
             <span data-page-node-id="GitO7YXgujVpqIllzeI6oG" data-f="1:1" onclick="pickBgFit('1:1')"><!--pnid:htTeVugtqHBhC0dfkyKXnB-->1:1</span>
+        </div>
+        <div data-page-node-id="zmjBgQualRow" class="bg-alpha" id="bgQualRow" style="display:none">
+            <span>保存方式</span>
+            <div class="bg-fit-seg" id="bgQual" style="flex:1">
+                <span data-q="orig" onclick="pickBgQual('orig')">原图（更清晰）</span>
+                <span data-q="cmp" onclick="pickBgQual('cmp')">压缩（省空间）</span>
+            </div>
         </div>
         <div data-page-node-id="zmjBgPrevRow" class="bg-prev-row" id="bgPrevRow" style="display:none">
             <button data-page-node-id="zmjBgPrevBtn" id="bgPrevToggle" onclick="toggleBgPreviewMode()" type="button"><!--pnid:2P8ZL31VGw7ipjKYaxwO0X--><!--pnid:zmjBgPrevBtnTx--><!--pnid:z4EGkzeDP5Qlizbu1HURr8-->👁 看实际效果</button>
@@ -10845,7 +10852,7 @@
     /* v8: 专注页分组折叠 + 详情侧栏 */
     const FCD_COLORS = ['#f7f7fc','#fff7e6','#e8f5e9','#e3f2fd','#fce4ec','#f3e5f5','#f5f5f5','#fffbe6'];
     /* v13: 肉眼可见的版本号 —— 用于判断浏览器是否还在用旧缓存 */
-    const APP_VER = 'v28';
+    const APP_VER = 'v39';
     let focusDetailOpen = false,
         focusDetailPct = +((S.settings && S.settings.focusDetailPct) || 32),
         focusDetailColor = (S.settings && S.settings.focusDetailColor) || '#f7f7fc',
@@ -16214,84 +16221,9 @@
     }
     function mbTxt(bytes) { return (bytes / 1048576).toFixed(2); }
 
-    /* 栏目图降质梯子：[长边, 质量]。额度不够时逐级缩小，尽量"存得下"而不是直接拒绝 */
-    const PART_LADDER = [[1080, 0.82], [880, 0.74], [700, 0.66], [520, 0.58]];
-
-    /* v27：一键瘦身 —— 把所有已存背景图等比重压缩（长边≤1080 / JPEG 0.8）。
-       旧版栏目图存的是原图 dataURL（单张可达数 MB），瘦身通常能释放大量空间；
-       等比缩放不改构图，裁剪偏移 x/y 按同比例缩。 */
-    function bgSlimAll(btn) {
-        if (btn) { btn.disabled = true; btn.textContent = '瘦身中…'; }
-        const jobs = [];
-        /* v33：栏目图（rec.parts[k].img）一并纳入瘦身 —— 旧版只压整页背景，
-           栏目图永远瘦不掉，占用条却按 v33 修正后的口径计入，会显得「瘦身无效」。 */
-        const addRec = rec => {
-            if (!rec) return;
-            if (rec.d && String(rec.d).indexOf('data:image') === 0) jobs.push({ rec });
-            if (rec.parts && typeof rec.parts === 'object') {
-                Object.keys(rec.parts).forEach(pk => {
-                    const p = rec.parts[pk];
-                    if (p && p.img && String(p.img).indexOf('data:image') === 0) jobs.push({ rec, part: p });
-                });
-            }
-        };
-        BG_SCOPES.forEach(s => { if (s.k) addRec(bgGet(s.k)); });
-        Object.keys(CARDBG).forEach(k => addRec(CARDBG[k]));
-        Object.keys(HABITBG).forEach(k => addRec(HABITBG[k]));
-        if (!jobs.length) {
-            showToast('没有可瘦身的背景图');
-            if (btn) { btn.disabled = false; btn.textContent = '📦 一键瘦身'; }
-            return;
-        }
-        let left = jobs.length, done = 0, savedBytes = 0;
-        const finish = () => {
-            saveBg();
-            try { saveCardBg(); } catch (e) {}
-            try { saveHabitBg(); } catch (e) {}
-            applyBg();
-            renderBgScopeList();
-            showToast(done === 0 ? '图片都已压缩过，无需瘦身' : ('瘦身完成：压缩 ' + done + ' 张，释放 ' + (savedBytes / 1024).toFixed(0) + 'KB'));
-            if (btn) { btn.disabled = false; btn.textContent = '📦 一键瘦身'; }
-        };
-        jobs.forEach(job => {
-            const rec = job.rec, isPart = !!job.part;
-            const src = isPart ? job.part.img : rec.d;
-            const img = new Image();
-            img.onload = () => {
-                try {
-                    const ratio = (img.width / img.height) || 1;
-                    let w, h;
-                    if (img.width >= img.height) { w = Math.min(1080, img.width); h = Math.round(w / ratio); }
-                    else { h = Math.min(1080, img.height); w = Math.round(h * ratio); }
-                    if (w * h > 16e6) { w = Math.round(Math.sqrt(16e6 * ratio)); h = Math.round(w / ratio); }
-                    const c = document.createElement('canvas');
-                    c.width = w; c.height = h;
-                    c.getContext('2d').drawImage(img, 0, 0, w, h);
-                    const url = c.toDataURL('image/jpeg', 0.8);
-                    if (url.length < src.length) {
-                        if (isPart) {
-                            /* 栏目图按 cover 整图覆盖显示，无裁剪偏移，直接替换即可 */
-                            savedBytes += (src.length - url.length) * LS_CHAR_BYTES;
-                            job.part.img = url;
-                            done++;
-                        } else {
-                            const k = img.width ? (w / img.width) : 1;
-                            if (typeof rec.x === 'number') rec.x = Math.round(rec.x * k);
-                            if (typeof rec.y === 'number') rec.y = Math.round(rec.y * k);
-                            if (rec.w) rec.w = w;
-                            if (rec.h) rec.h = h;
-                            savedBytes += (rec.d.length - url.length) * LS_CHAR_BYTES;
-                            rec.d = url;
-                            done++;
-                        }
-                    }
-                } catch (e) {}
-                if (--left === 0) finish();
-            };
-            img.onerror = () => { if (--left === 0) finish(); };
-            img.src = src;
-        });
-    }
+    /* v38：背景图改为原图保存（不压缩），「一键瘦身」随之停用。
+       保留空函数防止旧缓存页面残留的 onclick 报错。 */
+    function bgSlimAll() { showToast('背景图保持原图保存，瘦身功能已停用'); }
 
     /* 编辑器暂存态 */
     let bgEdit = null;
@@ -16351,7 +16283,7 @@
         let html = `<div class="bgscope-usage${warnCls}">
             <span>🖼 背景图 <b>${mbTxt(usedB)}MB</b> / 可用 ${mbTxt(quotaB)}MB
             <span class="u-tip">已用 ${pct}% · 额度随可用空间自动调整</span></span>
-            <button type="button" onclick="bgSlimAll(this)">📦 一键瘦身</button></div>`;
+            </div>`;
         html += BG_SCOPES.map(s => {
             if (s.group) return `<div class="bgscope-sep">${s.group}</div>`;
             const has = !!bgGet(s.k);
@@ -16415,6 +16347,7 @@
         document.getElementById('bgImg').style.display = 'none';
         document.getElementById('bgUploadBtn').style.display = 'flex';
         document.getElementById('bgFit').style.display = 'none';
+        document.getElementById('bgQualRow').style.display = 'none';
         document.getElementById('bgZoom').style.display = 'none';
         (function () { const pk = document.getElementById('bgPickBtn'); if (pk) { pk.style.display = ''; pk.textContent = '📁 上传本地图片'; } })();
         document.getElementById('bgConfirmRow').style.display = 'none';
@@ -17091,7 +17024,7 @@
         bgEdit = null;
         /* mBg 上：上传按钮仍可见，但裁剪/缩放/可见度控件全部隐藏 — 栏目图直接整图覆盖 */
         document.getElementById('bgTitle').textContent = '栏目图 · ' + partK;
-        const ids = ['bgImg','bgFit','bgZoom','bgPMask','bgPTasks','bgConfirmRow','bgAlphaRow','bgPrevRow','bgPresets'];
+        const ids = ['bgImg','bgFit','bgZoom','bgPMask','bgPTasks','bgConfirmRow','bgAlphaRow','bgPrevRow','bgPresets','bgQualRow'];
         ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         const up = document.getElementById('bgUploadBtn'); if (up) up.style.display = 'flex';
         const pk = document.getElementById('bgPickBtn'); if (pk) { pk.style.display = ''; pk.textContent = '📁 上传栏目图'; }
@@ -17298,6 +17231,7 @@
             img.style.display = 'block';
             document.getElementById('bgUploadBtn').style.display = 'none';
             document.getElementById('bgFit').style.display = 'flex';
+            syncBgQualUI();   // v39：显示「保存方式」选项（原图/压缩）
             document.getElementById('bgZoom').style.display = 'flex';
             document.getElementById('bgAlphaRow').style.display = 'flex';
             document.getElementById('bgPMask').style.display = 'block';
@@ -17330,31 +17264,24 @@
         /* v25: 栏目背景图 mode —— 直接走 commitPartImg，不影响整页背景 */
         if (window._bgPartK && window._bgPartMode === 'part') {
             const partK = window._bgPartK;
-            /* v27：栏目图先压缩（长边 1080 / JPEG 0.82，通常 150~400KB）再查配额。
-               旧版直接存原图 dataURL（最大放行 6MB），一两张就把总配额吃满，
-               之后所有上传都被「请先清除」挡下 —— 看起来就是"点了 +图 替换没反应"。
-               v28：配额改为动态（总配额 − 业务数据 − 增长预留），不再是写死的 4MB。 */
-            showToast('正在压缩栏目图…');
-            (async () => {
-                for (let i = 0; i < PART_LADDER.length; i++) {
-                    const res = await compressImage(f, PART_LADDER[i][0], PART_LADDER[i][1]);
-                    const need = res.dataURL.length * LS_CHAR_BYTES;
-                    const used = bgTotalBytes(), quota = bgQuota();
-                    if ((used + need) <= quota) {
-                        commitPartImg(res.dataURL);
-                        /* 仅保存栏目图，不显示舞台预览 */
-                        bgEdit = null;
-                        inp.value = '';
-                        applyBg();
-                        try { showToast(i ? '⚠️ 空间紧张，已自动缩小后保存' : '栏目图已保存'); } catch (e) {}
-                        bgStage.style.backgroundImage = '';
-                        return;
-                    }
-                    if (i === PART_LADDER.length - 1) {
-                        notify('背景图空间不足：已用 ' + mbTxt(used) + 'MB，可用 ' + mbTxt(quota) + 'MB，这张图最小档还需 ' + mbTxt(need) + 'MB。\n\n可回到位置列表点顶部「📦 一键瘦身」释放空间，或清除不再使用的背景。');
-                    }
+            /* v38：栏目图不再压缩 —— 原图 dataURL 直接保存。
+               存储确实装不下时如实提示（不再自动降质缩水，尊重「背景图不要压缩」的设置）。 */
+            showToast('正在读取原图…');
+            readFileAsDataURL(f).then(({ dataURL }) => {
+                const need = dataURL.length * LS_CHAR_BYTES;
+                const used = bgTotalBytes(), quota = bgQuota();
+                if ((used + need) <= quota) {
+                    commitPartImg(dataURL);
+                    /* 仅保存栏目图，不显示舞台预览 */
+                    bgEdit = null;
+                    inp.value = '';
+                    applyBg();
+                    showToast('栏目图已保存（原图）');
+                    bgStage.style.backgroundImage = '';
+                } else {
+                    notify('背景图空间不足：这张原图需要 ' + mbTxt(need) + 'MB，当前可用 ' + mbTxt(Math.max(0, quota - used)) + 'MB。\n\n请清除不再使用的背景图后重试（背景图保持原图保存，不会自动压缩）。');
                 }
-            })().catch(e => notify('图片处理失败：' + (e.message || '未知错误')));
+            }).catch(e => notify('图片读取失败：' + (e.message || '未知错误')));
             return;
         }
         // 换图时保留用户上次调好的"底图可见度"
@@ -17385,6 +17312,7 @@
                 img.style.display = 'block';
                 document.getElementById('bgUploadBtn').style.display = 'none';
                 document.getElementById('bgFit').style.display = 'flex';
+                syncBgQualUI();   // v39：显示「保存方式」选项（原图/压缩）
                 document.getElementById('bgZoom').style.display = 'flex';
                 document.getElementById('bgAlphaRow').style.display = 'flex';
                 document.getElementById('bgPMask').style.display = 'block';
@@ -17618,7 +17546,7 @@
             hint.textContent = '当前浏览器不支持选择本地文件，请用系统浏览器打开';
             hint.style.color = '#e74c3c';
         } else if (hint && hint.style.color === 'rgb(231, 76, 60)') {
-            hint.textContent = '支持 JPG / PNG，原图保存';
+            hint.textContent = '支持 JPG / PNG，保存方式可选原图或压缩';
             hint.style.color = '';
         }
     }
@@ -17736,12 +17664,14 @@
         const cover = Math.max(stW / baseW, stH / baseH) * (be.userScale || 1);
         if (!cover) return null;
         const rw = baseW * cover, rh = baseH * cover;
-        // 输出：长边 2 倍于舞台逻辑尺寸、上限 maxLong（默认 1080），保证清晰又不超配额。
+        // 输出：v38 起按「舞台可见区域在原图中的 1:1 像素」输出 —— 原图多少分辨率，
+        // 存的就是多少分辨率，不再缩到 1080。仅设 4096 硬上限防极端超限（canvas 解码极限）。
         // v28：maxLong / q 可由调用方指定，用于存不下时逐级降质重试。
-        const cap = maxLong || 1080;
-        let outW, outH;
-        if (stW >= stH) { outW = Math.min(cap, Math.max(480, Math.round(stW * 2))); outH = Math.max(1, Math.round(outW * stH / stW)); }
-        else { outH = Math.min(cap, Math.max(480, Math.round(stH * 2))); outW = Math.max(1, Math.round(outH * stW / stH)); }
+        const cap = maxLong || 4096;
+        let pixW = stW / cover, pixH = stH / cover;      // 舞台可见区域对应的源图像素
+        const longPx = Math.max(pixW, pixH);
+        if (longPx > cap) { const kk = cap / longPx; pixW *= kk; pixH *= kk; }
+        const outW = Math.max(1, Math.round(pixW)), outH = Math.max(1, Math.round(pixH));
         const k = outW / stW;
         try {
             const c = document.createElement('canvas');
@@ -17759,7 +17689,7 @@
             ctx.drawImage(img, (outW - fw) / 2, (outH - fh) / 2, fw, fh);
             ctx.restore();
             ctx.drawImage(img, (be.x || 0) * k, (be.y || 0) * k, rw * k, rh * k);
-            return c.toDataURL('image/jpeg', q == null ? 0.85 : q);
+            return c.toDataURL('image/jpeg', q == null ? 0.92 : q);
         } catch (e) {
             console.warn('cropBgImage 失败，退回原图+偏移', e);
             return null;
@@ -17787,9 +17717,26 @@
             : { d: be.dataURL, x: be.x, y: be.y, s: be.userScale, fit: be.fit, alpha: (be.alpha == null ? 55 : be.alpha) };
     }
     /* 把当前编辑态（构图 + 可见度）写进存储，保留已调好的栏目透明度。
-       v28：存不下时自动逐级降质重试（0.85→0.72→0.6→0.5，长边 1080→620），
-       不再一上来就弹"请先清除其他背景图"把问题原样丢回给用户。 */
+       v38：原图模式按原图分辨率 1:1 输出（不缩）；v39：用户可在换图界面自选
+       「原图 / 压缩」，压缩档 = 长边 1080 / q0.85。BG_SAVE_LADDER 仅在
+       localStorage 确实装不下当前档位时作为兜底逐级降质。 */
     const BG_SAVE_LADDER = [[0.72, 1080], [0.6, 900], [0.5, 760], [0.45, 620]];
+    /* v39：保存方式（原图 / 压缩），记忆用户上次的选择 */
+    function bgQualMode() {
+        try { return localStorage.getItem('zmv_bg_quality') === 'cmp' ? 'cmp' : 'orig'; }
+        catch (e) { return 'orig'; }
+    }
+    function pickBgQual(m) {
+        try { localStorage.setItem('zmv_bg_quality', m === 'cmp' ? 'cmp' : 'orig'); } catch (e) {}
+        syncBgQualUI();
+        if (bgEdit && window._bgScope) bgAutoSave(300);   // 切换后立即按新档位重存当前图
+    }
+    function syncBgQualUI() {
+        const row = document.getElementById('bgQualRow');
+        if (!row) return;
+        const m = bgQualMode();
+        document.querySelectorAll('#bgQual span').forEach(s => s.classList.toggle('on', s.dataset.q === m));
+    }
     function commitBgEdit() {
         const scope = window._bgScope;
         if (!scope || !bgEdit) return false;
@@ -17798,7 +17745,9 @@
         const keepCover = old ? old.cover : undefined;   /* v26：覆盖层整体系数一并保留 */
         const put = rec => { if (keep) rec.parts = keep; if (keepCover != null) rec.cover = keepCover; bgSet(scope, rec); };
 
-        put(buildBgRec(bgEdit, 0.85, 1080));
+        /* v39：首选档由「保存方式」决定 —— 原图=1:1 不缩；压缩=长边 1080 / q0.85 */
+        if (bgQualMode() === 'cmp') put(buildBgRec(bgEdit, 0.85, 1080));
+        else put(buildBgRec(bgEdit, 0.92));
         if (bgPersist(scope)) return true;
 
         for (let i = 0; i < BG_SAVE_LADDER.length; i++) {
@@ -17846,6 +17795,7 @@
         document.getElementById('bgFit').style.display = 'none';
         document.getElementById('bgZoom').style.display = 'none';
         document.getElementById('bgAlphaRow').style.display = 'none';
+        document.getElementById('bgQualRow').style.display = 'none';
         document.getElementById('bgPMask').style.display = 'none';
         document.getElementById('bgPTasks').style.display = 'none';
         document.getElementById('bgPickBtn').style.display = '';
@@ -18174,7 +18124,7 @@
     /* 预设不走图片编辑流程：直接把舞台铺成该背景作为预览 */
     function showBgPresetPreview(p) {
         const stage = document.getElementById('bgStage');
-        const ids = ['bgImg', 'bgFit', 'bgZoom', 'bgPMask', 'bgPTasks', 'bgConfirmRow'];
+        const ids = ['bgImg', 'bgFit', 'bgZoom', 'bgPMask', 'bgPTasks', 'bgConfirmRow', 'bgQualRow'];
         ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         /* v22：已有背景时仍保留「换成图片」入口（旧版把上传按钮一起藏了 → 换不了图） */
         const up = document.getElementById('bgUploadBtn');
@@ -18918,7 +18868,7 @@
                 const sizeBytes = JSON.stringify(payload).length;
                 if (sizeBytes > GIST_SAFE_BYTES) {
                     const ok = await showConfirm('⚠️ 数据体积偏大',
-                        '当前数据约 ' + Math.round(sizeBytes / 1024) + 'KB。\nGist 读取超过 1MB 会被截断，另一台设备「下载」可能不完整。\n建议先在「背景与图片」里做一键瘦身。\n\n仍要继续上传吗？');
+                        '当前数据约 ' + Math.round(sizeBytes / 1024) + 'KB。\nGist 读取超过 1MB 会被截断，另一台设备「下载」可能不完整。\n保存方式为「原图」时背景图不压缩，数据会明显变大。\n\n仍要继续上传吗？');
                     if (!ok) return;
                 }
                 await writeGist(payload);
