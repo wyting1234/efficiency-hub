@@ -3721,6 +3721,10 @@
         body.ink-on .rv-frame,
         body.ink-on .rv-table,
         body.ink-on .sched-grid,
+        /* v37：下方信息栏(sched-drawer)与月视图网格(month-grid)此前漏出实心白底 ——
+           字浮开着时日历透了、下面栏目还是白块，即为该遗漏 */
+        body.ink-on .sched-drawer,
+        body.ink-on .month-grid,
         /* v32：习惯页不豁免 —— 打卡钮 / 图标也参与透明化 */
         body.ink-on .h-card .h-icon,
         body.ink-on .h-card .h-check,
