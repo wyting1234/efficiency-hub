@@ -87,10 +87,11 @@
 
 <dialog id="dlg">
   <h3 id="dlgTitle">添加信息源</h3>
-  <label>名称（格式：站点-一级分类-二级分类）</label><input id="fName" placeholder="如：东方财富-宏观-国内" list="catList"><datalist id="catList"></datalist>
+  <label>站点名称</label><input id="fSite" placeholder="如：东方财富">
+  <label>一级分类</label><input id="fCat1" placeholder="如：宏观" list="catList"><datalist id="catList"></datalist>
+  <label>二级分类（可留空）</label><input id="fCat2" placeholder="如：国内">
   <label>网址</label><input id="fUrl" placeholder="https://…">
   <label>RSS 地址（可选，填了才能在工作台内直接刷标题）</label><input id="fRss" placeholder="https://…/rss.xml">
-  <div class="hint" id="parsePreview">解析结果将显示在这里。</div>
   <div class="row">
     <button class="btn-ghost" id="dlgCancel">取消</button>
     <button class="btn-primary" id="dlgSave">保存</button>
@@ -221,8 +222,8 @@ function render(){
   document.getElementById('statDone').textContent=done;
   document.getElementById('statTotal').textContent=total;
   document.getElementById('progressFill').style.width=total?(done/total*100)+'%':'0%';
-  // 名称联想（已保存的完整名称）
-  document.getElementById('catList').innerHTML=[...new Set(sources.map(s=>fullName(s)))].map(v=>`<option value="${esc(v)}">`).join('');
+  // 一级分类联想（已保存的分类，排除未分类）
+  document.getElementById('catList').innerHTML=[...new Set(sources.map(s=>s.cat).filter(c=>c&&c!=='未分类'))].map(v=>`<option value="${esc(v)}">`).join('');
 }
 
 function openSrc(id){
@@ -242,32 +243,28 @@ function editSrc(id){
   const s=sources.find(x=>x.id===id);if(!s)return;
   editingId=id;
   document.getElementById('dlgTitle').textContent='编辑信息源';
-  fName.value=fullName(s);fUrl.value=s.url;fRss.value=s.rss||'';
-  updatePreview();
+  // 兼容旧数据：优先用存储的 site/cat/subcat，旧格式（name 或 full 带 "-"）则解析
+  let site=s.name,c1=(s.cat&&s.cat!=='未分类')?s.cat:'',c2=s.subcat||'';
+  if(s.full){const p=parseName(s.full);site=p.name;c1=(p.cat==='未分类')?'':p.cat;c2=p.subcat}
+  else if(s.name.includes('-')){const p=parseName(s.name);site=p.name;c1=c1||(p.cat==='未分类'?'':p.cat);c2=c2||p.subcat}
+  fSite.value=site;fCat1.value=c1;fCat2.value=c2;fUrl.value=s.url;fRss.value=s.rss||'';
   dlg.showModal();
 }
 
 // 添加/编辑弹窗
 const dlg=document.getElementById('dlg');
-function updatePreview(){
-  const raw=fName.value.trim();
-  const p=document.getElementById('parsePreview');
-  if(!raw){p.textContent='解析结果将显示在这里。';return}
-  const r=parseName(raw);
-  p.innerHTML=`解析为：名称 <b>「${esc(r.name)}」</b> / 一级分类 <b>「${esc(r.cat)}」</b> / 二级分类 <b>「${esc(r.subcat||'（无）')}」</b>`;
-}
-document.getElementById('fName').oninput=updatePreview;
 document.getElementById('btnAdd').onclick=()=>{editingId=null;document.getElementById('dlgTitle').textContent='添加信息源';
-  fName.value='';fUrl.value='';fRss.value='';updatePreview();dlg.showModal()};
+  fSite.value='';fCat1.value='';fCat2.value='';fUrl.value='';fRss.value='';dlg.showModal()};
 document.getElementById('dlgCancel').onclick=()=>dlg.close();
 document.getElementById('dlgSave').onclick=()=>{
-  const raw=fName.value.trim(),url=fUrl.value.trim(),rss=fRss.value.trim();
-  if(!raw||!url){alert('名称和网址必填');return}
+  const site=fSite.value.trim(),c1=fCat1.value.trim(),c2=fCat2.value.trim(),url=fUrl.value.trim(),rss=fRss.value.trim();
+  if(!site||!url){alert('站点名称和网址必填');return}
   const fixed=/^https?:\/\//i.test(url)?url:'https://'+url;
   const fixedRss=rss&&!/^https?:\/\//i.test(rss)?'https://'+rss:rss;
-  const p=parseName(raw);
-  if(editingId){Object.assign(sources.find(x=>x.id===editingId),{name:p.name,cat:p.cat,subcat:p.subcat,full:raw,url:fixed,rss:fixedRss})}
-  else sources.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:p.name,cat:p.cat,subcat:p.subcat,full:raw,url:fixed,rss:fixedRss,lastSeen:null});
+  const cat=c1||'未分类',subcat=c2||'';
+  const full=[site,c1,c2].filter(Boolean).join('-');
+  if(editingId){Object.assign(sources.find(x=>x.id===editingId),{name:site,cat,subcat,full,url:fixed,rss:fixedRss})}
+  else sources.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:site,cat,subcat,full,url:fixed,rss:fixedRss,lastSeen:null});
   save();render();dlg.close();
 };
 document.getElementById('btnFetch').onclick=refreshTitles;
@@ -297,16 +294,15 @@ fileInput.onchange=e=>{
 // 示例源
 document.getElementById('btnSeed').onclick=()=>{
   const seed=[
-    ['财联社-快讯-电报','https://www.cls.cn/telegraph','https://www.cls.cn/rss/telegraph.xml'],
-    ['东方财富-快讯-全球','https://kuaixun.eastmoney.com/',''],
-    ['东方财富-要闻-综合','https://finance.eastmoney.com/',''],
-    ['同花顺-快讯-热点','https://news.10jqka.com.cn/realtimenews.html',''],
-    ['新浪财经-宏观-国内','https://finance.sina.com.cn/macrolife/',''],
-    ['证券时报-要闻-综合','https://www.stcn.com/','']
+    ['财联社','快讯','电报','https://www.cls.cn/telegraph','https://www.cls.cn/rss/telegraph.xml'],
+    ['东方财富','快讯','全球','https://kuaixun.eastmoney.com/',''],
+    ['东方财富','要闻','综合','https://finance.eastmoney.com/',''],
+    ['同花顺','快讯','热点','https://news.10jqka.com.cn/realtimenews.html',''],
+    ['新浪财经','宏观','国内','https://finance.sina.com.cn/macrolife/',''],
+    ['证券时报','要闻','综合','https://www.stcn.com/','']
   ];
-  seed.forEach(([full,url,rss])=>{
-    const p=parseName(full);
-    sources.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:p.name,cat:p.cat,subcat:p.subcat,full,url,rss,lastSeen:null});
+  seed.forEach(([site,c1,c2,url,rss])=>{
+    sources.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:site,cat:c1,subcat:c2,full:[site,c1,c2].join('-'),url,rss,lastSeen:null});
   });
   save();render();
 };
