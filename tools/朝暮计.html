@@ -2305,25 +2305,24 @@
         }
         .focus-center .ft-done .ft-done-btns span:active { transform: scale(.94); }
         /* v21: 勉励语从计时圈里挪出来 —— 落在「计时圈底边」与「控制模块」之间的空档正中。
-           CSS 给一套兜底值，渲染后再由 alignFocusQuote() 实测几何精确覆盖，
-           屏幕高矮 / 控制按钮大小 / 圆环缩放都能自动对中。 */
+           v40: 盒子改为内容自适应（width:max-content，不再 top/bottom 撑满全宽条），
+           中心点由 alignFocusQuote() 实测几何精确覆盖，拖动位移仍走 --ox/--oy。 */
         .focus-page > .ft-quote {
             position: absolute;
-            left: 0; right: 0;
+            left: 50%;
+            right: auto;
             top: calc(50% + 130px + var(--oy, 0px));
-            bottom: calc(28px + var(--ctrl-h, 40px) + 14px - var(--oy, 0px));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 4px 28px;
+            bottom: auto;
+            width: max-content;
+            max-width: calc(100% - 36px);
+            transform: translate(calc(-50% + var(--ox, 0px)), -50%);
             text-align: center;
             line-height: 1.5;
             word-break: break-word;
             z-index: 4;
             pointer-events: auto;
             touch-action: none;
-            transform: translateX(var(--ox, 0px));
-            transition: opacity .35s ease, top .15s, bottom .15s;
+            transition: opacity .35s ease, top .15s;
         }
         .focus-page > .ft-quote.ft-dragover {
             box-shadow: 0 0 0 2px var(--main);
@@ -2412,8 +2411,8 @@
         .ft-grip:hover { opacity: 1; transform: scale(1.15); }
         .ft-grip:active { cursor: grabbing; opacity: 1; }
         .focus-page.dark .ft-grip { background: rgba(48,48,62,.92); color: #a29bfe; }
-        /* 勉励语是全宽条，把柄收进文字区右上，不顶到屏幕边 */
-        .focus-page > .ft-quote .ft-grip { right: 30px; top: -8px; }
+        /* v40: 勉励语盒子已自适应内容大小，把柄收在盒右上角（不再需要避开屏幕边） */
+        .focus-page > .ft-quote .ft-grip { right: -8px; top: -10px; }
         /* v18: 移动端让「返回」与控制模块不打架 —— 返回按钮贴左偏上
            v22: 这两个值必须带上 --ox/--oy，否则小屏下长按拖动改了变量、
                 位置却被这段固定值覆盖 → 控制模块和返回按钮"挪不动"。 */
@@ -3778,6 +3777,25 @@
         }
         /* 复盘表格汇总行是 inline 背景，字浮时统一压透明 */
         body.ink-on .rv-table tr { background-color: transparent !important; }
+        /* v41：字浮模式 = 底图完全透亮，文字直接打在图上 ——
+           压在图片上的各层白雾纱罩全部归零：页面内容区纱罩(--pagemask) /
+           四象限遮罩与任务条白底(--bgmask/--bgcard) / 区域遮罩(日历·信息区·日记本) /
+           顶栏与底部导航的白底毛玻璃。字浮卡片白底仍由「白底浓度」滑杆(--ink-card)单独控制。 */
+        body.ink-on #app.has-bg main { background: rgba(245,246,250,0) !important; }
+        body.ink-on .quad.has-bg::before { background: rgba(255,255,255,0) !important; }
+        body.ink-on .quad.has-bg .qtask { background-color: rgba(255,255,255,0) !important; }
+        body.ink-on .quad.has-bg .qhd { background: rgba(255,255,255,0) !important; }
+        body.ink-on .sched-grid.has-bg::before,
+        body.ink-on .sched-drawer.has-bg::before,
+        body.ink-on .diary-page.has-bg::before { background: rgba(255,255,255,0) !important; }
+        body.ink-on #app.has-bg header.bar {
+            background: rgba(255,255,255,0) !important;
+            backdrop-filter: none !important;
+        }
+        body.ink-on #app.has-bg .nav {
+            background: rgba(255,255,255,0) !important;
+            backdrop-filter: none !important;
+        }
         /* v31b：卡片内的表单控件（下拉 / 输入框 / 文本域）——白底透明化 + 描边，
            避免字浮后出现「白底白字」的空块 */
         body.ink-on :is(.card, .v-row, .v-section, .sub, .qtask, .list-header, .stat-seg, .h-card)
@@ -10852,7 +10870,7 @@
     /* v8: 专注页分组折叠 + 详情侧栏 */
     const FCD_COLORS = ['#f7f7fc','#fff7e6','#e8f5e9','#e3f2fd','#fce4ec','#f3e5f5','#f5f5f5','#fffbe6'];
     /* v13: 肉眼可见的版本号 —— 用于判断浏览器是否还在用旧缓存 */
-    const APP_VER = 'v39';
+    const APP_VER = 'v41';
     let focusDetailOpen = false,
         focusDetailPct = +((S.settings && S.settings.focusDetailPct) || 32),
         focusDetailColor = (S.settings && S.settings.focusDetailColor) || '#f7f7fc',
@@ -11024,7 +11042,7 @@
                 if (!moved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) moved = true;
                 el.style.setProperty('--ox', (ox + dx) + 'px');
                 el.style.setProperty('--oy', (oy + dy) + 'px');
-                /* v21: 勉励语用的是 top/bottom 撑开居中，位移要实时重算 */
+                /* v40: 勉励语盒子自适应内容，中心点随 --oy 实时重算 */
                 if (el.classList.contains('ft-quote')) { try { alignFocusQuote(); } catch (ex) {} }
             };
             const end = () => {
@@ -11066,7 +11084,9 @@
             }
         });
     }
-    /* v21: 实测「计时圈底边」与「控制模块顶边」，把勉励语精确摆在这段空档的正中 */
+    /* v21: 实测「计时圈底边」与「控制模块顶边」，把勉励语摆在这段空档正中
+       v40: 勉励语盒子已改为内容自适应（translate(-50%,-50%) 双向居中），
+       这里只计算「空档中点」写入 top，宽高交由内容决定 */
     function alignFocusQuote() {
         const pg   = document.querySelector('.focus-page');
         const ring = document.querySelector('.focus-ring-wrap');
@@ -11075,9 +11095,9 @@
         if (!pg || !ring || !ctrl || !q) return;
         const p = pg.getBoundingClientRect(), r = ring.getBoundingClientRect(), c = ctrl.getBoundingClientRect();
         const oy = parseFloat(q.style.getPropertyValue('--oy')) || 0;
-        const GAP = 14;                       // 上下各留 14px 呼吸位
-        q.style.top    = (r.bottom - p.top + GAP + oy) + 'px';
-        q.style.bottom = (p.bottom - c.top + GAP - oy) + 'px';
+        const mid = (r.bottom + c.top) / 2 - p.top + oy;   // 空档几何中点（页面坐标系）
+        q.style.top    = mid + 'px';
+        q.style.bottom = 'auto';
     }
     function saveFocusLayoutTo() {
         /* 同步 focusLayout 全局对象 → settings */
@@ -11533,6 +11553,7 @@
                 </div>
                 ${statsHTML()}
                 <div class="sp-links">
+                    <div class="sp-lk" onclick="go('review')"><span>📓</span>去复盘 · 今日数据自动汇总<span class="ar">›</span></div>
                     <div class="sp-lk" onclick="openFocusLogM()"><span>📋</span>专注记录明细<span class="ar">›</span></div>
                     <div class="sp-lk" onclick="openFutureM()"><span>⏳</span>未来倒计时<span class="ar">›</span></div>
                 </div>
@@ -13640,6 +13661,16 @@
                 <div class="rv-frame-body" id="rv-frame-4-body"></div>
             </div>
 
+            <!-- v28 第五栏：专注感悟（模块联动：专注结束时写的感悟按范围自动汇入复盘） -->
+            <div class="rv-frame" id="rv-frame-5">
+                <div class="rv-frame-h">
+                    <span class="tico">💬</span>
+                    <span class="ttl">专注感悟</span>
+                    <span class="rv-meta" id="rv-frame-5-meta"></span>
+                </div>
+                <div class="rv-frame-body" id="rv-frame-5-body"></div>
+            </div>
+
             <!-- 第三栏：日记本入口（v24: 编辑区已移到全屏页，这里只做入口 + 摘要） -->
             <div class="rv-frame rv-diary-frame" id="rv-frame-3">
                 <div class="rv-frame-body" id="rv-frame-3-body">
@@ -13762,6 +13793,7 @@
             <button data-cmd="insertOrderedList"   onclick="diaryExec('insertOrderedList')" title="有序序号">1.</button>
             <button data-cmd="insertUnorderedList" onclick="diaryExec('insertUnorderedList')" title="无序列表">•</button>
             <button onclick="diaryInsertDate()" title="插入今天日期">📅 日期</button>
+            <button onclick="diaryInsertOverview()" title="插入当前日期的完成概览（联动清单/习惯/专注数据）">📊 概览</button>
             <span class="sep"></span>
             <select onchange="diaryFont(this.value)" title="字体">
                 <option value="">字体</option>
@@ -13866,6 +13898,7 @@
         rvRenderFrame1();
         rvRenderFrame2();
         rvRenderScoreTrend();   // v27：每日得分趋势
+        rvRenderInsights();     // v28：专注感悟（模块联动）
         // 第三栏只刷新 meta（内容由用户自己写）
         // 第三框（日记入口卡片）的摘要也跟着刷新，能看到刚写的字数 / 天气 / 心情
         const f3 = document.getElementById('rv-frame-3-body');
@@ -14261,6 +14294,41 @@
         }
     }
 
+    /* v28：第五栏「专注感悟」—— 模块联动：专注结束时的感悟（S.insights）
+       按复盘范围自动汇入复盘页，无需再手动翻「我的」页找 */
+    function rvRenderInsights() {
+        const body = document.getElementById('rv-frame-5-body');
+        const meta = document.getElementById('rv-frame-5-meta');
+        if (!body) return;
+        const range = rvComputeRange(reviewRange, reviewAnchor || today());
+        const list = (S.insights || [])
+            .filter(i => i.date >= range.from && i.date <= range.to)
+            .sort((a, b) => String(b.at || b.date).localeCompare(String(a.at || a.date)));
+        if (meta) meta.textContent = `${list.length} 条`;
+        if (!list.length) {
+            body.innerHTML = '<div style="text-align:center;color:#bbb;padding:14px;font-size:12px">该时间范围内没有专注感悟 —— 结束一次专注后写下感想，会自动汇入这里</div>';
+            return;
+        }
+        body.innerHTML = list.map(i => {
+            const stTag = i.status === 'done' ? '<span class="rv-tag t1">完成</span>'
+                : (i.status === 'partial' ? '<span class="rv-tag t2">部分完成</span>'
+                : '<span class="rv-tag t3">中断放弃</span>');
+            const metaLine = [
+                MODE_LABEL[i.mode] || i.mode || '专注',
+                i.minutes ? i.minutes + ' 分钟' : '',
+                i.task || '未关联'
+            ].filter(Boolean).join(' · ');
+            return `<div class="rv-ins" style="padding:7px 4px;border-bottom:1px dashed #eee">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    <span style="font-size:11px;color:#888;flex:0 0 auto">${esc(i.date)}</span>
+                    <span style="font-size:11px;color:#6a5acd;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(metaLine)}</span>
+                    ${stTag}
+                </div>
+                ${i.txt ? `<div style="font-size:12.5px;color:#2d3436;margin-top:4px;line-height:1.55;word-break:break-word">${esc(i.txt)}</div>` : ''}
+            </div>`;
+        }).join('');
+    }
+
     function rvComputeRange(range, anchor) {
         const a = anchor || today();
         let from = a, to = a, label = '', days = 1;
@@ -14505,6 +14573,30 @@
         const txt = `【${stamp}】`;
         document.execCommand('insertText', false, txt);
         reviewDiaryDirty = true;
+    }
+    /* v28：一键把当前锚点日期的完成数据插入日记（模块联动：清单/习惯/专注/复盘 → 日记）
+       复用复盘页同一套统计口径（rvComputeRange + rvCollectStats + computeDayScore），
+       保证日记里看到的数字与复盘页完全一致 */
+    function diaryInsertOverview() {
+        const ed = document.getElementById('rvDiary');
+        if (!ed) return;
+        const a = reviewAnchor || today();
+        const range = rvComputeRange(reviewRange, a);
+        const d = rvCollectStats(range);
+        const score = computeDayScore(d, range);
+        const taskCnt = d.tasks.length;
+        const taskMin = d.tasks.reduce((x, t) => x + (+t.minutes || 0), 0);
+        const habitCnt = d.habits.reduce((x, h) => x + (+h.count || 0), 0);
+        const insCnt = (S.insights || []).filter(i => i.date >= range.from && i.date <= range.to).length;
+        const html = `<div>📊 ${esc(range.label)} 概览 · 综合得分 <b>${score.value}</b><br>` +
+            `✅ 完成事项 <b>${taskCnt}</b> 项 · ⏱ 专注 <b>${taskMin}</b> 分钟<br>` +
+            `🌱 习惯打卡 <b>${habitCnt}</b> 次 · 💬 感悟 <b>${insCnt}</b> 条</div><div><br></div>`;
+        ed.focus();
+        document.execCommand('insertHTML', false, html);
+        reviewDiaryDirty = true;
+        diarySaveHint();
+        updateDiaryCount();
+        showToast('已插入概览数据');
     }
     /* 用 <span style> 包住当前选区；若没有选区则插入一段占位文字 */
     function diaryWrapTag(tag, attrs) {
