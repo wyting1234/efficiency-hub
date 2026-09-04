@@ -39,6 +39,12 @@
             min-height: 100vh;
             display: flex;
         }
+        /* ===== 主区域：铺满侧栏以外的全部空间 ===== */
+        .main {
+            flex: 1;
+            min-width: 0;
+            padding: 24px 32px 40px;
+        }
         button {
             cursor: pointer;
             font-family: inherit;
@@ -475,9 +481,6 @@
         .guide-panel .guide-body .item .value { cursor:text; outline:none; border-radius:4px; padding:2px 4px; min-height:1.4em; }
         .guide-panel .guide-body .item .value:hover { background:#f0f4ff; }
         .guide-panel .guide-body .item .value:focus { background:#e8eeff; border-bottom:2px solid #5B6ABF; }
-            color: var(--text);
-            margin-top: 2px;
-        }
         .guide-panel .guide-body .item .value .mastery-badge {
             display: inline-block;
             padding: 0 10px;
@@ -896,9 +899,20 @@
         .empty-state p { font-size: 15px; }
 
 
+        @media (min-width: 1400px) {
+            .main { padding: 28px 44px 48px; }
+            .record-list {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 16px;
+                align-items: start;
+            }
+        }
+
         @media (max-width: 1024px) {
             .sidebar { width: 295px; padding: 18px 12px; }
             .main { padding: 20px 18px 30px; }
+            .record-list { display: flex; flex-direction: column; gap: 12px; }
             .form-row { grid-template-columns: 1fr; }
             .form-row.three { grid-template-columns: 1fr; }
             .record-card .bottom { grid-template-columns: 1fr; }
@@ -956,8 +970,13 @@
             
             .main {
                 max-height: none;
-                padding: 16px;
+                padding: 14px 12px 24px;
             }
+            .view-tabs { flex-wrap: wrap; gap: 4px; padding: 4px; }
+            .vtab { flex: 1 1 auto; font-size: 13px; padding: 8px 6px; }
+            .mem-toolbar { flex-wrap: wrap; }
+            .mem-toolbar .mem-title { font-size: 15px; }
+            .record-list { gap: 10px; }
             .course-header { flex-direction: column; }
             .course-header .action-btn { width: 100%; text-align: center; }
             .form-container { padding: 16px; }
