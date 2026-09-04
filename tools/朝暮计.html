@@ -795,6 +795,43 @@
         .v-row.done-fade .v-title { opacity: .45; color: #aaa; }
         .v-row.done-fade .v-dot { opacity: .3; }
         .v-empty{padding:30px 10px;text-align:center;color:#aaa;font-size:13px}
+        /* ===== v45 甘特图视图 ===== */
+        .gantt-tools { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; padding:8px 2px; }
+        .gantt-seg { display:inline-flex; background:#f1f0f7; border-radius:8px; padding:2px; gap:2px; }
+        .gantt-seg span { padding:3px 12px; font-size:11px; border-radius:6px; color:#888; cursor:pointer; }
+        .gantt-seg span.on { background:#fff; color:var(--main); font-weight:600; box-shadow:0 1px 3px rgba(30,30,60,.10); }
+        .g-legend { display:flex; gap:10px; font-size:10px; color:#999; align-items:center; }
+        .g-legend i { display:inline-block; width:10px; height:8px; border-radius:2px; margin-right:3px; vertical-align:-1px; }
+        .gantt-scroll { overflow-x:auto; border:1px solid #ececf4; border-radius:12px; background:#fff; -webkit-overflow-scrolling:touch; }
+        .ghead { display:grid; grid-template-columns:118px 1fr; position:sticky; top:0; z-index:3; background:#fafaff; border-bottom:1px solid #ececf4; }
+        .gcorner { font-size:11px; color:#888; display:flex; align-items:center; padding:0 8px; position:sticky; left:0; background:#fafaff; z-index:2; }
+        .gdays { display:grid; }
+        .gd { text-align:center; padding:5px 0 4px; border-left:1px solid #f4f3fa; min-width:0; }
+        .gd b { display:block; font-size:11px; color:#555; font-weight:600; }
+        .gd small { font-size:9px; color:#b5b2c5; }
+        .gd.wknd { background:#fbfaff; }
+        .gd.wknd b { color:#a09db5; }
+        .gd.mstart { border-left:1px solid #ddd9ef; }
+        .gd.today { background:#f1eefd; border-radius:6px 6px 0 0; }
+        .gd.today b { color:var(--main); }
+        .gantt-body { }
+        .grow { display:grid; grid-template-columns:118px 1fr; border-bottom:1px solid #f4f3fa; min-height:32px; }
+        .grow:last-child { border-bottom:0; }
+        .glabel { font-size:11px; color:#444; display:flex; align-items:center; gap:4px; padding:4px 6px;
+            position:sticky; left:0; background:#fff; z-index:2; cursor:pointer; overflow:hidden; white-space:nowrap; }
+        .glabel:hover { color:var(--main); }
+        .glabel em { font-style:normal; font-size:9px; color:#fff; background:#c9c5e8; border-radius:6px; padding:0 5px; flex:none; }
+        .gico { flex:none; width:16px; height:16px; border-radius:5px; color:#fff; font-size:9px; display:inline-flex; align-items:center; justify-content:center; }
+        .gtrack { position:relative; min-height:32px; }
+        .gbar { position:absolute; top:50%; transform:translateY(-50%); height:17px; line-height:17px; border-radius:5px;
+            background:var(--main); color:#fff; font-size:9px; padding:0 4px; box-sizing:border-box;
+            overflow:hidden; white-space:nowrap; text-overflow:ellipsis; cursor:pointer; z-index:2; min-width:5px; }
+        .gbar:hover { filter:brightness(1.08); }
+        .gbar.done { background:#d8d5ee; color:#7d7a99; }
+        .gbar.over { background:#e74c3c; }
+        .gbar.habit { opacity:.92; text-align:center; }
+        .gnow { position:absolute; top:0; bottom:0; width:0; border-left:1.5px dashed rgba(108,92,231,.4); z-index:1; }
+        .gdot { position:absolute; top:50%; transform:translateY(-50%); width:7px; height:7px; border-radius:50%; opacity:.55; z-index:2; }
         .v-bar{width:60px;height:6px;background:#eee;border-radius:3px;overflow:hidden;flex:none}
         .v-bar-fill{display:block;height:100%;background:var(--main);transition:.2s}
         .v-subprog{color:#aaa;font-size:11px}
@@ -5030,8 +5067,9 @@
             showCardDelBtn: true,
             /* ===== 视图（视图页配置）===== */
             view: {
-                /* 顶层 5 段可见性（日程/日/周/月/列表） */
+                /* 顶层 5 段可见性（日程/甘特/日/周/月/列表） */
                 showSchedule: true,
+                showGantt: true,
                 showDay: true,
                 showWeek: true,
                 showMonth: true,
@@ -5078,7 +5116,7 @@
     if (!Array.isArray(S.anniversaries)) S.anniversaries = [];
     if (!S.settings.view) S.settings.view = {};
     const _vs = S.settings.view;
-    ['showSchedule','showDay','showWeek','showMonth','showList','showHabit','showAnniv'].forEach(k => { if (_vs[k] === undefined) _vs[k] = true; });
+    ['showSchedule','showGantt','showDay','showWeek','showMonth','showList','showHabit','showAnniv'].forEach(k => { if (_vs[k] === undefined) _vs[k] = true; });
     if (!_vs.listTab) _vs.listTab = 'list';
     if (!_vs.fontSize) _vs.fontSize = 'std';
     ['listCat','habitCtx','annivType'].forEach(k => { if (!_vs[k]) _vs[k] = 'all'; });
@@ -7027,8 +7065,9 @@
         S.settings = S.settings || {};
         if (!S.settings.view) S.settings.view = {};
         const v = S.settings.view;
-        ['showSchedule','showDay','showWeek','showMonth','showYear','showList','showHabit','showAnniv'].forEach(k => { if (v[k] === undefined) v[k] = true; });
+        ['showSchedule','showGantt','showDay','showWeek','showMonth','showYear','showList','showHabit','showAnniv'].forEach(k => { if (v[k] === undefined) v[k] = true; });
         if (!v.listTab) v.listTab = 'list';
+        if (!v.ganttSpan) v.ganttSpan = 4;   // v45：甘特图时间跨度（周）
         if (!v.fontSize) v.fontSize = 'std';
         if (!v.listCat) v.listCat = 'all';
         if (!v.habitCtx) v.habitCtx = 'all';
@@ -7091,7 +7130,7 @@
     /* 切换视图页某一段的显示与否 */
     function toggleViewSeg(key) {
         const v = viewSettings();
-        const map = { schedule: 'showSchedule', day: 'showDay', week: 'showWeek', month: 'showMonth', year: 'showYear',
+        const map = { schedule: 'showSchedule', gantt: 'showGantt', day: 'showDay', week: 'showWeek', month: 'showMonth', year: 'showYear',
             list: 'showList', habit: 'showHabit', anniv: 'showAnniv' };
         const k = map[key];
         if (!k) return;
@@ -7099,7 +7138,7 @@
         const after = Object.assign({}, v);
         after[k] = next;
         // 至少保留一段可见
-        const segs = ['showSchedule','showDay','showWeek','showMonth','showYear','showList','showHabit','showAnniv'];
+        const segs = ['showSchedule','showGantt','showDay','showWeek','showMonth','showYear','showList','showHabit','showAnniv'];
         if (!segs.some(s => after[s] !== false)) {
             notify('至少需要保留一段显示内容');
             return;
@@ -7117,12 +7156,12 @@
     /* 一键开关全部视图段 */
     function toggleViewSegAll() {
         const v = viewSettings();
-        const segs = ['showSchedule','showDay','showWeek','showMonth','showYear','showList'];
+        const segs = ['showSchedule','showGantt','showDay','showWeek','showMonth','showYear','showList'];
         const allOn = segs.every(s => v[s] !== false);
         if (allOn) {
             // 全部开启时仅保留当前视图
             segs.forEach(s => { v[s] = false; });
-            const curMap = { schedule:'showSchedule', day:'showDay', week:'showWeek', month:'showMonth', year:'showYear', list:'showList' };
+            const curMap = { schedule:'showSchedule', gantt:'showGantt', day:'showDay', week:'showWeek', month:'showMonth', year:'showYear', list:'showList' };
             v[curMap[viewMode] || 'showSchedule'] = true;
         } else {
             segs.forEach(s => { v[s] = true; });
@@ -7138,7 +7177,7 @@
 
     function isViewSegOn(mode) {
         const v = viewSettings();
-        const map = { schedule: 'showSchedule', day: 'showDay', week: 'showWeek', month: 'showMonth', year: 'showYear',
+        const map = { schedule: 'showSchedule', gantt: 'showGantt', day: 'showDay', week: 'showWeek', month: 'showMonth', year: 'showYear',
             list: 'showList', habit: 'showHabit', anniv: 'showAnniv' };
         const k = map[mode];
         if (!k) return true;  // 未知段默认可见
@@ -7146,6 +7185,7 @@
     }
     function firstViewSeg() {
         if (isViewSegOn('schedule')) return 'schedule';
+        if (isViewSegOn('gantt')) return 'gantt';
         if (isViewSegOn('day')) return 'day';
         if (isViewSegOn('week')) return 'week';
         if (isViewSegOn('month')) return 'month';
@@ -7493,6 +7533,7 @@
             const v = viewSettings();
             const items = [
                 ['schedule', '📅', '日程'],
+                ['gantt', '📊', '甘特'],
                 ['day', '☀️', '日'],
                 ['week', '📆', '周'],
                 ['month', '🌙', '月'],
@@ -7746,11 +7787,11 @@
         if (_ns) _ns.classList.toggle('on', noteOn());
         if (page === 'view') {
             const v = viewSettings();
-            const segs = ['showSchedule','showDay','showWeek','showMonth','showYear','showList'];
+            const segs = ['showSchedule','showGantt','showDay','showWeek','showMonth','showYear','showList'];
             const allOn = segs.every(s => v[s] !== false);
             const allEl = document.getElementById('menuSeg-all');
             if (allEl) allEl.classList.toggle('on', allOn);
-            ['schedule','day','week','month','year','list'].forEach(k => {
+            ['schedule','gantt','day','week','month','year','list'].forEach(k => {
                 const el = document.getElementById('menuSeg-' + k);
                 if (el) el.classList.toggle('on', v['show' + k[0].toUpperCase() + k.slice(1)] !== false);
             });
@@ -9756,12 +9797,13 @@
 
     function rView() {
         if (!isViewSegOn(viewMode)) viewMode = firstViewSeg();
-        const tabs = [['schedule','日程'], ['day','日'], ['week','周'], ['month','月'], ['year','年'], ['list','列表']].filter(x => isViewSegOn(x[0]));
+        const tabs = [['schedule','日程'], ['gantt','甘特'], ['day','日'], ['week','周'], ['month','月'], ['year','年'], ['list','列表']].filter(x => isViewSegOn(x[0]));
         const bar = tabs.length > 1
             ? `<div class="viewtabs viewtabs-${tabs.length}">${tabs.map(v => `<span class="${viewMode === v[0] ? 'on' : ''}" onclick="viewMode='${v[0]}';render()">${v[1]}</span>`).join('')}</div>`
             : '';
-        // 列表段下追加二级 tab
-        const subbar = viewMode === 'list' ? renderViewListSubbar() : '';
+        // 列表段下追加二级 tab；甘特段下追加 待办/习惯 二级 tab
+        const subbar = viewMode === 'list' ? renderViewListSubbar()
+            : viewMode === 'gantt' ? renderGanttSubbar() : '';
         document.getElementById('main').innerHTML = `${bar}${subbar}<div id="viewBody"></div>`;
         renderViewPage();
     }
@@ -9786,6 +9828,7 @@
         main.classList.toggle('compact', compactMode);
         if (!isViewSegOn(viewMode)) { main.innerHTML = '<div class="v-empty">当前段已在侧边栏关闭，请至少开启一段</div>'; return; }
         if (viewMode === 'schedule') main.innerHTML = renderScheduleView();
+        else if (viewMode === 'gantt') main.innerHTML = renderGanttView();
         else if (viewMode === 'day') main.innerHTML = renderDayView();
         else if (viewMode === 'week') main.innerHTML = renderWeekView();
         else if (viewMode === 'month') main.innerHTML = renderMonthView();
@@ -9796,6 +9839,119 @@
             else if (viewListTab === 'anniv') main.innerHTML = renderViewAnniv();
             else main.innerHTML = renderViewList();
         }
+    }
+
+    /* ===== v45 甘特图视图（日程与日之间）：待办甘特 + 习惯甘特 ===== */
+    let viewGanttTab = 'task';   // 'task' | 'habit'
+
+    function renderGanttSubbar() {
+        const segs = [['task', '待办甘特'], ['habit', '习惯甘特']];
+        return `<div class="viewsubtabs">${segs.map(s => `<span class="${viewGanttTab === s[0] ? 'on' : ''}" onclick="viewGanttTab='${s[0]}';renderViewPage()">${s[1]}</span>`).join('')}</div>`;
+    }
+
+    function ganttSetSpan(w) {
+        viewSettings().ganttSpan = w;
+        save();
+        renderViewPage();
+    }
+
+    /* 把一组升序日期切成连续段 [[起,止], …] */
+    function ganttSegs(arr) {
+        const segs = [];
+        let s = 0;
+        for (let i = 1; i <= arr.length; i++) {
+            const cont = i < arr.length && (new Date(arr[i]) - new Date(arr[i - 1])) <= 86400000;
+            if (!cont) { segs.push([arr[s], arr[i - 1]]); s = i; }
+        }
+        return segs;
+    }
+
+    function renderGanttView() {
+        const v = viewSettings();
+        const weeks = Math.max(1, Math.min(12, +v.ganttSpan || 4));
+        const N = weeks * 7;
+        const start = addDays(today(), -7);          // 窗口固定从 7 天前开始 → 今天永远在第 8 列
+        const T0 = new Date(start + 'T00:00').getTime();
+        const days = [];
+        for (let i = 0; i < N; i++) days.push(addDays(start, i));
+        const inWin = ds => ds >= days[0] && ds <= days[N - 1];
+        const idxOf = ds => Math.round((new Date(ds + 'T00:00').getTime() - T0) / 86400000);
+        const todayIdx = idxOf(today());
+        const pct = i => (i / N * 100).toFixed(3);
+
+        /* 表头：日号 + 周几 / 月初换月标 */
+        const headCells = days.map((ds, i) => {
+            const dt = new Date(ds + 'T00:00');
+            const mstart = i === 0 || days[i - 1].slice(5, 7) !== ds.slice(5, 7);
+            const cls = ['gd', i === todayIdx ? 'today' : '',
+                (dt.getDay() === 0 || dt.getDay() === 6) ? 'wknd' : '', mstart ? 'mstart' : ''].join(' ');
+            return `<div class="${cls}"><b>${+ds.slice(8)}</b><small>${mstart ? (dt.getMonth() + 1) + '月' : '周' + '日一二三四五六'[dt.getDay()]}</small></div>`;
+        }).join('');
+
+        const tools = `<div class="gantt-tools">
+                <div class="gantt-seg">${[2, 4, 8].map(w => `<span class="${weeks === w ? 'on' : ''}" onclick="ganttSetSpan(${w})">${w}周</span>`).join('')}</div>
+                <div class="g-legend">
+                    <span><i style="background:var(--main)"></i>进行中</span>
+                    <span><i style="background:#d8d5ee"></i>已完成</span>
+                    <span><i style="background:#e74c3c"></i>已逾期</span>
+                    <span><i style="border-left:2px dashed #6c5ce7;background:none;width:2px;height:10px;border-radius:0"></i>今天</span>
+                </div>
+            </div>`;
+
+        let body = '';
+        if (viewGanttTab !== 'habit') {
+            /* —— 待办甘特：窗口内有日期的任务，连续日期连成一条 —— */
+            const tasks = S.tasks
+                .map(t => { const dw = taskDates(t).filter(inWin).sort(); return { t, dw }; })
+                .filter(x => x.dw.length)
+                .sort((a, b) => a.dw[0] < b.dw[0] ? -1 : 1);
+            body = tasks.length ? tasks.map(({ t, dw }) => {
+                const bars = ganttSegs(dw).map(([a, b]) => {
+                    const i0 = idxOf(a), len = idxOf(b) - i0 + 1;
+                    let allDone = true, hasOver = false;
+                    for (let i = i0; i < i0 + len; i++) {
+                        const done = taskDoneOn(t, days[i]);
+                        if (!done) allDone = false;
+                        if (!done && days[i] < today()) hasOver = true;
+                    }
+                    const cls = allDone ? ' done' : (hasOver ? ' over' : '');
+                    const lb = len >= 3 ? esc(t.title.length > 8 ? t.title.slice(0, 8) + '…' : t.title) : '';
+                    return `<div class="gbar${cls}" style="left:${pct(i0)}%;width:${(len / N * 100).toFixed(3)}%"
+                        title="${esc(t.title)} ${a}${len > 1 ? '~' + b : ''}${allDone ? '（已完成）' : hasOver ? '（有逾期）' : ''}"
+                        onclick="openTask('${t.id}')">${lb}${allDone ? ' ✓' : ''}</div>`;
+                }).join('');
+                return `<div class="grow"><div class="glabel" title="${esc(t.title)}" onclick="openTask('${t.id}')">${esc(t.title)}</div>
+                    <div class="gtrack"><i class="gnow" style="left:${pct(todayIdx + 0.5)}%"></i>${bars}</div></div>`;
+            }).join('') : '<div class="v-empty">窗口内没有带日期的待办</div>';
+        } else {
+            /* —— 习惯甘特：窗口内的打卡日连成连续段（按习惯色），多次目标部分完成显示半格点 —— */
+            const habits = (S.habits || []).slice()
+                .sort((a, b) => habitDoneDays(b) - habitDoneDays(a));
+            body = habits.length ? habits.map(h => {
+                const color = h.color || 'var(--main)';
+                const doneDays = days.filter(ds => habitDone(h, ds));
+                const bars = ganttSegs(doneDays).map(([a, b]) => {
+                    const i0 = idxOf(a), len = idxOf(b) - i0 + 1;
+                    return `<div class="gbar habit" style="left:${pct(i0)}%;width:${(len / N * 100).toFixed(3)}%;background:${color}"
+                        title="${esc(h.name)} ${a}${len > 1 ? '~' + b : ''} 连续打卡${len}天">${len >= 3 ? len + '天' : ''}</div>`;
+                }).join('');
+                const dots = days.map((ds, i) => {
+                    const val = habitVal(h, ds);
+                    if (val > 0 && !habitDone(h, ds))
+                        return `<i class="gdot" style="left:${pct(i + 0.32)}%;background:${color}" title="${esc(h.name)} ${ds} ${val}/${habitGoal(h)}"></i>`;
+                    return '';
+                }).join('');
+                const streak = habitCurStreak(h);
+                return `<div class="grow"><div class="glabel" title="${esc(h.name)}（共坚持${habitDoneDays(h)}天）" onclick="goHabitDetail('${h.id}')"><span class="gico" style="background:${color}">${h.icon || '✨'}</span>${esc(h.name)}${streak ? `<em>${streak}天</em>` : ''}</div>
+                    <div class="gtrack"><i class="gnow" style="left:${pct(todayIdx + 0.5)}%"></i>${bars}${dots}</div></div>`;
+            }).join('') : '<div class="v-empty">还没有习惯，去侧边栏「习惯」新建一个吧</div>';
+        }
+
+        return `${tools}<div class="gantt-scroll"><div class="gantt-inner" style="min-width:${Math.max(560, N * 26)}px">
+            <div class="ghead"><div class="gcorner">${viewGanttTab === 'habit' ? '习惯' : '待办'} · ${weeks}周</div>
+                <div class="gdays" style="grid-template-columns:repeat(${N},1fr)">${headCells}</div></div>
+            <div class="gantt-body">${body}</div>
+        </div></div>`;
     }
 
     function applyViewFontClass() {
@@ -11264,7 +11420,7 @@
     /* v8: 专注页分组折叠 + 详情侧栏 */
     const FCD_COLORS = ['#f7f7fc','#fff7e6','#e8f5e9','#e3f2fd','#fce4ec','#f3e5f5','#f5f5f5','#fffbe6'];
     /* v13: 肉眼可见的版本号 —— 用于判断浏览器是否还在用旧缓存 */
-    const APP_VER = 'v44';
+    const APP_VER = 'v45';
     let focusDetailOpen = false,
         focusDetailPct = +((S.settings && S.settings.focusDetailPct) || 32),
         focusDetailColor = (S.settings && S.settings.focusDetailColor) || '#f7f7fc',
