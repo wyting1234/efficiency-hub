@@ -819,6 +819,7 @@
         .seg-inline span.on{background:#fff;color:#222;box-shadow:0 1px 2px rgba(0,0,0,.06)}
         .qmeta .chip.recur { background: #f0f8f5; color: #16a085; }
         .qmeta .chip.tag { background: #f3f0fd; color: var(--main); }
+        .qmeta .chip.foc { background: #fff7e8; color: #b7791f; font-variant-numeric: tabular-nums; }
         .qmeta .chip.overdue { background: #fdeee1; color: #e67e22; font-weight: 500; }
         .qmeta .chip.hit { background: #ece9fd; color: var(--main); font-style: normal; }
         .qmeta .chip .hl { background: #ffe9a8; color: inherit; padding: 0 1px; border-radius: 2px; }
@@ -4151,10 +4152,12 @@
 
         /* —— 自动模式：宽屏（≥900px）自动采用电脑版布局（手动强制手机版时除外） —— */
         @media (min-width: 900px) {
-            html:not([data-view="mobile"]) #sidebar { transform: none; box-shadow: none; border-right: 1px solid #ececf4; }
+            /* v42：桌面端侧边栏默认收起，点 ☰ 汉堡才滑出（推开内容），不再常驻左侧 */
+            html:not([data-view="mobile"]) #sidebar { transform: translateX(calc(-1 * var(--sidebar-width))); box-shadow: none; border-right: 1px solid #ececf4; }
+            html:not([data-view="mobile"]) #sidebar.open { transform: translateX(0); }
             html:not([data-view="mobile"]) #overlay { display: none !important; }
-            html:not([data-view="mobile"]) #app { margin-left: calc(var(--sidebar-width) + max(0px, (100vw - var(--sidebar-width) - var(--app-w)) / 2)); }
-            html:not([data-view="mobile"]) #app.shifted { transform: none; }
+            html:not([data-view="mobile"]) #app { margin-left: max(0px, (100vw - var(--app-w)) / 2); transition: margin-left .25s ease, transform .25s ease; }
+            html:not([data-view="mobile"]) #app.shifted { transform: none; margin-left: calc(var(--sidebar-width) + max(0px, (100vw - var(--sidebar-width) - var(--app-w)) / 2)); }
             html:not([data-view="mobile"]) .modal { align-items: center; }
             html:not([data-view="mobile"]) .sheet { border-radius: 16px; max-width: 640px; box-shadow: 0 18px 50px rgba(25,25,55,.28); }
         }
@@ -4942,6 +4945,19 @@
     </div>
 </div>
 
+<!-- ===== v42 模态框：周报（可复制） ===== -->
+<div class="modal" id="mWeekly" style="align-items:center">
+    <div class="sheet" style="border-radius:16px; padding:16px; max-height:84vh; overflow:auto">
+        <h3 style="border:none; font-size:14px; padding:0 0 4px">📊 本周周报 <span class="x" onclick="closeM('mWeekly')">✕</span></h3>
+        <div style="font-size:11px; color:#999; margin-bottom:8px" id="weeklyMeta"></div>
+        <textarea id="weeklyTxt" readonly style="width:100%; box-sizing:border-box; min-height:260px; border:1px solid #e5e5ef; border-radius:10px; padding:12px; font-size:12.5px; line-height:1.7; font-family:inherit; color:#333; background:#fafafc; resize:vertical"></textarea>
+        <div style="display:flex; gap:8px; margin-top:10px">
+            <button class="btn" id="weeklyCopyBtn" onclick="copyWeeklyReport()" style="flex:1; border:0; background:var(--main); color:#fff; padding:11px; border-radius:10px; font-size:13px">📋 复制周报文本</button>
+            <button class="btn" onclick="closeM('mWeekly')" style="flex:0 0 auto; border:1px solid #e5e5ef; background:#fff; padding:11px 16px; border-radius:10px; font-size:13px">关闭</button>
+        </div>
+    </div>
+</div>
+
 <!--pnid:2WQ9PRa2m4DT1KAYddvz4G--><!-- ===== 动作菜单 ===== -->
 <div data-page-node-id="KXEo3pETCBom4710XYIEfM" class="modal" id="actionSheet" style="align-items:flex-end">
     <div data-page-node-id="oUwEsC37MLNjMTb8SkttC2" class="sheet" style="border-radius:16px 16px 0 0; padding:8px 0">
@@ -4959,6 +4975,8 @@
     function defaultSettings() {
         return { defCat: '', defPri: 'follow', strike: true, expandSubs: false, autoCheck: true, compact: false,
             sortBy: 'priority',
+            /* v42：全局外观 —— 字体缩放 + 主题色（功能设置面板可调） */
+            fontScale: 1, themeColor: '',
             /* v9: 专注卡片右上角 ✕ 删除按钮显示开关 */
             showCardDelBtn: true,
             /* ===== 视图（视图页配置）===== */
@@ -6203,6 +6221,24 @@
                     <span>精简模式</span>
                     <div class="sw" id="setCompact" onclick="toggleCompact()"></div>
                 </div>
+                <div class="sw-row" style="flex-direction:column;align-items:stretch;gap:7px">
+                    <span>字体大小（全局）</span>
+                    <div class="seg seg-inline" style="width:100%;justify-content:space-between">
+                        <span data-v="0.9" class="${(+ (S.settings.fontScale||1) === 0.9)?'on':''}" onclick="pickFontScale(0.9)">小</span>
+                        <span data-v="1" class="${(+ (S.settings.fontScale||1) === 1)?'on':''}" onclick="pickFontScale(1)">标准</span>
+                        <span data-v="1.15" class="${(+ (S.settings.fontScale||1) === 1.15)?'on':''}" onclick="pickFontScale(1.15)">大</span>
+                        <span data-v="1.3" class="${(+ (S.settings.fontScale||1) === 1.3)?'on':''}" onclick="pickFontScale(1.3)">特大</span>
+                    </div>
+                </div>
+                <div class="sw-row" style="flex-direction:column;align-items:stretch;gap:7px">
+                    <span>主题颜色</span>
+                    <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:2px 2px 4px">
+                        ${['#6c5ce7','#0984e3','#1d9e75','#e67e22','#e74c3c','#16a085','#8e44ad','#2c3e50'].map(c => {
+                            const sel = (S.settings.themeColor || '#6c5ce7') === c;
+                            return `<span onclick="pickThemeColor('${c}')" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;box-shadow:${sel ? '0 0 0 2px #fff,0 0 0 4px ' + c : '0 1px 3px rgba(0,0,0,.15)'}">${sel ? '✓' : ''}</span>`;
+                        }).join('')}
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -6506,8 +6542,14 @@
             <div class="s-item" onclick="closeSidebar();reviewPrint()">
                 <span class="s-ico">🖨️</span>A4 打印 / 导出 PDF<span class="arrow">›</span>
             </div>
+            <div class="s-item" onclick="closeSidebar();reviewExportImage()">
+                <span class="s-ico">🖼️</span>导出长图（分享）<span class="arrow">›</span>
+            </div>
             <div class="s-item" onclick="closeSidebar();reviewExportHTML()">
                 <span class="s-ico">📤</span>导出为 HTML 文件<span class="arrow">›</span>
+            </div>
+            <div class="s-item" onclick="closeSidebar();openWeeklyReport()">
+                <span class="s-ico">📋</span>生成周报（可复制）<span class="arrow">›</span>
             </div>
 
             <div class="s-section">数据</div>
@@ -6711,6 +6753,126 @@
         document.body.appendChild(a); a.click();
         setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 400);
         showToast('已导出 HTML，可随时打开打印');
+    }
+
+    /* ===== v42：复盘报告一键导出长图（PNG，含感悟/日记栏）=====
+       思路：复用 reviewPrintHTML() 生成的独立报告文档，放进隐藏 iframe
+       （样式与 App 完全隔离），在 iframe 内部加载 html2canvas 渲染成 2x 高清长图。
+       打印文档全是文本/表格/CSS 柱状图，无外链图片 → 不会出现画布污染。 */
+    function reviewExportImage() {
+        closeMenu(); closeSidebar();
+        showToast('正在生成长图…');
+        const doc = reviewPrintHTML();
+        const f = document.createElement('iframe');
+        f.style.cssText = 'position:fixed;right:0;bottom:0;width:794px;height:900px;border:0;visibility:hidden';
+        document.body.appendChild(f);
+        const cleanup = () => { try { f.remove(); } catch (e) {} };
+        const fail = msg => { cleanup(); showToast('导出失败：' + msg); };
+        f.srcdoc = doc;
+        f.onload = () => {
+            setTimeout(() => {
+                try {
+                    const w = f.contentWindow, d = f.contentDocument;
+                    if (!w || !d || !d.body) { fail('报告渲染异常'); return; }
+                    const s = d.createElement('script');
+                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                    s.onload = () => {
+                        try {
+                            w.html2canvas(d.body, { scale: 2, backgroundColor: '#ffffff', logging: false })
+                                .then(canvas => {
+                                    try {
+                                        const url = canvas.toDataURL('image/png');
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `朝暮计-复盘-${(reviewAnchor || today()).replace(/-/g, '')}.png`;
+                                        document.body.appendChild(a); a.click();
+                                        setTimeout(() => a.remove(), 400);
+                                        showToast('✅ 长图已导出，可直接分享');
+                                    } catch (e) { fail(e.message || '图片生成异常'); }
+                                    cleanup();
+                                })
+                                .catch(e => fail(e.message || '渲染失败'));
+                        } catch (e) { fail(e.message || '渲染异常'); }
+                    };
+                    s.onerror = () => fail('组件加载失败（导出长图需联网，可改用「A4 打印 / 导出 PDF」）');
+                    (d.head || d.documentElement).appendChild(s);
+                } catch (e) { fail(e.message || '未知错误'); }
+            }, 350);
+        };
+    }
+
+    /* ===== v42：周报自动生成 =====
+       每周日晚（默认 21:00，可在设置改 weeklyReportTime）自动汇总本周数据，
+       生成一段纯文本周报；复盘页 ☰ 菜单随时可手动生成/查看/复制。 */
+    function buildWeeklyReportText() {
+        const range = rvComputeRange('week', today());
+        const data = rvCollectStats(range);
+        const score = computeDayScore(data, range);
+        const focusAll = (S.focus || []).filter(f => f.date >= range.from && f.date <= range.to);
+        const focusMin = focusAll.reduce((a, f) => a + (+f.minutes || 0), 0);
+        const focusDays = new Set(focusAll.map(f => f.date)).size;
+        const taskCount = data.tasks.length;
+        const habitSum = data.habits.reduce((a, h) => a + (+h.count || 0), 0);
+        const habitTargetSum = data.habits.reduce((a, h) => a + (+h.target || 0), 0);
+        const habitRate = habitTargetSum ? Math.round(habitSum / habitTargetSum * 100) : null;
+        const goalCount = data.goals.length;
+        const insightCount = (S.insights || []).filter(i => (i.date || '') >= range.from && (i.date || '') <= range.to).length;
+        // 每日得分（只算到今天），找最佳一天
+        let best = null, scored = 0, sumV = 0;
+        for (let i = 0; i < range.days; i++) {
+            const ds = ymd(new Date(new Date(range.from + 'T00:00:00').getTime() + i * 86400000));
+            if (ds > today()) break;
+            const r1 = rvComputeRange('day', ds);
+            const s1 = computeDayScore(rvCollectStats(r1), r1);
+            scored++; sumV += s1.value;
+            if (!best || s1.value > best.v) best = { ds: ds, v: s1.value, label: s1.label };
+        }
+        const avg = scored ? Math.round(sumV / scored) : score.value;
+        // 专注 top3（按关联名称聚合）
+        const byTask = {};
+        focusAll.forEach(f => { const k = f.task || '未关联'; byTask[k] = (byTask[k] || 0) + (+f.minutes || 0); });
+        const top3 = Object.keys(byTask).sort((a, b) => byTask[b] - byTask[a]).slice(0, 3);
+        const hm = m => m >= 60 ? (Math.round(m / 6) / 10) + ' 小时' : m + ' 分钟';
+        const L = [];
+        L.push('📊 朝暮计 · 周报 ' + (range.label || (range.from + ' ~ ' + range.to)));
+        L.push('────────────────');
+        L.push('✅ 任务完成 ' + taskCount + ' 条');
+        L.push('⏱ 累计专注 ' + hm(focusMin) + '（' + focusDays + ' 天有专注）');
+        if (top3.length) L.push('🔥 投入最多：' + top3.map(k => k + ' ' + hm(byTask[k])).join('、'));
+        if (data.habits.length) L.push('🌱 习惯打卡 ' + habitSum + ' 次' + (habitRate != null ? ' · 完成率 ' + habitRate + '%' : ''));
+        if (goalCount) L.push('🎯 推进目标 ' + goalCount + ' 项');
+        L.push('📈 日均综合得分 ' + avg + ' 分' + (best ? ' · 最佳 ' + best.ds.slice(5) + '（' + best.v + ' 分 ' + best.label + '）' : ''));
+        if (insightCount) L.push('💡 写下感悟 ' + insightCount + ' 条');
+        L.push('');
+        L.push('坚持就是力量，下周继续 💪');
+        L.push('—— 朝暮计自动生成');
+        return L.join('\n');
+    }
+    function openWeeklyReport(txt) {
+        let text = txt;
+        try { if (!text) text = buildWeeklyReportText(); } catch (e) { text = '周报生成失败：' + (e.message || '未知错误'); }
+        window._lastWeeklyReport = text;
+        const ta = document.getElementById('weeklyTxt');
+        if (ta) ta.value = text;
+        const meta = document.getElementById('weeklyMeta');
+        if (meta) meta.textContent = '统计范围：' + (() => { try { return rvComputeRange('week', today()).label; } catch (e) { return '本周'; } })() + ' · 生成于 ' + new Date().toTimeString().slice(0, 5);
+        openM('mWeekly');
+    }
+    function copyWeeklyReport() {
+        const ta = document.getElementById('weeklyTxt');
+        const text = (ta && ta.value) || window._lastWeeklyReport || '';
+        if (!text) { showToast('还没有周报内容'); return; }
+        const done = () => showToast('✅ 周报已复制，可直接粘贴分享');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+        } else fallbackCopy(text, done);
+    }
+    function fallbackCopy(text, done) {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) { showToast('复制失败，请长按文本框手动复制'); }
+        ta.remove();
     }
 
     function updateSidebarCounts() {
@@ -6979,6 +7141,45 @@
         save();
         updateSidebarCounts();
         render();
+    }
+
+    /* ===== v42：全局外观（字体缩放 + 主题色）=====
+       缩放用 zoom：布局占位同步放大，内部滚动/点击区域一致缩放；
+       宽高预先除以缩放系数，保证放大后仍然正好满屏不溢出。
+       旧 iOS 的 WebView 不支持 zoom 时自动跳过（外观不变，无害）。 */
+    const _ZOOM_OK = (typeof CSS !== 'undefined' && CSS.supports && CSS.supports('zoom', '1.2'));
+    function applyAppearance() {
+        try {
+            const st = S.settings || {};
+            const zs = Math.max(0.85, Math.min(1.5, +st.fontScale || 1));
+            const app = document.getElementById('app');
+            if (app) {
+                if (_ZOOM_OK && Math.abs(zs - 1) > 0.001) {
+                    app.style.zoom = String(zs);
+                    app.style.maxWidth = `calc(var(--app-w) / ${zs})`;
+                    app.style.height = `calc(100vh / ${zs})`;
+                } else {
+                    app.style.zoom = ''; app.style.maxWidth = ''; app.style.height = '';
+                }
+            }
+            document.documentElement.style.setProperty('--main', st.themeColor || '#6c5ce7');
+        } catch (e) {}
+    }
+    function pickFontScale(v) {
+        S.settings.fontScale = +v || 1;
+        save();
+        applyAppearance();
+        const sb = document.querySelector('#sidebarMenu');
+        if (sb) rSidebar();          // 重绘面板上的选中态
+        showToast('字体大小已调整');
+    }
+    function pickThemeColor(c) {
+        S.settings.themeColor = c;
+        save();
+        applyAppearance();
+        const sb = document.querySelector('#sidebarMenu');
+        if (sb) rSidebar();
+        showToast('主题颜色已更换');
     }
 
     /* ===== 分类管理 ===== */
@@ -7622,6 +7823,11 @@
             if (od > 0) meta.push(`<span class="chip overdue">逾期${od}天</span>`);
             const dl = dateLabel(t);
             if (dl) meta.push(`<span class="chip date">🕐 ${esc(dl)}</span>`);
+            /* v42：累计专注时长徽标（含子任务时长一并计入标题行） */
+            const _fmin = focusMinutesOf('task', t.id, t.title)
+                + (t.subs || []).reduce((a, s) => a + focusMinutesOf('sub', s.id, t.title + ' › ' + s.title), 0);
+            const _flb = focusMinLabel(_fmin);
+            if (_flb) meta.push(`<span class="chip foc">${_flb}</span>`);
             if (t.recur && t.recur.mode && t.recur.mode !== 'once') {
                 meta.push(`<span class="chip recur">🔁 ${esc(recurText(t.recur, dl ? (t.date||'') : ''))}</span>`);
             }
@@ -7685,6 +7891,21 @@
     }
 
     /* ===== 任务操作 ===== */
+    /* v42：专注时长反向联动 —— 在待办 / 习惯卡片上显示关联的累计专注时长。
+       新记录有 linkId 强关联；旧记录只存了 task 名称（弱关联），按名称+kind 兜底。 */
+    function focusMinutesOf(kind, id, name) {
+        let m = 0;
+        (S.focus || []).forEach(f => {
+            if ((f.kind || '') !== kind) return;
+            if (id && f.linkId) { if (f.linkId === id) m += (+f.minutes || 0); return; }
+            if (name && (f.task || '') === name) m += (+f.minutes || 0);
+        });
+        return m;
+    }
+    function focusMinLabel(min) {
+        if (!min || min <= 0) return '';
+        return min >= 60 ? '⏱ ' + (Math.round(min / 6) / 10) + 'h' : '⏱ ' + min + 'm';
+    }
     function toggleOpen(id) {
         const t = S.tasks.find(x => x.id === id);
         if (t) { t._open = !t._open;
@@ -9208,6 +9429,20 @@
                         if (got < goal) _dailyToast('🎯', '今日专注未达标', `已专注 ${got} 分钟，目标 ${goal} 分钟，还差 ${goal - got} 分钟`);
                     }
                 }
+                /* v42：周报自动生成 —— 周日 21:00（可配 weeklyReportTime）后首次打开应用时触发，
+                   用 >= 比较而非精确等值，当晚应用没开也不会漏 */
+                if (d.getDay() === 0 && hhmm >= (st.weeklyReportTime || '21:00')) {
+                    let wk = day;
+                    try { wk = rvComputeRange('week', day).from; } catch (e) {}
+                    const k = 'weekly|' + wk;
+                    if (!_dailyFired(k)) {
+                        try {
+                            window._lastWeeklyReport = buildWeeklyReportText();
+                            const head = (window._lastWeeklyReport.split('\n').find(x => x.indexOf('📈') === 0) || '');
+                            _dailyToast('📊', '本周周报已生成', (head.replace('📈 ', '') || '复盘页 ☰ 菜单可查看 / 复制'));
+                        } catch (e) {}
+                    }
+                }
             } catch (e) {}
         };
         tick();
@@ -10434,13 +10669,16 @@
         const streak = habitCurStreak(h);
         const isMulti = h.goal && h.goal.mode === 'multi';
         const badge = done ? '✓' : (isMulti ? `${rec}/${goal}` : '打卡');
+        /* v42：累计专注时长（习惯关联的专注记录） */
+        const focMin = focusMinutesOf('habit', h.id, h.name);
+        const focLbl = focusMinLabel(focMin);
         return `<div class="h-card${done ? ' done' : ''}" data-hid="${h.id}" onclick="goHabitDetail('${h.id}')"
             oncontextmenu="event.preventDefault();openHabitCardMenu('${h.id}')">
             <span class="h-icon" style="background:${h.color || 'var(--main)'}"
                   onclick="event.stopPropagation();goHabitDetail('${h.id}')">${h.icon || '✨'}</span>
             <span class="h-mid">
                 <b><span class="h-name">${esc(h.name)}</span><span class="h-enter" onclick="event.stopPropagation();goHabitDetail('${h.id}')">打卡</span></b>
-                <small>${periodText(h)}${streak ? ' · 连续' + streak + '天' : ''}</small>
+                <small>${periodText(h)}${streak ? ' · 连续' + streak + '天' : ''}${focLbl ? ' · ' + focLbl + ' 专注' : ''}</small>
                 ${noteHTML(h.note)}
             </span>
             <span class="h-streak"><b>${days}</b>天 共坚持</span>
@@ -10870,7 +11108,7 @@
     /* v8: 专注页分组折叠 + 详情侧栏 */
     const FCD_COLORS = ['#f7f7fc','#fff7e6','#e8f5e9','#e3f2fd','#fce4ec','#f3e5f5','#f5f5f5','#fffbe6'];
     /* v13: 肉眼可见的版本号 —— 用于判断浏览器是否还在用旧缓存 */
-    const APP_VER = 'v41';
+    const APP_VER = 'v42';
     let focusDetailOpen = false,
         focusDetailPct = +((S.settings && S.settings.focusDetailPct) || 32),
         focusDetailColor = (S.settings && S.settings.focusDetailColor) || '#f7f7fc',
@@ -13021,8 +13259,10 @@
     }
 
     function saveFocusRec(min, mode) {
+        /* v42：linkId/taskId 强关联（旧记录只存 task 名称，统计时按名称兜底匹配） */
         S.focus.push({ id: uid(), mode, minutes: min, date: today(), task: linkTarget ? linkTarget.name : '',
-            kind: linkTarget ? linkTarget.kind : '' });
+            kind: linkTarget ? linkTarget.kind : '', linkId: linkTarget ? linkTarget.id : '',
+            taskId: linkTarget ? (linkTarget.taskId || '') : '' });
         if (linkTarget && S.settings.autoCheck) {
             if (linkTarget.kind === 'sub') {
                 const t = S.tasks.find(x => x.id === linkTarget.taskId);
@@ -17804,9 +18044,12 @@
        只影响"存进 localStorage 的那张裁剪图"，用户选的原图不做任何压缩。 */
     function buildBgRec(be, q, maxLong) {
         const cropped = cropBgImage(be, q, maxLong);
+        /* v42：记录设置时的舞台宽度 bw —— 之后窗口尺寸变化时按比例缩放偏移，背景跟随网页自适应 */
+        const stage = document.getElementById('bgStage');
+        const bw = stage && stage.clientWidth ? stage.clientWidth : 0;
         return cropped
             ? { d: cropped, fit: be.fit, alpha: (be.alpha == null ? 55 : be.alpha), crop: 1 }
-            : { d: be.dataURL, x: be.x, y: be.y, s: be.userScale, fit: be.fit, alpha: (be.alpha == null ? 55 : be.alpha) };
+            : { d: be.dataURL, x: be.x, y: be.y, s: be.userScale, fit: be.fit, alpha: (be.alpha == null ? 55 : be.alpha), bw: bw || undefined };
     }
     /* 把当前编辑态（构图 + 可见度）写进存储，保留已调好的栏目透明度。
        v38：原图模式按原图分辨率 1:1 输出（不缩）；v39：用户可在换图界面自选
@@ -17930,7 +18173,12 @@
         } else {
             el.style.backgroundColor = '';
             el.style.backgroundImage = `url("${rec.d}")`;
-            el.style.backgroundPosition = (-(rec.x || 0)) + 'px ' + (-(rec.y || 0)) + 'px';
+            /* v42：背景图跟随网页尺寸自适应 —— x/y 是按「设置时舞台宽度 rec.bw」记录的，
+               元素宽度变了就等比缩放偏移量，构图跟随窗口变化（cover 本身已随尺寸缩放）。
+               旧记录没有 bw，保持原样不动。 */
+            const bw = +rec.bw || 0;
+            const k = (bw > 0 && el.clientWidth > 0) ? Math.min(3, Math.max(0.25, el.clientWidth / bw)) : 1;
+            el.style.backgroundPosition = (-(rec.x || 0) * k) + 'px ' + (-(rec.y || 0) * k) + 'px';
         }
     }
 
@@ -18056,6 +18304,13 @@
         /* v25: 视图页 / 习惯页 栏目背景图 → 真实 DOM */
         try { applyZonePartImages(page); } catch (e) {}
     }
+
+    /* v42：窗口尺寸变化 → 背景图自适应重铺（防抖，桌面端拖窗口 / 旋转屏都跟随） */
+    let _bgResizeT = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(_bgResizeT);
+        _bgResizeT = setTimeout(() => { try { applyBg(); } catch (e) {} }, 180);
+    });
 
     /* v14：栏目透明度 → 真实页面。
        v25：每个 role 各自写入独立 CSS 变量（--zp-bar / --zp-card / --zp-text / --zp-foot / --zp-accent），
@@ -18647,6 +18902,7 @@
     }
     applyBg();
     render();
+    applyAppearance();   /* v42：恢复字体缩放与主题色 */
     updateViewSettingsUI();
     startFutureTick();   // 未来倒计时全局秒级刷新 + 到点提醒
     try { rescheduleAllReminders(); _bridgeNativeAskPermission(); } catch (e) {}
