@@ -3308,6 +3308,23 @@
             padding: 6px 8px;
             font-size: 12px;
         }
+        /* v44：纪念日日期行（点击打开应用内日历，带节假日/纪念日标记） */
+        .an-date-row {
+            width: 100%;
+            border: 1px solid #e5e5ef;
+            border-radius: 8px;
+            padding: 6px 8px;
+            font-size: 12px;
+            color: var(--main);
+            cursor: pointer;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+        .an-date-row::after { content: '›'; color: #bbb; font-size: 13px; }
+        .an-date-row:active { background: #f4f3fb; }
         .prio-row {
             display: flex;
             gap: 5px;
@@ -3380,6 +3397,14 @@
         .calgrid .cd.pick { background: var(--main); color: #fff; }
         .calgrid .cd.pick small { color: #d8d2ff; }
         .calgrid .cd.range { background: #dcd7fb; border-radius: 0; }
+        /* v44：日历节假日 / 纪念日标记配色 */
+        .calgrid .cd small.hol { color: #e74c3c; font-weight: 700; }
+        .calgrid .cd small.fes { color: #10b981; font-weight: 600; }
+        .calgrid .cd small.anv { color: #e67e22; font-weight: 700; }
+        .calgrid .cd small.ban { color: #999; }
+        .calgrid .cd.pick small.hol { color: #ffd7d3; }
+        .calgrid .cd.pick small.fes { color: #c9f5e4; }
+        .calgrid .cd.pick small.anv { color: #ffe2c4; }
         .calcal-hd {
             display: flex;
             justify-content: space-between;
@@ -4548,7 +4573,9 @@
             </div>
         </div>
         <div data-page-node-id="USDARXgAzX6ggfTKX5IaNO" class="field"><label data-page-node-id="baMTmcKaSFcgqHfIwKqw9g"><!--pnid:ujJA3hwoYrwG1z6ev8QsH4-->日期</label>
-            <input data-page-node-id="1LbVVn9uHH3lWMo8bhA9XK" id="anDate" type="date">
+            <!-- v44：原生 date input 在 WebView 弹不出（v26 同款问题，此弹窗当时漏改）→ 换应用内日历 -->
+            <input data-page-node-id="1LbVVn9uHH3lWMo8bhA9XK" id="anDate" type="date" style="display:none">
+            <div id="anDateShow" class="an-date-row" onclick="openAnCal()">选择日期 ›</div>
         </div>
         <div data-page-node-id="rRHuBbjDqc8kVTK65q3Abo" class="field"><label data-page-node-id="mKIrePfCLEg2HAP485wmnE"><!--pnid:X2g8RHibNbEqLZzSHV2rg9-->每年重复</label>
             <div data-page-node-id="Rh98u8QjGMxMncZ7E9AhK4" class="sw" id="anRecur" onclick="this.classList.toggle('on')"></div>
@@ -8373,7 +8400,8 @@
         fRemind = null,      // 提醒模型：{ mode, minutes, time, at? }；null 表示不提醒
         calPick = new Set(),
         calStart = null,
-        calMonth = new Date();
+        calMonth = new Date(),
+        calMode = 'task';    /* v44：日历用途 task=任务表单 | anniv=纪念日表单（纪念日模式隐藏时间/提醒/重复行） */
     let fTimer = null;   // 任务表单的计时模块草稿
 
     /* ===== 计时模块（清单表单）===== */
@@ -8755,7 +8783,29 @@
     }
 
     function openCal() {
+        calMode = 'task';
         calMonth = (fDate || fDates[0]) ? new Date((fDate || fDates[0]) + 'T00:00') : new Date();
+        renderCal();
+        openM('mCal');
+    }
+
+    /* v44：纪念日表单选日期（复用任务日历，纪念日模式：单选 + 隐藏时间/提醒/重复行 + 节假日/纪念日标记） */
+    function anShowSync() {
+        const el = document.getElementById('anDateShow');
+        if (!el) return;
+        const v = (document.getElementById('anDate') || {}).value || '';
+        el.textContent = v
+            ? `${+v.slice(0, 4)}年${+v.slice(5, 7)}月${+v.slice(8, 10)}日`
+            : '选择日期';
+    }
+    function openAnCal() {
+        calMode = 'anniv';
+        fDM = 'single';
+        fDate = (document.getElementById('anDate') || {}).value || today();
+        fDates = [fDate];
+        calPick.clear();
+        calStart = null;
+        calMonth = new Date(fDate + 'T00:00');
         renderCal();
         openM('mCal');
     }
@@ -8766,10 +8816,25 @@
     function calNext() { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
         renderCal(); }
 
+    /* v44：某天命中的纪念日（yearly 按月-日跨年匹配，否则按完整日期） */
+    function annivsOn(ds) {
+        const out = [];
+        (S.anniversaries || []).forEach(a => {
+            if (!a || !a.date) return;
+            if (a.recur === 'yearly' ? ds.slice(5) === a.date.slice(5) : a.date === ds) out.push(a);
+        });
+        return out;
+    }
+
     function renderCal() {
         const y = calMonth.getFullYear(),
             m = calMonth.getMonth();
         document.getElementById('calTitle2').textContent = `${y}年${m+1}月`;
+        /* v44：纪念日模式隐藏 时间/提醒/重复 三行（纪念日只有日期概念） */
+        ['calTime', 'calRemind', 'calRecur'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.parentElement) el.parentElement.style.display = calMode === 'anniv' ? 'none' : '';
+        });
         const first = new Date(y, m, 1),
             start = (first.getDay() + 6) % 7,
             days = new Date(y, m + 1, 0).getDate();
@@ -8778,14 +8843,24 @@
         for (let d = 1; d <= days; d++) {
             const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
             let cls = '',
-                mark = '';
+                mark = '',
+                mcls = '';
             if (ds === today()) { cls = 'today';
                 mark = '今' }
+            /* v44：节假日（含调休补班）/ 农历节 标记（复用 getLunarInfo，节假日红、节日绿、补班灰） */
+            const li = getLunarInfo(ds);
+            const avs = annivsOn(ds);
+            if (!mark && li && li.priority <= 2) {
+                if (HOLIDAYS[ds] === '补班') { mark = '班'; mcls = 'ban'; }
+                else { mark = li.tag.slice(0, 2); mcls = HOLIDAYS[ds] ? 'hol' : 'fes'; }
+            }
+            if (!mark && avs.length) { mark = '♥'; mcls = 'anv'; }
             const sel = fDM === 'multi' ? calPick.has(ds) : (fDates.includes(ds) || fDate === ds);
             if (fDM === 'cross' && fDates.length === 2 && ds > fDates[0] && ds < fDates[1]) cls += ' range';
             if (sel) cls = 'pick';
+            const tip = [(li && li.priority <= 3) ? li.tag : '', avs.length ? '纪念日: ' + avs.map(a => a.name).join('、') : ''].filter(Boolean).join(' · ');
             cells.push(
-                `<div class="cd ${cls}" onclick="tapCal('${ds}')">${d}${mark?`<small>${mark}</small>`:''}</div>`);
+                `<div class="cd ${cls}"${tip ? ` title="${esc(tip)}"` : ''} onclick="tapCal('${ds}')">${d}${mark?`<small class="${mcls}">${mark}</small>`:''}</div>`);
         }
         document.getElementById('calBody').innerHTML = `<div class="calgrid">${cells.join('')}</div>`;
         const hint = document.getElementById('calHint');
@@ -8793,7 +8868,15 @@
             .join('、');
         else if (fDM === 'cross' && fDates.length === 2) hint.textContent = '事项时间范围：' + fDates.map(d => d.slice(5)).join(
             ' 至 ');
-        else hint.textContent = '';
+        else {
+            /* v44：单选日期的节假日 / 纪念日提示 */
+            const parts = [];
+            const li = fDate ? getLunarInfo(fDate) : null;
+            if (li && li.priority <= 3) parts.push(li.tag);
+            const avs = fDate ? annivsOn(fDate) : [];
+            if (avs.length) parts.push('♥ ' + avs.map(a => a.name).join('、'));
+            hint.textContent = parts.length ? '该日：' + parts.join(' · ') : '';
+        }
         document.getElementById('calTime').textContent = (function() {
             const base = fDM === 'cross' && fDates.length === 2 ? fDates.map(d => d.slice(5)).join('-') : '全天';
             const t = timeShort();
@@ -8824,6 +8907,16 @@
         updateDateShow(); }
 
     function doneCal() {
+        /* v44：纪念日模式 —— 把选中日期写回纪念日表单，不碰任务表单的提醒 */
+        if (calMode === 'anniv') {
+            if (!fDate) return notify('请先点选日期');
+            const inp = document.getElementById('anDate');
+            if (inp) inp.value = fDate;
+            anShowSync();
+            calMode = 'task';
+            closeM('mCal');
+            return;
+        }
         if (fDM === 'multi') { fDates = [...calPick].sort(); if (!fDates.length) return notify('请先点选日期'); }
         if (fDM === 'single' && !fDate) return notify('请先点选日期');
         if (fDM === 'cross' && fDates.length !== 2) return notify('跨天模式请点选起止两天');
@@ -10473,6 +10566,7 @@
         document.getElementById('mAnnivTitle').textContent = '新建纪念日';
         document.getElementById('anName').value = '';
         document.getElementById('anDate').value = today();
+        anShowSync();
         document.getElementById('anRecur').classList.remove('on');
         document.getElementById('anNote').value = '';
         document.getElementById('anDelBtn').style.display = 'none';
@@ -10487,6 +10581,7 @@
         document.getElementById('mAnnivTitle').textContent = '编辑纪念日';
         document.getElementById('anName').value = a.name || '';
         document.getElementById('anDate').value = a.date || today();
+        anShowSync();
         document.getElementById('anRecur').classList.toggle('on', a.recur === 'yearly');
         document.getElementById('anNote').value = a.note || '';
         document.getElementById('anDelBtn').style.display = '';
@@ -11169,7 +11264,7 @@
     /* v8: 专注页分组折叠 + 详情侧栏 */
     const FCD_COLORS = ['#f7f7fc','#fff7e6','#e8f5e9','#e3f2fd','#fce4ec','#f3e5f5','#f5f5f5','#fffbe6'];
     /* v13: 肉眼可见的版本号 —— 用于判断浏览器是否还在用旧缓存 */
-    const APP_VER = 'v43';
+    const APP_VER = 'v44';
     let focusDetailOpen = false,
         focusDetailPct = +((S.settings && S.settings.focusDetailPct) || 32),
         focusDetailColor = (S.settings && S.settings.focusDetailColor) || '#f7f7fc',
