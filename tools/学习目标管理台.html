@@ -221,6 +221,38 @@
   .seg button.active{background:#fff;color:var(--brand);box-shadow:0 2px 8px rgba(28,35,51,.1)}
 
   /* 固定任务全屏面板 */
+  /* 卓越清单 */
+  .ex-daynav{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:12px}
+  .ex-daynav .lab{font-weight:800;font-size:15px}
+  .ex-daynav button{min-width:76px;min-height:36px;border:1.5px solid var(--line);border-radius:10px;background:#fafbff;font-size:13px;font-weight:700;color:var(--ink)}
+  .ex-scorecard{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#eef2ff,#f5f3ff);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+  .ex-score-num{font-size:40px;font-weight:800;line-height:1}
+  .ex-score-num span{font-size:13px;font-weight:600;margin-left:3px}
+  .ex-score-meta{display:flex;flex-direction:column;gap:3px;font-size:14px}
+  .ex-cat{margin-bottom:14px}
+  .ex-cat-title{font-size:13px;font-weight:800;color:var(--ink-2);margin:0 0 8px;display:flex;align-items:center;gap:6px}
+  .ex-cat-title::before{content:"";width:8px;height:8px;border-radius:50%;background:#4f46e5}
+  .ex-item{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px}
+  .ex-item-main{display:flex;align-items:center;gap:10px}
+  .ex-name{flex:1;font-size:14px;font-weight:600;line-height:1.5}
+  .ex-btns{display:flex;gap:6px;align-items:center;flex-shrink:0}
+  .ex-btn{min-width:38px;height:34px;border-radius:9px;border:1.5px solid var(--line);background:#fafbff;font-size:15px;font-weight:800;color:var(--ink-3);display:grid;place-items:center;padding:0 8px}
+  .ex-btn.ok.on{background:#059669;border-color:#059669;color:#fff}
+  .ex-btn.no.on{background:#e11d48;border-color:#e11d48;color:#fff}
+  .ex-btn.note-btn{font-size:12px;font-weight:700;min-width:46px}
+  .ex-btn.note-btn.has{border-color:#4f46e5;color:#4f46e5}
+  .ex-btn.del{font-size:12px;min-width:34px;color:var(--red)}
+  .ex-note-edit{margin-top:10px}
+  .ex-note-edit textarea{width:100%;min-height:64px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-family:inherit;resize:vertical;background:#fafbff;box-sizing:border-box}
+  .ex-note-show{margin-top:8px;font-size:12.5px;color:var(--ink-2);background:#fafbff;border-radius:9px;padding:8px 10px;line-height:1.6}
+  .ex-week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+  .ex-week-cell{display:flex;flex-direction:column;align-items:center;gap:4px;background:#fafbff;border:1px solid var(--line);border-radius:10px;padding:8px 4px}
+  .ex-week-cell .d{font-size:11px;color:var(--ink-3);font-weight:700}
+  .ex-week-cell .barwrap{height:52px;display:flex;align-items:flex-end;width:18px;background:#f1f2f7;border-radius:5px;overflow:hidden}
+  .ex-week-cell .bar{width:100%;border-radius:5px 5px 0 0}
+  .ex-week-cell .s{font-size:12px;font-weight:800}
+  .ex-note-row{display:flex;gap:8px;font-size:12.5px;padding:6px 0;border-bottom:1px dashed var(--line);line-height:1.6}
+  .ex-note-row .num{color:var(--ink-3);flex-shrink:0}
   .full-panel{position:fixed;inset:0;background:var(--bg);z-index:60;display:none;flex-direction:column}
   .full-panel.show{display:flex}
   .fp-head{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 16px;display:flex;align-items:center;gap:12px}
@@ -377,6 +409,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
         管理固定任务
       </button>
+      <button class="side-add" data-act="open-excellence" style="margin-top:10px;background:rgba(255,255,255,.16);color:#fff;box-shadow:none">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1-5.5-2.9-5.5 2.9 1-6.1L3 9.5l6.3-.9z"/></svg>
+        卓越清单
+      </button>
       <div class="side-note">数据实时保存在资料库数据表<br>换设备、换浏览器打开都在</div>
     </div>
   </div>
@@ -394,6 +430,7 @@
     <div class="quick-add-row">
       <button class="btn btn-brand" data-act="new-goal"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新建目标</button>
       <button class="btn btn-ghost" data-act="open-fixed"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>固定任务</button>
+      <button class="btn btn-ghost" data-act="open-excellence"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1-5.5-2.9-5.5 2.9 1-6.1L3 9.5l6.3-.9z"/></svg>卓越清单</button>
     </div>
     <div class="today-zone" id="todayZone"></div>
     <div class="card-title" style="margin:16px 0 10px">
@@ -421,6 +458,10 @@
       <div class="card-title"><span class="dot"></span>打卡热力图 · 近 8 周</div>
       <div id="heatBox"></div>
     </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--green)"></span>卓越清单热力图 · 近 8 周</div>
+      <div id="exHeatBox"></div>
+    </div>
   </section>
 
   <section class="tab-panel" id="panel-weekly">
@@ -431,6 +472,10 @@
         <button class="btn btn-ghost btn-sm" data-act="week-next" id="weekNextBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
       </div>
       <div id="weekSummary"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--green)"></span>卓越清单 · 本周对照</div>
+      <div id="weekExBox"></div>
     </div>
     <div class="card">
       <div class="card-title"><span class="dot"></span>本周复盘<span class="spacer"></span><span class="tiny" id="weekSavedAt"></span></div>
@@ -456,15 +501,16 @@
         <button class="btn btn-ghost btn-sm" data-act="resync">重新同步</button>
       </div>
       <div class="sync-row"><div class="txt"><b>数据存放位置</b><span class="tiny" id="dbInfo"></span></div></div>
-      <div class="tiny" id="storeNote" style="margin-top:10px;line-height:1.7">学习目标、打卡记录、每周复盘、固定任务分别存放在四张线上数据表里。新建、打卡、补记、删除、保存复盘都会立即写回，换设备打开自动拉取，不需要手动导出。</div>
+      <div class="tiny" id="storeNote" style="margin-top:10px;line-height:1.7">学习目标、打卡记录、每周复盘、固定任务、卓越清单分别存放在六张线上数据表里。新建、打卡、补记、删除、保存复盘都会立即写回，换设备打开自动拉取，不需要手动导出。</div>
     </div>
 
     <div class="card">
       <div class="card-title"><span class="dot"></span>固定任务</div>
       <div class="mine-list">
         <button class="mine-btn" data-act="open-fixed"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>管理固定任务（习惯 / 目标）</button>
+        <button class="mine-btn" data-act="open-excellence"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1-5.5-2.9-5.5 2.9 1-6.1L3 9.5l6.3-.9z"/></svg>卓越清单（每日对照勾选）</button>
       </div>
-      <div class="tiny" style="margin-top:10px">固定任务保存后会自动出现在「今日 → 任务栏」，每天跟着打卡。</div>
+      <div class="tiny" style="margin-top:10px">固定任务保存后会自动出现在「今日 → 任务栏」，每天跟着打卡。卓越清单每天对照勾选，做到打 ✓、没做到打 ✗，在看板和周报里有得分热力图。</div>
     </div>
 
     <div class="card">
@@ -577,6 +623,42 @@
   <div class="fp-body" id="fpBody"></div>
 </div>
 
+<!-- 卓越清单界面 -->
+<div class="full-panel" id="panelExcellence">
+  <div class="fp-head">
+    <button data-act="close-excellence"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>返回</button>
+    <h2>卓越清单</h2>
+    <button data-act="ex-new-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增</button>
+  </div>
+  <div class="fp-body">
+    <div class="ex-daynav">
+      <button data-act="ex-day-prev">‹ 前一天</button>
+      <div class="lab" id="exDateLabel"></div>
+      <button data-act="ex-day-next" id="exDayNext">后一天 ›</button>
+    </div>
+    <div class="ex-scorecard" id="exScoreCard"></div>
+    <div id="exBody"></div>
+    <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" data-act="ex-restore">恢复默认项</button>
+      <span class="tiny">每天对照勾选：做到打 ✓，没做到打 ✗，点「标注」记成功经验 / 失败原因 / 改变计划。</span>
+    </div>
+  </div>
+</div>
+
+<!-- 卓越清单 新增条目 -->
+<div class="modal-mask" id="maskExItem">
+  <div class="modal">
+    <h3><span>新增卓越清单条目</span><span class="spacer"></span><button data-act="close-ex-item" style="width:32px;height:32px;border-radius:9px;background:#f1f2f7;display:grid;place-items:center;color:var(--ink-2)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button></h3>
+    <div class="form-err" id="exItemErr"></div>
+    <div class="form-row"><label>条目名称</label><input id="exName" placeholder="例：每天整理 3 道错题"></div>
+    <div class="form-row"><label>类别</label><select id="exCat"><option>学习</option><option>思考</option><option>健康</option><option>共同交流</option><option>自律</option></select></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-act="close-ex-item">取消</button>
+      <button class="btn btn-brand" data-act="save-ex-item">保存</button>
+    </div>
+  </div>
+</div>
+
 <!-- 番茄界面 -->
 <div class="pomo" id="pomo">
   <div class="pomo-head">
@@ -616,7 +698,9 @@
     goals: "0KoLy02CPNFQqbwyZ6zWwU",
     logs: "Bgv3COdnuIXblWKzC2j6iD",
     reviews: "YEykp6RvFE51QFGyDxDUT1",
-    tasks: "G7JYnTkMXJ1K0KQlPmsxNn"
+    tasks: "G7JYnTkMXJ1K0KQlPmsxNn",
+    exItems: "WVUzgkU2vxlNvVNBQ3qvOE",
+    exLogs: "4zJUyOVRyt24jtAUlOiaSo"
   };
   var COLORS = [
     { k: "violet", c: "#7c3aed" },
@@ -635,9 +719,33 @@
     "慢慢来，比较快。你已经走在路上了。"
   ];
 
+  /* ===================== 卓越清单默认项（优秀学生通用特质） ===================== */
+  var EX_DEFAULTS = [
+    { key: "e01", cat: "学习", name: "课前预习，带着问题进课堂" },
+    { key: "e02", cat: "学习", name: "专心听讲，主动举手发言" },
+    { key: "e03", cat: "学习", name: "作业独立按时完成，不拖延不抄袭" },
+    { key: "e04", cat: "学习", name: "整理错题，弄懂每一处错因" },
+    { key: "e05", cat: "学习", name: "睡前回顾当日所学，堂清日结" },
+    { key: "e06", cat: "思考", name: "课外阅读 20 分钟以上" },
+    { key: "e07", cat: "思考", name: "对今天学的内容提出 1 个「为什么」" },
+    { key: "e08", cat: "思考", name: "随手记录灵感、收获或疑问" },
+    { key: "e09", cat: "思考", name: "复盘：今天哪件事可以做得更好" },
+    { key: "e10", cat: "健康", name: "早睡早起，睡足 8 小时" },
+    { key: "e11", cat: "健康", name: "运动 30 分钟（跑步 / 跳绳 / 球类）" },
+    { key: "e12", cat: "健康", name: "三餐规律，认真吃早餐" },
+    { key: "e13", cat: "健康", name: "适度使用电子产品，不刷短视频" },
+    { key: "e14", cat: "共同交流", name: "主动帮助同学或参与合作学习" },
+    { key: "e15", cat: "共同交流", name: "和父母 / 老师聊聊今天的学习与感受" },
+    { key: "e16", cat: "共同交流", name: "清楚大胆地表达自己的观点" },
+    { key: "e17", cat: "自律", name: "按计划推进，今日事今日毕" },
+    { key: "e18", cat: "自律", name: "保持书桌和房间整洁" },
+    { key: "e19", cat: "自律", name: "管住屏幕时间，先学习后娱乐" },
+    { key: "e20", cat: "自律", name: "对自己诚实：没做到的不找借口" }
+  ];
+
   /* ===================== 状态 ===================== */
   var S = {
-    goals: [], logs: [], reviews: [], tasks: [],
+    goals: [], logs: [], reviews: [], tasks: [], exItems: [], exLogs: [],
     tab: "today",
     weekOffset: 0,
     loading: true,
@@ -653,7 +761,9 @@
     taskColor: "blue",
     checkin: null,
     confirmFn: null,
-    report: ""
+    report: "",
+    exDate: null,
+    exNoteId: null
   };
 
   /* ===================== 工具 ===================== */
@@ -796,6 +906,8 @@
     if (dbId === DB.logs) return d.query({ databaseId: "Bgv3COdnuIXblWKzC2j6iD", pageSize: 200, startCursor: cursor });
     if (dbId === DB.reviews) return d.query({ databaseId: "YEykp6RvFE51QFGyDxDUT1", pageSize: 200, startCursor: cursor });
     if (dbId === DB.tasks) return d.query({ databaseId: "G7JYnTkMXJ1K0KQlPmsxNn", pageSize: 200, startCursor: cursor });
+    if (dbId === DB.exItems) return d.query({ databaseId: "WVUzgkU2vxlNvVNBQ3qvOE", pageSize: 200, startCursor: cursor });
+    if (dbId === DB.exLogs) return d.query({ databaseId: "4zJUyOVRyt24jtAUlOiaSo", pageSize: 200, startCursor: cursor });
     return Promise.resolve({ results: [], hasMore: false });
   }
 
@@ -846,6 +958,21 @@
     };
   }
 
+  function normExItem(r) {
+    return {
+      id: rid(r), name: str(r["名称"]), cat: str(r["类别"]) || "学习", order: num(r["排序"]),
+      enabled: r["启用"] === undefined ? true : !!r["启用"], builtin: str(r["内置"]),
+      demo: !!r["示例"], created: str(r["创建时间"])
+    };
+  }
+  function normExLog(r) {
+    return {
+      id: rid(r), date: str(r["日期"]), itemId: str(r["项目ID"]), name: str(r["项目名称"]),
+      cat: str(r["类别"]), status: str(r["状态"]), note: str(r["标注"]),
+      demo: !!r["示例"], created: str(r["创建时间"])
+    };
+  }
+
   function isConnTimeout(e) { return !!(e && e.message && e.message.indexOf("内连接到资料库") >= 0); }
 
   function fetchAll() {
@@ -864,22 +991,40 @@
     }
     return ready.then(function () {
       return Promise.all([
-        loadAll(DB.goals), loadAll(DB.logs), loadAll(DB.reviews), loadAll(DB.tasks)
+        loadAll(DB.goals), loadAll(DB.logs), loadAll(DB.reviews), loadAll(DB.tasks),
+        loadAll(DB.exItems).catch(function () { return []; }),
+        loadAll(DB.exLogs).catch(function () { return []; })
       ]);
     }).then(function (res) {
-      // 本地模式且是首次打开（四库全空）→ 种入示例数据
-      if (DATA_MODE === "local" && !localStorage.getItem(LSEED_FLAG) && !res[0].length && !res[1].length && !res[2].length && !res[3].length) {
-        seedLocal();
-        return Promise.all([
-          loadAll(DB.goals), loadAll(DB.logs), loadAll(DB.reviews), loadAll(DB.tasks)
-        ]);
-      }
-      return res;
+      // 卓越清单为空且从未种入 → 自动创建 20 项默认清单（云端 / 本地模式都适用）
+      var pre = (!localStorage.getItem(EXSEED_FLAG) && !res[4].length)
+        ? provisionExDefaults().then(function () {
+            return Promise.all([
+              loadAll(DB.goals), loadAll(DB.logs), loadAll(DB.reviews), loadAll(DB.tasks),
+              loadAll(DB.exItems).catch(function () { return []; }),
+              loadAll(DB.exLogs).catch(function () { return []; })
+            ]);
+          })
+        : Promise.resolve(res);
+      return pre.then(function (res) {
+        // 本地模式且是首次打开（四库全空）→ 种入示例数据
+        if (DATA_MODE === "local" && !localStorage.getItem(LSEED_FLAG) && !res[0].length && !res[1].length && !res[2].length && !res[3].length) {
+          seedLocal();
+          return Promise.all([
+            loadAll(DB.goals), loadAll(DB.logs), loadAll(DB.reviews), loadAll(DB.tasks),
+            loadAll(DB.exItems).catch(function () { return []; }),
+            loadAll(DB.exLogs).catch(function () { return []; })
+          ]);
+        }
+        return res;
+      });
     }).then(function (res) {
       S.goals = res[0].map(normGoal).sort(function (a, b) { return a.order - b.order; });
       S.logs = res[1].map(normLog);
       S.reviews = res[2].map(normReview);
       S.tasks = res[3].map(normTask).sort(function (a, b) { return a.order - b.order; });
+      S.exItems = res[4].map(normExItem).sort(function (a, b) { return a.order - b.order; });
+      S.exLogs = res[5].map(normExLog);
       S.loading = false;
       S.err = null;
       S.sync = { status: "ok", at: new Date(), msg: DATA_MODE === "local" ? "本地模式" : "" };
@@ -1122,7 +1267,7 @@
     time.textContent = S.sync.at
       ? "最近一次同步：" + S.sync.at.toTimeString().slice(0, 8) + (S.sync.msg ? " · " + S.sync.msg : "")
       : "尚未同步";
-    $("dbInfo").textContent = "学习目标 / 打卡记录 / 每周复盘 / 固定任务，共 4 张线上数据表";
+    $("dbInfo").textContent = "学习目标 / 打卡记录 / 每周复盘 / 固定任务 / 卓越清单，共 6 张线上数据表";
   }
 
   function planLine(it) {
@@ -1266,6 +1411,7 @@
       stats.innerHTML = "";
       $("chartBox").innerHTML = "";
       $("heatBox").innerHTML = "";
+      $("exHeatBox").innerHTML = "";
       return;
     }
     var list = activeItems();
@@ -1279,11 +1425,14 @@
     list.forEach(function (it) {
       maxStreak = Math.max(maxStreak, it.kind === "task" && it.sub === "习惯" ? habitProgress(findRaw(it)).streak : calcStats(it).streak);
     });
+    var exToday = exScore(today);
+    var exVal = (exToday.done || exToday.fail) ? exToday.score : "—";
     stats.innerHTML =
       statCard("#eef2ff", "#4f46e5", ICON.target, list.length, "进行中的项目") +
       statCard("#ecfdf5", "#047857", ICON.check, doneCount, "已达成目标") +
       statCard("#fff7ed", "#ea580c", ICON.flame, maxStreak, "最长连续天数") +
-      statCard("#f5f3ff", "#7c3aed", ICON.clock, mins, "本周专注分钟");
+      statCard("#f5f3ff", "#7c3aed", ICON.clock, mins, "本周专注分钟") +
+      statCard("#f0fdf4", "#059669", ICON.spark, exVal, "今日卓越得分");
 
     var html = "";
     list.forEach(function (it) {
@@ -1352,6 +1501,7 @@
 
     renderChart();
     renderHeat();
+    renderExHeat();
   }
 
   function statCard(bg, color, icon, value, label) {
@@ -1444,6 +1594,7 @@
     $("weekNextBtn").style.visibility = S.weekOffset >= 0 ? "hidden" : "visible";
     if (S.loading) {
       $("weekSummary").innerHTML = '<div class="loading">正在读取线上数据…</div>';
+      $("weekExBox").innerHTML = "";
       return;
     }
     var cur = weekAgg(range);
@@ -1477,6 +1628,7 @@
       '<div class="week-compare">' + cmp(cur.minutes, prev.minutes, "分钟") + "</div></div></div>";
     if (!any && cur.count === 0) html = '<div class="empty">这一周还没有打卡记录</div>';
     $("weekSummary").innerHTML = html;
+    renderWeekEx(range);
 
     var rv = null;
     S.reviews.forEach(function (r) { if (r.weekStart === range.start) rv = r; });
@@ -1558,6 +1710,7 @@
     renderWeekly();
     renderMine();
     if ($("panelFixed").classList.contains("show")) renderFixedPanel();
+    if ($("panelExcellence") && $("panelExcellence").classList.contains("show")) renderExcellence();
   }
 
   /* ===================== 提示 ===================== */
@@ -2053,6 +2206,10 @@
     lines.push("【合计】打卡 " + cur.count + " 次、" + cur.days + " 天、专注 " + cur.minutes + " 分钟（上周 " +
       prev.count + " 次 / " + prev.minutes + " 分钟，" + cmp(cur.minutes, prev.minutes, "分钟") + "）");
     lines.push("");
+    var exs = exWeekAgg(range);
+    lines.push("【卓越清单】" + (exs.avg == null ? "本周还没有对照记录" : "周均 " + exs.avg + " 分（" + exs.level + "）") + "，✓ " + exs.done + " 项次 / ✗ " + exs.fail + " 项次 / 清单共 " + exs.total + " 项");
+    exs.notes.slice(0, 5).forEach(function (n) { lines.push("· " + n); });
+    lines.push("");
     lines.push("【保持】" + ($("kptKeep").value || "（未填写）"));
     lines.push("【问题】" + ($("kptProblem").value || "（未填写）"));
     lines.push("【尝试】" + ($("kptTry").value || "（未填写）"));
@@ -2117,7 +2274,7 @@
     });
   }
   function clearAll() {
-    askConfirm("清空全部数据", "这会删除全部目标、固定任务、打卡记录和周复盘，不可恢复。确定要继续吗？", function () {
+    askConfirm("清空全部数据", "这会删除全部目标、固定任务、打卡记录、周复盘和卓越清单数据，不可恢复。确定要继续吗？", function () {
       var v = (window.prompt("请输入「清空」两个字确认") || "").trim();
       if (v !== "清空") return toast("未输入「清空」，已取消");
       var jobs = [];
@@ -2125,10 +2282,271 @@
       S.goals.forEach(function (x) { jobs.push(db.deleteRecord({ databaseId: "0KoLy02CPNFQqbwyZ6zWwU", recordId: x.id })); });
       S.tasks.forEach(function (x) { jobs.push(db.deleteRecord({ databaseId: "G7JYnTkMXJ1K0KQlPmsxNn", recordId: x.id })); });
       S.reviews.forEach(function (x) { jobs.push(db.deleteRecord({ databaseId: "YEykp6RvFE51QFGyDxDUT1", recordId: x.id })); });
+      S.exItems.forEach(function (x) { jobs.push(db.deleteRecord({ databaseId: "WVUzgkU2vxlNvVNBQ3qvOE", recordId: x.id })); });
+      S.exLogs.forEach(function (x) { jobs.push(db.deleteRecord({ databaseId: "4zJUyOVRyt24jtAUlOiaSo", recordId: x.id })); });
       commit(function () { return Promise.all(jobs); })
         .then(function () { toast("已清空全部数据"); })
         .catch(function () { });
     });
+  }
+
+  /* ===================== 卓越清单 ===================== */
+  var EXSEED_FLAG = "wb_ex_seeded";
+  var EX_CATS = ["学习", "思考", "健康", "共同交流", "自律"];
+  function exItems() {
+    return S.exItems.filter(function (x) { return x.enabled !== false; })
+      .sort(function (a, b) { return a.order - b.order; });
+  }
+  function findExItem(id2) {
+    var r = null;
+    S.exItems.forEach(function (x) { if (x.id === id2) r = x; });
+    return r;
+  }
+  function exLogOf(date, itemId) {
+    for (var i = 0; i < S.exLogs.length; i++) {
+      var l = S.exLogs[i];
+      if (l.date === date && l.itemId === itemId) return l;
+    }
+    return null;
+  }
+  function exScore(date) {
+    var items = exItems();
+    if (!items.length) return { score: null, done: 0, fail: 0, total: 0 };
+    var done = 0, fail = 0;
+    items.forEach(function (it) {
+      var l = exLogOf(date, it.id);
+      if (l && l.status === "完成") done++;
+      else if (l && l.status === "失败") fail++;
+    });
+    return { score: Math.round((done / items.length) * 100), done: done, fail: fail, total: items.length };
+  }
+  function exScoreColor(sc) { return sc >= 80 ? "#059669" : sc >= 50 ? "#d97706" : "#e11d48"; }
+  function exLevel(sc) { return sc >= 80 ? "绿色 · 卓越" : sc >= 50 ? "黄色 · 良好" : "红色 · 待改进"; }
+  function provisionExDefaults() {
+    var jobs = EX_DEFAULTS.map(function (d, i) {
+      return db.addRecord({ databaseId: "WVUzgkU2vxlNvVNBQ3qvOE", properties: {
+        "名称": { text: d.name }, "类别": { select: d.cat }, "排序": { number: i + 1 },
+        "启用": { checkbox: true }, "内置": { text: d.key }, "示例": { checkbox: false },
+        "创建时间": { text: todayStr() }
+      } });
+    });
+    return Promise.all(jobs).then(function () {
+      try { localStorage.setItem(EXSEED_FLAG, "1"); } catch (e) { }
+    }).catch(function () { });
+  }
+  function exWeekAgg(range) {
+    var done = 0, fail = 0, sum = 0, marked = 0;
+    var total = exItems().length;
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(range.start, i);
+      if (d > todayStr()) break;
+      var sc = exScore(d);
+      done += sc.done; fail += sc.fail;
+      if (sc.done || sc.fail) { sum += sc.score; marked++; }
+    }
+    var notes = [];
+    S.exLogs.forEach(function (l) {
+      if (l.note && l.date >= range.start && l.date <= range.end) notes.push(fmtMD(l.date) + "「" + (l.name || "") + "」" + l.note);
+    });
+    var avg = marked ? Math.round(sum / marked) : null;
+    return { total: total, done: done, fail: fail, avg: avg, level: avg == null ? "未标记" : exLevel(avg), notes: notes };
+  }
+  function renderExcellence() {
+    var panel = $("panelExcellence");
+    if (!panel) return;
+    if (!UI.exDate) UI.exDate = todayStr();
+    var d = UI.exDate;
+    $("exDateLabel").textContent = fmtMD(d) + " 星期" + "日一二三四五六"[parseD(d).getDay()] + (d === todayStr() ? " · 今天" : "");
+    $("exDayNext").style.visibility = d >= todayStr() ? "hidden" : "visible";
+    var items = exItems();
+    var sc = exScore(d);
+    var has = sc.done || sc.fail;
+    var color = has ? exScoreColor(sc.score) : "#9aa1b3";
+    $("exScoreCard").innerHTML =
+      '<div class="ex-score-num" style="color:' + color + '">' + (has ? sc.score : "—") + "<span>分</span></div>" +
+      '<div class="ex-score-meta"><b style="color:' + color + '">' + (has ? exLevel(sc.score) : "今天还没有对照记录") + "</b>" +
+      '<span class="tiny">✓ 完成 ' + sc.done + " · ✗ 失败 " + sc.fail + " · 共 " + sc.total + " 项</span>" +
+      '<span class="tiny">得分 = 完成 ÷ 总项 × 100 ｜ ≥80 绿 · 50-79 黄 · &lt;50 红</span></div>';
+    var html = "";
+    if (!items.length) {
+      html = '<div class="empty">清单是空的，点右上「新增」加一条，或点下面「恢复默认项」</div>';
+    } else {
+      EX_CATS.forEach(function (cat) {
+        var its = items.filter(function (x) { return x.cat === cat; });
+        if (!its.length) return;
+        html += '<div class="ex-cat"><div class="ex-cat-title">' + esc(cat) + "</div>";
+        its.forEach(function (it) {
+          var l = exLogOf(d, it.id);
+          var st = l ? l.status : "";
+          var note = l ? l.note : "";
+          html += '<div class="ex-item"><div class="ex-item-main">' +
+            '<span class="ex-name"' + bd(DB.exItems) + ">" + esc(it.name) + "</span>" +
+            '<span class="ex-btns">' +
+            '<button class="ex-btn ok' + (st === "完成" ? " on" : "") + '" data-act="ex-mark" data-id="' + it.id + '" data-v="完成" title="今天做到了">✓</button>' +
+            '<button class="ex-btn no' + (st === "失败" ? " on" : "") + '" data-act="ex-mark" data-id="' + it.id + '" data-v="失败" title="今天没做到">✗</button>' +
+            '<button class="ex-btn note-btn' + (note ? " has" : "") + '" data-act="ex-note" data-id="' + it.id + '">' + (note ? "标注·" : "标注") + "</button>" +
+            (it.builtin ? "" : '<button class="ex-btn del" data-act="ex-del-item" data-id="' + it.id + '" title="删除这条">✕</button>') +
+            "</span></div>" +
+            (UI.exNoteId === it.id
+              ? '<div class="ex-note-edit"><textarea id="exNoteText" placeholder="做到了：写成功经验；没做到：写失败原因，以及下次怎么改。">' + esc(note) + "</textarea>" +
+                '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button class="btn btn-ghost btn-sm" data-act="ex-note-cancel">收起</button><button class="btn btn-brand btn-sm" data-act="ex-note-save" data-id="' + it.id + '">保存标注</button></div></div>'
+              : (note ? '<div class="ex-note-show"' + bd(DB.exLogs) + ">" + esc(note) + "</div>" : "")) +
+            "</div>";
+        });
+        html += "</div>";
+      });
+    }
+    $("exBody").innerHTML = html;
+  }
+  function exMark(itemId, v) {
+    var it = findExItem(itemId);
+    if (!it) return;
+    var d = UI.exDate || todayStr();
+    var cur = exLogOf(d, itemId);
+    var next = cur && cur.status === v ? "" : v;
+    if (!next) {
+      if (!cur) return;
+      commit(function () { return db.deleteRecord({ databaseId: "4zJUyOVRyt24jtAUlOiaSo", recordId: cur.id }); }).catch(function () { });
+      return;
+    }
+    if (cur) {
+      commit(function () { return db.updateRecord({ databaseId: "4zJUyOVRyt24jtAUlOiaSo", recordId: cur.id, properties: { "状态": { select: next } } }); }).catch(function () { });
+    } else {
+      commit(function () {
+        return db.addRecord({ databaseId: "4zJUyOVRyt24jtAUlOiaSo", properties: {
+          "日期": { text: d }, "项目ID": { text: itemId }, "项目名称": { text: it.name }, "类别": { select: it.cat },
+          "状态": { select: next }, "标注": { text: "" }, "示例": { checkbox: false }, "创建时间": { text: todayStr() }
+        } });
+      }).catch(function () { });
+    }
+  }
+  function exSaveNote(itemId) {
+    var it = findExItem(itemId);
+    if (!it) return;
+    var ta = $("exNoteText");
+    var note = ta ? ta.value.trim() : "";
+    var cur = exLogOf(UI.exDate || todayStr(), itemId);
+    if (cur) {
+      if (!note && !cur.status) {
+        commit(function () { return db.deleteRecord({ databaseId: "4zJUyOVRyt24jtAUlOiaSo", recordId: cur.id }); })
+          .then(function () { UI.exNoteId = null; renderExcellence(); }).catch(function () { });
+      } else {
+        commit(function () { return db.updateRecord({ databaseId: "4zJUyOVRyt24jtAUlOiaSo", recordId: cur.id, properties: { "标注": { text: note } } }); })
+          .then(function () { UI.exNoteId = null; renderExcellence(); toast("标注已保存"); }).catch(function () { });
+      }
+    } else if (note) {
+      commit(function () {
+        return db.addRecord({ databaseId: "4zJUyOVRyt24jtAUlOiaSo", properties: {
+          "日期": { text: UI.exDate || todayStr() }, "项目ID": { text: itemId }, "项目名称": { text: it.name }, "类别": { select: it.cat },
+          "标注": { text: note }, "示例": { checkbox: false }, "创建时间": { text: todayStr() }
+        } });
+      }).then(function () { UI.exNoteId = null; renderExcellence(); toast("标注已保存"); }).catch(function () { });
+    } else {
+      UI.exNoteId = null;
+      renderExcellence();
+    }
+  }
+  function exDelItem(itemId) {
+    var it = findExItem(itemId);
+    if (!it) return;
+    askConfirm("删除清单条目", "删除「" + it.name + "」后不再参与每日勾选和得分计算，历史勾选记录保留。确定吗？", function () {
+      commit(function () { return db.deleteRecord({ databaseId: "WVUzgkU2vxlNvVNBQ3qvOE", recordId: itemId }); })
+        .then(function () { toast("已删除"); }).catch(function () { });
+    });
+  }
+  function exRestoreDefaults() {
+    var missing = EX_DEFAULTS.filter(function (d) {
+      return !S.exItems.some(function (x) { return x.builtin === d.key; });
+    });
+    if (!missing.length) return toast("默认项都在，不用恢复");
+    commit(function () {
+      return Promise.all(missing.map(function (d, i) {
+        return db.addRecord({ databaseId: "WVUzgkU2vxlNvVNBQ3qvOE", properties: {
+          "名称": { text: d.name }, "类别": { select: d.cat }, "排序": { number: S.exItems.length + i + 1 },
+          "启用": { checkbox: true }, "内置": { text: d.key }, "示例": { checkbox: false }, "创建时间": { text: todayStr() }
+        } });
+      }));
+    }).then(function () { toast("已恢复 " + missing.length + " 项默认清单"); }).catch(function () { });
+  }
+  function exSaveItem() {
+    var name = ($("exName").value || "").trim();
+    var cat = $("exCat").value || "学习";
+    var err = $("exItemErr");
+    if (!name) { err.textContent = "请填写条目名称"; err.classList.add("show"); return; }
+    err.classList.remove("show");
+    commit(function () {
+      return db.addRecord({ databaseId: "WVUzgkU2vxlNvVNBQ3qvOE", properties: {
+        "名称": { text: name }, "类别": { select: cat }, "排序": { number: S.exItems.length + 1 },
+        "启用": { checkbox: true }, "内置": { text: "" }, "示例": { checkbox: false }, "创建时间": { text: todayStr() }
+      } });
+    }).then(function () {
+      closeMask("maskExItem");
+      $("exName").value = "";
+      toast("已加入清单");
+    }).catch(function () { });
+  }
+  function renderExHeat() {
+    var box = $("exHeatBox");
+    if (!box) return;
+    if (S.loading) { box.innerHTML = ""; return; }
+    if (!exItems().length) { box.innerHTML = '<div class="empty">还没有卓越清单条目，去「今日 → 卓越清单」开始</div>'; return; }
+    var today = todayStr();
+    var end = addDays(mondayOf(today), 6);
+    var start = addDays(end, -55);
+    var html = '<div class="heat-grid">';
+    var cur = start;
+    while (cur <= end) {
+      var sc = exScore(cur);
+      var tip;
+      if (sc.done || sc.fail) {
+        tip = cur + " · " + sc.score + " 分（" + sc.done + "/" + sc.total + "）";
+        html += '<div class="heat-cell' + (cur === today ? " today" : "") + '" style="background:' + exScoreColor(sc.score) + '" title="' + tip + '"></div>';
+      } else {
+        tip = cur + " · 未标记";
+        html += '<div class="heat-cell' + (cur === today ? " today" : "") + '" title="' + tip + '"></div>';
+      }
+      cur = addDays(cur, 1);
+    }
+    html += "</div>";
+    html += '<div class="heat-legend"><span>红 &lt;50</span><div class="heat-cell" style="background:#e11d48"></div><span>黄 50-79</span><div class="heat-cell" style="background:#d97706"></div><span>绿 ≥80</span><div class="heat-cell" style="background:#059669"></div><span>未标记</span></div>';
+    html += '<div class="tiny" style="margin-top:8px">每天得分 = 当天完成项 ÷ 清单总项 × 100。绿色 ≥80，黄色 50-79，红色 &lt;50。</div>';
+    box.innerHTML = html;
+  }
+  function renderWeekEx(range) {
+    var box = $("weekExBox");
+    if (!box) return;
+    if (S.loading) { box.innerHTML = ""; return; }
+    if (!exItems().length) { box.innerHTML = '<div class="tiny" style="padding:4px 0">还没有卓越清单条目，去「今日 → 卓越清单」开始</div>'; return; }
+    var today = todayStr();
+    var html = '<div class="ex-week-grid">';
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(range.start, i);
+      var wd = "日一二三四五六"[parseD(d).getDay()];
+      if (d > today) {
+        html += '<div class="ex-week-cell"><span class="d">' + wd + '</span><div class="barwrap"><div class="bar"></div></div><span class="s">—</span></div>';
+        continue;
+      }
+      var sc = exScore(d);
+      var has = sc.done || sc.fail;
+      var col = has ? exScoreColor(sc.score) : "#eef0f6";
+      html += '<div class="ex-week-cell"' + (d === today ? ' style="outline:2px solid rgba(28,35,51,.25);outline-offset:-2px"' : "") + ">" +
+        '<span class="d">' + wd + "</span>" +
+        '<div class="barwrap"><div class="bar" style="background:' + col + ";height:" + (has ? Math.max(6, sc.score) : 4) + '%"></div></div>' +
+        '<span class="s num" style="color:' + (has ? col : "var(--ink-3)") + '">' + (has ? sc.score : "·") + "</span></div>";
+    }
+    html += "</div>";
+    var agg = exWeekAgg(range);
+    html += '<div class="tiny" style="margin-top:10px">本周均分 <b style="color:' + (agg.avg == null ? "var(--ink-3)" : exScoreColor(agg.avg)) + '">' + (agg.avg == null ? "—" : agg.avg) + "</b>（" + esc(agg.level) + "）· ✓ " + agg.done + " 项次 · ✗ " + agg.fail + " 项次</div>";
+    var notes = S.exLogs.filter(function (l) { return l.note && l.date >= range.start && l.date <= range.end; })
+      .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    if (notes.length) {
+      html += '<div class="ex-week-notes"><div class="tiny" style="margin:10px 0 2px;font-weight:700;color:var(--ink-2)">标注 · 成功经验 / 失败原因 / 改变计划</div>';
+      notes.slice(0, 8).forEach(function (l) {
+        html += '<div class="ex-note-row"><span class="num">' + fmtMD(l.date) + "</span><span>" + esc(l.name || "") + "：" + esc(l.note) + "</span></div>";
+      });
+      html += "</div>";
+    }
+    box.innerHTML = html;
   }
 
   /* ===================== 事件 ===================== */
@@ -2233,6 +2651,19 @@
       case "import-json": $("importFile").click(); break;
       case "close-confirm": closeMask("maskConfirm"); break;
       case "confirm-yes": closeMask("maskConfirm"); if (UI.confirmFn) { var f = UI.confirmFn; UI.confirmFn = null; f(); } break;
+      case "open-excellence": UI.exDate = todayStr(); UI.exNoteId = null; $("panelExcellence").classList.add("show"); renderExcellence(); break;
+      case "close-excellence": $("panelExcellence").classList.remove("show"); break;
+      case "ex-day-prev": UI.exDate = addDays(UI.exDate, -1); UI.exNoteId = null; renderExcellence(); break;
+      case "ex-day-next": if (UI.exDate < todayStr()) { UI.exDate = addDays(UI.exDate, 1); UI.exNoteId = null; renderExcellence(); } break;
+      case "ex-mark": exMark(id, v); break;
+      case "ex-note": if (UI.exNoteId === id) { UI.exNoteId = null; } else { UI.exNoteId = id; } renderExcellence(); break;
+      case "ex-note-cancel": UI.exNoteId = null; renderExcellence(); break;
+      case "ex-note-save": exSaveNote(id); break;
+      case "ex-del-item": exDelItem(id); break;
+      case "ex-restore": exRestoreDefaults(); break;
+      case "ex-new-item": openMask("maskExItem"); break;
+      case "close-ex-item": closeMask("maskExItem"); break;
+      case "save-ex-item": exSaveItem(); break;
       case "close-enc": $("encourage").classList.remove("show"); break;
     }
   });
@@ -2286,7 +2717,7 @@
     var data = {
       app: "learning-goal",
       exportedAt: new Date().toISOString(),
-      goals: S.goals, logs: S.logs, reviews: S.reviews, tasks: S.tasks
+      goals: S.goals, logs: S.logs, reviews: S.reviews, tasks: S.tasks, exItems: S.exItems, exLogs: S.exLogs
     };
     var blob = new Blob([JSON.stringify(data)], { type: "application/json" });
     var a = document.createElement("a");
@@ -2301,6 +2732,8 @@
   function revTask(t) { return { _id: t.id, "标题": t.title || "", "类型": t.type || "习惯", "单位": t.unit || "次", "每日量": num(t.daily), "总量": num(t.total), "截止日": t.deadline || "", "配色": t.color || "blue", "障碍": t.obstacle || "", "对策": t.plan || "", "启用": t.enabled !== false, "排序": num(t.order), "示例": !!t.demo, "创建时间": t.created || "" }; }
   function revLog(l) { return { _id: l.id, "项目ID": l.itemId || "", "来源": l.source || "", "项目名称": l.name || "", "日期": l.date || "", "数量": num(l.amount), "分钟": num(l.minutes), "补记": !!l.makeup, "示例": !!l.demo, "创建时间": l.created || "" }; }
   function revReview(r) { return { _id: r.id, "周起始日": r.weekStart || "", "保持": r.keep || "", "问题": r.problem || "", "尝试": r.tryIt || "", "下周预案": r.nextPlan || "", "更新时间": r.updatedAt || "", "示例": !!r.demo }; }
+  function revExItem(x) { return { _id: x.id, "名称": x.name || "", "类别": x.cat || "学习", "排序": num(x.order), "启用": x.enabled !== false, "内置": x.builtin || "", "示例": !!x.demo, "创建时间": x.created || "" }; }
+  function revExLog(l) { return { _id: l.id, "日期": l.date || "", "项目ID": l.itemId || "", "项目名称": l.name || "", "类别": l.cat || "", "状态": l.status || "", "标注": l.note || "", "示例": !!l.demo, "创建时间": l.created || "" }; }
   function bindImport() {
     var inp = $("importFile");
     if (!inp) return;
@@ -2314,12 +2747,14 @@
         try { d = JSON.parse(rd.result); } catch (e) { d = null; }
         if (!d || !d.goals || !d.logs) { toast("导入失败：文件格式不对"); return; }
         if (DATA_MODE !== "local") { toast("当前为线上模式，数据已在云端保存，无需导入"); return; }
-        var n = d.goals.length + d.logs.length + (d.tasks || []).length + (d.reviews || []).length;
+        var n = d.goals.length + d.logs.length + (d.tasks || []).length + (d.reviews || []).length + (d.exItems || []).length + (d.exLogs || []).length;
         askConfirm("导入备份", "将覆盖当前浏览器里的全部数据，写入备份中的 " + n + " 条记录。此操作不可撤销。", function () {
           lwrite(DB.goals, d.goals.map(revGoal));
           lwrite(DB.tasks, (d.tasks || []).map(revTask));
           lwrite(DB.logs, d.logs.map(revLog));
           lwrite(DB.reviews, (d.reviews || []).map(revReview));
+          lwrite(DB.exItems, (d.exItems || []).map(revExItem));
+          lwrite(DB.exLogs, (d.exLogs || []).map(revExLog));
           toast("导入成功，正在刷新…");
           fetchAll();
         });
@@ -2354,7 +2789,7 @@
       if (typeof d.onUpdated === "function") {
         d.onUpdated(function (payload) {
           var ids = (payload && payload.databaseIds) || [];
-          var mine = [DB.goals, DB.logs, DB.reviews, DB.tasks];
+          var mine = [DB.goals, DB.logs, DB.reviews, DB.tasks, DB.exItems, DB.exLogs];
           var hit = false;
           ids.forEach(function (i) { if (mine.indexOf(i) >= 0) hit = true; });
           if (!hit) return;
