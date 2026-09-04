@@ -987,7 +987,477 @@
         }
         .hidden { display: none !important; }
         .text-muted { color: var(--text-secondary); }
+        /* ===== 项目切换器 ===== */
+        .project-switcher {
+            padding: 10px 16px 4px;
+        }
+        .project-switcher label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .project-switcher-row {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .project-switcher-row select {
+            flex: 1;
+            min-width: 0;
+            padding: 7px 8px;
+            border: 1.5px solid var(--border);
+            border-radius: 9px;
+            font-size: 13px;
+            background: var(--card-bg);
+            color: var(--text);
+            cursor: pointer;
+        }
+        .project-switcher-row select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .project-switcher-row button {
+            width: 28px;
+            height: 30px;
+            flex: 0 0 28px;
+            border: 1.5px solid var(--border);
+            background: var(--card-bg);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .project-switcher-row button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-bg);
+        }
+
+        /* ===== 科目目标面板 ===== */
+        .goal-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(30, 41, 59, 0.04);
+        }
+        .goal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .goal-head h3 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .goal-head h3 .icon {
+            font-size: 16px;
+        }
+        .goal-toggle {
+            font-size: 12px;
+            color: var(--primary);
+            cursor: pointer;
+            user-select: none;
+            padding: 4px 8px;
+            border-radius: 8px;
+        }
+        .goal-toggle:hover {
+            background: var(--primary-bg);
+        }
+        .goal-summary {
+            margin-top: 10px;
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        .goal-summary .chip {
+            display: inline-block;
+            padding: 2px 9px;
+            border-radius: 999px;
+            background: var(--primary-bg);
+            color: var(--primary-dark);
+            font-weight: 600;
+            margin-right: 6px;
+            font-size: 12px;
+        }
+        .goal-summary .chip.warn {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        .goal-summary .chip.ok {
+            background: #DCFCE7;
+            color: #166534;
+        }
+        .goal-body {
+            margin-top: 12px;
+            border-top: 1px dashed var(--border);
+            padding-top: 12px;
+        }
+        .goal-tip {
+            margin: 0 0 12px;
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+        .goal-tip strong {
+            color: var(--primary-dark);
+        }
+        .goal-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .goal-btn {
+            padding: 8px 14px;
+            border: 1.5px solid var(--border);
+            background: var(--card-bg);
+            border-radius: 10px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all .15s;
+        }
+        .goal-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-bg);
+        }
+        .goal-btn.primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+        .goal-btn.primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+            color: #fff;
+        }
+        .goal-btn.accent {
+            background: #ECFDF5;
+            border-color: #6EE7B7;
+            color: #047857;
+        }
+        .goal-btn.accent:hover {
+            background: #D1FAE5;
+            border-color: #10B981;
+            color: #047857;
+        }
+        .goal-colhint {
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+        .goal-colhint code {
+            background: #F1F5F9;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: var(--primary-dark);
+        }
+
+        /* ===== 导入结果提示 ===== */
+        .goal-result {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 12.5px;
+            line-height: 1.7;
+        }
+        .goal-result.success {
+            background: #ECFDF5;
+            color: #065F46;
+            border: 1px solid #A7F3D0;
+        }
+        .goal-result.error {
+            background: #FEF2F2;
+            color: #991B1B;
+            border: 1px solid #FECACA;
+        }
+        /* ===== 顶部视图 Tab ===== */
+        .view-tabs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 6px;
+            box-shadow: 0 1px 3px rgba(30, 41, 59, 0.04);
+        }
+        .vtab {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            padding: 9px 12px;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .vtab:hover { background: var(--primary-bg); color: var(--primary-dark); }
+        .vtab.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 2px 6px rgba(91, 106, 191, 0.35);
+        }
+        .vtab-small {
+            flex: 0 0 auto;
+            font-size: 12px;
+            padding: 9px 14px;
+        }
+
+        /* ===== 记忆曲线 · 汇总卡片 ===== */
+        .mem-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .mem-stat {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+        .mem-stat .k { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+        .mem-stat .v { font-size: 20px; font-weight: 700; color: var(--text); }
+        .mem-stat .v small { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+
+        /* ===== 记忆曲线 · 月历（参考朝暮计 6×7 网格）===== */
+        .mem-cal {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 3px rgba(30, 41, 59, 0.04);
+        }
+        .mem-toolbar {
+            display: flex; align-items: center; gap: 8px; padding: 2px 4px 10px;
+        }
+        .mem-toolbar .mem-title {
+            font-size: 17px; font-weight: 700; flex: 1; text-align: center; color: var(--text);
+        }
+        .mem-nav {
+            border: none; background: var(--primary-bg); color: var(--primary-dark);
+            border-radius: 8px; padding: 4px 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+        }
+        .mem-nav:hover { background: var(--primary); color: #fff; }
+        .mem-grid .wd-row { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .mem-grid .wd-row .wd {
+            text-align: center; font-size: 11px; color: var(--text-secondary);
+            padding: 4px 0; border-bottom: 1px solid var(--border);
+        }
+        .mem-grid .body { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .mem-grid .body .cd {
+            height: 86px; min-height: 0;
+            border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+            padding: 4px 5px 5px; cursor: pointer;
+            display: flex; flex-direction: column; gap: 2px; overflow: hidden;
+            transition: background 0.12s;
+        }
+        .mem-grid .body .cd:nth-child(7n) { border-right: none; }
+        .mem-grid .body .cd.off { background: transparent; color: #bbb; cursor: default; }
+        .mem-grid .body .cd.today { box-shadow: inset 0 0 0 2px var(--primary); border-radius: 4px; }
+        .mem-grid .body .cd.sel { background: var(--primary-bg); }
+        .mem-grid .body .cd .num { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .mem-grid .body .cd .hrs {
+            font-size: 10px; color: #1b5e20; background: rgba(255,255,255,0.75);
+            border-radius: 6px; padding: 0 5px; align-self: flex-start; font-weight: 600;
+        }
+        .mem-grid .body .cd .ret {
+            margin-top: auto;
+            font-size: 10px; font-weight: 700; color: #fff;
+            border-radius: 6px; padding: 1px 6px; align-self: flex-start;
+        }
+        .mem-legend {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+            padding: 10px 4px 2px; font-size: 11px; color: var(--text-secondary);
+        }
+        .lg-item { display: flex; align-items: center; gap: 4px; }
+        .lg-block { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+        .lg-sep { width: 1px; height: 12px; background: var(--border); }
+
+        /* ===== 记忆曲线 · 视图模式切换 ===== */
+        .mem-modes { display: flex; background: var(--primary-bg); border-radius: 9px; padding: 2px; }
+        .mem-mode {
+            border: none; background: transparent; color: var(--primary-dark);
+            font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 7px; cursor: pointer;
+        }
+        .mem-mode.active { background: var(--primary); color: #fff; box-shadow: 0 1px 4px rgba(91,106,191,.35); }
+
+        /* ===== 记忆曲线 · 周/日视图（日期条 + 时间轴）===== */
+        .mem-dwbar {
+            display: grid; grid-template-columns: 44px 1fr;
+            border-bottom: 1px solid var(--border);
+        }
+        .mem-dwbar .dw-corner { padding: 6px 2px; font-size: 10px; color: var(--text-secondary); text-align: center; }
+        .mem-dwbar .dw-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .mem-dwbar .dw-day { text-align: center; padding: 5px 2px 4px; font-size: 12px; cursor: pointer; border-radius: 6px; }
+        .mem-dwbar .dw-day .n { font-size: 14px; font-weight: 600; line-height: 18px; }
+        .mem-dwbar .dw-day .w { font-size: 9px; color: var(--text-secondary); line-height: 12px; }
+        .mem-dwbar .dw-day.has-rec .w::after { content: ' ·'; color: var(--primary); font-weight: 700; }
+        .mem-dwbar .dw-day.today { background: var(--primary); color: #fff; border-radius: 8px; }
+        .mem-dwbar .dw-day.today .w { color: rgba(255,255,255,.8); }
+        .mem-dwbar .dw-day.sel { background: var(--primary-bg); box-shadow: inset 0 0 0 1.5px var(--primary); color: var(--primary-dark); }
+        .mem-dwbar .dw-day.sel.today { background: var(--primary); color: #fff; }
+        .mem-dwbody {
+            display: grid; grid-template-columns: 44px 1fr;
+            max-height: 60vh; overflow: auto;
+        }
+        .mem-dw-axis { border-right: 1px solid var(--border); }
+        .mem-dw-axis .h {
+            height: 52px; display: flex; align-items: flex-start; justify-content: flex-end;
+            padding: 2px 6px 0 0; font-size: 10px; color: var(--text-secondary); box-sizing: border-box;
+        }
+        .mem-dw-cols { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
+        .mem-dw-cols.single { grid-template-columns: 1fr; }
+        .mem-dw-col { position: relative; border-right: 1px solid var(--border); }
+        .mem-dw-col:last-child { border-right: none; }
+        .mem-dw-col .h-line { height: 52px; border-bottom: 1px solid var(--border); box-sizing: border-box; }
+        .mem-dw-cols.single .mem-dw-col { border-right: none; }
+        .mem-pill {
+            position: absolute; left: 2px; right: 2px;
+            background: var(--primary); color: #fff; border-radius: 5px;
+            font-size: 10px; line-height: 1.3; padding: 2px 5px;
+            overflow: hidden; cursor: pointer; box-sizing: border-box;
+            box-shadow: 0 1px 3px rgba(30,41,59,.18);
+        }
+        .mem-pill b { display: block; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+        .mem-pill .pt { display: block; font-size: 9px; opacity: .85; }
+        .mem-pill:hover { filter: brightness(1.08); }
+        .mem-nowline { position: absolute; left: 0; right: 0; height: 0; border-top: 2px solid #ef4444; z-index: 2; }
+        .mem-nowline::before { content: ''; position: absolute; left: -3px; top: -4px; width: 6px; height: 6px; border-radius: 50%; background: #ef4444; }
+        .mem-allday {
+            display: grid; grid-template-columns: 44px 1fr;
+            border-bottom: 1px solid var(--border); align-items: start;
+        }
+        .mem-allday .adk { font-size: 10px; color: var(--text-secondary); text-align: center; padding: 6px 2px 0; }
+        .mem-allday .adc-wrap { display: grid; gap: 2px; padding: 3px 2px 4px; min-width: 0; }
+        .mem-allday .adc-wrap.w7 { grid-template-columns: repeat(7, 1fr); }
+        .mem-allday .adc { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .mem-adpill {
+            font-size: 10px; color: #fff; background: var(--text-secondary);
+            border-radius: 5px; padding: 2px 5px; cursor: pointer; overflow: hidden;
+            white-space: nowrap; text-overflow: ellipsis;
+        }
+
+        /* ===== 记忆曲线 · 当日详情 ===== */
+        .mem-detail {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 1px 3px rgba(30, 41, 59, 0.04);
+        }
+        .mem-detail-empty { font-size: 13px; color: var(--text-secondary); text-align: center; padding: 18px 0; }
+        .mem-detail h4 { margin: 0 0 10px; font-size: 15px; color: var(--text); }
+        .mem-rec {
+            border: 1px solid var(--border); border-radius: 10px;
+            padding: 10px 12px; margin-bottom: 10px;
+        }
+        .mem-rec .top {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+        }
+        .mem-rec .t { font-size: 13px; font-weight: 600; color: var(--text); }
+        .mem-rec .meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
+        .ret-badge {
+            font-size: 11px; font-weight: 700; color: #fff;
+            border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+        }
+        .ret-bar {
+            height: 6px; border-radius: 999px; background: var(--border);
+            margin-top: 8px; overflow: hidden;
+        }
+        .ret-bar i { display: block; height: 100%; border-radius: 999px; }
+        .mem-rec svg.curve { width: 100%; height: 56px; margin-top: 6px; }
+
+        /* ===== 复习清单（按日期罗列 + 勾选）===== */
+        .rv-section { margin-bottom: 14px; }
+        .rv-section-title {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 14px; font-weight: 700; color: var(--text);
+            margin-bottom: 8px;
+        }
+        .rv-section-title .rv-count {
+            font-size: 11px; font-weight: 700; color: #fff;
+            border-radius: 999px; padding: 1px 9px;
+        }
+        .rv-list { display: flex; flex-direction: column; gap: 8px; }
+        .rv-item {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            border-radius: 10px; padding: 9px 12px; cursor: pointer;
+            transition: background 0.12s;
+        }
+        .rv-item:hover { background: var(--primary-bg); }
+        .rv-item.overdue { border-left-color: #ef4444; }
+        .rv-item.duetoday { border-left-color: #f59e0b; }
+        .rv-item.done { border-left-color: #22c55e; opacity: 0.75; }
+        .rv-check {
+            flex: 0 0 auto; width: 20px; height: 20px; border-radius: 6px;
+            border: 2px solid var(--border); background: var(--card-bg);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; color: #fff; cursor: pointer; user-select: none;
+        }
+        .rv-item.done .rv-check { background: #22c55e; border-color: #22c55e; }
+        .rv-main { flex: 1; min-width: 0; }
+        .rv-title { font-size: 13px; font-weight: 600; color: var(--text); }
+        .rv-item.done .rv-title { text-decoration: line-through; color: var(--text-secondary); }
+        .rv-meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+        .rv-meta .late { color: #ef4444; font-weight: 600; }
+        .rv-date {
+            flex: 0 0 auto; text-align: center; line-height: 1.25;
+        }
+        .rv-date .d1 { font-size: 15px; font-weight: 700; color: var(--text); }
+        .rv-date .d2 { font-size: 10px; color: var(--text-secondary); }
+        .rv-empty { font-size: 13px; color: var(--text-secondary); text-align: center; padding: 14px 0; }
+
+        /* ===== 目标 Tab · 完成统计 ===== */
+        .goal-stats-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-top: 16px;
+            box-shadow: 0 1px 3px rgba(30, 41, 59, 0.04);
+        }
+        .gsp-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .gsp-head h3 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; }
+        .gsp-dims { display: flex; background: var(--primary-bg); border-radius: 9px; padding: 2px; }
+        .gsp-dim {
+            border: none; background: transparent; color: var(--primary-dark);
+            font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 7px; cursor: pointer;
+        }
+        .gsp-dim.active { background: var(--primary); color: #fff; box-shadow: 0 1px 4px rgba(91,106,191,.35); }
+        .gsp-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 12px; }
+        .gsp-chip { background: var(--primary-bg); border-radius: 10px; padding: 9px 12px; }
+        .gsp-chip .k { font-size: 11px; color: var(--text-secondary); margin-bottom: 3px; }
+        .gsp-chip .v { font-size: 17px; font-weight: 700; color: var(--primary-dark); }
+        .gsp-chart svg { width: 100%; height: 190px; display: block; }
+        .gsp-note { font-size: 11px; color: var(--text-secondary); margin-top: 8px; }
     </style>
+    <!-- SheetJS：用于科目目标模板的 Excel 导入导出（加载失败时自动降级为 CSV） -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -995,7 +1465,17 @@
     <aside class="sidebar scrollbar">
         <div class="sidebar-brand">
             <div class="logo">📘</div>
-            <h1>学习进度 <small>CPA · 精进版</small></h1>
+            <h1>学习进度 <small id="projectBadge">CPA · 精进版</small></h1>
+        </div>
+        <!-- 项目（考试）切换 -->
+        <div class="project-switcher">
+            <label for="projectSelect">🎯 考试项目</label>
+            <div class="project-switcher-row">
+                <select id="projectSelect" title="切换考试项目"></select>
+                <button type="button" id="addProjectBtn" title="新增考试项目">＋</button>
+                <button type="button" id="renameProjectBtn" title="重命名当前项目">✎</button>
+                <button type="button" id="delProjectBtn" title="删除当前项目">🗑</button>
+            </div>
         </div>
         <!-- 统计卡片 -->
         <div class="stats-mini">
@@ -1031,6 +1511,15 @@
 
     <!-- ===== 主区域 ===== -->
     <main class="main scrollbar" id="mainContent">
+        <!-- ===== 顶部视图 Tab ===== -->
+        <div class="view-tabs" id="viewTabs">
+            <button type="button" class="vtab active" data-view="study">📚 学习进度</button>
+            <button type="button" class="vtab" data-view="memory">🧠 记忆曲线</button>
+            <button type="button" class="vtab vtab-small" data-view="goal" title="科目目标导入 / 导出">🎯 目标</button>
+        </div>
+
+        <div class="view-pane" id="view-study">
+
         <!-- 课程头部 -->
         <div class="course-header" id="courseHeader">
             <div class="left">
@@ -1056,12 +1545,7 @@
                         <div class="field">
                             <label>课程 <span class="required">*</span></label>
                             <select id="fCourse" required>
-                                <option value="会计">会计</option>
-                                <option value="审计">审计</option>
-                                <option value="财务成本管理">财务成本管理</option>
-                                <option value="税法">税法</option>
-                                <option value="经济法">经济法</option>
-                                <option value="公司战略与风险管理">公司战略与风险管理</option>
+                                <!-- 由 renderCourseOptions() 按当前项目动态填充 -->
                             </select>
                         </div>
                         <div class="field">
@@ -1228,6 +1712,79 @@
             </div>
         </div>
         <div class="record-list" id="recordList"></div>
+
+        </div><!-- /view-study -->
+
+        <!-- ===== 记忆曲线视图 ===== -->
+        <div class="view-pane" id="view-memory" style="display:none;">
+            <div class="mem-summary" id="memSummary"></div>
+            <div class="mem-cal">
+                <div class="mem-toolbar">
+                    <div class="mem-modes">
+                        <button type="button" class="mem-mode active" data-mode="month">月</button>
+                        <button type="button" class="mem-mode" data-mode="list">📋 复习清单</button>
+                    </div>
+                    <button type="button" class="mem-nav" id="memPrev">‹</button>
+                    <div class="mem-title" id="memTitle">—</div>
+                    <button type="button" class="mem-nav" id="memToday" title="回到今天">今</button>
+                    <button type="button" class="mem-nav" id="memNext">›</button>
+                </div>
+                <div id="memBody"></div>
+                <div class="mem-legend" id="memLegend">
+                    <span class="lg-item"><i class="lg-block" style="background:#e8f5e9;"></i>&lt;1h</span>
+                    <span class="lg-item"><i class="lg-block" style="background:#a5d6a7;"></i>1–2h</span>
+                    <span class="lg-item"><i class="lg-block" style="background:#66bb6a;"></i>2–4h</span>
+                    <span class="lg-item"><i class="lg-block" style="background:#2e7d32;"></i>&gt;4h</span>
+                    <span class="lg-sep"></span>
+                    <span class="lg-item">🧠 = 当日所学当前记忆保持率</span>
+                </div>
+            </div>
+            <div class="mem-detail" id="memDetail">
+                <div class="mem-detail-empty">点击日历中的任意一天，查看当天学习内容与记忆保持曲线</div>
+            </div>
+        </div>
+
+        <!-- ===== 目标管理视图（小 Tab）===== -->
+        <div class="view-pane" id="view-goal" style="display:none;">
+            <div class="goal-panel">
+                <div class="goal-head">
+                    <h3><span class="icon">🎯</span> 科目目标管理</h3>
+                </div>
+                <div class="goal-summary" id="goalSummary">统计加载中…</div>
+                <div class="goal-body" id="goalBody">
+                    <p class="goal-tip">
+                        系统已内置<strong>章节 / 节的名称与建议学时</strong>，但
+                        <strong>学习目标、重点难点、掌握程度</strong>属于个性化内容，默认填充为「待补充」，需要你填写后导入才能自动识别并在学习指南中展示。<br>
+                        点击下方「导出模板」得到一份表格（含现有内容与科目结构），在 Excel / WPS 中填好后用「导入文件」一次性写入即可。模板中<strong>缺失的科目、章、节会自动创建</strong>，因此也可用来为新考试项目搭建结构。
+                    </p>
+                    <div class="goal-actions">
+                        <button type="button" class="goal-btn primary" id="exportXlsxBtn">📥 导出模板（Excel）</button>
+                        <button type="button" class="goal-btn" id="exportCsvBtn">📄 导出模板（CSV）</button>
+                        <button type="button" class="goal-btn" id="exportCurrentXlsxBtn">📊 导出当前项目进度</button>
+                        <button type="button" class="goal-btn accent" id="importGoalBtn">📤 导入文件</button>
+                        <input type="file" id="goalFileInput" accept=".xlsx,.xls,.csv,.txt" style="display:none;" />
+                    </div>
+                    <div class="goal-result" id="goalResult"></div>
+                    <div class="goal-colhint">
+                        模板列：<code>项目</code> · <code>科目</code> · <code>章</code> · <code>章名称</code> · <code>节</code> · <code>节名称</code> · <code>建议学时(h)</code> · <code>学习目标</code> · <code>重点难点</code> · <code>掌握程度</code>
+                        <br>其中 <code>项目</code> 列可留空（默认导入到当前项目）；<code>章名称</code> 填写后会覆盖系统内置章名。
+                    </div>
+                </div>
+            </div>
+
+            <!-- 完成统计（日 / 周 / 月 / 年）-->
+            <div class="goal-stats-panel">
+                <div class="gsp-head">
+                    <h3><span class="icon">📊</span> 完成统计</h3>
+                    <div class="gsp-dims">
+                        <button type="button" class="gsp-dim active" data-dim="week">周</button>
+                    </div>
+                </div>
+                <div class="gsp-chips" id="gspChips"></div>
+                <div class="gsp-chart" id="gspChart"></div>
+                <div class="gsp-note">统计口径：复习清单中已勾选完成的复习次数。蓝色柱 = 最近 12 周每周完成数，橙色折线 = 按周累计。</div>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -1482,49 +2039,202 @@
         };
 
         // ============================================================
-        //  构建 GUIDE_DATA（含建议时长，基于节数估算）
+        //  项目（考试）体系：支持 CPA / 法律职业资格 等多项目切换
         // ============================================================
-        const GUIDE_DATA = {};
-        const COURSES = ['会计', '审计', '财务成本管理', '税法', '经济法', '公司战略与风险管理'];
+        const PROJECTS_KEY = 'cpa_study_projects_v1';
+        const CURRENT_PROJECT_KEY = 'cpa_study_current_project_v1';
 
-        COURSES.forEach(course => {
-            GUIDE_DATA[course] = { maxChapter: 0, chapters: {} };
-            const secData = SECTION_NAMES[course];
-            if (!secData) return;
-            const chKeys = Object.keys(secData).map(Number);
-            const maxCh = Math.max(...chKeys);
-            GUIDE_DATA[course].maxChapter = maxCh;
-            for (let ch = 1; ch <= maxCh; ch++) {
-                const secList = secData[ch] || [];
-                GUIDE_DATA[course].chapters[ch] = { sections: {} };
-                // 计算该章建议总时长：每节1.5小时，再加20%缓冲
-                const baseHours = secList.length * 1.5;
-                const totalHours = Math.round((baseHours * 1.2) * 10) / 10;
-                secList.forEach((name, idx) => {
-                    const secNum = idx + 1;
-                    GUIDE_DATA[course].chapters[ch].sections[secNum] = {
-                        name: name,
-                        duration: (totalHours / secList.length).toFixed(1) + 'h',
-                        objective: "待补充",
-                        keypoints: "待补充",
-                        mastery: "掌握",
-                        // 存储该章总建议时长，供进度条使用
-                        chapterTotalHours: totalHours
+        const DEFAULT_PROJECTS = [{
+            id: 'cpa',
+            name: '注册会计师（CPA）',
+            builtin: true,
+            courses: ['会计', '审计', '财务成本管理', '税法', '经济法', '公司战略与风险管理'],
+            chapterNames: CHAPTER_NAMES,
+            sectionNames: SECTION_NAMES,
+            targetOverrides: {}
+        }, {
+            id: 'law',
+            name: '法律职业资格',
+            builtin: true,
+            courses: ['民法', '刑法', '行政法', '民事诉讼法', '刑事诉讼法', '商经法', '理论法', '三国法'],
+            chapterNames: {},
+            sectionNames: {},
+            targetOverrides: {}
+        }];
+
+        let projects = [];
+        let currentProjectId = 'cpa';
+        let COURSES = [];
+        let GUIDE_DATA = {};
+        let ACTIVE_CHAPTER_NAMES = {};
+
+        // ---------- 项目读写 ----------
+        function loadProjects() {
+            let saved = null;
+            try {
+                const raw = localStorage.getItem(PROJECTS_KEY);
+                if (raw) saved = JSON.parse(raw);
+            } catch (e) {}
+            if (Array.isArray(saved) && saved.length) {
+                projects = saved.map(sp => {
+                    const base = DEFAULT_PROJECTS.find(d => d.id === sp.id);
+                    const p = {
+                        id: sp.id,
+                        name: sp.name || (base ? base.name : sp.id),
+                        builtin: !!sp.builtin,
+                        courses: (sp.courses && sp.courses.length) ? sp.courses : (base ? base.courses.slice() : []),
+                        chapterNames: {},
+                        sectionNames: {},
+                        targetOverrides: sp.targetOverrides || {},
+                        customStructure: !!sp.customStructure
                     };
+                    if (p.builtin && !p.customStructure && base) {
+                        // 内置结构来自代码常量，不占用 localStorage
+                        p.chapterNames = base.chapterNames;
+                        p.sectionNames = base.sectionNames;
+                    } else {
+                        p.chapterNames = sp.chapterNames || {};
+                        p.sectionNames = sp.sectionNames || {};
+                    }
+                    return p;
                 });
-                // 存储章节总建议时长到第一个节（方便获取）
-                if (secList.length > 0) {
-                    GUIDE_DATA[course].chapters[ch].totalHours = totalHours;
-                }
+                // 补齐代码中新增的内置项目
+                DEFAULT_PROJECTS.forEach(dp => {
+                    if (!projects.find(p => p.id === dp.id)) {
+                        projects.push({
+                            id: dp.id, name: dp.name, builtin: true,
+                            courses: dp.courses.slice(),
+                            chapterNames: dp.chapterNames, sectionNames: dp.sectionNames,
+                            targetOverrides: {}, customStructure: false
+                        });
+                    }
+                });
+            } else {
+                projects = DEFAULT_PROJECTS.map(dp => ({
+                    id: dp.id, name: dp.name, builtin: true,
+                    courses: dp.courses.slice(),
+                    chapterNames: dp.chapterNames, sectionNames: dp.sectionNames,
+                    targetOverrides: {}, customStructure: false
+                }));
+                saveProjects();
             }
-        });
+            const last = localStorage.getItem(CURRENT_PROJECT_KEY);
+            currentProjectId = (last && projects.find(p => p.id === last)) ? last : projects[0].id;
+        }
+
+        function saveProjects() {
+            try {
+                const slim = projects.map(p => {
+                    const o = {
+                        id: p.id, name: p.name, builtin: !!p.builtin,
+                        courses: p.courses, targetOverrides: p.targetOverrides || {}
+                    };
+                    if (!p.builtin || p.customStructure) {
+                        o.chapterNames = p.chapterNames;
+                        o.sectionNames = p.sectionNames;
+                        o.customStructure = true;
+                    }
+                    return o;
+                });
+                localStorage.setItem(PROJECTS_KEY, JSON.stringify(slim));
+            } catch (e) {
+                console.warn('项目配置保存失败：', e);
+            }
+        }
+
+        function getCurrentProject() {
+            return projects.find(p => p.id === currentProjectId) || projects[0];
+        }
+
+        // ---------- 构建当前项目的 GUIDE_DATA ----------
+        function buildGuideData(project) {
+            const g = {};
+            const secData = project.sectionNames || {};
+            (project.courses || []).forEach(course => {
+                g[course] = { maxChapter: 0, chapters: {} };
+                const s = secData[course];
+                if (!s) return;
+                const chKeys = Object.keys(s).map(Number).filter(n => !isNaN(n));
+                if (chKeys.length === 0) return;
+                const maxCh = Math.max(...chKeys);
+                g[course].maxChapter = maxCh;
+                for (let ch = 1; ch <= maxCh; ch++) {
+                    const secList = s[ch] || [];
+                    g[course].chapters[ch] = { sections: {} };
+                    const baseHours = secList.length * 1.5;
+                    const totalHours = Math.round((baseHours * 1.2) * 10) / 10;
+                    secList.forEach((name, idx) => {
+                        const secNum = idx + 1;
+                        g[course].chapters[ch].sections[secNum] = {
+                            name: name,
+                            duration: secList.length ? (totalHours / secList.length).toFixed(1) + 'h' : '0h',
+                            objective: "待补充",
+                            keypoints: "待补充",
+                            mastery: "掌握",
+                            chapterTotalHours: totalHours
+                        };
+                    });
+                    if (secList.length > 0) g[course].chapters[ch].totalHours = totalHours;
+                }
+            });
+
+            // 应用用户导入的目标覆盖（可新建科目/章/节）
+            const ov = project.targetOverrides || {};
+            Object.keys(ov).forEach(key => {
+                const parts = key.split('|');
+                if (parts.length !== 3) return;
+                const [course, chStr, secStr] = parts;
+                const ch = parseInt(chStr), sec = parseInt(secStr);
+                if (isNaN(ch) || isNaN(sec)) return;
+                const val = ov[key] || {};
+                if (!g[course]) {
+                    g[course] = { maxChapter: 0, chapters: {} };
+                    if (!project.courses.includes(course)) project.courses.push(course);
+                }
+                if (!g[course].chapters[ch]) g[course].chapters[ch] = { sections: {} };
+                if (ch > g[course].maxChapter) g[course].maxChapter = ch;
+                const prev = g[course].chapters[ch].sections[sec] || {};
+                g[course].chapters[ch].sections[sec] = {
+                    name: val.name !== undefined && val.name !== '' ? val.name : (prev.name || ''),
+                    duration: val.duration !== undefined && val.duration !== '' ? val.duration : (prev.duration || '0h'),
+                    objective: val.objective !== undefined && val.objective !== '' ? val.objective : (prev.objective || '待补充'),
+                    keypoints: val.keypoints !== undefined && val.keypoints !== '' ? val.keypoints : (prev.keypoints || '待补充'),
+                    mastery: val.mastery !== undefined && val.mastery !== '' ? val.mastery : (prev.mastery || '掌握'),
+                    chapterTotalHours: prev.chapterTotalHours || 0
+                };
+                // 重算该章建议总时长
+                const secs = g[course].chapters[ch].sections;
+                let sum = 0;
+                Object.keys(secs).forEach(k => {
+                    const d = parseFloat(secs[k].duration);
+                    if (!isNaN(d)) sum += d;
+                });
+                g[course].chapters[ch].totalHours = Math.round(sum * 10) / 10;
+                Object.keys(secs).forEach(k => { secs[k].chapterTotalHours = g[course].chapters[ch].totalHours; });
+            });
+            return g;
+        }
+
+        // ---------- 切换到指定项目 ----------
+        function applyProject(projectId) {
+            currentProjectId = projectId;
+            localStorage.setItem(CURRENT_PROJECT_KEY, projectId);
+            const proj = getCurrentProject();
+            COURSES = proj.courses.slice();
+            ACTIVE_CHAPTER_NAMES = proj.chapterNames || {};
+            GUIDE_DATA = buildGuideData(proj);
+            if (!COURSES.includes(state.currentCourse)) {
+                state.currentCourse = COURSES[0] || '';
+            }
+        }
 
         // ============================================================
         //  核心数据与状态
         // ============================================================
-        const STORAGE_KEY = 'cpa_learning_data_v3';
+        function getStorageKey() { return 'cpa_learning_data_v3_' + currentProjectId; }
         let state = {
             records: [],
+            reviewDone: [],
             currentCourse: '会计',
             editingId: null,
             filterStar: 'all',
@@ -1539,20 +2249,41 @@
         };
 
         // ---------- 数据读写 ----------
+        // 兼容旧版本：历史数据存在统一键 cpa_learning_data_v3 下，
+        // 现在改为按项目分键，首次加载时把旧数据迁移到 CPA 项目，避免记录“消失”。
+        function migrateLegacyData() {
+            if (currentProjectId !== 'cpa') return null;
+            const newKey = getStorageKey();
+            if (localStorage.getItem(newKey)) return null;
+            const legacy = localStorage.getItem('cpa_learning_data_v3');
+            if (!legacy) return null;
+            try {
+                localStorage.setItem(newKey, legacy);
+                return legacy;
+            } catch (e) {
+                return legacy;
+            }
+        }
+
         function loadData() {
             try {
-                const raw = localStorage.getItem(STORAGE_KEY);
+                let raw = localStorage.getItem(getStorageKey());
+                if (!raw) raw = migrateLegacyData();
                 if (raw) {
                     const data = JSON.parse(raw);
                     state.records = data.records || [];
+                    state.reviewDone = Array.isArray(data.reviewDone) ? data.reviewDone : [];
                     if (data.tomato) {
                         state.tomato.count = data.tomato.count || 0;
                     }
                 } else {
-                    state.records = getSampleData();
+                    // 示例数据仅用于 CPA 项目，其他项目从空白开始
+                    state.records = (currentProjectId === 'cpa') ? getSampleData() : [];
+                    state.reviewDone = [];
                 }
             } catch (e) {
-                state.records = getSampleData();
+                state.records = (currentProjectId === 'cpa') ? getSampleData() : [];
+                state.reviewDone = [];
             }
             state.records.forEach(r => {
                 if (!r.id) r.id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -1590,9 +2321,10 @@
         function saveData() {
             const data = {
                 records: state.records,
+                reviewDone: state.reviewDone || [],
                 tomato: { count: state.tomato.count }
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            localStorage.setItem(getStorageKey(), JSON.stringify(data));
         }
 
         function getSampleData() {
@@ -1676,7 +2408,12 @@
                 '经济法': '#8B5CF6',
                 '公司战略与风险管理': '#14B8A6'
             };
-            return colors[course] || '#5B6ABF';
+            if (colors[course]) return colors[course];
+            // 未知科目（如法律职业资格各科）按名称稳定生成颜色
+            let hash = 0;
+            for (let i = 0; i < course.length; i++) hash = (hash * 31 + course.charCodeAt(i)) >>> 0;
+            const palette = ['#5B6ABF', '#22C55E', '#F59E0B', '#EC4899', '#8B5CF6', '#14B8A6', '#EF4444', '#0EA5E9', '#84CC16', '#A855F7'];
+            return palette[hash % palette.length];
         }
 
         function getAssessmentTagClass(val) {
@@ -1808,7 +2545,7 @@
         }
 
         function getChapterName(course, chapter) {
-            const names = CHAPTER_NAMES[course];
+            const names = ACTIVE_CHAPTER_NAMES[course];
             return names && names[chapter] ? names[chapter] : '';
         }
 
@@ -1882,7 +2619,7 @@
         function renderCourseHeader() {
             const course = state.currentCourse;
             document.getElementById('currentCourseName').innerHTML =
-                `${course} <span class="badge">${COURSES.indexOf(course) + 1}/6</span>`;
+                `${course} <span class="badge">${COURSES.indexOf(course) + 1}/${COURSES.length}</span>`;
             document.getElementById('courseTotalHours').textContent = getCourseHours(course).toFixed(1);
             document.getElementById('courseRecordCount').textContent = getCourseRecordCount(course);
             const avg = getCourseAvgUnderstanding(course);
@@ -2545,7 +3282,23 @@
         // ============================================================
         //  主渲染
         // ============================================================
+        // ---------- 按当前项目动态渲染课程下拉 ----------
+        function renderCourseOptions() {
+            const sel = document.getElementById('fCourse');
+            if (!sel) return;
+            const current = sel.value;
+            sel.innerHTML = '';
+            COURSES.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                sel.appendChild(opt);
+            });
+            if (current && COURSES.includes(current)) sel.value = current;
+        }
+
         function renderAll() {
+            renderCourseOptions();
             renderCourseList();
             updateGlobalStats();
             renderCourseHeader();
@@ -2562,16 +3315,850 @@
             });
             // 更新番茄显示
             document.getElementById('tomatoCount').textContent = state.tomato.count;
+            // 记忆曲线视图可见时同步刷新
+            if (document.getElementById('view-memory').style.display !== 'none') {
+                renderMemoryView();
+            }
+        }
+
+        // ============================================================
+        //  项目（考试）切换 UI
+        // ============================================================
+        function renderProjectSelect() {
+            const sel = document.getElementById('projectSelect');
+            if (!sel) return;
+            sel.innerHTML = '';
+            projects.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name;
+                if (p.id === currentProjectId) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            const badge = document.getElementById('projectBadge');
+            if (badge) badge.textContent = getCurrentProject().name + ' · 精进版';
+        }
+
+        function initProjectSwitcher() {
+            const sel = document.getElementById('projectSelect');
+            sel.addEventListener('change', () => {
+                switchProject(sel.value);
+            });
+            document.getElementById('addProjectBtn').addEventListener('click', () => {
+                const name = prompt('请输入新考试项目名称（如：税务师、中级会计）：');
+                if (!name || !name.trim()) return;
+                const proj = {
+                    id: 'p_' + Date.now().toString(36),
+                    name: name.trim(),
+                    builtin: false,
+                    courses: [],
+                    chapterNames: {},
+                    sectionNames: {},
+                    targetOverrides: {},
+                    customStructure: true
+                };
+                const courseInput = prompt('请输入该项目的科目，用逗号分隔（可留空，之后用导入模板建立）：', '');
+                if (courseInput && courseInput.trim()) {
+                    proj.courses = courseInput.split(/[,，]/).map(s => s.trim()).filter(Boolean);
+                }
+                projects.push(proj);
+                saveProjects();
+                renderProjectSelect();
+                switchProject(proj.id);
+            });
+            document.getElementById('renameProjectBtn').addEventListener('click', () => {
+                const proj = getCurrentProject();
+                const name = prompt('重命名项目：', proj.name);
+                if (!name || !name.trim()) return;
+                proj.name = name.trim();
+                saveProjects();
+                renderProjectSelect();
+                renderGoalSummary();
+            });
+            document.getElementById('delProjectBtn').addEventListener('click', () => {
+                if (projects.length <= 1) {
+                    alert('至少保留一个项目。');
+                    return;
+                }
+                const proj = getCurrentProject();
+                if (!confirm('确定删除项目「' + proj.name + '」？该项目的学习记录也会一并删除，且不可恢复。')) return;
+                try { localStorage.removeItem('cpa_learning_data_v3_' + proj.id); } catch (e) {}
+                projects = projects.filter(p => p.id !== proj.id);
+                saveProjects();
+                renderProjectSelect();
+                switchProject(projects[0].id);
+            });
+        }
+
+        function switchProject(projectId) {
+            applyProject(projectId);
+            loadData();
+            renderProjectSelect();
+            renderAll();
+            renderGoalSummary();
+        }
+
+        // ============================================================
+        //  科目目标：模板导出 / 导入
+        // ============================================================
+        const GOAL_HEADERS = ['项目', '科目', '章', '章名称', '节', '节名称', '建议学时(h)', '学习目标', '重点难点', '掌握程度'];
+
+        function getGoalRows() {
+            const proj = getCurrentProject();
+            const rows = [];
+            (proj.courses || []).forEach(course => {
+                const cData = GUIDE_DATA[course];
+                const maxCh = cData ? (cData.maxChapter || 0) : 0;
+                if (maxCh === 0) {
+                    // 结构为空的项目：生成骨架行，方便用户直接填写
+                    for (let s = 1; s <= 3; s++) {
+                        rows.push([proj.name, course, 1, '', s, '', 1.5, '待补充', '待补充', '掌握']);
+                    }
+                    return;
+                }
+                for (let ch = 1; ch <= maxCh; ch++) {
+                    const chData = cData.chapters[ch];
+                    if (!chData) continue;
+                    const secs = Object.keys(chData.sections || {}).map(Number).sort((a, b) => a - b);
+                    if (secs.length === 0) {
+                        rows.push([proj.name, course, ch, getChapterName(course, ch), 1, '', 1.5, '待补充', '待补充', '掌握']);
+                        continue;
+                    }
+                    secs.forEach(sec => {
+                        const sd = chData.sections[sec] || {};
+                        rows.push([
+                            proj.name, course, ch, getChapterName(course, ch), sec,
+                            sd.name || '',
+                            parseFloat(sd.duration) || 0,
+                            sd.objective || '待补充',
+                            sd.keypoints || '待补充',
+                            sd.mastery || '掌握'
+                        ]);
+                    });
+                }
+            });
+            return rows;
+        }
+
+        function isPlaceholder(val) {
+            const v = (val === undefined || val === null) ? '' : String(val).trim();
+            return v === '' || v === '待补充' || v === '-';
+        }
+
+        function computeGoalStats() {
+            const proj = getCurrentProject();
+            let totalSections = 0, missingName = 0, missingObjective = 0, missingKeypoints = 0, missingDuration = 0;
+            let emptyCourses = 0;
+            (proj.courses || []).forEach(course => {
+                const cData = GUIDE_DATA[course];
+                const maxCh = cData ? (cData.maxChapter || 0) : 0;
+                if (maxCh === 0) { emptyCourses++; return; }
+                for (let ch = 1; ch <= maxCh; ch++) {
+                    const chData = cData.chapters[ch];
+                    if (!chData) continue;
+                    Object.keys(chData.sections || {}).forEach(k => {
+                        const sd = chData.sections[k];
+                        totalSections++;
+                        if (isPlaceholder(sd.name)) missingName++;
+                        if (isPlaceholder(sd.objective)) missingObjective++;
+                        if (isPlaceholder(sd.keypoints)) missingKeypoints++;
+                        if (!(parseFloat(sd.duration) > 0)) missingDuration++;
+                    });
+                }
+            });
+            return { totalSections, missingName, missingObjective, missingKeypoints, missingDuration, emptyCourses,
+                courseCount: (proj.courses || []).length };
+        }
+
+        function renderGoalSummary() {
+            const box = document.getElementById('goalSummary');
+            if (!box) return;
+            const s = computeGoalStats();
+            if (s.courseCount === 0) {
+                box.innerHTML = '<span class="chip warn">当前项目还没有科目</span>请先新增科目，或直接导入模板文件来一次性建立科目与章节结构。';
+                return;
+            }
+            if (s.totalSections === 0) {
+                box.innerHTML = `<span class="chip warn">${s.emptyCourses} 个科目缺少章节结构</span>` +
+                    '系统没有这些科目的章 / 节信息，请导出模板后填写，或直接用模板导入来建立结构。';
+                return;
+            }
+            const needFix = [];
+            if (s.missingObjective) needFix.push(`学习目标 ${s.missingObjective} 节`);
+            if (s.missingKeypoints) needFix.push(`重点难点 ${s.missingKeypoints} 节`);
+            if (s.missingName) needFix.push(`节名称 ${s.missingName} 节`);
+            if (s.missingDuration) needFix.push(`建议学时 ${s.missingDuration} 节`);
+            let html = `<span class="chip">共 ${s.totalSections} 节</span>`;
+            if (needFix.length === 0) {
+                html += '<span class="chip ok">目标内容已完整</span>所有节的学习目标与重点难点都已填写，学习指南可正常展示。';
+            } else {
+                html += `<span class="chip warn">待补充 ${needFix.length} 类</span>` +
+                    '以下默认内容需要你手动填写后导入才能自动识别：<strong>' + needFix.join('、') + '</strong>。';
+            }
+            box.innerHTML = html;
+        }
+
+        function downloadBlob(content, filename, mime) {
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function exportGoalTemplate(format) {
+            const rows = getGoalRows();
+            if (rows.length === 0) {
+                alert('当前项目没有可导出的科目。请先新增科目。');
+                return;
+            }
+            const proj = getCurrentProject();
+            const safeName = proj.name.replace(/[\\/:*?"<>|]/g, '_');
+            const data = [GOAL_HEADERS].concat(rows);
+            const stamp = new Date().toISOString().slice(0, 10);
+            if (format === 'xlsx' || format === 'current') {
+                if (typeof XLSX === 'undefined') {
+                    alert('Excel 组件未加载（可能是网络问题），已改为导出 CSV 格式，Excel / WPS 同样可以打开编辑。');
+                    exportGoalTemplate('csv');
+                    return;
+                }
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                ws['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 6 }, { wch: 22 }, { wch: 6 }, { wch: 26 }, { wch: 12 },
+                    { wch: 40 }, { wch: 40 }, { wch: 12 }
+                ];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, '科目目标');
+                XLSX.writeFile(wb, `${safeName}_科目目标模板_${stamp}.xlsx`);
+            } else {
+                const csv = toCSV(data);
+                downloadBlob('\uFEFF' + csv, `${safeName}_科目目标模板_${stamp}.csv`, 'text/csv;charset=utf-8;');
+            }
+        }
+
+        function toCSV(data) {
+            return data.map(row => row.map(cell => {
+                let v = (cell === undefined || cell === null) ? '' : String(cell);
+                if (/[",\n\r]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
+                return v;
+            }).join(',')).join('\r\n');
+        }
+
+        function parseCSV(text) {
+            const rows = [];
+            let row = [], cur = '', inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                const c = text[i];
+                if (inQuotes) {
+                    if (c === '"') {
+                        if (text[i + 1] === '"') { cur += '"'; i++; }
+                        else inQuotes = false;
+                    } else cur += c;
+                } else {
+                    if (c === '"') inQuotes = true;
+                    else if (c === ',') { row.push(cur); cur = ''; }
+                    else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+                    else if (c === '\r') { /* skip */ } else cur += c;
+                }
+            }
+            if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+            return rows.filter(r => r.some(c => String(c).trim() !== ''));
+        }
+
+        function showGoalResult(msg, isError) {
+            const body = document.getElementById('goalBody');
+            let box = document.getElementById('goalResult');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'goalResult';
+                body.appendChild(box);
+            }
+            box.className = 'goal-result ' + (isError ? 'error' : 'success');
+            box.innerHTML = msg;
+        }
+
+        function applyGoalRows(rows) {
+            if (!rows || rows.length === 0) return { count: 0, projects: 0 };
+            // 定位表头所在行
+            let headerIdx = -1;
+            for (let i = 0; i < Math.min(rows.length, 10); i++) {
+                const joined = (rows[i] || []).map(c => String(c || '').trim()).join('|');
+                if (joined.includes('科目') && joined.includes('章')) { headerIdx = i; break; }
+            }
+            if (headerIdx === -1) {
+                throw new Error('未识别到表头，请确保首行包含「科目」「章」等列名。');
+            }
+            const header = (rows[headerIdx] || []).map(c => String(c || '').trim());
+            const col = name => header.findIndex(h => h === name);
+            const iProj = col('项目'), iCourse = col('科目'), iCh = col('章'), iChName = col('章名称');
+            const iSec = col('节'), iSecName = col('节名称'), iDur = col('建议学时(h)');
+            const iObj = col('学习目标'), iKey = col('重点难点'), iMas = col('掌握程度');
+            if (iCourse === -1 || iCh === -1 || iSec === -1) {
+                throw new Error('表头缺少必需列：科目 / 章 / 节。');
+            }
+
+            const touched = new Set();
+            let count = 0;
+            const defaultProj = getCurrentProject();
+
+            for (let i = headerIdx + 1; i < rows.length; i++) {
+                const r = rows[i] || [];
+                const get = idx => (idx >= 0 && r[idx] !== undefined) ? String(r[idx]).trim() : '';
+                const course = get(iCourse);
+                const ch = parseInt(get(iCh));
+                const sec = parseInt(get(iSec));
+                if (!course || isNaN(ch) || isNaN(sec)) continue;
+
+                // 决定归属项目
+                let target = defaultProj;
+                const projName = get(iProj);
+                if (projName) {
+                    let found = projects.find(p => p.name === projName || p.id === projName);
+                    if (!found) {
+                        found = {
+                            id: 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+                            name: projName, builtin: false, courses: [],
+                            chapterNames: {}, sectionNames: {}, targetOverrides: {}, customStructure: true
+                        };
+                        projects.push(found);
+                    }
+                    target = found;
+                }
+
+                if (!target.courses.includes(course)) target.courses.push(course);
+                target.targetOverrides = target.targetOverrides || {};
+                const key = `${course}|${ch}|${sec}`;
+                target.targetOverrides[key] = {
+                    name: get(iSecName),
+                    duration: get(iDur) !== '' ? get(iDur) + 'h' : '',
+                    objective: get(iObj),
+                    keypoints: get(iKey),
+                    mastery: get(iMas)
+                };
+                // 章名称：覆盖内置章名
+                const chName = get(iChName);
+                if (chName) {
+                    target.customStructure = true;
+                    target.chapterNames = target.chapterNames || {};
+                    if (typeof target.chapterNames !== 'object' || !target.chapterNames) target.chapterNames = {};
+                    if (!target.chapterNames[course]) target.chapterNames[course] = {};
+                    target.chapterNames[course][ch] = chName;
+                    // 内置项目的 chapterNames 来自代码常量，需复制后再改，避免污染默认值
+                    if (target.builtin) {
+                        const copied = {};
+                        Object.keys(target.chapterNames).forEach(k => {
+                            copied[k] = Object.assign({}, target.chapterNames[k]);
+                        });
+                        target.chapterNames = copied;
+                    }
+                }
+                touched.add(target.id);
+                count++;
+            }
+
+            if (count === 0) {
+                throw new Error('没有解析到有效数据行，请检查「科目 / 章 / 节」三列是否已填写。');
+            }
+            // 清理空值，避免用空白覆盖已有的有效内容
+            touched.forEach(id => {
+                const p = projects.find(x => x.id === id);
+                if (!p) return;
+                Object.keys(p.targetOverrides || {}).forEach(k => {
+                    const v = p.targetOverrides[k];
+                    Object.keys(v).forEach(f => { if (v[f] === '') delete v[f]; });
+                });
+            });
+            saveProjects();
+            applyProject(currentProjectId);
+            renderProjectSelect();
+            return { count: count, projects: touched.size };
+        }
+
+        function handleGoalFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const name = (file.name || '').toLowerCase();
+                    let rows = null;
+                    if (name.endsWith('.csv') || name.endsWith('.txt')) {
+                        rows = parseCSV(String(e.target.result || ''));
+                    } else {
+                        if (typeof XLSX === 'undefined') {
+                            showGoalResult('Excel 组件未加载，无法读取 .xlsx 文件。请改用「导出模板（CSV）」得到 CSV 文件，填写后以 CSV 导入。', true);
+                            return;
+                        }
+                        const wb = XLSX.read(e.target.result, { type: 'array' });
+                        const ws = wb.Sheets[wb.SheetNames[0]];
+                        rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false });
+                    }
+                    const res = applyGoalRows(rows);
+                    saveData();
+                    renderAll();
+                    renderGoalSummary();
+                    showGoalResult(`✅ 导入成功：共写入 <strong>${res.count}</strong> 节的目标内容，涉及 <strong>${res.projects}</strong> 个项目。` +
+                        `缺失的科目 / 章 / 节已自动创建，学习指南与建议学时已同步更新。`, false);
+                } catch (err) {
+                    showGoalResult('❌ 导入失败：' + (err && err.message ? err.message : err), true);
+                }
+            };
+            if (/\.(csv|txt)$/i.test(file.name || '')) reader.readAsText(file, 'UTF-8');
+            else reader.readAsArrayBuffer(file);
+        }
+
+        function initGoalPanel() {
+            document.getElementById('exportXlsxBtn').addEventListener('click', () => exportGoalTemplate('xlsx'));
+            document.getElementById('exportCsvBtn').addEventListener('click', () => exportGoalTemplate('csv'));
+            document.getElementById('exportCurrentXlsxBtn').addEventListener('click', () => exportGoalTemplate('current'));
+            const input = document.getElementById('goalFileInput');
+            document.getElementById('importGoalBtn').addEventListener('click', () => input.click());
+            input.addEventListener('change', () => {
+                if (input.files && input.files[0]) handleGoalFile(input.files[0]);
+                input.value = '';
+            });
+            renderGoalSummary();
+        }
+
+        // ============================================================
+        //  视图 Tab 切换（学习进度 / 记忆曲线 / 目标管理）
+        // ============================================================
+        function initViewTabs() {
+            const tabs = document.querySelectorAll('#viewTabs .vtab');
+            tabs.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tabs.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const view = btn.dataset.view;
+                    document.getElementById('view-study').style.display = view === 'study' ? '' : 'none';
+                    document.getElementById('view-memory').style.display = view === 'memory' ? '' : 'none';
+                    document.getElementById('view-goal').style.display = view === 'goal' ? '' : 'none';
+                    if (view === 'memory') renderMemoryView();
+                    if (view === 'goal') { renderGoalSummary(); renderGoalStatsPanel(); }
+                });
+            });
+        }
+
+        // ============================================================
+        //  记忆曲线（艾宾浩斯遗忘模型）
+        //  保持率 R = 100 · e^(-Δt / S)
+        //  稳定性 S(天) = 0.5 + 时长×0.9 + 同章节后续复习次数×1.5
+        // ============================================================
+        let memAnchor = null;      // 月视图锚 'YYYY-MM'，null = 当月
+        let memSelected = null;    // 选中的日期 'YYYY-MM-DD'
+        let memViewMode = 'month'; // 'month' | 'week' | 'day'
+        let memWeekAnchor = null;  // 周视图锚（所在周一 'YYYY-MM-DD'）
+        let memDayAnchor = null;   // 日视图锚 'YYYY-MM-DD'
+        const MEM_ROW_H = 52;      // 时间轴每小时像素
+        const MEM_HOUR_START = 7;  // 时间轴起始小时（参考朝暮计默认 7 点）
+
+        function dateToStr(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function daysBetween(ds1, ds2) {
+            return (new Date(ds2 + 'T00:00:00') - new Date(ds1 + 'T00:00:00')) / 86400000;
+        }
+        function memAddDays(ds, n) {
+            const d = new Date(ds + 'T00:00:00');
+            d.setDate(d.getDate() + n);
+            return dateToStr(d);
+        }
+        function memWeekStart(ds) {
+            const d = new Date(ds + 'T00:00:00');
+            return memAddDays(ds, -((d.getDay() + 6) % 7));
+        }
+        function recordRetention(r, todayStr) {
+            const elapsed = daysBetween(r.date, todayStr);
+            if (elapsed <= 0) return 100;
+            const reviews = state.records.filter(x =>
+                x.course === r.course && x.chapter === r.chapter && x.section === r.section && x.date > r.date
+            ).length;
+            const stability = 0.5 + (r.durationHours || 0.5) * 0.9 + reviews * 1.5;
+            return Math.max(0, Math.round(100 * Math.exp(-elapsed / stability)));
+        }
+        function retentionColor(ret) {
+            if (ret >= 80) return '#22c55e';
+            if (ret >= 60) return '#3b82f6';
+            if (ret >= 40) return '#f59e0b';
+            return '#ef4444';
+        }
+
+        function renderMemoryView() {
+            const projectRecords = state.records;
+            const todayStr = dateToStr(new Date());
+
+            // ---- 汇总卡片 ----
+            const rets = projectRecords.map(r => recordRetention(r, todayStr));
+            const avgRet = rets.length ? Math.round(rets.reduce((a, b) => a + b, 0) / rets.length) : 0;
+            const toReview = rets.filter(v => v < 60).length;
+            let streak = 0;
+            for (let i = 0; ; i++) {
+                const d = new Date(); d.setDate(d.getDate() - i);
+                const ds = dateToStr(d);
+                if (projectRecords.some(r => r.date === ds)) { streak++; continue; }
+                if (i === 0) continue;   // 今天还没学，从昨天开始算
+                break;
+            }
+            const curMonth = memViewMode === 'month'
+                ? (memAnchor || todayStr.slice(0, 7))
+                : (memDayAnchor || todayStr).slice(0, 7);
+            const monthHours = projectRecords
+                .filter(r => r.date.slice(0, 7) === curMonth)
+                .reduce((a, r) => a + (r.durationHours || 0), 0);
+            document.getElementById('memSummary').innerHTML = `
+                <div class="mem-stat"><div class="k">🧠 当前平均记忆保持率</div><div class="v">${projectRecords.length ? avgRet + '<small>%</small>' : '—'}</div></div>
+                <div class="mem-stat"><div class="k">🔥 连续学习天数</div><div class="v">${streak}<small> 天</small></div></div>
+                <div class="mem-stat"><div class="k">📅 本月学习时长</div><div class="v">${monthHours.toFixed(1)}<small> h</small></div></div>
+                <div class="mem-stat"><div class="k">⏰ 待复习（保持率&lt;60%）</div><div class="v">${toReview}<small> 条</small></div></div>`;
+
+            // 模式按钮选中态 + 图例显隐
+            document.querySelectorAll('.mem-mode').forEach(b => {
+                b.classList.toggle('active', b.dataset.mode === memViewMode);
+            });
+            document.getElementById('memLegend').style.display = memViewMode === 'month' ? '' : 'none';
+
+            // 按模式渲染标题 + 主体
+            const byDate = {};
+            projectRecords.forEach(r => { (byDate[r.date] = byDate[r.date] || []).push(r); });
+            const body = document.getElementById('memBody');
+            const detailBox = document.getElementById('memDetail');
+            const isMonth = memViewMode === 'month';
+            // 月视图导航按钮仅在月视图显示；清单模式隐藏
+            ['memPrev', 'memNext', 'memToday'].forEach(id => {
+                document.getElementById(id).style.display = isMonth ? '' : 'none';
+            });
+            detailBox.style.display = isMonth ? '' : 'none';
+
+            if (isMonth) {
+                const anchor = memAnchor || todayStr.slice(0, 7);
+                const [yy, mm] = anchor.split('-').map(Number);
+                document.getElementById('memTitle').textContent = `${yy}年${mm}月`;
+                renderMonthBody(anchor, todayStr, byDate, body);
+            } else {
+                document.getElementById('memTitle').textContent = '📋 复习清单（按计划日期罗列）';
+                renderListBody(todayStr, body);
+            }
+
+            if (!isMonth) return;   // 清单模式内部自行绑定事件
+
+            // 统一绑定：带 data-date 的元素点击 → 选中该日
+            body.querySelectorAll('[data-date]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const ds = el.dataset.date;
+                    if (!ds) return;
+                    memSelected = ds;
+                    renderMemoryView();
+                    renderMemDetail(ds);
+                });
+            });
+
+            if (memSelected) renderMemDetail(memSelected);
+        }
+
+        // ---- 月视图：6×7 网格 ----
+        function renderMonthBody(anchor, todayStr, byDate, body) {
+            const [yy, mm] = anchor.split('-').map(Number);
+            const first = new Date(yy, mm - 1, 1);
+            const firstDow = (first.getDay() + 6) % 7;          // 周一为第 1 列
+            const lastDayN = new Date(yy, mm, 0).getDate();
+            const prevLastN = new Date(yy, mm - 1, 0).getDate();
+            const cells = [];
+            for (let i = firstDow - 1; i >= 0; i--) cells.push({ y: yy, m: mm - 1, d: prevLastN - i, off: true });
+            for (let d = 1; d <= lastDayN; d++) cells.push({ y: yy, m: mm, d, off: false });
+            let nx = 1;
+            while (cells.length < 42) cells.push({ y: yy, m: mm + 1, d: nx++, off: true });
+
+            const wds = '一二三四五六日'.split('').map(c => `<div class="wd">${c}</div>`).join('');
+            const grid = cells.map(c => {
+                const ds = `${c.y}-${String(c.m).padStart(2, '0')}-${String(c.d).padStart(2, '0')}`;
+                const isToday = ds === todayStr;
+                const isSel = ds === memSelected;
+                const recs = byDate[ds] || [];
+                if (c.off || recs.length === 0) {
+                    return `<div class="cd ${c.off ? 'off' : ''} ${isToday ? 'today' : ''}" data-date="${c.off ? '' : ds}">
+                        <div class="num">${c.d}</div>
+                    </div>`;
+                }
+                const hours = recs.reduce((a, r) => a + (r.durationHours || 0), 0);
+                const ret = Math.round(recs.reduce((a, r) => a + recordRetention(r, todayStr), 0) / recs.length);
+                const bg = hours < 1 ? '#e8f5e9' : hours < 2 ? '#a5d6a7' : hours < 4 ? '#66bb6a' : '#2e7d32';
+                const dark = hours >= 4;
+                return `<div class="cd ${isToday ? 'today' : ''} ${isSel ? 'sel' : ''}" data-date="${ds}" style="background:${bg};">
+                    <div class="num" style="${dark ? 'color:#fff;' : ''}">${c.d}</div>
+                    <div class="hrs" style="${dark ? 'color:#fff;background:rgba(255,255,255,0.25);' : ''}">${hours.toFixed(1)}h</div>
+                    <div class="ret" style="background:${retentionColor(ret)};">🧠${ret}%</div>
+                </div>`;
+            }).join('');
+            body.innerHTML = `<div class="mem-grid"><div class="wd-row">${wds}</div><div class="body">${grid}</div></div>`;
+        }
+
+        // ---- 复习清单（按日期顺序罗列 + 勾选完成）----
+        const REVIEW_INTERVALS = [1, 2, 4, 7, 15];   // 艾宾浩斯复习点：学习后 1/2/4/7/15 天
+        const ROUND_NAMES = ['第1次复习', '第2次复习', '第3次复习', '第4次复习', '第5次复习'];
+
+        function getReviewItems(todayStr) {
+            const doneList = state.reviewDone || [];
+            const doneKeys = new Set(doneList.map(x => x.recordId + '#' + x.round));
+            const pending = [], done = [];
+            (state.records || []).forEach(r => {
+                REVIEW_INTERVALS.forEach((iv, i) => {
+                    const round = i + 1;
+                    const sched = memAddDays(r.date, iv);
+                    const key = r.id + '#' + round;
+                    if (doneKeys.has(key)) {
+                        const doneRec = doneList.find(x => x.recordId === r.id && x.round === round);
+                        done.push({ record: r, round, sched, doneAt: doneRec.date, key });
+                    } else if (sched <= todayStr) {
+                        pending.push({ record: r, round, sched, overdueDays: daysBetween(sched, todayStr), key });
+                    }
+                });
+            });
+            pending.sort((a, b) => a.sched.localeCompare(b.sched) || a.round - b.round);
+            done.sort((a, b) => (b.doneAt || '').localeCompare(a.doneAt || ''));
+            return { pending, done };
+        }
+
+        function rvItemHTML(it, isDone, todayStr) {
+            const r = it.record;
+            const ret = recordRetention(r, todayStr);
+            const [y, m, d] = it.sched.split('-').map(Number);
+            const week = '日一二三四五六'[new Date(y, m - 1, d).getDay()];
+            const late = !isDone && it.overdueDays > 0;
+            const dueToday = !isDone && it.overdueDays === 0;
+            const cls = isDone ? 'done' : (late ? 'overdue' : (dueToday ? 'duetoday' : ''));
+            const status = isDone
+                ? '完成于 ' + it.doneAt
+                : (late
+                    ? '<span class="late">已过期 ' + it.overdueDays + ' 天</span>'
+                    : (dueToday ? '<span style="color:#f59e0b;font-weight:600;">今天到期</span>' : '已到期'));
+            return '<div class="rv-item ' + cls + '" data-key="' + it.key + '">' +
+                '<div class="rv-check">' + (isDone ? '✓' : '') + '</div>' +
+                '<div class="rv-main">' +
+                    '<div class="rv-title">' + r.course + ' · 第' + r.chapter + '章 · ' + ROUND_NAMES[it.round - 1] + '</div>' +
+                    '<div class="rv-meta">学习于 ' + r.date + ' ｜ ⏱ ' + r.durationHours + 'h ｜ ' + status + '</div>' +
+                '</div>' +
+                '<div class="rv-date">' +
+                    '<div class="d1">' + (+it.sched.slice(5, 7)) + '.' + (+it.sched.slice(8, 10)) + '</div>' +
+                    '<div class="d2">周' + week + ' · 🧠' + ret + '%</div>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function renderListBody(todayStr, body) {
+            const items = getReviewItems(todayStr);
+            const pendingHTML = items.pending.length
+                ? '<div class="rv-list">' + items.pending.map(it => rvItemHTML(it, false, todayStr)).join('') + '</div>'
+                : '<div class="rv-empty">🎉 太棒了，没有待复习的内容</div>';
+            const doneHTML = items.done.length
+                ? '<div class="rv-list">' + items.done.slice(0, 50).map(it => rvItemHTML(it, true, todayStr)).join('') + '</div>'
+                : '<div class="rv-empty">还没有完成记录，勾选待复习项后会出现在这里</div>';
+            body.innerHTML =
+                '<div class="rv-section">' +
+                    '<div class="rv-section-title">⏰ 待复习（过期 / 到期）<span class="rv-count" style="background:#ef4444;">' + items.pending.length + '</span></div>' +
+                    pendingHTML +
+                '</div>' +
+                '<div class="rv-section">' +
+                    '<div class="rv-section-title">✅ 已完成<span class="rv-count" style="background:#22c55e;">' + items.done.length + '</span></div>' +
+                    doneHTML +
+                '</div>';
+            // 勾选 / 取消勾选
+            body.querySelectorAll('.rv-item').forEach(el => {
+                el.addEventListener('click', () => toggleReview(el.dataset.key, todayStr));
+            });
+        }
+
+        function toggleReview(key, todayStr) {
+            const parts = key.split('#');
+            const recordId = parts[0];
+            const round = parseInt(parts[1]);
+            state.reviewDone = state.reviewDone || [];
+            const idx = state.reviewDone.findIndex(x => x.recordId === recordId && x.round === round);
+            if (idx >= 0) {
+                state.reviewDone.splice(idx, 1);   // 取消勾选 → 回到待复习
+            } else {
+                state.reviewDone.push({ recordId, round, date: todayStr });
+            }
+            saveData();
+            renderMemoryView();
+            renderGoalStatsPanel();   // 统计面板同步刷新
+        }
+
+        function renderMemDetail(ds) {
+            const todayStr = dateToStr(new Date());
+            const recs = state.records.filter(r => r.date === ds);
+            const box = document.getElementById('memDetail');
+            if (recs.length === 0) {
+                box.innerHTML = `<div class="mem-detail-empty">${ds} 当天没有学习记录</div>`;
+                return;
+            }
+            const [y, m, d] = ds.split('-').map(Number);
+            const week = '日一二三四五六'[new Date(y, m - 1, d).getDay()];
+            const items = recs.map((r, idx) => {
+                const ret = recordRetention(r, todayStr);
+                const color = retentionColor(ret);
+                const chName = (typeof CHAPTER_NAMES !== 'undefined' && CHAPTER_NAMES[r.course] && CHAPTER_NAMES[r.course][r.chapter]) || '';
+                const secGuide = (typeof GUIDE_DATA !== 'undefined' && GUIDE_DATA[r.course] && GUIDE_DATA[r.course].chapters[r.chapter] && GUIDE_DATA[r.course].chapters[r.chapter].sections[r.section]) || null;
+                const secName = secGuide ? secGuide.name : '';
+                // 遗忘曲线（锯齿：复习日回到 100%）
+                const reviews = state.records
+                    .filter(x => x.course === r.course && x.chapter === r.chapter && x.section === r.section && x.date > r.date)
+                    .map(x => x.date).sort();
+                const span = Math.max(1, daysBetween(r.date, todayStr));
+                const pts = [];
+                for (let i = 0; i <= 40; i++) {
+                    const frac = i / 40;
+                    const cur = daysBetween(r.date, todayStr) * frac;
+                    const dsCur = dateToStr(new Date(new Date(r.date + 'T00:00:00').getTime() + cur * 86400000));
+                    const rvBefore = reviews.filter(rv => rv <= dsCur).length;
+                    const elapsed = Math.max(0, cur - (rvBefore ? daysBetween(r.date, reviews[rvBefore - 1]) : 0));
+                    const rvCount = rvBefore;
+                    const stability = 0.5 + (r.durationHours || 0.5) * 0.9 + rvCount * 1.5;
+                    const val = cur <= 0 ? 100 : Math.max(0, 100 * Math.exp(-elapsed / stability));
+                    pts.push(`${(i / 40 * 200).toFixed(1)},${(54 - val / 100 * 50).toFixed(1)}`);
+                }
+                const line = pts.join(' ');
+                const rvMarks = reviews.map(rv => {
+                    const x = daysBetween(r.date, rv) / span * 200;
+                    return `<line x1="${x.toFixed(1)}" y1="0" x2="${x.toFixed(1)}" y2="54" stroke="#c7d2fe" stroke-width="1" stroke-dasharray="2,2" />`;
+                }).join('');
+                return `<div class="mem-rec">
+                    <div class="top">
+                        <div>
+                            <div class="t">${r.course} · 第${r.chapter}章${chName ? ' ' + chName : ''} · 第${r.section}节${secName ? ' ' + secName : ''}</div>
+                            <div class="meta">⏱ ${r.durationHours}h ｜ 📂 ${r.resourceType || '未分类'} ｜ ⭐ 理解 ${r.understanding || '-'}${r.startTime ? ` ｜ ⏰ ${r.startTime}–${r.endTime || ''}` : ''}</div>
+                        </div>
+                        <span class="ret-badge" style="background:${color};">记忆保持 ${ret}%</span>
+                    </div>
+                    <div class="ret-bar"><i style="width:${ret}%;background:${color};"></i></div>
+                    <svg class="curve" viewBox="0 0 200 54" preserveAspectRatio="none">
+                        ${rvMarks}
+                        <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2" />
+                    </svg>
+                </div>`;
+            }).join('');
+            box.innerHTML = `<h4>📆 ${m}月${d}日 · 周${week} · ${recs.length} 条学习记录（虚线 = 复习节点）</h4>${items}`;
+        }
+
+        function initMemoryView() {
+            // 月/清单 模式切换
+            document.querySelectorAll('.mem-mode').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+                    if (mode === memViewMode) return;
+                    memViewMode = mode;
+                    renderMemoryView();
+                });
+            });
+            document.getElementById('memPrev').addEventListener('click', () => {
+                const todayStr = dateToStr(new Date());
+                if (memViewMode === 'month') {
+                    const anchor = memAnchor || todayStr.slice(0, 7);
+                    const [yy, mm] = anchor.split('-').map(Number);
+                    const d = new Date(yy, mm - 2, 1);
+                    memAnchor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                } else if (memViewMode === 'week') {
+                    memWeekAnchor = memAddDays(memWeekAnchor || memWeekStart(todayStr), -7);
+                } else {
+                    memDayAnchor = memAddDays(memDayAnchor || todayStr, -1);
+                }
+                renderMemoryView();
+            });
+            document.getElementById('memNext').addEventListener('click', () => {
+                const todayStr = dateToStr(new Date());
+                if (memViewMode === 'month') {
+                    const anchor = memAnchor || todayStr.slice(0, 7);
+                    const [yy, mm] = anchor.split('-').map(Number);
+                    const d = new Date(yy, mm, 1);
+                    memAnchor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                } else if (memViewMode === 'week') {
+                    memWeekAnchor = memAddDays(memWeekAnchor || memWeekStart(todayStr), 7);
+                } else {
+                    memDayAnchor = memAddDays(memDayAnchor || todayStr, 1);
+                }
+                renderMemoryView();
+            });
+            document.getElementById('memToday').addEventListener('click', () => {
+                memAnchor = null;
+                memWeekAnchor = null;
+                memDayAnchor = null;
+                memSelected = dateToStr(new Date());
+                renderMemoryView();
+                renderMemDetail(memSelected);
+            });
+        }
+
+        // ============================================================
+        //  目标 Tab · 完成统计（按周累计，柱状图 + 累计折线）
+        // ============================================================
+        function renderGoalStatsPanel() {
+            const chips = document.getElementById('gspChips');
+            const chart = document.getElementById('gspChart');
+            if (!chips || !chart) return;
+            const doneList = state.reviewDone || [];
+            const todayStr = dateToStr(new Date());
+
+            // 最近 12 周（周一为一周起点）
+            const thisWeekStart = memWeekStart(todayStr);
+            const weeks = [];
+            for (let i = 11; i >= 0; i--) {
+                const ws = memAddDays(thisWeekStart, -7 * i);
+                const we = memAddDays(ws, 6);
+                const cnt = doneList.filter(x => x.date >= ws && x.date <= we).length;
+                weeks.push({ label: `${+ws.slice(5, 7)}/${+ws.slice(8, 10)}`, cnt });
+            }
+            const total = doneList.length;
+            const cur = weeks[11].cnt;
+            const prev = weeks[10] ? weeks[10].cnt : 0;
+            const pendingNow = getReviewItems(todayStr).pending.length;
+            chips.innerHTML = `
+                <div class="gsp-chip"><div class="k">累计完成复习</div><div class="v">${total} 次</div></div>
+                <div class="gsp-chip"><div class="k">本周完成</div><div class="v">${cur} 次</div></div>
+                <div class="gsp-chip"><div class="k">上周完成</div><div class="v">${prev} 次</div></div>
+                <div class="gsp-chip"><div class="k">当前待复习</div><div class="v">${pendingNow} 项</div></div>`;
+
+            // SVG：周完成柱状图 + 按周累计折线
+            const W = 560, H = 190, PL = 30, PR = 10, PT = 16, PB = 26;
+            const iw = W - PL - PR, ih = H - PT - PB;
+            const maxC = Math.max(1, ...weeks.map(w => w.cnt));
+            const cum = []; let acc = 0;
+            weeks.forEach(w => { acc += w.cnt; cum.push(acc); });
+            const maxCum = Math.max(1, acc);
+            const bw = iw / weeks.length;
+            const x = i => PL + bw * i + bw / 2;
+            const yCum = v => PT + ih - (v / maxCum) * ih;
+            const bars = weeks.map((w, i) => {
+                const h = (w.cnt / maxC) * ih;
+                return `<rect x="${(PL + bw * i + bw * 0.22).toFixed(1)}" y="${(PT + ih - h).toFixed(1)}" width="${(bw * 0.56).toFixed(1)}" height="${Math.max(h, w.cnt > 0 ? 2 : 0).toFixed(1)}" rx="3" fill="#5B6ABF" opacity="0.85"></rect>` +
+                    (w.cnt > 0 ? `<text x="${x(i).toFixed(1)}" y="${(PT + ih - h - 4).toFixed(1)}" font-size="10" text-anchor="middle" fill="#5B6ABF" font-weight="600">${w.cnt}</text>` : '');
+            }).join('');
+            const line = cum.map((v, i) => `${x(i).toFixed(1)},${yCum(v).toFixed(1)}`).join(' ');
+            const dots = weeks.map((w, i) => `<circle cx="${x(i).toFixed(1)}" cy="${yCum(cum[i]).toFixed(1)}" r="2.5" fill="#f59e0b"></circle>`).join('');
+            const labels = weeks.map((w, i) => `<text x="${x(i).toFixed(1)}" y="${H - 8}" font-size="9" text-anchor="middle" fill="#94a3b8">${(i % 2 === 0 || i === weeks.length - 1) ? w.label : ''}</text>`).join('');
+            const gridLines = [0, 0.5, 1].map(f => `<line x1="${PL}" y1="${(PT + ih - ih * f).toFixed(1)}" x2="${W - PR}" y2="${(PT + ih - ih * f).toFixed(1)}" stroke="#e2e8f0" stroke-width="1"></line>`).join('');
+            chart.innerHTML = `
+                <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+                    ${gridLines}${bars}
+                    <polyline points="${line}" fill="none" stroke="#f59e0b" stroke-width="2"></polyline>
+                    ${dots}${labels}
+                </svg>`;
         }
 
         // ============================================================
         //  初始化
         // ============================================================
         function init() {
+            loadProjects();
+            applyProject(currentProjectId);
             loadData();
             initForm();
             initFilters();
             initTomato();
+            initProjectSwitcher();
+            initGoalPanel();
+            initViewTabs();
+            initMemoryView();
+            renderProjectSelect();
 
             if (state.records.length > 0) {
                 const most = state.records.reduce((a, b) => {
@@ -2580,10 +4167,12 @@
                     return ca > cb ? a : b;
                 });
                 state.currentCourse = most.course;
-            } else {
-                state.currentCourse = '会计';
+            }
+            if (!COURSES.includes(state.currentCourse)) {
+                state.currentCourse = COURSES[0] || '';
             }
             renderAll();
+            renderGoalSummary();
 
             document.addEventListener('click', () => {
                 const submitBtn = document.querySelector('.form-actions .btn-submit');
