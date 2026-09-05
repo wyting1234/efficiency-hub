@@ -972,14 +972,40 @@ table.hm thead th{padding:8px 6px;text-align:center;vertical-align:top;backgroun
 table.hm th.hm-name{position:sticky;left:0;z-index:2;background:var(--cream);text-align:left;padding:8px 12px;min-width:88px;box-shadow:inset -1px 0 0 var(--line-soft)}
 table.hm th.hm-name .hm-n1{font-size:13.5px}
 .hm-cell{padding:0}
-.hm-cell select{appearance:none;-webkit-appearance:none;width:100%;min-width:92px;height:42px;border:0;background:transparent;text-align:center;text-align-last:center;font-size:12px;color:var(--ink-mute);cursor:pointer;outline:none}
+.hm-cell select{appearance:none;-webkit-appearance:none;width:100%;min-width:112px;height:42px;border:0;background:transparent;text-align:center;text-align-last:center;font-size:12px;color:var(--ink-mute);cursor:pointer;outline:none}
 .hm-cell select:focus{box-shadow:inset 0 0 0 1.5px var(--clay)}
-.hm-cell.lv1{background:rgba(158,58,44,.13)}
+.hm-cell.lv0{background:rgba(154,144,128,.14)}
+.hm-cell.lv0 select{color:#6E6355;font-weight:600}
+.hm-cell.lv1{background:rgba(166,80,60,.15)}
 .hm-cell.lv1 select{color:#8f3323;font-weight:600}
-.hm-cell.lv2{background:rgba(191,148,49,.16)}
+.hm-cell.lv2{background:rgba(176,138,74,.18)}
 .hm-cell.lv2 select{color:#7d5f14;font-weight:600}
-.hm-cell.lv3{background:rgba(119,128,92,.20)}
+.hm-cell.lv3{background:rgba(139,146,104,.20)}
 .hm-cell.lv3 select{color:#55603a;font-weight:600}
+.hm-cell.lv4{background:rgba(94,124,78,.24)}
+.hm-cell.lv4 select{color:#3d5a30;font-weight:600}
+.hm-cell.lv5{background:rgba(70,58,46,.26)}
+.hm-cell.lv5 select{color:#463A2E;font-weight:700}
+.hm-ex-cell{padding:7px 5px;text-align:center;background:var(--cream);cursor:pointer;
+  border-bottom:1px solid var(--line-soft);border-right:1px solid var(--line-soft);
+  transition:background .2s var(--e),box-shadow .2s var(--e)}
+.hm-ex-cell .ex-n{font-family:var(--serif);font-size:17px;color:var(--ink);line-height:1.15}
+.hm-ex-cell .ex-p{font-size:10px;color:var(--ink-mute);margin-top:1px}
+.hm-ex-cell:hover{box-shadow:inset 0 0 0 2px var(--umber)}
+.hm-ex-cell.lv0{background:rgba(154,144,128,.13)}
+.hm-ex-cell.lv1{background:rgba(166,80,60,.14)}
+.hm-ex-cell.lv2{background:rgba(176,138,74,.17)}
+.hm-ex-cell.lv3{background:rgba(139,146,104,.19)}
+.hm-ex-cell.lv4{background:rgba(94,124,78,.23)}
+.hm-ex-cell.lv5{background:rgba(70,58,46,.25)}
+.hm-ex-cell.sum{background:var(--sand);cursor:default}
+.hm-ex-cell.sum:hover{box-shadow:none}
+.hm-ex-zero .ex-n{color:var(--ink-mute)}
+.hm tr.hm-hi th.hm-name{background:var(--clay)}
+.hm tr.hm-hi{box-shadow:inset 0 0 0 2px var(--umber)}
+.hm-pill.p0 b{color:var(--ink-mute)}
+.hm-pill.p4 b{color:#3d5a30}
+.hm-pill.p5 b{color:var(--cocoa)}
 @media(max-width:640px){.hm-sum{margin-left:0}.hm-cell select{min-width:84px;height:40px}}
 /* ---------- 复习日视图时间轴 ---------- */
 .dv-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
@@ -1167,6 +1193,15 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
 .btn:hover{background:var(--cocoa);transform:translateY(-1px)}
 .btn.gh{background:none;color:var(--crimson);box-shadow:inset 0 0 0 1px rgba(166,80,60,.3)}
 .btn.gh:hover{background:rgba(166,80,60,.08);box-shadow:inset 0 0 0 1px rgba(166,80,60,.5)}
+/* —— 掌握度台账（内嵌 CPA 掌握度量化系统，同域同源）—— */
+.mst-tile{padding:0;overflow:hidden}
+.mst-tile .t-head{padding:24px 28px 14px;margin-bottom:0;border-bottom:1px solid var(--line-soft)}
+.mst-frame{display:block;width:100%;border:0;background:var(--oat);min-height:70vh}
+.mst-loading{padding:40px 28px;text-align:center;color:var(--ink-mute);font-size:13.5px}
+@media(max-width:760px){
+  .mst-tile .t-head{padding:18px 16px 12px}
+}
+
 @media(max-width:520px){
   .ggrid{grid-template-columns:1fr}
   .dv-sum{margin-left:0;width:100%}
@@ -1267,6 +1302,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
           </div>
         </div>
         <div class="hm-bar">
+          <div class="chips" id="hmModeSeg"></div>
           <select id="hmSub" onchange="hmSetSub(this.value)" aria-label="科目"></select>
           <select id="hmView" onchange="hmSetView(this.value)" aria-label="视角"></select>
           <select id="hmShow" onchange="hmSetShow(this.value)" aria-label="展示状态"></select>
@@ -1466,6 +1502,31 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
     </div>
   </section>
 
+  <!-- ============ 掌握度台账（内嵌 CPA 掌握度量化系统） ============ -->
+  <section class="panel" id="p-mastery">
+    <div class="bento">
+      <div class="c12 tile mst-tile">
+        <div class="t-head">
+          <div>
+            <span class="eyebrow">Mastery Ledger</span>
+            <h2>掌握度量化台账</h2>
+            <div class="cap">CPA 会计 30 章知识树 · 框架自检分 / 做题实测分取低分定级 · 薄弱池自动聚焦（数据与本工作台同源，存于本机浏览器）</div>
+          </div>
+          <div class="t-acts">
+            <button aria-label="刷新" class="ib sm flat tip-l" data-tip="刷新" onclick="reloadMastery()">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 4v5h-5"/></svg>
+            </button>
+            <button aria-label="新窗口打开" class="ib sm flat tip-l" data-tip="新窗口全屏打开" onclick="openMastery()">
+              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="mst-loading" id="mstLoading">正在载入掌握度量化系统…</div>
+        <iframe class="mst-frame" id="masteryFrame" title="CPA 掌握度量化学习系统" data-src="CPA%E4%BC%9A%E8%AE%A1%E6%8E%8C%E6%8F%A1%E5%BA%A6%E7%B3%BB%E7%BB%9F.html?embed=1" src="about:blank" scrolling="no"></iframe>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 </div><!-- /.content -->
@@ -1510,6 +1571,7 @@ const K={prof:'wb_bk_profile',stages:'wb_bk_stages',todos:'wb_bk_todos',time:'wb
          issues:'wb_bk_issues',subs:'wb_bk_subjects',checks:'wb_bk_checks',reviews:'wb_bk_reviews',
          gains:'wb_bk_gains',kps:'wb_bk_kps',kpch:'wb_bk_kpch',
          heat:'wb_bk_heat',hmview:'wb_bk_hmview',hmsub:'wb_bk_hmsub',hmshow:'wb_bk_hmshow',
+         hmmode:'wb_bk_hmmode',heatv:'wb_bk_heatv',
          stg:'wb_bk_stg',
          gh:'wb_bk_gh',ghm:'wb_bk_ghmeta',
          cur:'wb_bk_cur',rvtab:'wb_bk_rvtab',rvday:'wb_bk_rvday',tip:'wb_bk_tip_hide'};
@@ -1759,6 +1821,9 @@ heat.forEach(hmMigrate); save(K.heat,heat);
 let hmView=load(K.hmview,'ch'); if(['sub','ch','sec','kp'].indexOf(hmView)<0) hmView='ch';
 let hmSub=load(K.hmsub,'');
 let hmShow=load(K.hmshow,'full'); if(['no','name','full'].indexOf(hmShow)<0) hmShow='full';
+/* 首页热力图两个视图：mst=章节掌握（阶段×章节，格子改六档） / exec=六档执行（档位×阶段，看分布） */
+let hmMode=load(K.hmmode,'mst'); if(['mst','exec'].indexOf(hmMode)<0) hmMode='mst';
+let hmHiStage='';   /* 从执行视图点回来时短暂高亮的阶段 */
 
 /* ================= 云端底表接入 =================
    资料库里的七张 database 是权威数据源：科目表 / 验收清单表 / 复习计划表 / 学习任务表 /
@@ -1958,7 +2023,8 @@ const TABS=[
   {id:'time',label:'时间管理',short:'时间',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'},
   {id:'check',label:'验收清单',short:'验收',ic:'<path d="M9 11l2 2 4-4"/><rect x="3" y="4" width="18" height="16" rx="2.5"/>'},
   {id:'review',label:'复习巩固',short:'复习',ic:'<path d="M12 2a6 6 0 00-3.5 10.9c.5.4.8 1 .9 1.6l.1 1.5h5l.1-1.5c.1-.6.4-1.2.9-1.6A6 6 0 0012 2z"/><path d="M9 18h6"/><path d="M10 22h4"/>'},
-  {id:'gains',label:'感悟系统',short:'感悟',ic:'<path d="M20.8 5.6a5 5 0 00-7.1 0L12 7.3l-1.7-1.7a5 5 0 10-7.1 7.1L12 21.5l8.8-8.8a5 5 0 000-7.1z"/>'}
+  {id:'gains',label:'感悟系统',short:'感悟',ic:'<path d="M20.8 5.6a5 5 0 00-7.1 0L12 7.3l-1.7-1.7a5 5 0 10-7.1 7.1L12 21.5l8.8-8.8a5 5 0 000-7.1z"/>'},
+  {id:'mastery',label:'掌握度台账',short:'台账',ic:'<path d="M3 21h18"/><path d="M6.5 21V13"/><path d="M11.5 21V6"/><path d="M16.5 21v-6"/><path d="M21 21V9"/>'}
 ];
 let cur='home';
 function navBadge(id){
@@ -1979,7 +2045,17 @@ function navBadge(id){
   }
   if(id==='subject'){ const a=subs.filter(s=>s.state==='备考中').length; return a?{n:a,hot:false}:null; }
   if(id==='gains'){ const a=gains.filter(inSub).length; return a?{n:a,hot:false}:null; }
+  if(id==='mastery'){ const m=masteryStat(); return m.total?{n:m.weak,hot:m.weak>0}:null; }
   return null;
+}
+/* 读取掌握度台账（同域 localStorage，与内嵌页共享） */
+function masteryStat(){
+  try{
+    const raw=localStorage.getItem('cpaMasteryScore_v1');
+    const arr=raw?JSON.parse(raw):[];
+    if(!Array.isArray(arr)||!arr.length) return {total:0,weak:0};
+    return {total:arr.length,weak:arr.filter(x=>Number(x.final)<=3).length};
+  }catch(e){ return {total:0,weak:0}; }
 }
 function nav(){
   document.getElementById('tabsSide').innerHTML=TABS.map(t=>{
@@ -2011,8 +2087,58 @@ function go(id){
   el.querySelectorAll('.bento').forEach(b=>{ b.style.animation='none'; void b.offsetWidth; b.style.animation=''; });
   nav(); window.scrollTo({top:0,behavior:'smooth'});
   requestAnimationFrame(()=>{ paintAcc(el); animateGauges(); animateBars(); });
+  if(id==='mastery') mountMastery();
 }
 function goReview(){ rvTab='rev'; go('review'); }
+
+/* ================= 掌握度台账内嵌页 ================= */
+let masteryRO=null, masteryNavT=null;
+function mountMastery(){
+  const f=document.getElementById('masteryFrame'); if(!f) return;
+  if(!f.dataset.mounted){                       // 懒加载：首次进入才真正载入，不拖慢首屏
+    f.dataset.mounted='1';
+    f.onload=()=>{
+      const ld=document.getElementById('mstLoading'); if(ld) ld.style.display='none';
+      fitMastery(); bindMasteryResize();
+    };
+    f.src=f.dataset.src;
+  }else{
+    fitMastery();
+  }
+}
+function fitMastery(){
+  const f=document.getElementById('masteryFrame'); if(!f) return;
+  try{
+    const d=f.contentDocument; if(!d) return;
+    const h=Math.max(d.documentElement.scrollHeight||0, d.body?d.body.scrollHeight:0);
+    if(h>200) f.style.height=(h+20)+'px';
+  }catch(e){}
+}
+function bindMasteryResize(){
+  const f=document.getElementById('masteryFrame'); if(!f) return;
+  try{
+    const b=f.contentDocument&&f.contentDocument.body; if(!b) return;
+    if(masteryRO) masteryRO.disconnect();
+    masteryRO=new ResizeObserver(()=>fitMastery());
+    masteryRO.observe(b);
+  }catch(e){}
+}
+function reloadMastery(){
+  const f=document.getElementById('masteryFrame'); if(!f) return;
+  const ld=document.getElementById('mstLoading'); if(ld) ld.style.display='';
+  f.src=f.dataset.src; fitMastery();
+}
+function openMastery(){
+  window.open(decodeURIComponent((document.getElementById('masteryFrame').dataset.src||'').split('?')[0]),'_blank');
+}
+/* 内嵌页数据变动 → 同步高度与侧栏徽标 */
+window.addEventListener('message',function(e){
+  if(!e.data||e.data.type!=='cpaMasteryHeight') return;
+  const f=document.getElementById('masteryFrame');
+  if(f&&e.data.h>200) f.style.height=(e.data.h+20)+'px';
+  clearTimeout(masteryNavT);
+  masteryNavT=setTimeout(()=>nav(),350);
+});
 
 /* ================= 动效 ================= */
 function animateGauges(){
@@ -3649,27 +3775,47 @@ function tblKps(){ return {head:['考点内容','科目','章节','已掌握','�
    章视角/科目视角的格子为汇总色：其下各节该阶段等级的均值映射。 */
 function defHeat(){
   const R=[
-    ['sec','会计','1','会计的概念','1','会计职能',{'预习导学':'了解','精讲听课':'熟悉'}],
-    ['sec','会计','1','会计的概念','2','会计目标',{'预习导学':'熟悉','精讲听课':'掌握','章节习题':'了解'}],
-    ['sec','会计','2','存货','1','存货的确认与初始计量',{'精讲听课':'了解'}],
-    ['sec','会计','2','存货','2','发出存货的计量',{'预习导学':'了解'}],
-    ['sec','刑法','3','犯罪构成','1','构成要件',{'预习导学':'掌握','精讲听课':'掌握','章节习题':'熟悉'}],
-    ['kp','Python 后端','','','','装饰器带参数的写法与执行顺序',{'预习导学':'了解'}]
+    ['sec','会计','1','会计的概念','1','会计职能',{'预习导学':2,'精讲听课':3}],
+    ['sec','会计','1','会计的概念','2','会计目标',{'预习导学':3,'精讲听课':4,'章节习题':2}],
+    ['sec','会计','2','存货','1','存货的确认与初始计量',{'精讲听课':2}],
+    ['sec','会计','2','存货','2','发出存货的计量',{'预习导学':1}],
+    ['sec','刑法','3','犯罪构成','1','构成要件',{'预习导学':4,'精讲听课':4,'章节习题':3}],
+    ['kp','Python 后端','','','','装饰器带参数的写法与执行顺序',{'预习导学':2}]
   ];
   return R.map(r=>({id:uid(),rid:'',kind:r[0],sub:r[1],chNo:r[2],chName:r[3],secNo:r[4],secName:r[5],
     st:Object.assign({},r[6]),date:today()}));
 }
-const HM_LV=['','了解','熟悉','掌握'];
-function hmScore(v){ return v==='了解'?1:v==='熟悉'?2:v==='掌握'?3:0; }
-/* 一组等级 → 汇总等级：有值取均值映射（≥2.5 掌握 / ≥1.5 熟悉 / 否则了解），全空为未学 */
-function hmAgg(vals){
-  const s=(vals||[]).map(hmScore).filter(Boolean);
-  if(!s.length) return 0;
-  const m=s.reduce((a,b)=>a+b,0)/s.length;
-  return m>=2.5?3:m>=1.5?2:1;
+/* 六档掌握度（口径与「掌握度台账」一致）：0不会 1眼熟 2懂概念 3基础熟练 4应试合格 5融会贯通 */
+const HM_LV=['不会','眼熟','懂概念','基础熟练','应试合格','融会贯通'];
+const HM_LV_DESC=['完全陌生','见过但说不清','知道基本定义','能解常规题','达到考试要求','灵活运用'];
+const HM_MIGRATE={'了解':2,'熟悉':3,'掌握':4};      /* 旧三档 → 六档 */
+function hmScore(v){ const n=Number(v); return (v===''||v===null||v===undefined||isNaN(n))?null:(n>=0&&n<=5?n:null); }
+function hmName(v){ const n=hmScore(v); return n===null?'':(n+' '+HM_LV[n]); }
+/* 旧三档数据一次性升级为六档：幂等，云端拉回旧格式后再次渲染也会自动纠正 */
+function hmMigrate6(){
+  if(Number(load(K.heatv,0))>=2) return false;
+  let ch=false;
+  heat.forEach(function(r){
+    if(!r.st||typeof r.st!=='object') return;
+    Object.keys(r.st).forEach(function(sg){
+      const v=r.st[sg];
+      if(HM_MIGRATE.hasOwnProperty(v)){ r.st[sg]=HM_MIGRATE[v]; ch=true; }
+      else if(v===''||v===null||v===undefined){ delete r.st[sg]; ch=true; }
+      else if(typeof v!=='number'){ const n=Number(v); if(!isNaN(n)&&n>=0&&n<=5){ r.st[sg]=n; ch=true; } }
+    });
+  });
+  save(K.heatv,2);
+  if(ch) save(K.heat,heat);
+  return ch;
 }
-function hmGet(r,sg){ return (r.st&&r.st[sg])||''; }
-function hmSetStage(r,sg,v){ r.st=r.st||{}; if(v) r.st[sg]=v; else delete r.st[sg]; r.date=today(); }
+/* 一组档位 → 汇总档位：有值取均值四舍五入；全空返回 ''（未学，与 0-不会 区分开） */
+function hmAgg(vals){
+  const s=(vals||[]).map(hmScore).filter(v=>v!==null);
+  if(!s.length) return '';
+  return Math.round(s.reduce((a,b)=>a+b,0)/s.length);
+}
+function hmGet(r,sg){ const n=hmScore(r.st?r.st[sg]:null); return n===null?'':n; }
+function hmSetStage(r,sg,v){ r.st=r.st||{}; const n=hmScore(v); if(n===null) delete r.st[sg]; else r.st[sg]=n; r.date=today(); }
 /* 当前视角下的列：sub=各科目一列 / ch=各章一列 / sec=各节一列 / kp=各知识点一列 */
 function hmCols(){
   let rows=heat.filter(r=>hmView==='kp'?(r.kind==='kp'):(r.kind!=='kp'));
@@ -3706,26 +3852,38 @@ function hmHead(c){
 }
 function renderHeat(){
   const wrap=document.getElementById('hmWrap'); if(!wrap) return;
+  hmMigrate6();                       /* 旧三档 → 六档，幂等；云端拉回旧格式后再渲染也会自动纠正 */
+  const isExec=hmMode==='exec';
+  const seg=document.getElementById('hmModeSeg');
+  if(seg) seg.innerHTML=[['mst','章节掌握'],['exec','六档执行']].map(c=>
+    '<button class="chip'+(hmMode===c[0]?' on':'')+'" onclick="hmSetMode(\''+c[0]+'\')">'+c[1]+'</button>').join('');
   const subSel=document.getElementById('hmSub');
   if(subSel) subSel.innerHTML='<option value="">全部科目</option>'
     +subs.map(s=>'<option value="'+esc(s.name)+'"'+(hmSub===s.name?' selected':'')+'>'+esc(s.name)+'</option>').join('');
   const vw=document.getElementById('hmView');
-  if(vw) vw.innerHTML=[['sub','科目视角'],['ch','章视角'],['sec','节视角'],['kp','知识点视角']].map(t=>
-    '<option value="'+t[0]+'"'+(hmView===t[0]?' selected':'')+'>'+t[1]+'</option>').join('');
+  if(vw){ vw.style.display=isExec?'none':'';
+    if(!isExec) vw.innerHTML=[['sub','科目视角'],['ch','章视角'],['sec','节视角'],['kp','知识点视角']].map(t=>
+      '<option value="'+t[0]+'"'+(hmView===t[0]?' selected':'')+'>'+t[1]+'</option>').join(''); }
   const sw=document.getElementById('hmShow');
-  if(sw) sw.innerHTML=[['no','数字'],['name','名称'],['full','全称']].map(t=>
-    '<option value="'+t[0]+'"'+(hmShow===t[0]?' selected':'')+'>'+t[1]+'</option>').join('');
+  if(sw){ sw.style.display=isExec?'none':'';
+    if(!isExec) sw.innerHTML=[['no','数字'],['name','名称'],['full','全称']].map(t=>
+      '<option value="'+t[0]+'"'+(hmShow===t[0]?' selected':'')+'>'+t[1]+'</option>').join(''); }
+  if(isExec) return renderHeatExec();
   const cols=hmCols(); HM_COLS=cols;
   const cap=document.getElementById('hmCap');
-  if(cap) cap.textContent=hmView==='sub' ? '全部科目横向对比，格子选掌握程度：了解 → 熟悉 → 掌握（绿=通过）'
-    : hmView==='ch' ? (hmSub||'全部科目')+' 分章掌握情况 · 章格子里改的是整章各节'
-    : hmView==='kp' ? (hmSub||'全部科目')+' 知识点逐条掌握情况 · 点列头可编辑/删除'
-    : (hmSub||'全部科目')+' 分节掌握情况 · 精确到第几章第几节，点列头可编辑/删除';
-  /* 统计：按列汇总等级计数 —— 了解 x/n = 汇总为了解的列数 / 总列数（视角切换自动重算） */
+  if(cap) cap.textContent='六档掌握度 0不会→5融会贯通 · '
+    +(hmView==='sub'?'整科横向对比（格子改的是该科全部条目）'
+     :hmView==='ch'?(hmSub||'全部科目')+' 分章掌握 · 章格子里改的是整章各节'
+     :hmView==='kp'?(hmSub||'全部科目')+' 知识点逐条掌握 · 点列头可编辑/删除'
+     :(hmSub||'全部科目')+' 分节掌握 · 精确到第几章第几节，点列头可编辑/删除');
+  /* 统计：每列跨阶段汇总出一个档位，再按档位数列数（视角切换自动重算） */
   const lvs=cols.map(c=>hmAgg(c.rows.map(r=>STAGES.map(sg=>hmGet(r,sg))).reduce((a,arr)=>a.concat(arr),[])));
-  document.getElementById('hmSum').innerHTML=[[1,'了解','p1'],[2,'熟悉','p2'],[3,'掌握','p3']].map(p=>
-    '<span class="hm-pill '+p[2]+'">'+p[1]+'<b>'+lvs.filter(v=>v===p[0]).length+'</b>/'+cols.length+'</span>').join('')
-    +'<span class="hm-legend">红=了解 · 黄=熟悉 · 绿=通过</span>';
+  const un=lvs.filter(v=>v==='').length;
+  document.getElementById('hmSum').innerHTML=[5,4,3,2,1,0].map(lv=>
+    '<span class="hm-pill p'+lv+'" title="'+HM_LV_DESC[lv]+'">'+lv+' '+HM_LV[lv]+'<b>'
+      +lvs.filter(v=>String(v)===String(lv)).length+'</b>/'+cols.length+'</span>').join('')
+    +(un?'<span class="hm-pill">未学<b>'+un+'</b>/'+cols.length+'</span>':'')
+    +'<span class="hm-legend">灰0不会 · 红1眼熟 · 黄2懂概念 · 绿3~4达标 · 深5贯通</span>';
   if(!cols.length){
     wrap.innerHTML='<div class="void">'+(hmView==='kp'
       ?'还没有知识点掌握记录。点右上「+」，类型选「知识点」添加。'
@@ -3744,19 +3902,71 @@ function renderHeat(){
   });
   html+='</tr></thead><tbody>';
   STAGES.forEach(function(sg){
-    html+='<tr><th class="hm-name"><div class="hm-n1">'+esc(sg)+'</div><div class="hm-n2">'+(hmView==='ch'?'整章汇总':'掌握程度')+'</div></th>';
+    html+='<tr'+(hmHiStage===sg?' class="hm-hi"':'')+'><th class="hm-name"><div class="hm-n1">'+esc(sg)+'</div>'
+      +'<div class="hm-n2">'+(hmView==='ch'?'整章汇总':'掌握程度')+'</div></th>';
     cols.forEach((c,i)=>{
       const lv=hmAgg(c.rows.map(r=>hmGet(r,sg)));
-      const cur=c.rows.length===1?hmGet(c.rows[0],sg):'';
       const opts='<option value="">'+(c.rows.length===1?'未学':'汇总')+'</option>'
-        +HM_LV.slice(1).map(l=>'<option value="'+l+'"'+(lv===hmScore(l)?' selected':'')+'>'+l+'</option>').join('');
-      html+='<td class="hm-cell'+(lv?' lv'+lv:'')+'"><select title="'+esc(hmFull(c)+' · '+sg)
+        +HM_LV.map((n,ix)=>'<option value="'+ix+'"'+(String(lv)===String(ix)?' selected':'')+'>'+ix+' '+n+'</option>').join('');
+      html+='<td class="hm-cell'+(lv!==''?' lv'+lv:'')+'"><select title="'+esc(hmFull(c)+' · '+sg)
         +'" onchange="hmSetCell('+i+',\''+sg+'\',this.value)">'+opts+'</select></td>';
     });
     html+='</tr>';
   });
   html+='</tbody></table>';
   wrap.innerHTML=html;
+}
+/* ---------- 视图②：六档执行热力图（行=六档，列=阶段，格子=条目数+占比） ---------- */
+function renderHeatExec(){
+  const wrap=document.getElementById('hmWrap');
+  const cap=document.getElementById('hmCap');
+  if(cap) cap.textContent='六档执行分布：行=掌握档位，列=学习阶段 · 格子为该档条目数（占比）· 点格子回到「章节掌握」并高亮该阶段';
+  const rows=heat.filter(r=>!hmSub||r.sub===hmSub);
+  const dist={},tot={};
+  STAGES.forEach(sg=>{ dist[sg]=[0,0,0,0,0,0]; tot[sg]=0; });
+  rows.forEach(r=>{ STAGES.forEach(sg=>{ const v=hmGet(r,sg); if(v!==''){ dist[sg][v]++; tot[sg]++; } }); });
+  const grand=STAGES.reduce((a,sg)=>a+tot[sg],0);
+  if(!rows.length){
+    wrap.innerHTML='<div class="void">还没有掌握数据。点右上「+」添加章节 / 知识点，再切到「章节掌握」逐阶段打分。</div>';
+    document.getElementById('hmSum').innerHTML='';
+    return;
+  }
+  document.getElementById('hmSum').innerHTML=
+    [['合格 ≥4','p4',[4,5]],['基础 3','p3',[3]],['薄弱 ≤2','p1',[0,1,2]]].map(function(p){
+      let n=0; STAGES.forEach(sg=>{ p[2].forEach(lv=>{ n+=dist[sg][lv]; }); });
+      return '<span class="hm-pill '+p[1]+'">'+p[0]+'<b>'+(grand?Math.round(n/grand*100):0)+'%</b></span>';
+    }).join('')+'<span class="hm-legend">共 '+grand+' 项已评 · 点格子回看阶段</span>';
+  let html='<table class="hm"><thead><tr><th class="hm-name"><div class="hm-n1">档位 \\ 阶段</div>'
+    +'<div class="hm-n2">'+esc(hmSub||'全部科目')+'</div></th>';
+  STAGES.forEach(sg=>{ html+='<th><div class="hm-n1">'+esc(sg)+'</div><div class="hm-n2">'+tot[sg]+' 项</div></th>'; });
+  html+='<th><div class="hm-n1">全阶段</div><div class="hm-n2">'+grand+' 项</div></th></tr></thead><tbody>';
+  for(let lv=5;lv>=0;lv--){
+    let rowSum=0; STAGES.forEach(sg=>{ rowSum+=dist[sg][lv]; });
+    html+='<tr><th class="hm-name"><div class="hm-n1">'+lv+' '+HM_LV[lv]+'</div>'
+      +'<div class="hm-n2">'+HM_LV_DESC[lv]+'</div></th>';
+    STAGES.forEach(function(sg){
+      const n=dist[sg][lv], t=tot[sg];
+      html+='<td class="hm-ex-cell lv'+lv+(n?'':' hm-ex-zero')+'" title="'+esc(sg+' · '+lv+' '+HM_LV[lv]+'：'+n+' 项')+'"'
+        +' onclick="hmExecDrill(\''+sg+'\')"><div class="ex-n">'+n+'</div>'
+        +(t?'<div class="ex-p">'+Math.round(n/t*100)+'%</div>':'')+'</td>';
+    });
+    html+='<td class="hm-ex-cell sum"><div class="ex-n">'+rowSum+'</div>'
+      +(grand?'<div class="ex-p">'+Math.round(rowSum/grand*100)+'%</div>':'')+'</td></tr>';
+  }
+  html+='<tr><th class="hm-name"><div class="hm-n1">已评条目</div><div class="hm-n2">该阶段有档位记录</div></th>';
+  STAGES.forEach(sg=>{ html+='<td class="hm-ex-cell sum"><div class="ex-n">'+tot[sg]+'</div></td>'; });
+  html+='<td class="hm-ex-cell sum"><div class="ex-n">'+grand+'</div></td></tr>';
+  html+='</tbody></table>';
+  wrap.innerHTML=html;
+}
+function hmSetMode(m){ hmMode=m; save(K.hmmode,m); hmHiStage=''; renderHeat(); kick(); }
+/* 数据关联：从执行视图点某阶段 → 切回章节掌握并短暂高亮该阶段行 */
+function hmExecDrill(sg){
+  hmMode='mst'; save(K.hmmode,hmMode); hmHiStage=sg;
+  renderHeat(); kick();
+  toast('已切到「章节掌握」· 高亮「'+sg+'」');
+  clearTimeout(window.__hmHiT);
+  window.__hmHiT=setTimeout(function(){ hmHiStage=''; renderHeat(); kick(); },3000);
 }
 function hmSetView(v){ hmView=v; save(K.hmview,v); renderHeat(); kick(); }
 function hmSetShow(v){ hmShow=v; save(K.hmshow,v); renderHeat(); kick(); }
@@ -3856,7 +4066,7 @@ function pushHeat(r){
 function tblHeat(){
   return {head:['类型','科目','章号','章名','节号','节名/知识点'].concat(STAGES).concat(['日期']),
     rows:heat.map(r=>[r.kind==='kp'?'知识点':'章节',r.sub,r.chNo,r.chName,r.secNo,r.secName]
-      .concat(STAGES.map(sg=>hmGet(r,sg))).concat([r.date]))};
+      .concat(STAGES.map(sg=>hmName(hmGet(r,sg)))).concat([r.date]))};
 }
 
 /* ---------- 疑难清理 ---------- */

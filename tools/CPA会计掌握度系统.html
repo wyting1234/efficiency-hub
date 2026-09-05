@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CPA会计｜掌握度量化学习系统</title>
+<style>
+/* ============ 主题：Oat & Umber · 燕麦赭石（与备考学习台统一） ============ */
+:root{
+  --oat:#F2EDE4; --cream:#FAF7F1; --sand:#EAE2D5; --clay:#D6C9B4;
+  --umber:#8A7358; --umber-d:#6F5C45; --umber-l:#A08869; --cocoa:#463A2E;
+  --ink:#33291F; --ink-soft:#6E6355; --ink-mute:#9C9080;
+  --line:#E5DCCD; --line-soft:#EFE8DC;
+  --crimson:#A6503C; --olive:#77805C; --amber:#B08A4A;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Songti SC","Source Han Serif SC",STSong,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Microsoft Yahei",sans-serif;
+  --r-sm:10px; --r:16px; --r-lg:22px;
+  --e:cubic-bezier(.4,0,.2,1);
+  --sh-1:0 1px 2px rgba(70,58,46,.04),0 2px 8px rgba(70,58,46,.03);
+  --sh-2:0 2px 6px rgba(70,58,46,.06),0 10px 28px rgba(70,58,46,.07);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--oat);color:var(--ink);font-size:15px;line-height:1.65;padding:18px;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:15px;color:var(--ink)}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:400;line-height:1.2;letter-spacing:-.01em}
+::selection{background:var(--clay);color:var(--ink)}
+*{scrollbar-width:thin;scrollbar-color:rgba(154,144,128,.5) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(154,144,128,.34);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+
+.container{max-width:1360px;margin:0 auto}
+.page-title{text-align:center;margin:4px 0 16px;color:var(--cocoa);font-size:24px}
+.page-title small{display:block;font-family:var(--sans);font-size:12px;letter-spacing:1px;color:var(--ink-mute);margin-top:6px}
+body.embed{padding:0}
+body.embed .page-title{display:none}
+
+.card{background:var(--cream);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:var(--sh-1)}
+.card h2{font-size:18px;margin-bottom:10px;color:var(--cocoa);border-left:3px solid var(--umber);padding-left:9px}
+.eyebrow{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--ink-mute);display:block;margin-bottom:2px}
+
+.lead{font-size:14px;color:var(--ink-soft);line-height:1.8}
+.lead b{color:var(--cocoa);font-weight:600}
+
+/* 标签页 */
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:8px 15px;background:var(--sand);color:var(--ink-soft);border-radius:99px;font-size:14px;transition:all .2s var(--e)}
+.tab:hover{background:var(--clay)}
+.tab.active{background:var(--umber);color:var(--cream);box-shadow:var(--sh-1)}
+.tab-content{display:none}
+.tab-content.active{display:block;animation:fade .25s var(--e)}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* 按钮 */
+.btns{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
+.btn{padding:8px 14px;border-radius:var(--r-sm);font-size:14px;background:var(--umber);color:var(--cream);transition:all .18s var(--e)}
+.btn:hover{background:var(--umber-d)}
+.btn.ghost{background:transparent;color:var(--umber);border:1px solid var(--clay)}
+.btn.ghost:hover{background:var(--sand);color:var(--umber-d)}
+.btn.danger{background:var(--crimson);color:#fff}
+.btn.danger:hover{filter:brightness(.92)}
+.btn.gray{background:var(--ink-mute);color:#fff}
+
+/* 统计 */
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0 2px}
+.stat-item{background:var(--sand);border:1px solid var(--line-soft);padding:10px 16px;border-radius:var(--r-sm);font-size:13px;color:var(--ink-soft)}
+.stat-item b{font-family:var(--serif);font-size:20px;color:var(--cocoa);margin-left:6px}
+.filter-bar{display:flex;align-items:center;gap:8px;margin:10px 0 0;font-size:14px;color:var(--ink-soft)}
+.filter-bar input[type=checkbox]{width:16px;height:16px;accent-color:var(--umber)}
+
+/* 表格 */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--cream)}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:860px}
+th,td{border-bottom:1px solid var(--line-soft);padding:8px 6px;vertical-align:middle}
+th{background:var(--sand);color:var(--ink-soft);text-align:left;font-weight:600;font-size:13px;white-space:nowrap}
+tbody tr:hover{background:var(--line-soft)}
+tbody tr:last-child td{border-bottom:none}
+input,textarea,select{width:100%;border:1px solid var(--clay);background:#fff;padding:6px 8px;border-radius:8px;outline:none;transition:border-color .15s var(--e)}
+input:focus,textarea:focus,select:focus{border-color:var(--umber)}
+input[readonly]{background:var(--sand);border-color:var(--line);text-align:center;font-family:var(--serif);font-size:16px;color:var(--cocoa)}
+textarea{resize:vertical;line-height:1.6}
+.empty{padding:26px;text-align:center;color:var(--ink-mute);font-size:14px}
+
+/* 知识树 */
+.tree{font-size:14px;line-height:1.75;list-style:none}
+.tree ul{list-style:none;padding-left:20px;border-left:1px dashed var(--clay);margin-left:4px}
+.tree li{margin:3px 0}
+.level1{font-weight:600;color:var(--cocoa);font-family:var(--serif);font-size:15px;margin-top:10px}
+.level2{color:var(--umber-d)}
+.level3{color:var(--ink-soft)}
+.tree-tools{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.tree-tools input{flex:1;min-width:180px}
+.tree-hit{background:var(--amber);color:#fff;border-radius:4px;padding:0 3px}
+
+.note{background:var(--sand);border-left:3px solid var(--amber);padding:10px 14px;border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:13px;color:var(--ink-soft);margin:10px 0}
+
+@media(max-width:800px){
+  body{padding:12px;font-size:14px}
+  table{font-size:12px;min-width:720px}
+  th,td{padding:6px 4px}
+  .card{padding:14px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1 class="page-title">CPA会计｜掌握度量化学习系统<small id="subTitle">教材知识树 · 考纲打分台账（双体系通关法）</small></h1>
+
+<div class="card">
+  <span class="eyebrow">Method</span>
+  <h2>使用原理（双体系通关法）</h2>
+  <p class="lead">
+    <b>教材树（事前自查）：</b>章 → 节 → 一级 → 二级 → 三级 → 四级标题，闭卷复述定位断点。<br>
+    <b>考纲打分台账（事后确权）：</b>0‑5 分评价，框架自检分、做题实测分，<b>取低分</b>作为真实掌握水平，杜绝假性掌握。<br>
+    分数定义：<b>0</b>=不会 ｜ <b>1</b>=眼熟 ｜ <b>2</b>=懂概念 ｜ <b>3</b>=基础熟练 ｜ <b>4</b>=应试合格（3 级考点目标） ｜ <b>5</b>=融会贯通
+  </p>
+  <div class="btns">
+    <button class="btn" onclick="saveData()">💾 本地保存</button>
+    <button class="btn ghost" onclick="exportJSON()">⬇ 导出备份</button>
+    <button class="btn ghost" onclick="document.getElementById('impFile').click()">⬆ 导入备份</button>
+    <button class="btn danger" onclick="clearAll()">🗑 清空表格</button>
+    <input type="file" id="impFile" accept=".json" style="display:none" onchange="importJSON(this)">
+  </div>
+  <div class="filter-bar">
+    <input type="checkbox" id="weakFilter"> <label for="weakFilter">只看薄弱知识点（最终得分 ≤ 3）</label>
+  </div>
+  <div class="stats">
+    <div class="stat-item">总条目<b id="totalCount">0</b></div>
+    <div class="stat-item">薄弱 (≤3分)<b id="weakCount">0</b></div>
+    <div class="stat-item">达标 (≥4分)<b id="goodCount">0</b></div>
+    <div class="stat-item">达标率<b id="rateCount">0%</b></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="tree">📖 教材多级知识树</div>
+  <div class="tab" data-tab="score">📝 掌握度打分台账</div>
+  <div class="tab" data-tab="method">📚 学习方法论与三轮规划</div>
+  <div class="tab" data-tab="trap">⚠ 错题陷阱笔记</div>
+</div>
+
+<!-- ============ 知识树 ============ -->
+<div class="tab-content active" id="tree">
+  <div class="card">
+    <span class="eyebrow">Knowledge Tree</span>
+    <h2>2026 CPA 会计 30 章多级知识树</h2>
+    <div class="tree-tools">
+      <input id="treeSearch" placeholder="搜索章节 / 知识点关键词（如：合并、租赁、股份支付）" oninput="searchTree(this.value)">
+      <button class="btn ghost" onclick="toggleAll(true)">全部展开</button>
+      <button class="btn ghost" onclick="toggleAll(false)">全部折叠</button>
+    </div>
+    <ul class="tree" id="treeRoot"></ul>
+  </div>
+</div>
+
+<!-- ============ 打分台账 ============ -->
+<div class="tab-content" id="score">
+  <div class="card">
+    <span class="eyebrow">Mastery Ledger</span>
+    <h2>掌握度打分台账（自动本地保存）</h2>
+    <div class="btns">
+      <button class="btn" onclick="addRow()">➕ 新增知识点行</button>
+      <button class="btn ghost" onclick="addRowsFromTree()">🌱 从知识树批量导入</button>
+      <button class="btn ghost" onclick="recalcStats()">📊 重新统计</button>
+    </div>
+    <div class="tw">
+      <table id="scoreTable">
+        <thead>
+          <tr>
+            <th style="min-width:120px">章节</th>
+            <th style="min-width:200px">四级细知识点</th>
+            <th style="width:90px">考纲等级</th>
+            <th style="width:96px">框架自检 0‑5</th>
+            <th style="width:96px">做题实测 0‑5</th>
+            <th style="width:86px">最终得分</th>
+            <th style="min-width:160px">漏洞备注</th>
+            <th style="width:60px">删除</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="empty" id="emptyHint" style="display:none">还没有条目 —— 点上方「新增知识点行」开始，或用「从知识树批量导入」一次性铺满章节骨架。</div>
+  </div>
+</div>
+
+<!-- ============ 方法论 ============ -->
+<div class="tab-content" id="method">
+  <div class="card">
+    <span class="eyebrow">Core Skills</span>
+    <h2>核心学习技巧</h2>
+    <p class="lead">
+      ✅ 不要死背分录，优先吃透经济实质与准则原理；<br>
+      ✅ 按考纲等级分配时间：1 级了解、2 级熟悉、3 级主攻 4 分水平；<br>
+      ✅ 刷题三层递进：章节例题 → 章节综合题 → 跨章节真题；<br>
+      ✅ 拒绝抄书大笔记，只做知识树骨架 + 陷阱清单；<br>
+      ✅ 每周固定复盘薄弱池，周期性滚动复习。
+    </p>
+  </div>
+  <div class="card">
+    <span class="eyebrow">Three Rounds</span>
+    <h2>三轮完整复习规划</h2>
+    <p class="lead">
+      <b>第一轮：搭建知识树 + 初步打分</b><br>
+      逐章拆解多级标题，闭卷复述，完成基础习题，消灭 0 分空白点，目标大多达到 2‑3 分。不要死磕冷门最难变形。<br><br>
+      <b>第二轮：薄弱池攻坚（提分最重要阶段）</b><br>
+      筛选 ≤3 分知识点重学教材细节，集中训练主观大题，刻意练习跨章节融合题型，完善错题陷阱笔记。核心 3 级考点稳定冲到 4 分。<br><br>
+      <b>第三轮：整套限时模拟 + 短板滚动复盘</b><br>
+      严格 3 小时整套真题模拟；不再大面积学习新知识，反复回看低分条目与陷阱笔记，保持做题手感。
+    </p>
+  </div>
+  <div class="card">
+    <span class="eyebrow">Daily Routine</span>
+    <h2>每日固定执行流程</h2>
+    <p class="lead">
+      1. 阅读教材，梳理多级标题知识树<br>
+      2. 合上书本逐级复述，标记断点漏洞<br>
+      3. 完成配套习题，录入打分台账<br>
+      4. 低分知识点记入陷阱笔记<br>
+      5. 每周复盘薄弱条目，复测掌握分数，达标移出薄弱池
+    </p>
+  </div>
+</div>
+
+<!-- ============ 陷阱笔记 ============ -->
+<div class="tab-content" id="trap">
+  <div class="card">
+    <span class="eyebrow">Trap Notes</span>
+    <h2>错题陷阱笔记（考点 ｜ 陷阱 ｜ 正确逻辑）</h2>
+    <textarea id="trapText" style="height:400px" placeholder="示例：
+【租赁｜售后租回构成销售】
+陷阱：直接全额确认资产处置损益
+正确逻辑：仅转让部分的利得确认，保留使用权对应的利得不能确认
+"></textarea>
+    <div class="btns" style="margin-top:8px">
+      <button class="btn" onclick="saveTrap()">保存陷阱笔记</button>
+      <button class="btn ghost" onclick="exportTrap()">导出为 TXT</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* ================= 数据：30 章知识树 ================= */
+const TREE=[
+ ['第1章 总论',[['1.1 会计基础概念、准则体系、职业道德',['1.1.1 财务报告目标、会计假设、会计基础','1.1.2 会计信息质量要求','1.1.3 会计要素、计量属性','1.1.4 可持续信息披露','1.1.5 人工智能在会计审计领域的应用（新增）']]]],
+ ['第2章 存货',[['2.1 存货确认与初始计量'],['2.2 发出存货计量方法'],['2.3 期末计量与存货跌价准备'],['2.4 存货清查盘点']]],
+ ['第3章 固定资产',[['3.1 确认与初始计量'],['3.2 折旧、后续支出'],['3.3 处置报废、持有待售判断']]],
+ ['第4章 无形资产',[['4.1 确认、初始计量'],['4.2 内部研发资本化 / 费用化'],['4.3 摊销、出租处理（删除减值）']]],
+ ['第5章 投资性房地产',[['5.1 范围界定'],['5.2 成本模式、公允价值模式'],['5.3 模式转换、处置']]],
+ ['第6章 长期股权投资与合营安排【3级大题】',[['6.1 初始计量（同一 / 非同一、重大影响）'],['6.2 后续计量：成本法、权益法'],['6.3 长投转换（增资、减资）'],['6.4 处置长投'],['6.5 合营安排判断']]],
+ ['第7章 资产减值',[['7.1 减值范围、可收回金额计算'],['7.2 资产组、总部资产减值'],['7.3 商誉减值测试【3级重点】']]],
+ ['第8章 负债',[['8.1 流动负债'],['8.2 一般债券、可转换公司债券'],['8.3 租赁负债、弃置费用']]],
+ ['第9章 职工薪酬',[['9.1 短期薪酬'],['9.2 离职后福利（设定提存 / 受益计划）'],['9.3 辞退福利']]],
+ ['第10章 股份支付【3级大题】',[['10.1 股份支付类型、可行权条件'],['10.2 等待期、权益结算股份支付'],['10.3 现金结算股份支付'],['10.4 回购股份用于股权激励']]],
+ ['第11章 借款费用',[['11.1 资本化期间判断'],['11.2 专门借款资本化金额计算'],['11.3 一般借款资本化金额计算']]],
+ ['第12章 或有事项',[['12.1 预计负债确认计量'],['12.2 亏损合同、重组义务'],['12.3 或有资产、负债披露']]],
+ ['第13章 金融工具与保险合同【3级大题】',[['13.1 金融资产三分类、重分类'],['13.2 金融负债分类计量'],['13.3 预期信用损失减值模型'],['13.4 保险合同概述（新增）']]],
+ ['第14章 租赁【3级大题】',[['14.1 租赁识别三要素、租赁期'],['14.2 承租人：使用权资产 + 租赁负债初始 & 后续计量'],['14.3 短期 / 低价值资产租赁豁免'],['14.4 出租人会计处理'],['14.5 租赁变更、售后租回']]],
+ ['第15章 持有待售资产、终止经营',[]],
+ ['第16章 所得税【3级大题】',[['16.1 资产负债计税基础、暂时性差异'],['16.2 递延所得税资产 / 负债确认'],['16.3 所得税费用计算'],['16.4 特殊交易所得税处理']]],
+ ['第17章 收入、费用和利润【3级大题】',[['17.1 收入五步法模型'],['17.2 履约义务识别、交易价格分摊'],['17.3 各类特定交易（退货、质保、选择权等）']]],
+ ['第18章 政府补助',[]],
+ ['第19章 非货币性资产交换',[]],
+ ['第20章 债务重组',[]],
+ ['第21章 外币折算',[]],
+ ['第22章 财务报表',[]],
+ ['第23章 合并财务报表【压轴3级大题】',[['23.1 合并范围判断'],['23.2 购买日调整分录'],['23.3 内部交易抵销（存货、固资、债权债务）'],['23.4 长投与所有者权益抵销、少数股东权益 / 损益'],['23.5 处置子公司、分步实现合并']]],
+ ['第24章 会计政策、会计估计变更和差错更正【3级大题】',[]],
+ ['第25章 资产负债表日后事项',[]],
+ ['第26章 企业合并【3级大题，和合并报表联动】',[]],
+ ['第27章 公允价值计量',[]],
+ ['第28章 所有者权益',[]],
+ ['第29章 租赁（并入14章，无独立章节）',[]],
+ ['第30章 政府及民间非营利组织会计',[]]
+];
+const K_SCORE='cpaMasteryScore_v1', K_TRAP='cpaMasteryTrap_v1';
+const LEVELS=[0,1,2,3,4,5];
+
+/* ================= 工具 ================= */
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toast(msg){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#463A2E;color:#FAF7F1;padding:10px 18px;border-radius:99px;font-size:14px;z-index:9999;box-shadow:0 8px 24px rgba(70,58,46,.25);transition:opacity .25s';document.body.appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';
+  clearTimeout(t._h);t._h=setTimeout(()=>{t.style.opacity='0';},1800);
+}
+
+/* ================= 标签页 ================= */
+const tabList=document.querySelectorAll(".tab");
+const contentList=document.querySelectorAll(".tab-content");
+tabList.forEach(tab=>{
+  tab.onclick=()=>{
+    tabList.forEach(t=>t.classList.remove("active"));
+    contentList.forEach(c=>c.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.tab).classList.add("active");
+    notifyHeight();
+  }
+});
+
+/* ================= 知识树渲染 ================= */
+function buildTree(){
+  const root=document.getElementById('treeRoot');
+  root.innerHTML=TREE.map(([ch,secs],i)=>{
+    const inner=secs.map(([name,subs])=>{
+      const sub=(subs&&subs.length)
+        ? '<ul>'+subs.map(s=>'<li class="level3">'+esc(s)+'</li>').join('')+'</ul>'
+        : '';
+      return '<li class="level2">'+esc(name)+sub+'</li>';
+    }).join('');
+    return '<li class="level1" data-ch="'+i+'"><span class="ch-t">'+esc(ch)+'</span>'
+      +(inner?'<ul>'+inner+'</ul>':'')+'</li>';
+  }).join('');
+}
+function toggleAll(open){
+  document.querySelectorAll('#treeRoot li').forEach(li=>li.style.display='');
+  document.querySelectorAll('#treeRoot ul').forEach(u=>u.style.display='');
+  if(!open) document.querySelectorAll('#treeRoot li.level1 > ul').forEach(u=>u.style.display='none');
+  notifyHeight();
+}
+function ownText(li){
+  return [...li.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('');
+}
+function searchTree(kw){
+  kw=(kw||'').trim();
+  const root=document.getElementById('treeRoot');
+  // 清除上一次的高亮
+  root.querySelectorAll('.tree-hit').forEach(s=>{
+    const p=s.parentNode;
+    p.replaceChild(document.createTextNode(s.textContent),s);
+    p.normalize();
+  });
+  document.querySelectorAll('#treeRoot li, #treeRoot ul').forEach(el=>el.style.display='');
+  if(!kw){
+    document.querySelectorAll('#treeRoot > li.level1 > ul').forEach(u=>u.style.display='none');
+    notifyHeight(); return;
+  }
+  const lower=kw.toLowerCase();
+  const all=[...root.querySelectorAll('li')];
+  const hitMap=new Map();
+  // 自底向上判断：命中 = 自身文本匹配 或 任一后代命中
+  [...all].reverse().forEach(li=>{
+    const self=ownText(li).toLowerCase().includes(lower);
+    const child=[...li.children].filter(c=>c.tagName==='UL'||c.tagName==='LI')
+      .some(c=>hitMap.get(c)===true || [...c.querySelectorAll('li')].some(x=>hitMap.get(x)===true));
+    hitMap.set(li, self||child);
+  });
+  let any=false;
+  all.forEach(li=>{
+    const show=hitMap.get(li)===true;
+    if(show){
+      any=true;
+      li.style.display='';
+      if(li.parentElement&&li.parentElement.tagName==='UL') li.parentElement.style.display='';
+      // 高亮自身文本中的关键词
+      const txtNode=[...li.childNodes].filter(n=>n.nodeType===3&&n.textContent.trim())[0];
+      if(txtNode&&txtNode.textContent.toLowerCase().includes(lower)){
+        const frag=document.createElement('span');
+        frag.innerHTML=esc(txtNode.textContent).replace(
+          new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),
+          m=>'<span class="tree-hit">'+m+'</span>');
+        li.replaceChild(frag,txtNode);
+      }
+    }else{
+      li.style.display='none';
+    }
+  });
+  notifyHeight();
+}
+
+/* ================= 打分台账 ================= */
+const tableBody=document.querySelector("#scoreTable tbody");
+const weakFilter=document.getElementById("weakFilter");
+function addRow(item){
+  item=item||{};
+  const tr=document.createElement("tr");
+  tr.innerHTML=
+   '<td><input value="'+esc(item.chapter)+'" placeholder="第6章"></td>'
+  +'<td><input value="'+esc(item.point)+'" placeholder="权益法逆流交易调整"></td>'
+  +'<td><select>'+[1,2,3].map(x=>'<option'+(String(item.level||1)==String(x)?' selected':'')+'>'+x+'</option>').join('')+'</select></td>'
+  +'<td><select>'+LEVELS.map(x=>'<option'+(Number(item.frame||0)===x?' selected':'')+'>'+x+'</option>').join('')+'</select></td>'
+  +'<td><select>'+LEVELS.map(x=>'<option'+(Number(item.exam||0)===x?' selected':'')+'>'+x+'</option>').join('')+'</select></td>'
+  +'<td><input readonly value=""></td>'
+  +'<td><textarea rows="1" placeholder="错在哪 / 断点在哪">'+esc(item.note)+'</textarea></td>'
+  +'<td><button class="btn danger" style="padding:5px 9px" onclick="delRow(this)">删</button></td>';
+  const frameSel=tr.children[3].querySelector("select");
+  const examSel=tr.children[4].querySelector("select");
+  const finalIn=tr.children[5].querySelector("input");
+  const calc=()=>{ finalIn.value=Math.min(Number(frameSel.value),Number(examSel.value)); recalcStats(); autoSave(); };
+  frameSel.onchange=calc; examSel.onchange=calc; calc();
+  // 等级=3 时，最终得分 <4 给出视觉提示
+  tableBody.appendChild(tr);
+  paintWeak(tr);
+  renderFilter(); recalcStats(); notifyHeight();
+  return tr;
+}
+function paintWeak(tr){
+  const f=Number(tr.children[5].querySelector("input").value);
+  tr.style.background=(f<=3&&f>=0)?'rgba(166,80,60,.06)':'';
+}
+function repaintAll(){ tableBody.querySelectorAll('tr').forEach(paintWeak); renderFilter(); recalcStats(); }
+function delRow(btn){ btn.closest("tr").remove(); renderFilter(); recalcStats(); autoSave(); notifyHeight(); }
+function getData(){
+  const arr=[];
+  tableBody.querySelectorAll("tr").forEach(tr=>{
+    arr.push({
+      chapter:tr.children[0].querySelector("input").value,
+      point:tr.children[1].querySelector("input").value,
+      level:Number(tr.children[2].querySelector("select").value),
+      frame:Number(tr.children[3].querySelector("select").value),
+      exam:Number(tr.children[4].querySelector("select").value),
+      final:Number(tr.children[5].querySelector("input").value),
+      note:tr.children[6].querySelector("textarea").value
+    });
+  });
+  return arr;
+}
+function fillTable(arr){
+  tableBody.innerHTML="";
+  (arr||[]).forEach(i=>addRow(i));
+  renderFilter(); recalcStats();
+}
+function autoSave(){
+  try{ localStorage.setItem(K_SCORE,JSON.stringify(getData())); }catch(e){}
+}
+function saveData(){
+  try{ localStorage.setItem(K_SCORE,JSON.stringify(getData())); toast("已保存到本机浏览器"); }
+  catch(e){ toast("保存失败："+e.message); }
+}
+function loadData(silent){
+  let s=null;
+  try{ s=localStorage.getItem(K_SCORE); }catch(e){}
+  if(!s){ if(!silent) toast("暂无保存记录"); return false; }
+  try{ fillTable(JSON.parse(s)); return true; }
+  catch(e){ if(!silent) toast("数据读取失败"); return false; }
+}
+function clearAll(){
+  if(!confirm("确定清空全部台账？该操作无法恢复。")) return;
+  tableBody.innerHTML="";
+  try{ localStorage.removeItem(K_SCORE); }catch(e){}
+  renderFilter(); recalcStats(); toast("已清空");
+}
+function renderFilter(){
+  const weak=weakFilter.checked;
+  tableBody.querySelectorAll("tr").forEach(tr=>{
+    const f=Number(tr.children[5].querySelector("input").value);
+    tr.style.display=(weak&&f>3)?"none":"";
+  });
+  notifyHeight();
+}
+weakFilter.onchange=renderFilter;
+function recalcStats(){
+  const arr=getData();
+  const total=arr.length;
+  const weakCnt=arr.filter(x=>x.final<=3).length;
+  const goodCnt=arr.filter(x=>x.final>=4).length;
+  document.getElementById("totalCount").innerText=total;
+  document.getElementById("weakCount").innerText=weakCnt;
+  document.getElementById("goodCount").innerText=goodCnt;
+  document.getElementById("rateCount").innerText=(total?Math.round(goodCnt/total*100):0)+'%';
+  document.getElementById("emptyHint").style.display=total?'none':'block';
+  tableBody.querySelectorAll("tr").forEach(paintWeak);
+}
+function addRowsFromTree(){
+  const exist=new Set(getData().map(x=>(x.chapter||'')+'|'+(x.point||'')));
+  let n=0;
+  TREE.forEach(([ch,secs])=>{
+    const chShort=ch.split('【')[0].trim();
+    secs.forEach(([name,subs])=>{
+      if(subs&&subs.length){
+        subs.forEach(s=>{
+          const key=chShort+'|'+s;
+          if(!exist.has(key)){ addRow({chapter:chShort,point:s,level:/3级/.test(ch)?3:2}); n++; }
+        });
+      }else{
+        const key=chShort+'|'+name;
+        if(!exist.has(key)){ addRow({chapter:chShort,point:name,level:/3级/.test(ch)?3:2}); n++; }
+      }
+    });
+  });
+  autoSave();
+  toast(n?('已导入 '+n+' 条知识点'):'没有新增条目（已全部存在）');
+}
+
+/* ================= 备份 / 导入导出 ================= */
+function exportJSON(){
+  const data={v:1,exportedAt:new Date().toISOString(),scores:getData(),trap:(document.getElementById('trapText').value||'')};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='CPA掌握度备份_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("备份已导出");
+}
+function importJSON(input){
+  const f=input.files&&input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(Array.isArray(d)) fillTable(d);
+      else{ if(d.scores) fillTable(d.scores); if(typeof d.trap==='string'){ document.getElementById('trapText').value=d.trap; saveTrap(true); } }
+      autoSave(); toast("导入成功");
+    }catch(e){ toast("文件格式不正确"); }
+    input.value='';
+  };
+  r.readAsText(f,'utf-8');
+}
+function exportTrap(){
+  const txt=document.getElementById('trapText').value||'';
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain;charset=utf-8'}));
+  a.download='CPA陷阱笔记_'+new Date().toISOString().slice(0,10)+'.txt';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ================= 陷阱笔记 ================= */
+function saveTrap(silent){
+  try{ localStorage.setItem(K_TRAP,document.getElementById("trapText").value); if(!silent) toast("陷阱笔记已保存"); }
+  catch(e){ toast("保存失败："+e.message); }
+}
+function loadTrap(){
+  let t=null; try{ t=localStorage.getItem(K_TRAP); }catch(e){}
+  if(t!==null) document.getElementById("trapText").value=t;
+}
+
+/* ================= 嵌入模式：向父窗口上报高度 ================= */
+function notifyHeight(){
+  try{ if(window.parent!==window) window.parent.postMessage({type:'cpaMasteryHeight',h:document.documentElement.scrollHeight},'*'); }catch(e){}
+}
+if(new URLSearchParams(location.search).get('embed')==='1') document.body.classList.add('embed');
+if(window.ResizeObserver&&document.body){
+  new ResizeObserver(notifyHeight).observe(document.body);
+}
+document.addEventListener('input',()=>{ clearTimeout(window._nh); window._nh=setTimeout(notifyHeight,120); },true);
+
+/* ================= 启动 ================= */
+buildTree();
+toggleAll(false);   // 默认只展开 30 个章标题，按需下钻
+loadData(true);
+loadTrap();
+if(!tableBody.querySelectorAll('tr').length){ document.getElementById("emptyHint").style.display='block'; }
+recalcStats();
+// 自动读取备考学习台的当前科目，作为副标题（读不到则忽略）
+try{
+  const raw=localStorage.getItem('wb_bk_subjects');
+  const subs=raw?JSON.parse(raw):null;
+  if(Array.isArray(subs)&&subs.length){
+    const cur=subs.find(s=>s&&s.state==='备考中')||subs[0];
+    if(cur&&cur.name) document.getElementById('subTitle').textContent='当前科目：'+cur.name+' · 教材知识树 + 考纲打分台账';
+  }
+}catch(e){}
+notifyHeight();
+</script>
+</body>
+</html>
