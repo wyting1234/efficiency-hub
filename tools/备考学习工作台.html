@@ -1206,6 +1206,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
   .ggrid{grid-template-columns:1fr}
   .dv-sum{margin-left:0;width:100%}
 }
+
+/* ================= 知识结构页 ================= */
+.sylck{display:inline-flex;align-items:center;gap:5px;margin:0 12px 6px 0;font-size:13px;color:var(--ink-soft);cursor:pointer}
+.sylck input{accent-color:var(--amber);width:15px;height:15px;cursor:pointer}
+.syl-tree{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--cream);padding:8px 10px;margin-top:8px}
+.syl-row{display:flex;align-items:center;gap:8px;padding:3px 4px;border-radius:5px;font-size:13px}
+.syl-row:hover{background:rgba(176,138,74,.08)}
+.syl-lv{flex:0 0 auto;min-width:36px;font-size:11px;color:var(--ink-mute);background:var(--sand);
+  border-radius:4px;padding:1px 6px;text-align:center}
+.syl-nm{color:var(--cocoa);word-break:break-all}
 </style>
 
 <div class="shell">
@@ -1502,6 +1513,24 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
     </div>
   </section>
 
+  <!-- ============ 知识结构（教材目录 / 考纲 → 章节主数据 → 学习待办） ============ -->
+  <section class="panel" id="p-syl">
+    <div class="bento">
+      <div class="c12 tile">
+        <div class="t-head">
+          <div>
+            <span class="eyebrow">Syllabus &amp; Textbook</span>
+            <h2>知识结构 · 教材与考纲导入</h2>
+            <div class="cap" id="sylCap"></div>
+          </div>
+        </div>
+        <div class="hintline">学习主线：<b>教材目录</b> → 生成六级章节主数据 → 按「章节 × 阶段」铺开学习待办并自动排期（按教材的步骤去学）；
+          再粘<b>考纲</b> → 生成掌握度台账骨架，逐条回填分数（按考纲核查学习成果）。所有生成的记录都带章节节点 id，可在章节库里回溯整条学习轨迹。</div>
+        <div id="sylBody"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ 掌握度台账（内嵌 CPA 掌握度量化系统） ============ -->
   <section class="panel" id="p-mastery">
     <div class="bento">
@@ -1572,7 +1601,7 @@ const K={prof:'wb_bk_profile',stages:'wb_bk_stages',todos:'wb_bk_todos',time:'wb
          gains:'wb_bk_gains',kps:'wb_bk_kps',kpch:'wb_bk_kpch',
          heat:'wb_bk_heat',hmview:'wb_bk_hmview',hmsub:'wb_bk_hmsub',hmshow:'wb_bk_hmshow',
          hmmode:'wb_bk_hmmode',heatv:'wb_bk_heatv',
-         stg:'wb_bk_stg',
+         stg:'wb_bk_stg',chs:'wb_bk_chs',syltab:'wb_bk_syltab',cpasub:'cpaMasterySub_v1',
          gh:'wb_bk_gh',ghm:'wb_bk_ghmeta',
          cur:'wb_bk_cur',rvtab:'wb_bk_rvtab',rvday:'wb_bk_rvday',tip:'wb_bk_tip_hide'};
 /* localStorage 兜底：浏览器拦截（隐私模式/file:// 等）时退化为内存存储，页面照常运行 */
@@ -1824,6 +1853,8 @@ let hmShow=load(K.hmshow,'full'); if(['no','name','full'].indexOf(hmShow)<0) hmS
 /* 首页热力图两个视图：mst=章节掌握（阶段×章节，格子改六档） / exec=六档执行（档位×阶段，看分布） */
 let hmMode=load(K.hmmode,'mst'); if(['mst','exec'].indexOf(hmMode)<0) hmMode='mst';
 let hmHiStage='';   /* 从执行视图点回来时短暂高亮的阶段 */
+/* 章节主数据：{ 科目名: [节点树] }，节点 = {id,lv,no,name,kids}，是各模块挂靠的共同锚点 */
+let chs=load(K.chs,null)||{};
 
 /* ================= 云端底表接入 =================
    资料库里的七张 database 是权威数据源：科目表 / 验收清单表 / 复习计划表 / 学习任务表 /
@@ -2024,6 +2055,7 @@ const TABS=[
   {id:'check',label:'验收清单',short:'验收',ic:'<path d="M9 11l2 2 4-4"/><rect x="3" y="4" width="18" height="16" rx="2.5"/>'},
   {id:'review',label:'复习巩固',short:'复习',ic:'<path d="M12 2a6 6 0 00-3.5 10.9c.5.4.8 1 .9 1.6l.1 1.5h5l.1-1.5c.1-.6.4-1.2.9-1.6A6 6 0 0012 2z"/><path d="M9 18h6"/><path d="M10 22h4"/>'},
   {id:'gains',label:'感悟系统',short:'感悟',ic:'<path d="M20.8 5.6a5 5 0 00-7.1 0L12 7.3l-1.7-1.7a5 5 0 10-7.1 7.1L12 21.5l8.8-8.8a5 5 0 000-7.1z"/>'},
+  {id:'syl',label:'知识结构',short:'结构',ic:'<path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 17H20a2 2 0 002-2V6a2 2 0 00-2-2H9"/><path d="M9 4v13"/>'},
   {id:'mastery',label:'掌握度台账',short:'台账',ic:'<path d="M3 21h18"/><path d="M6.5 21V13"/><path d="M11.5 21V6"/><path d="M16.5 21v-6"/><path d="M21 21V9"/>'}
 ];
 let cur='home';
@@ -2088,6 +2120,7 @@ function go(id){
   nav(); window.scrollTo({top:0,behavior:'smooth'});
   requestAnimationFrame(()=>{ paintAcc(el); animateGauges(); animateBars(); });
   if(id==='mastery') mountMastery();
+  if(id==='syl') renderSyl();
 }
 function goReview(){ rvTab='rev'; go('review'); }
 
@@ -4467,9 +4500,425 @@ function renderAll(){
   renderReview();
   renderGains();
   renderHeat();
+  renderSyl();
   nav();
 }
 function kick(){ requestAnimationFrame(()=>{ paintAcc(); animateGauges(); animateBars(); }); }
+
+/* ================= 知识结构：章节主数据 / 教材目录 / 考纲导入 =================
+   主线：教材目录 → 章节主数据（稳定 id 的六级树）→ 按「章节 × 阶段」铺开待办并自动排期；
+        考纲 → 掌握度台账骨架（知识点 + 考纲等级 + 能力要求预填），用于按考纲核查学习成果。
+   章节主数据是其他模块（考点 / 错题 / 感悟 / 热力图）挂靠的共同锚点：所有生成的记录
+   都带 nid（章节节点 id），后续按 nid 聚合即可看到「这一节的全部学习痕迹」。 */
+const LV_LABEL=['','章','节','一级','二级','三级','四级'];
+const CH_DEPTH=6;
+/* 教材目录编号 → 六级的识别顺序。括号形式必须排在裸编号之前，
+   否则「（一）」会被当成「一、」、「（1）」会被当成「1.」。 */
+const OUT_RULES=[
+  {lv:1,re:/^第\s*([0-9零〇一二三四五六七八九十百]{1,4})\s*章/},
+  {lv:2,re:/^第\s*([0-9零〇一二三四五六七八九十百]{1,4})\s*节/},
+  {lv:4,re:/^[（(]\s*([一二三四五六七八九十]{1,3})\s*[)）]/},
+  {lv:6,re:/^[（(]\s*([0-9]{1,2})\s*[)）]/},
+  {lv:3,re:/^([一二三四五六七八九十]{1,3})\s*[、．.,，\s]/},
+  {lv:-1,re:/^([0-9]{1,2}(?:\s*[.．]\s*[0-9]{1,2}){1,3})\s*[、.．]?/},   /* 1.1 / 1.1.1 → 按段数定级 */
+  {lv:5,re:/^([0-9]{1,2})\s*[、．.]\s*/}
+];
+const CN_DIGIT={'零':0,'〇':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+/* 中文数字 → 阿拉伯（支持到百：十一 / 二十 / 一百零八） */
+function cn2num(s){
+  s=String(s==null?'':s).trim();
+  if(!s) return '';
+  if(/^[0-9]+$/.test(s)) return String(parseInt(s,10));
+  if(!/^[零〇一二三四五六七八九十百]+$/.test(s)) return s;
+  let sec=0,num=0;
+  for(let i=0;i<s.length;i++){
+    const c=s.charAt(i);
+    if(c==='十'){ sec+=(num||1)*10; num=0; }
+    else if(c==='百'){ sec+=(num||1)*100; num=0; }
+    else if(CN_DIGIT[c]!==undefined) num=CN_DIGIT[c];
+  }
+  return String(sec+num);
+}
+/* 去掉行尾的页码与点线引导符：「第一章 总论 ...... 3」→「总论」 */
+function cleanTail(t){
+  let s=String(t==null?'':t);
+  s=s.replace(/[\.．。·・…]{2,}[\s\S]*$/,'');
+  s=s.replace(/[\s_\-–—]{2,}[\s\S]*$/,'');
+  s=s.replace(/\s+[0-9]{1,4}\s*$/,'');
+  s=s.trim().replace(/^[\-–—:：、.。)\]】]+\s*/,'');
+  return s.trim();
+}
+/* 单行解析：返回 {lv,no,name}，识别不出编号且无缩进的行视为噪声行（目录里的「本章小结」等） */
+function parseOutlineLine(raw){
+  const orig=String(raw==null?'':raw).replace(/\t/g,'  ');
+  if(!orig.trim()) return null;
+  const lead=orig.length-orig.replace(/^[\s\u3000]+/,'').length;
+  const s=orig.replace(/\s+/g,' ').trim();
+  for(let i=0;i<OUT_RULES.length;i++){
+    const R=OUT_RULES[i], m=s.match(R.re);
+    if(!m) continue;
+    if(R.lv===-1){   /* 点号编号：段数决定层级，1.1=节、1.1.1=一级 */
+      const seg=m[1].split(/[.．]/).length;
+      return {lv:Math.min(seg,CH_DEPTH),no:m[1],name:cleanTail(s.slice(m[0].length))};
+    }
+    return {lv:R.lv,no:cn2num(m[1]),name:cleanTail(s.slice(m[0].length))};
+  }
+  /* 兜底：按缩进推断（两个空格 / 一个全角空格 = 一级） */
+  if(lead>0) return {lv:Math.min(1+Math.floor(lead/2),CH_DEPTH),no:'',name:cleanTail(s)};
+  return null;
+}
+/* 整段文本 → 六级树；缺中间层级时自动补占位节点，保证层级连续 */
+function buildOutline(text){
+  const lines=String(text==null?'':text).split(/\r?\n/);
+  const tree=[], stack=[{lv:0,kids:tree}];
+  let count=0,skipped=0;
+  lines.forEach(function(raw){
+    if(!String(raw).trim()) return;
+    const p=parseOutlineLine(raw);
+    if(!p||!p.name){ skipped++; return; }
+    const lv=Math.max(1,Math.min(Number(p.lv)||1,CH_DEPTH));
+    while(stack.length>1&&stack[stack.length-1].lv>=lv) stack.pop();
+    let top=stack[stack.length-1];
+    while(top.lv+1<lv){        /* 例如直接从章跳到「（一）」，补出中间的「节 / 一级」 */
+      const ph={id:uid(),lv:top.lv+1,no:'',name:'（未命名'+LV_LABEL[top.lv+1]+'）',ph:true,kids:[]};
+      top.kids.push(ph); stack.push(ph); top=ph;
+    }
+    const node={id:uid(),lv:lv,no:p.no||'',name:p.name||'',kids:[]};
+    top.kids.push(node); stack.push(node); count++;
+  });
+  return {tree:tree,count:count,skipped:skipped};
+}
+/* 按 (no,name) 同父去重合并，用于考纲树并入教材树 */
+function mergeChs(dst,src){
+  (src||[]).forEach(function(sn){
+    let hit=null;
+    for(let i=0;i<dst.length;i++){ if(dst[i].no===sn.no&&dst[i].name===sn.name){ hit=dst[i]; break; } }
+    if(!hit){ hit={id:uid(),lv:sn.lv,no:sn.no,name:sn.name,kids:[]}; dst.push(hit); }
+    mergeChs(hit.kids,sn.kids||[]);
+  });
+  return dst;
+}
+/* 阿拉伯 → 中文数字（1-99），用于把归一化后的编号还原成教材里的写法 */
+function num2cn(n){
+  n=Number(n); if(!(n>=0)) return '';
+  if(n>99) return String(n);
+  const D='零一二三四五六七八九';
+  if(n<10) return D[n];
+  if(n===10) return '十';
+  const s=Math.floor(n/10), g=n%10;
+  return (s>1?D[s]:'')+'十'+(g?D[g]:'');
+}
+/* 节点显示名：还原成教材里的写法 —— 章「第3章 固定资产」、一级「一、概述」、二级「（一）定义」
+   编号在解析时已归一化为阿拉伯数字（便于排序），显示时按层级转回中文 */
+function chLabel(n){
+  if(!n) return '';
+  const no=String(n.no==null?'':n.no).trim(), nm=String(n.name==null?'':n.name).trim(), lv=n.lv||1;
+  if(!no) return nm;
+  if(lv===1) return '第'+no+'章'+(nm?' '+nm:'');
+  if(lv===2) return (no.indexOf('.')>=0?no:'第'+no+'节')+(nm?' '+nm:'');
+  if(lv===3) return num2cn(no)+'、'+nm;
+  if(lv===4) return '（'+num2cn(no)+'）'+nm;
+  if(lv===5) return no+'.'+nm;
+  return '（'+no+'）'+nm;
+}
+/* 扁平化：每项带节点引用、深度、祖先链与文本路径 */
+function chFlat(sub){
+  const out=[];
+  (function walk(ns,depth,path){
+    (ns||[]).forEach(function(n){
+      const p=path.concat([n]);
+      out.push({id:n.id,n:n,lv:n.lv||depth+1,no:n.no||'',name:n.name||'',depth:depth,
+        kids:(n.kids||[]).length,path:p,label:chLabel(n),
+        pathText:p.map(chLabel).filter(Boolean).join(' / ')});
+      walk(n.kids||[],depth+1,p);
+    });
+  })(chs[sub]||[],0,[]);
+  return out;
+}
+function chCount(sub){
+  let n=0; (function w(ns){ (ns||[]).forEach(function(x){ n++; w(x.kids||[]); }); })(chs[sub]||[]);
+  return n;
+}
+/* 转成掌握度台账的 [名称, 子节点] 结构 */
+function chToCpaTree(ns){
+  return (ns||[]).map(function(n){
+    const kids=chToCpaTree(n.kids||[]);
+    return [chLabel(n),kids];
+  });
+}
+
+/* ---------- 按章节 × 阶段生成待办 + 自动排期 ---------- */
+const STAGE_HOURS={'预习导学':0.5,'精讲听课':2,'章节习题':1.5,'强化提高':1,
+  '真题模考':1.5,'冲刺串讲':1,'错题复盘':0.5,'考前定心':0.5};
+const STAGE_CAT={'预习导学':'教材讲义','精讲听课':'网课视频','章节习题':'刷题练习','强化提高':'背诵记忆',
+  '真题模考':'真题模考','冲刺串讲':'教材讲义','错题复盘':'笔记整理','考前定心':'背诵记忆'};
+const STAGE_VERB={'预习导学':'通读','精讲听课':'精学','章节习题':'章节练习','强化提高':'强化',
+  '真题模考':'真题','冲刺串讲':'串讲','错题复盘':'错题复盘','考前定心':'速记'};
+const GEN_STAGE_DEF=['预习导学','精讲听课','章节习题'];
+/* 排期：从起始日起按每日可用时长依次填充，装不下就顺延到次日 */
+function planSchedule(list,start,dailyH,skipWeekend){
+  dailyH=Number(dailyH)||3;
+  const d=new Date((start||today())+'T00:00:00');
+  const nextDay=function(){ d.setDate(d.getDate()+1); if(skipWeekend) while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1); };
+  if(skipWeekend) while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1);
+  let used=0;
+  list.forEach(function(t){
+    const h=Number(t.plan)>0?Number(t.plan):0.5;
+    if(used>0&&used+h>dailyH+1e-9){ nextDay(); used=0; }
+    t.due=fmt(d); used+=h;
+  });
+  return list;
+}
+/* opt: {stages[], gran:'ch'|'sec', start, daily, skipWeekend} */
+function genChapterTasks(sub,opt){
+  opt=opt||{};
+  const stages=(opt.stages&&opt.stages.length)?opt.stages:GEN_STAGE_DEF.slice();
+  const gran=opt.gran||'ch';
+  const base=chFlat(sub).filter(function(x){ return gran==='sec'?x.lv===2:x.lv===1; });
+  const list=[];
+  base.forEach(function(n){
+    stages.forEach(function(sg){
+      list.push({id:uid(),type:'章节知识点',sub:sub,chapter:n.label,stage:sg,
+        title:n.label+' · '+(STAGE_VERB[sg]||sg),
+        priority:'P1',mastery:'未学',plan:STAGE_HOURS[sg]||1,real:0,rs:'',rf:'',done:false,
+        cat:STAGE_CAT[sg]||'教材讲义',due:'',needReview:true,note:'',nid:n.id,gen:true});
+    });
+  });
+  planSchedule(list,opt.start||today(),opt.daily||(prof&&prof.daily)||3,!!opt.skipWeekend);
+  return list;
+}
+
+/* ---------- 考纲解析：能力等级 → 考纲等级 ---------- */
+const REQ_WORDS=[['熟练掌握',3],['综合分析',3],['重点掌握',3],['掌握',3],['熟悉',2],['理解',2],
+  ['了解',1],['识记',1],['应用',3],['综合',3]];
+const REQ_BY_LV={1:'识记',2:'理解',3:'应用',0:'理解'};
+/* 把能力等级标注从知识点名称里剥掉：「会计的概念（掌握）」→「会计的概念」 */
+function stripReq(s){
+  let t=String(s==null?'':s);
+  t=t.replace(/[（(【\[]\s*(熟练掌握|重点掌握|掌握|熟悉|了解|识记|理解|应用|综合分析|综合)\s*[)）】\]]/g,'');
+  t=t.replace(/[（(【\[]\s*[1-3]\s*[)）】\]]/g,'');
+  t=t.replace(/等级\s*[:：]?\s*[1-3]/g,'');
+  t=t.replace(/[\s，,、;；]*$/,'');
+  return t.replace(/\s{2,}/g,' ').trim();
+}
+function pickReq(s){
+  const t=String(s==null?'':s);
+  for(let i=0;i<REQ_WORDS.length;i++){ if(t.indexOf(REQ_WORDS[i][0])>=0) return REQ_WORDS[i][1]; }
+  const m=t.match(/[（(【\[]\s*([1-3])\s*[)）】\]]/)||t.match(/等级\s*[:：]?\s*([1-3])/);
+  if(m) return Number(m[1]);
+  return 0;
+}
+/* 考纲文本 → 带等级的树；等级沿父级继承，整段都没标则默认 2（理解） */
+function buildSyllabus(text){
+  const b=buildOutline(text);
+  (function fill(ns,inherit){
+    (ns||[]).forEach(function(n){
+      const lv=pickReq(n.no+' '+n.name)||inherit;
+      n.req=lv; n.name=stripReq(n.name); fill(n.kids||[],lv);
+    });
+  })(b.tree,0);
+  return b;
+}
+/* 骨架行：章节 = 最近的一级（章）标签，知识点 = 其下的路径；等级取该节点自身或继承值 */
+function skeletonRows(sub,gran){
+  const flat=chFlat(sub);
+  if(!flat.length) return [];
+  const maxDepth = gran==='lv3'?2:(gran==='lv4'?3:99);
+  const picked=flat.filter(function(x){
+    if(x.depth>maxDepth) return false;
+    return gran==='fine'? !x.kids : (!x.kids||x.depth===maxDepth);
+  });
+  return picked.map(function(x){
+    const ch=x.path[0]?chLabel(x.path[0]):x.label;
+    const rest=x.path.slice(1).map(chLabel).filter(Boolean).join(' / ');
+    const lv=Number(x.n&&x.n.req)||0;
+    return {chapter:ch,point:rest||'（全章）',level:lv||2,req:REQ_BY_LV[lv||2],
+      frame:'',exam:'',note:'',nid:x.id};
+  });
+}
+
+/* ---------- 知识结构页渲染 ---------- */
+let sylTab=load(K.syltab,'book'); if(['book','syl','lib'].indexOf(sylTab)<0) sylTab='book';
+let sylPrev=null;    /* 最近一次解析结果，导入时复用，避免二次解析 */
+function sylGo(t){ sylTab=t; save(K.syltab,t); sylPrev=null; renderSyl(); }
+function sylSub(){ const el=document.getElementById('sylSub'); return el?el.value:(curSub||(subs[0]&&subs[0].name)||''); }
+function sylSubOpts(){
+  const v=sylSub();
+  return subs.map(function(s){ return '<option'+(s.name===v?' selected':'')+'>'+esc(s.name)+'</option>'; }).join('');
+}
+function sylStageBox(){
+  return STAGES.map(function(s){
+    return '<label class="ck"><input type="checkbox" class="gen-stg" value="'+esc(s)+'"'+(GEN_STAGE_DEF.indexOf(s)>=0?' checked':'')+'>'+esc(s)+'</label>';
+  }).join('');
+}
+function renderSyl(){
+  const box=document.getElementById('sylBody'); if(!box) return;
+  const sub=sylSub();
+  const n=chCount(sub);
+  const cnt={ch:0,sec:0};
+  chFlat(sub).forEach(function(x){ if(x.lv===1) cnt.ch++; if(x.lv===2) cnt.sec++; });
+  let h='<div class="chips" style="margin-bottom:10px">'
+    +'<button class="chip'+(sylTab==='book'?' on':'')+'" onclick="sylGo(\'book\')">① 教材目录 → 知识树 + 待办</button>'
+    +'<button class="chip'+(sylTab==='syl'?' on':'')+'" onclick="sylGo(\'syl\')">② 考纲 → 台账骨架</button>'
+    +'<button class="chip'+(sylTab==='lib'?' on':'')+'" onclick="sylGo(\'lib\')">③ 章节库'+(n?'（'+cnt.ch+'章/'+n+'节点）':'')+'</button>'
+    +'</div>';
+  if(sylTab==='book') h+=sylBookHtml(sub);
+  else if(sylTab==='syl') h+=sylSylHtml(sub);
+  else h+=sylLibHtml(sub);
+  box.innerHTML=h;
+  const cap=document.getElementById('sylCap');
+  if(cap) cap.textContent='当前科目「'+sub+'」· 章节主数据 '+(n?(cnt.ch+' 章 / '+cnt.sec+' 节 / '+n+' 个节点'):'（尚未导入）')
+    +' · 所有生成的待办 / 考点 / 错题都带章节节点 id，可回溯整条学习轨迹';
+}
+function sylBookHtml(sub){
+  return '<div class="f2"><div class="fld"><label>科目</label><select id="sylSub" onchange="renderSyl()">'+sylSubOpts()+'</select></div>'
+    +'<div class="fld"><label>生成粒度</label><select id="bkGran"><option value="ch">按章生成（推荐）</option><option value="sec">按节生成（更细，条目多）</option></select></div></div>'
+    +'<div class="fld"><label>粘贴教材目录（每行一条，支持 第一章 / 第一节 / 一、/（一）/ 1. /（1））</label>'
+    +'<textarea id="bkText" rows="10" placeholder="第一章 总论\n第一节 会计概述\n一、会计的概念\n（一）会计的定义\n1.会计的职能\n（1）核算职能\n第一节 会计目标"></textarea></div>'
+    +'<div class="hintline">识别不出编号且无缩进的行会被当作噪声跳过（如「本章小结」「思考题」）。行尾页码与点线会自动去掉。</div>'
+    +'<div class="f2"><div class="fld"><label>起始日期</label><input type="date" id="bkStart" value="'+today()+'"></div>'
+    +'<div class="fld"><label>每日可学时长（小时）</label><input type="number" id="bkDaily" step="0.5" min="0.5" value="'+((prof&&prof.daily)||3)+'"></div></div>'
+    +'<div class="fld"><label>生成哪些阶段的待办</label><div class="chips">'+sylStageBox()+'</div></div>'
+    +'<label class="ck"><input type="checkbox" id="bkWeekend"> 排期跳过周六周日</label>'
+    +'<div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">'
+    +'<button class="btn" onclick="sylParseBook()">🔍 解析预览</button>'
+    +'<button class="btn" onclick="sylImportBook(true)">⬇ 导入知识树 + 生成待办</button>'
+    +'<button class="btn ghost" onclick="sylImportBook(false)">仅导入知识树</button>'
+    +'</div><div id="bkPrev"></div>';
+}
+function sylSylHtml(sub){
+  return '<div class="f2"><div class="fld"><label>科目</label><select id="sylSub" onchange="renderSyl()">'+sylSubOpts()+'</select></div>'
+    +'<div class="fld"><label>骨架粒度</label><select id="syGran"><option value="fine">最细（叶子知识点）</option><option value="lv4">到二级（（一）为止）</option><option value="lv3">到一级（一、为止）</option></select></div></div>'
+    +'<div class="fld"><label>粘贴考纲（每行一条；行内的 了解 / 熟悉 / 掌握 会被识别为能力等级）</label>'
+    +'<textarea id="syText" rows="10" placeholder="第一章 总论  （掌握）\n第一节 会计概述\n一、会计的概念\n（一）会计的定义\n1.会计的职能  熟悉\n（1）核算职能"></textarea></div>'
+    +'<div class="hintline">等级沿层级继承：父级标了「熟悉」，子级没标就沿用；整段都没标则默认「理解」。生成的骨架会写入掌握度台账（覆盖当前台账）。</div>'
+    +'<div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">'
+    +'<button class="btn" onclick="sylParseSyl()">🔍 解析预览</button>'
+    +'<button class="btn" onclick="sylImportSyl()">⬇ 生成台账骨架</button>'
+    +'</div><div id="syPrev"></div>';
+}
+function sylLibHtml(sub){
+  const flat=chFlat(sub);
+  if(!flat.length) return '<div class="void" style="padding:18px">当前科目还没有章节主数据。切到「① 教材目录」粘贴即可生成。</div>';
+  let h='<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+    +'<button class="btn ghost" onclick="sylClear()">清空本科目章节树</button></div>';
+  h+='<div class="syl-tree">';
+  flat.forEach(function(x){
+    const pad=x.depth*16;
+    h+='<div class="syl-row" style="padding-left:'+pad+'px">'
+      +'<span class="syl-lv">'+esc(LV_LABEL[x.lv]||('L'+x.lv))+'</span>'
+      +'<span class="syl-nm">'+esc(x.label)+'</span>'
+      +'</div>';
+  });
+  h+='</div>';
+  return h;
+}
+function sylClear(){
+  const sub=sylSub();
+  if(!chs[sub]||!chs[sub].length){ toast('本科目没有章节数据'); return; }
+  if(!confirm('确定清空「'+sub+'」的章节主数据？\n\n已生成的待办不受影响（它们的章节名已写入待办本身）。')) return;
+  delete chs[sub]; save(K.chs,chs); sylPrev=null; renderSyl(); toast('已清空');
+}
+function sylReadTasks(){
+  const stg=[];
+  document.querySelectorAll('.gen-stg').forEach(function(c){ if(c.checked) stg.push(c.value); });
+  const g=function(id){ const e=document.getElementById(id); return e?e.value:''; };
+  return {stages:stg,gran:g('bkGran')||'ch',start:g('bkStart')||today(),
+    daily:Number(g('bkDaily'))||3,skipWeekend:(document.getElementById('bkWeekend')||{}).checked};
+}
+function sylParseBook(){
+  const sub=sylSub(), t=(document.getElementById('bkText')||{}).value||'';
+  if(!t.trim()){ toast('请先粘贴教材目录'); return; }
+  const b=buildOutline(t), opt=sylReadTasks();
+  sylPrev={kind:'book',sub:sub,tree:b.tree,opt:opt};
+  const flat=(function f(ns,d,a){ (ns||[]).forEach(function(n){ a.push({lv:n.lv||d+1,label:chLabel(n)}); f(n.kids||[],d+1,a); }); return a; })(b.tree,0,[]);
+  const n1=flat.filter(x=>x.lv===1).length, n2=flat.filter(x=>x.lv===2).length;
+  const tasks=genChapterTasksPreview(b.tree,sub,opt);
+  const span=(tasks.length&&tasks[tasks.length-1].due)?('，排到 '+tasks[tasks.length-1].due):'';
+  let h='<div class="tpl-note">识别成功：<b>'+b.count+'</b> 行（'+n1+' 章 / '+n2+' 节）'
+    +(b.skipped?'，跳过 '+b.skipped+' 行噪声':'')+'。<br>'
+    +'将生成 <b>'+tasks.length+'</b> 条待办（'+opt.stages.length+' 个阶段 × '+(opt.gran==='sec'?n2+' 节':n1+' 章')+'）'
+    +span+'</div>';
+  h+='<div class="syl-tree">'+flat.slice(0,60).map(function(x){
+    return '<div class="syl-row" style="padding-left:'+((x.lv-1)*16)+'px"><span class="syl-lv">'+esc(LV_LABEL[x.lv])+'</span><span class="syl-nm">'+esc(x.label)+'</span></div>';
+  }).join('')+(flat.length>60?'<div class="hintline">… 其余 '+(flat.length-60)+' 个节点已省略</div>':'')+'</div>';
+  const p=document.getElementById('bkPrev'); if(p) p.innerHTML=h;
+}
+/* 用预览树（尚未写入 chs）试算待办，避免为了预览而污染主数据 */
+function genChapterTasksPreview(tree,sub,opt){
+  const keep=chs[sub]; chs[sub]=tree;
+  const r=genChapterTasks(sub,opt);
+  chs[sub]=keep; return r;
+}
+function sylImportBook(withTasks){
+  const sub=sylSub();
+  let tree=null,opt=null;
+  const t=(document.getElementById('bkText')||{}).value||'';
+  if(t.trim()){
+    const b=buildOutline(t); if(!b.count){ toast('没有识别到有效目录行'); return; }
+    tree=b.tree; opt=sylReadTasks(); sylPrev={kind:'book',sub:sub,tree:tree,opt:opt};
+  }
+  if(!sylPrev||sylPrev.kind!=='book'||sylPrev.sub!==sub){ toast('请先点「解析预览」'); return; }
+  tree=sylPrev.tree; opt=sylPrev.opt||sylReadTasks();
+  const before=chCount(sub);
+  chs[sub]=before?mergeChs(chs[sub],tree):tree;
+  save(K.chs,chs);
+  let msg='章节主数据已更新：'+chCount(sub)+' 个节点';
+  if(withTasks){
+    const list=genChapterTasks(sub,opt);
+    const exist={};
+    todos.forEach(function(x){ exist[(x.sub||'')+'|'+(x.chapter||'')+'|'+(x.stage||'')+'|'+(x.title||'')]=1; });
+    const add=list.filter(function(x){ return !exist[(x.sub||'')+'|'+(x.chapter||'')+'|'+(x.stage||'')+'|'+(x.title||'')]; });
+    if(add.length){
+      todos=todos.concat(add); save(K.todos,todos);
+      if(db&&cloudOn) add.forEach(pushTodo);
+      msg+=' · 新增 '+add.length+' 条待办（'+(add[0].due?('首条 '+add[0].due):'')+' → '+(add[add.length-1].due||'')+'）';
+    }else msg+=' · 待办已存在，未重复生成';
+  }
+  sylPrev=null;
+  renderAll(); go('syl'); toast(msg);
+}
+function sylParseSyl(){
+  const sub=sylSub(), t=(document.getElementById('syText')||{}).value||'';
+  if(!t.trim()){ toast('请先粘贴考纲'); return; }
+  const b=buildSyllabus(t);
+  if(!b.count){ toast('没有识别到有效的考纲行'); return; }
+  const gran=(document.getElementById('syGran')||{}).value||'fine';
+  const keep=chs[sub]; chs[sub]=b.tree;
+  const rows=skeletonRows(sub,gran);
+  const dist={1:0,2:0,3:0}; rows.forEach(function(r){ dist[r.level]=(dist[r.level]||0)+1; });
+  const treeCpa=chToCpaTree(b.tree);
+  chs[sub]=keep;
+  sylPrev={kind:'syl',sub:sub,tree:b.tree,gran:gran};
+  const p=document.getElementById('syPrev');
+  if(p) p.innerHTML='<div class="tpl-note">识别成功：<b>'+b.count+'</b> 行 → <b>'+rows.length+'</b> 条台账骨架。'
+    +'能力等级分布：识记 '+dist[1]+' / 理解 '+dist[2]+' / 应用 '+dist[3]+'</div>'
+    +'<div class="syl-tree">'+rows.slice(0,40).map(function(r){
+      return '<div class="syl-row"><span class="syl-lv">'+esc(r.req)+'</span><span class="syl-nm">'+esc(r.chapter)+' · '+esc(r.point)+'</span></div>';
+    }).join('')+(rows.length>40?'<div class="hintline">… 其余 '+(rows.length-40)+' 条已省略</div>':'')+'</div>';
+  return {rows:rows,tree:treeCpa};
+}
+function sylImportSyl(){
+  const sub=sylSub();
+  if(!sylPrev||sylPrev.kind!=='syl'||sylPrev.sub!==sub){ toast('请先点「解析预览」'); return; }
+  const tree=sylPrev.tree, gran=sylPrev.gran;
+  const keep=chs[sub];
+  chs[sub]=keep&&keep.length?mergeChs(keep,tree):tree;
+  const rows=skeletonRows(sub,gran);
+  const treeCpa=chToCpaTree(chs[sub]);
+  save(K.chs,chs);
+  let ok=false;
+  try{
+    localStorage.setItem('cpaMasteryScore_v1',JSON.stringify(rows));
+    localStorage.setItem('cpaMasteryTree_v1',JSON.stringify(treeCpa));
+    localStorage.setItem(K.cpasub,sub);
+    ok=true;
+  }catch(e){}
+  sylPrev=null;
+  renderSyl();
+  if(ok) toast('已生成 '+rows.length+' 条台账骨架（科目：'+sub+'）· 打开「掌握度台账」即可逐条打分');
+  else toast('章节主数据已保存，但写入台账失败（浏览器存储受限）');
+}
 
 /* ================= 云端写回 ================= */
 function delRecord(dbid,id){
