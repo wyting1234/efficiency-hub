@@ -1540,7 +1540,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
           <div>
             <span class="eyebrow">Mastery Ledger</span>
             <h2>掌握度量化台账</h2>
-            <div class="cap">CPA 会计 30 章知识树 · 框架自检分 / 做题实测分取低分定级 · 薄弱池自动聚焦（数据与本工作台同源，存于本机浏览器）</div>
+            <div class="cap" id="mstCap">框架自检分 / 做题实测分取低分定级 · 薄弱池自动聚焦（数据存于本机浏览器，跟随当前科目）</div>
           </div>
           <div class="t-acts">
             <button aria-label="刷新" class="ib sm flat tip-l" data-tip="刷新" onclick="reloadMastery()">
@@ -2285,6 +2285,13 @@ let masteryRO=null, masteryNavT=null;
 function mountMastery(){
   const f=document.getElementById('masteryFrame'); if(!f) return;
   syncLedger();   /* 每次进入台账先把热力图与台账对齐，避免两边分数不一致 */
+  const mc=document.getElementById('mstCap');
+  if(mc){
+    let sub=''; try{ sub=localStorage.getItem(K.cpasub)||''; }catch(e){}
+    mc.textContent=(sub?('科目「'+sub+'」· '):'')
+      +'框架自检分 / 做题实测分取低分定级 · 薄弱池自动聚焦'
+      +(cloudOn?' · 已接入云端底表':' · 数据存于本机浏览器');
+  }
   if(!f.dataset.mounted){                       // 懒加载：首次进入才真正载入，不拖慢首屏
     f.dataset.mounted='1';
     f.onload=()=>{
@@ -2323,7 +2330,9 @@ function openMastery(){
 }
 /* 内嵌页数据变动 → 同步高度与侧栏徽标 */
 window.addEventListener('message',function(e){
-  if(!e.data||e.data.type!=='cpaMasteryHeight') return;
+  if(!e.data) return;
+  if(e.data.type==='cpaLedgerSaved'){ cloudPushLedger(); clearTimeout(masteryNavT); masteryNavT=setTimeout(()=>nav(),400); return; }
+  if(e.data.type!=='cpaMasteryHeight') return;
   const f=document.getElementById('masteryFrame');
   if(f&&e.data.h>200) f.style.height=(e.data.h+20)+'px';
   clearTimeout(masteryNavT);
@@ -5202,6 +5211,43 @@ function pushProfile(){
   }).catch(function(e){ console.warn('[database] 档案表写回失败:',e); });
 }
 
+/* ================= 掌握度台账上云 =================
+   台账（知识树 / 打分 / 科目）没有独立底表，借「学习档案表」的字段-值纵表存三份 JSON。
+   拉取：开页面同步底表时一并写回 localStorage；推送：内嵌台账页保存后 postMessage 通知这里推。
+   无 SDK 环境（本页直接打开）自动跳过，仍是纯本机模式。 */
+const LEDGER_FIELDS=[['掌握度台账·科目','cpaMasterySub_v1'],
+                     ['掌握度台账·分数','cpaMasteryScore_v1'],
+                     ['掌握度台账·知识树','cpaMasteryTree_v1']];
+function cloudPushLedger(){
+  if(!db||!cloudOn) return;
+  const rows=[];
+  for(let i=0;i<LEDGER_FIELDS.length;i++){
+    let v=''; try{ v=localStorage.getItem(LEDGER_FIELDS[i][1])||''; }catch(e){}
+    rows.push([LEDGER_FIELDS[i][0],v]);
+  }
+  if(!rows[1][1]&&!rows[2][1]) return;   /* 还没生成过台账，不必占底表 */
+  db.query({databaseId:DB_PROFILE,pageSize:200}).then(function(res){
+    const exist={};
+    ((res&&res.results)||[]).forEach(function(r){ if(r['字段']) exist[r['字段']]=r._id; });
+    rows.forEach(function(r){
+      const props={'字段':{text:String(r[0])},'值':{text:String(r[1])}};
+      if(exist[r[0]]) db.updateRecord({databaseId:DB_PROFILE,recordId:exist[r[0]],properties:props}).catch(function(){});
+      else db.addRecord({databaseId:DB_PROFILE,properties:props}).catch(function(){});
+    });
+  }).catch(function(e){ console.warn('[database] 台账写回失败:',e); });
+}
+/* 从已拉到的档案表字段里恢复台账（在云端同步流程中调用） */
+function cloudPullLedger(f){
+  if(!f) return false;
+  if(!f['掌握度台账·科目']&&!f['掌握度台账·分数']&&!f['掌握度台账·知识树']) return false;
+  try{
+    if(f['掌握度台账·科目'])  localStorage.setItem('cpaMasterySub_v1',String(f['掌握度台账·科目']));
+    if(f['掌握度台账·知识树']) localStorage.setItem('cpaMasteryTree_v1',String(f['掌握度台账·知识树']));
+    if(f['掌握度台账·分数'])  localStorage.setItem('cpaMasteryScore_v1',String(f['掌握度台账·分数']));
+    return true;
+  }catch(e){ return false; }
+}
+
 /* ================= 启动 ================= */
 mstMigrate();   /* 掌握度统一为六档：必须在所有常量与状态初始化之后 */
 (function(){ const c=STAGES.indexOf(curStage()); if(c>=0) openStages['st'+c]=true; })();
@@ -5396,6 +5442,7 @@ kick();
       if(f['当前科目']&&subs.some(function(s){ return s.name===f['当前科目']; })) curSub=f['当前科目'];
       prof.ready=true;
       save(K.prof,prof); save(K.cur,curSub); hit.push('学习档案');
+      if(cloudPullLedger(f)) hit.push('掌握度台账');
     }
 
     if(!hit.length){ console.info('[database] 七张底表均无记录，保留本地数据'); return; }

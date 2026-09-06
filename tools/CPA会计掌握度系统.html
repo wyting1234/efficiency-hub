@@ -96,6 +96,7 @@ textarea{resize:vertical;line-height:1.6}
 .level5{color:var(--ink-mute);font-size:13px;font-style:normal}
 .level6{color:var(--ink-mute);font-size:12.5px;opacity:.9}
 .tree-tools{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.tree-tools .subsel{max-width:150px;padding:7px 10px;font-size:13.5px;border:1px solid var(--line);border-radius:8px;background:var(--cream);color:var(--cocoa);font-family:var(--sans)}
 .tree-tools input{flex:1;min-width:180px}
 .tree-tools .btn{padding:7px 12px;font-size:13.5px}
 .tree-tools .btn.mini{background:transparent;border-color:transparent;color:var(--ink-mute);padding:6px 8px;font-size:13px}
@@ -187,7 +188,7 @@ textarea{resize:vertical;line-height:1.6}
 </head>
 <body>
 <div class="container">
-<h1 class="page-title">CPA会计｜掌握度量化学习系统<small id="subTitle">教材知识树 · 考纲打分台账（双体系通关法）</small></h1>
+<h1 class="page-title"><span id="mainTitle">CPA会计｜掌握度量化学习系统</span><small id="subTitle">教材知识树 · 考纲打分台账（双体系通关法）</small></h1>
 
 <div class="card">
   <span class="eyebrow">Method</span>
@@ -229,6 +230,7 @@ textarea{resize:vertical;line-height:1.6}
     <span class="eyebrow">Knowledge Tree</span>
     <h2>2026 CPA 会计 30 章多级知识树</h2>
     <div class="tree-tools">
+      <select id="cpaSubSel" class="subsel" onchange="switchSub(this.value)" title="切换科目：每个科目的知识树与打分分开存放"></select>
       <input id="treeSearch" placeholder="搜索章节 / 知识点关键词（如：合并、租赁、股份支付）" oninput="searchTree(this.value)">
       <button class="btn ghost" id="btnEditMode" onclick="toggleEditMode()">✎ 编辑</button>
       <span class="sep"></span>
@@ -649,6 +651,67 @@ function pushToWorkbench(silent){
     if(ch){ localStorage.setItem(KEY,JSON.stringify(heat)); if(!silent) toast('已回写 '+ch+' 处掌握度到工作台'); }
     return ch;
   }catch(e){ return 0; }
+}
+
+/* ================= 科目维度：一份页面跟一个科目 =================
+   树与打分按科目归档在 cpaMasteryTree_v1@<科目> / cpaMasteryScore_v1@<科目>，
+   主键永远是「当前科目」的数据。切换科目：先归档旧的，再载入新的（读不到则给空树，
+   由用户粘教材目录 / 考纲生成，不再塞一套与科目无关的内置会计树）。 */
+const K_SUB='cpaMasterySub_v1';
+function cpaSub(){ try{ return localStorage.getItem(K_SUB)||''; }catch(e){ return ''; } }
+function cpaSubList(){
+  try{
+    const a=JSON.parse(localStorage.getItem('wb_bk_subjects')||'[]');
+    return Array.isArray(a)?a.map(function(x){ return x&&x.name; }).filter(Boolean):[];
+  }catch(e){ return []; }
+}
+function renderSubSel(){
+  const el=document.getElementById('cpaSubSel'); if(!el) return;
+  const cur=cpaSub();
+  let list=cpaSubList();
+  if(cur&&list.indexOf(cur)<0) list=[cur].concat(list);
+  if(!list.length) list=['（未设置科目）'];
+  el.innerHTML=list.map(function(x){ return '<option'+(x===cur?' selected':'')+'>'+esc(x)+'</option>'; }).join('');
+  const mt=document.getElementById('mainTitle'), st=document.getElementById('subTitle');
+  if(mt) mt.textContent=(cur&&cur!=='（未设置科目）'?cur:'CPA会计')+'｜掌握度量化学习系统';
+  if(st) st.textContent=(cur?'当前科目「'+cur+'」· ':'')+'教材知识树 · 考纲打分台账（双体系通关法）';
+}
+function loadForSub(isSwitch){
+  const sub=cpaSub();
+  let okTree=false, okScore=false;
+  if(sub){
+    let raw=null; try{ raw=localStorage.getItem(K_TREE+'@'+sub); }catch(e){}
+    if(raw){ try{ const t=normalizeTree(JSON.parse(raw)); if(t&&t.length){ TREE=t; okTree=true; } }catch(e){} }
+    let rawS=null; try{ rawS=localStorage.getItem(K_SCORE+'@'+sub); }catch(e){}
+    if(rawS){ try{ const dd=JSON.parse(rawS); if(Array.isArray(dd)){
+        fillTable(dd); okScore=true;
+        try{ localStorage.setItem(K_SCORE,JSON.stringify(dd)); }catch(e){}   /* 主键始终 = 当前科目视图 */
+      } }catch(e){} }
+  }
+  if(!okTree){
+    if(loadTree()){ /* 主键里还存着当前科目的树（首次或旧数据），沿用 */ }
+    else TREE=(!sub||sub==='会计')?normalizeTree(DEFAULT_TREE):[];
+  }
+  /* 切换科目时主键里的分数属于上一个科目，不能沿用；首次启动则照旧从主键读 */
+  if(!okScore){ if(isSwitch) fillTable([]); else loadData(true); }
+  buildTree(); toggleAll(false); renderSubSel(); notifyHeight();
+}
+function switchSub(next){
+  const cur=cpaSub();
+  if(!next||next===cur||next==='（未设置科目）') return;
+  try{
+    if(cur&&cur!=='（未设置科目）'){
+      localStorage.setItem(K_TREE+'@'+cur,JSON.stringify(TREE));
+      localStorage.setItem(K_SCORE+'@'+cur,JSON.stringify(getData()));
+    }
+    localStorage.setItem(K_SUB,next);
+  }catch(e){ toast('切换失败：'+e.message); return; }
+  loadForSub(true);
+  toast('已切换到「'+next+'」'+(getData().length?'，载入 '+getData().length+' 条打分':'，请在知识结构页粘贴教材目录 / 考纲生成'));
+}
+/* 保存后通知父窗口（工作台）推云端：本页没有 SDK，借父窗口的底表通道上云 */
+function notifySaved(){
+  try{ if(window.parent&&window.parent!==window) window.parent.postMessage({type:'cpaLedgerSaved'},'*'); }catch(e){}
 }
 
 /* ================= 工具 ================= */
@@ -1098,9 +1161,10 @@ function fillTable(arr){
 }
 function autoSave(){
   try{ localStorage.setItem(K_SCORE,JSON.stringify(getData())); pushToWorkbench(true); }catch(e){}
+  notifySaved();
 }
 function saveData(){
-  try{ localStorage.setItem(K_SCORE,JSON.stringify(getData())); pushToWorkbench(true); toast("已保存到本机浏览器"); }
+  try{ localStorage.setItem(K_SCORE,JSON.stringify(getData())); pushToWorkbench(true); notifySaved(); toast("已保存到本机浏览器"); }
   catch(e){ toast("保存失败："+e.message); }
 }
 function loadData(silent){
@@ -1735,6 +1799,7 @@ try{
     if(cur&&cur.name) document.getElementById('subTitle').textContent='当前科目：'+cur.name+' · 教材知识树 + 考纲打分台账';
   }
 }catch(e){}
+renderSubSel();   /* 科目下拉与标题跟随当前科目（放最后，避免被上面兜底文案覆盖） */
 notifyHeight();
 </script>
 </body>
