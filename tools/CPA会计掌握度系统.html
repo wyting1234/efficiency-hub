@@ -90,9 +90,25 @@ textarea{resize:vertical;line-height:1.6}
 .level1{font-weight:600;color:var(--cocoa);font-family:var(--serif);font-size:15px;margin-top:10px}
 .level2{color:var(--umber-d)}
 .level3{color:var(--ink-soft)}
+.level4{color:var(--ink-mute);font-size:13px}
 .tree-tools{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
 .tree-tools input{flex:1;min-width:180px}
 .tree-hit{background:var(--amber);color:#fff;border-radius:4px;padding:0 3px}
+
+/* 模板中心 */
+.tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tpl-box{background:var(--sand);border:1px solid var(--line-soft);border-radius:var(--r-sm);padding:14px}
+.tpl-box h3{font-family:var(--serif);font-size:16px;color:var(--cocoa);margin-bottom:4px}
+.tpl-box .sub{font-size:12px;color:var(--ink-mute);margin-bottom:10px}
+.tpl-cols{font-family:ui-monospace,Consolas,Menlo,monospace;font-size:11.5px;background:var(--cream);border:1px dashed var(--clay);padding:8px 10px;border-radius:8px;color:var(--umber-d);word-break:break-all;line-height:1.7;margin:8px 0}
+.radio-row{display:flex;gap:16px;align-items:center;font-size:13px;color:var(--ink-soft);margin:10px 0 8px;flex-wrap:wrap}
+.radio-row label{display:flex;align-items:center;gap:5px;cursor:pointer}
+.radio-row input{width:15px;height:15px;accent-color:var(--umber)}
+.tpl-note{font-size:12.5px;color:var(--ink-mute);line-height:1.75}
+.req-map{width:100%;border-collapse:collapse;font-size:13px;min-width:0}
+.req-map th,.req-map td{border-bottom:1px solid var(--line-soft);padding:6px 8px}
+.req-map th{background:var(--clay);color:var(--cocoa)}
+.req-map td:first-child{font-family:var(--serif);color:var(--cocoa)}
 
 .note{background:var(--sand);border-left:3px solid var(--amber);padding:10px 14px;border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:13px;color:var(--ink-soft);margin:10px 0}
 
@@ -101,6 +117,7 @@ textarea{resize:vertical;line-height:1.6}
   table{font-size:12px;min-width:720px}
   th,td{padding:6px 4px}
   .card{padding:14px}
+  .tpl-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -139,6 +156,7 @@ textarea{resize:vertical;line-height:1.6}
   <div class="tab" data-tab="score">📝 掌握度打分台账</div>
   <div class="tab" data-tab="method">📚 学习方法论与三轮规划</div>
   <div class="tab" data-tab="trap">⚠ 错题陷阱笔记</div>
+  <div class="tab" data-tab="tpl">📥 模板导入导出</div>
 </div>
 
 <!-- ============ 知识树 ============ -->
@@ -150,7 +168,12 @@ textarea{resize:vertical;line-height:1.6}
       <input id="treeSearch" placeholder="搜索章节 / 知识点关键词（如：合并、租赁、股份支付）" oninput="searchTree(this.value)">
       <button class="btn ghost" onclick="toggleAll(true)">全部展开</button>
       <button class="btn ghost" onclick="toggleAll(false)">全部折叠</button>
+      <button class="btn ghost" onclick="exportTreeTpl()">⬇ 模板导出</button>
+      <button class="btn ghost" onclick="document.getElementById('treeCsv').click()">⬆ 模板导入</button>
+      <button class="btn ghost" onclick="resetTree()" title="恢复内置 30 章默认知识树">↺ 恢复默认</button>
+      <input type="file" id="treeCsv" accept=".csv,.txt" style="display:none" onchange="importTreeCsv(this,'merge')">
     </div>
+    <div class="tpl-note">模板列为 <b>章 / 节 / 三级标题 / 四级标题</b>，在 Excel 里按教材目录逐级填写后导入即可，无需手动逐条添加。</div>
     <ul class="tree" id="treeRoot"></ul>
   </div>
 </div>
@@ -163,8 +186,12 @@ textarea{resize:vertical;line-height:1.6}
     <div class="btns">
       <button class="btn" onclick="addRow()">➕ 新增知识点行</button>
       <button class="btn ghost" onclick="addRowsFromTree()">🌱 从知识树批量导入</button>
+      <button class="btn ghost" onclick="exportScoreTpl()">⬇ 模板导出</button>
+      <button class="btn ghost" onclick="document.getElementById('scoreCsv').click()">⬆ 模板导入</button>
       <button class="btn ghost" onclick="recalcStats()">📊 重新统计</button>
+      <input type="file" id="scoreCsv" accept=".csv,.txt" style="display:none" onchange="importScoreCsv(this,'merge')">
     </div>
+    <div class="tpl-note">模板列含 <b>考纲等级</b> 与 <b>能力要求</b>：先在 Excel 里按考纲填好各章节的能力要求，再逐轮回填框架自检分 / 做题实测分，用于检测与复查。</div>
     <div class="tw">
       <table id="scoreTable">
         <thead>
@@ -172,6 +199,7 @@ textarea{resize:vertical;line-height:1.6}
             <th style="min-width:120px">章节</th>
             <th style="min-width:200px">四级细知识点</th>
             <th style="width:90px">考纲等级</th>
+            <th style="width:104px">能力要求</th>
             <th style="width:96px">框架自检 0‑5</th>
             <th style="width:96px">做题实测 0‑5</th>
             <th style="width:86px">最终得分</th>
@@ -241,11 +269,87 @@ textarea{resize:vertical;line-height:1.6}
   </div>
 </div>
 
+<!-- ============ 模板导入导出 ============ -->
+<div class="tab-content" id="tpl">
+  <div class="card">
+    <span class="eyebrow">Template Center</span>
+    <h2>模板导入导出（批量拆解教材，告别逐条手填）</h2>
+    <p class="lead">
+      两块数据各有独立模板：<b>知识树</b>用于按教材目录批量拆解层级；<b>打分台账</b>用于按考纲登记能力要求并回填分数。
+      导出为 CSV，用 Excel / WPS 打开填写后导入即可。
+    </p>
+
+    <div class="tpl-grid" style="margin-top:12px">
+      <!-- 知识树模板 -->
+      <div class="tpl-box">
+        <h3>📖 知识树模板</h3>
+        <div class="sub">按教材目录逐级拆解：章 → 节 → 三级 → 四级</div>
+        <div class="tpl-cols">章,节,三级标题,四级标题</div>
+        <div class="tpl-note">同一章 / 节在多行重复填写即可自动归并为层级，空单元格表示跳过该级。</div>
+        <div class="btns" style="margin:10px 0 0">
+          <button class="btn" onclick="exportTreeTpl()">⬇ 导出（含现有数据）</button>
+          <button class="btn ghost" onclick="exportTreeBlank()">⬇ 空白模板</button>
+          <button class="btn ghost" onclick="document.getElementById('tplTreeCsv').click()">⬆ 导入</button>
+          <input type="file" id="tplTreeCsv" accept=".csv,.txt" style="display:none"
+                 onchange="importTreeCsv(this,getTplMode('tree'))">
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="tplModeTree" value="merge" checked>合并（保留现有）</label>
+          <label><input type="radio" name="tplModeTree" value="overwrite">覆盖（替换全部）</label>
+        </div>
+        <div class="btns" style="margin:0">
+          <button class="btn ghost" onclick="resetTree()">↺ 恢复内置 30 章</button>
+        </div>
+      </div>
+
+      <!-- 台账模板 -->
+      <div class="tpl-box">
+        <h3>📝 打分台账模板</h3>
+        <div class="sub">按考纲登记能力要求，逐轮回填分数用于检测复查</div>
+        <div class="tpl-cols">章节,知识点,考纲等级,能力要求,框架自检,做题实测,漏洞备注</div>
+        <div class="tpl-note">考纲等级填 1 / 2 / 3；能力要求填 识记 / 理解 / 应用 / 综合分析，留空则按考纲等级自动带出。分数 0‑5。</div>
+        <div class="btns" style="margin:10px 0 0">
+          <button class="btn" onclick="exportScoreTpl()">⬇ 导出（含现有数据）</button>
+          <button class="btn ghost" onclick="exportScoreBlank()">⬇ 空白模板</button>
+          <button class="btn ghost" onclick="exportScoreSkeleton()" title="按知识树生成章节骨架，只填分数">⬇ 知识树骨架</button>
+          <button class="btn ghost" onclick="document.getElementById('tplScoreCsv').click()">⬆ 导入</button>
+          <input type="file" id="tplScoreCsv" accept=".csv,.txt" style="display:none"
+                 onchange="importScoreCsv(this,getTplMode('score'))">
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="tplModeScore" value="merge" checked>合并（同条目更新）</label>
+          <label><input type="radio" name="tplModeScore" value="overwrite">覆盖（替换全部）</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="eyebrow">Exam Syllabus</span>
+    <h2>考纲等级 → 能力要求对照</h2>
+    <div class="tw" style="min-width:0">
+      <table class="req-map">
+        <thead><tr><th>考纲等级</th><th>能力要求</th><th>目标分数</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>1 级</td><td>识记</td><td>≥ 2 分</td><td>了解即可，客观题能识别</td></tr>
+          <tr><td>2 级</td><td>理解</td><td>≥ 3 分</td><td>熟悉原理，能做常规计算</td></tr>
+          <tr><td>3 级</td><td>应用</td><td>≥ 4 分</td><td>主观大题主攻方向，须达应试合格</td></tr>
+          <tr><td>综合型</td><td>综合分析</td><td>5 分</td><td>跨章节融合题，冲刺融会贯通</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note" style="margin-top:12px">
+      最终得分 = min(框架自检分, 做题实测分)。<b>取低分</b>是防假性掌握的核心：能复述但做不对，只算实测分。
+      复查时按「能力要求」筛选对应档位，未达目标分数的即为本轮薄弱项。
+    </div>
+  </div>
+</div>
+
 </div>
 
 <script>
-/* ================= 数据：30 章知识树 ================= */
-const TREE=[
+/* ================= 数据：30 章知识树（默认骨架，可被模板导入覆盖） ================= */
+const DEFAULT_TREE=[
  ['第1章 总论',[['1.1 会计基础概念、准则体系、职业道德',['1.1.1 财务报告目标、会计假设、会计基础','1.1.2 会计信息质量要求','1.1.3 会计要素、计量属性','1.1.4 可持续信息披露','1.1.5 人工智能在会计审计领域的应用（新增）']]]],
  ['第2章 存货',[['2.1 存货确认与初始计量'],['2.2 发出存货计量方法'],['2.3 期末计量与存货跌价准备'],['2.4 存货清查盘点']]],
  ['第3章 固定资产',[['3.1 确认与初始计量'],['3.2 折旧、后续支出'],['3.3 处置报废、持有待售判断']]],
@@ -277,8 +381,51 @@ const TREE=[
  ['第29章 租赁（并入14章，无独立章节）',[]],
  ['第30章 政府及民间非营利组织会计',[]]
 ];
-const K_SCORE='cpaMasteryScore_v1', K_TRAP='cpaMasteryTrap_v1';
+const K_SCORE='cpaMasteryScore_v1', K_TRAP='cpaMasteryTrap_v1', K_TREE='cpaMasteryTree_v1';
 const LEVELS=[0,1,2,3,4,5];
+const REQ_LIST=['','识记','理解','应用','综合分析'];
+const REQ_BY_LEVEL={1:'识记',2:'理解',3:'应用'};
+
+/* 知识树统一结构：[[章名, [[节名, [[三级名, [四级名...]], ...]], ...]], ...]
+   normalizeTree 兼容旧的三级写法（节下直接是字符串数组） */
+function normalizeTree(t){
+  return (t||[]).map(function(item){
+    const ch=String((item&&item[0])||'').trim(); if(!ch) return null;
+    const secs=(item[1]||[]).map(function(s){
+      const name=String((s&&s[0])||'').trim(); if(!name) return null;
+      const subs=(s[1]||[]).map(function(x){
+        if(Array.isArray(x)) return [String((x[0]||'')).trim(), (x[1]||[]).map(function(y){return String(y||'').trim();}).filter(Boolean)];
+        return [String(x||'').trim(), []];
+      }).filter(function(x){ return x[0]; });
+      return [name, subs];
+    }).filter(Boolean);
+    return [ch, secs];
+  }).filter(Boolean);
+}
+let TREE=normalizeTree(DEFAULT_TREE);
+function saveTree(){
+  try{ localStorage.setItem(K_TREE,JSON.stringify(TREE)); return true; }
+  catch(e){ return false; }
+}
+function loadTree(){
+  let s=null; try{ s=localStorage.getItem(K_TREE); }catch(e){}
+  if(!s) return false;
+  try{
+    const t=normalizeTree(JSON.parse(s));
+    if(t&&t.length){ TREE=t; return true; }
+  }catch(e){}
+  return false;
+}
+function resetTree(){
+  if(!confirm('确定恢复为内置 30 章默认知识树？当前导入的自定义知识树将被覆盖。')) return;
+  TREE=normalizeTree(DEFAULT_TREE);
+  try{ localStorage.removeItem(K_TREE); }catch(e){}
+  buildTree(); toggleAll(false); notifyHeight();
+  toast('已恢复默认知识树');
+}
+/* 按考纲等级推断：章名含「3级」即 3 级考点，否则 2 级 */
+function levelOfChapter(ch){ return /3\s*级/.test(String(ch||''))?3:2; }
+function reqOfLevel(lv){ return REQ_BY_LEVEL[Number(lv)]||''; }
 
 /* ================= 工具 ================= */
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -305,14 +452,22 @@ tabList.forEach(tab=>{
 /* ================= 知识树渲染 ================= */
 function buildTree(){
   const root=document.getElementById('treeRoot');
-  root.innerHTML=TREE.map(([ch,secs],i)=>{
-    const inner=secs.map(([name,subs])=>{
-      const sub=(subs&&subs.length)
-        ? '<ul>'+subs.map(s=>'<li class="level3">'+esc(s)+'</li>').join('')+'</ul>'
+  root.innerHTML=TREE.map(function(item,i){
+    const secs=item[1]||[];
+    const inner=secs.map(function(s){
+      const subs=s[1]||[];
+      const sub=subs.length
+        ? '<ul>'+subs.map(function(t3){
+            const t4=t3[1]||[];
+            const inner4=t4.length
+              ? '<ul>'+t4.map(function(x){return '<li class="level4">'+esc(x)+'</li>';}).join('')+'</ul>'
+              : '';
+            return '<li class="level3">'+esc(t3[0])+inner4+'</li>';
+          }).join('')+'</ul>'
         : '';
-      return '<li class="level2">'+esc(name)+sub+'</li>';
+      return '<li class="level2">'+esc(s[0])+sub+'</li>';
     }).join('');
-    return '<li class="level1" data-ch="'+i+'"><span class="ch-t">'+esc(ch)+'</span>'
+    return '<li class="level1" data-ch="'+i+'"><span class="ch-t">'+esc(item[0])+'</span>'
       +(inner?'<ul>'+inner+'</ul>':'')+'</li>';
   }).join('');
 }
@@ -378,43 +533,63 @@ const weakFilter=document.getElementById("weakFilter");
 function addRow(item){
   item=item||{};
   const tr=document.createElement("tr");
+  const lv=Number(item.level)||1;
+  const req=(item.req||reqOfLevel(lv)||'');
   tr.innerHTML=
-   '<td><input value="'+esc(item.chapter)+'" placeholder="第6章"></td>'
-  +'<td><input value="'+esc(item.point)+'" placeholder="权益法逆流交易调整"></td>'
-  +'<td><select>'+[1,2,3].map(x=>'<option'+(String(item.level||1)==String(x)?' selected':'')+'>'+x+'</option>').join('')+'</select></td>'
-  +'<td><select>'+LEVELS.map(x=>'<option'+(Number(item.frame||0)===x?' selected':'')+'>'+x+'</option>').join('')+'</select></td>'
-  +'<td><select>'+LEVELS.map(x=>'<option'+(Number(item.exam||0)===x?' selected':'')+'>'+x+'</option>').join('')+'</select></td>'
-  +'<td><input readonly value=""></td>'
-  +'<td><textarea rows="1" placeholder="错在哪 / 断点在哪">'+esc(item.note)+'</textarea></td>'
+   '<td><input class="f-chapter" value="'+esc(item.chapter)+'" placeholder="第6章"></td>'
+  +'<td><input class="f-point" value="'+esc(item.point)+'" placeholder="权益法逆流交易调整"></td>'
+  +'<td><select class="f-level">'+[1,2,3].map(function(x){return '<option'+(lv===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
+  +'<td><select class="f-req">'+REQ_LIST.map(function(x){return '<option value="'+esc(x)+'"'+(req===x?' selected':'')+'>'+(x||'自动')+'</option>';}).join('')+'</select></td>'
+  +'<td><select class="f-frame">'+LEVELS.map(function(x){return '<option'+(Number(item.frame||0)===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
+  +'<td><select class="f-exam">'+LEVELS.map(function(x){return '<option'+(Number(item.exam||0)===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
+  +'<td><input class="f-final" readonly value=""></td>'
+  +'<td><textarea class="f-note" rows="1" placeholder="错在哪 / 断点在哪">'+esc(item.note)+'</textarea></td>'
   +'<td><button class="btn danger" style="padding:5px 9px" onclick="delRow(this)">删</button></td>';
-  const frameSel=tr.children[3].querySelector("select");
-  const examSel=tr.children[4].querySelector("select");
-  const finalIn=tr.children[5].querySelector("input");
-  const calc=()=>{ finalIn.value=Math.min(Number(frameSel.value),Number(examSel.value)); recalcStats(); autoSave(); };
-  frameSel.onchange=calc; examSel.onchange=calc; calc();
-  // 等级=3 时，最终得分 <4 给出视觉提示
+  const levelSel=tr.querySelector(".f-level");
+  const reqSel=tr.querySelector(".f-req");
+  const frameSel=tr.querySelector(".f-frame");
+  const examSel=tr.querySelector(".f-exam");
+  const finalIn=tr.querySelector(".f-final");
+  const calc=function(){
+    finalIn.value=Math.min(Number(frameSel.value),Number(examSel.value));
+    recalcStats(); autoSave();
+  };
+  frameSel.onchange=calc;
+  examSel.onchange=calc;
+  // 能力要求为「自动」时，跟随考纲等级联动
+  levelSel.onchange=function(){
+    if(!reqSel.value){
+      const d=reqOfLevel(levelSel.value);
+      if(d) reqSel.value=d;
+    }
+    autoSave();
+  };
+  reqSel.onchange=autoSave;
+  calc();
   tableBody.appendChild(tr);
   paintWeak(tr);
   renderFilter(); recalcStats(); notifyHeight();
   return tr;
 }
 function paintWeak(tr){
-  const f=Number(tr.children[5].querySelector("input").value);
+  const f=Number(tr.querySelector(".f-final").value);
   tr.style.background=(f<=3&&f>=0)?'rgba(166,80,60,.06)':'';
 }
 function repaintAll(){ tableBody.querySelectorAll('tr').forEach(paintWeak); renderFilter(); recalcStats(); }
 function delRow(btn){ btn.closest("tr").remove(); renderFilter(); recalcStats(); autoSave(); notifyHeight(); }
 function getData(){
   const arr=[];
-  tableBody.querySelectorAll("tr").forEach(tr=>{
+  tableBody.querySelectorAll("tr").forEach(function(tr){
+    const level=Number(tr.querySelector(".f-level").value);
     arr.push({
-      chapter:tr.children[0].querySelector("input").value,
-      point:tr.children[1].querySelector("input").value,
-      level:Number(tr.children[2].querySelector("select").value),
-      frame:Number(tr.children[3].querySelector("select").value),
-      exam:Number(tr.children[4].querySelector("select").value),
-      final:Number(tr.children[5].querySelector("input").value),
-      note:tr.children[6].querySelector("textarea").value
+      chapter:tr.querySelector(".f-chapter").value,
+      point:tr.querySelector(".f-point").value,
+      level:level,
+      req:tr.querySelector(".f-req").value||reqOfLevel(level)||'',
+      frame:Number(tr.querySelector(".f-frame").value),
+      exam:Number(tr.querySelector(".f-exam").value),
+      final:Number(tr.querySelector(".f-final").value),
+      note:tr.querySelector(".f-note").value
     });
   });
   return arr;
@@ -446,8 +621,8 @@ function clearAll(){
 }
 function renderFilter(){
   const weak=weakFilter.checked;
-  tableBody.querySelectorAll("tr").forEach(tr=>{
-    const f=Number(tr.children[5].querySelector("input").value);
+  tableBody.querySelectorAll("tr").forEach(function(tr){
+    const f=Number(tr.querySelector(".f-final").value);
     tr.style.display=(weak&&f>3)?"none":"";
   });
   notifyHeight();
@@ -465,22 +640,33 @@ function recalcStats(){
   document.getElementById("emptyHint").style.display=total?'none':'block';
   tableBody.querySelectorAll("tr").forEach(paintWeak);
 }
+/* 知识树 → 扁平知识点：[章简称, 知识点(取最深一级), 考纲等级] */
+function treePoints(){
+  const out=[];
+  TREE.forEach(function(item){
+    const chShort=item[0].split('【')[0].trim();
+    const lv=levelOfChapter(item[0]);
+    (item[1]||[]).forEach(function(s){
+      const subs=s[1]||[];
+      if(!subs.length){ out.push([chShort,s[0],lv]); return; }
+      subs.forEach(function(t3){
+        const t4=t3[1]||[];
+        if(!t4.length){ out.push([chShort,t3[0],lv]); return; }
+        t4.forEach(function(x){ out.push([chShort,x,lv]); });
+      });
+    });
+  });
+  return out;
+}
 function addRowsFromTree(){
   const exist=new Set(getData().map(x=>(x.chapter||'')+'|'+(x.point||'')));
   let n=0;
-  TREE.forEach(([ch,secs])=>{
-    const chShort=ch.split('【')[0].trim();
-    secs.forEach(([name,subs])=>{
-      if(subs&&subs.length){
-        subs.forEach(s=>{
-          const key=chShort+'|'+s;
-          if(!exist.has(key)){ addRow({chapter:chShort,point:s,level:/3级/.test(ch)?3:2}); n++; }
-        });
-      }else{
-        const key=chShort+'|'+name;
-        if(!exist.has(key)){ addRow({chapter:chShort,point:name,level:/3级/.test(ch)?3:2}); n++; }
-      }
-    });
+  treePoints().forEach(function(p){
+    const key=p[0]+'|'+p[1];
+    if(exist.has(key)) return;
+    exist.add(key);
+    addRow({chapter:p[0],point:p[1],level:p[2],req:reqOfLevel(p[2])});
+    n++;
   });
   autoSave();
   toast(n?('已导入 '+n+' 条知识点'):'没有新增条目（已全部存在）');
@@ -488,7 +674,7 @@ function addRowsFromTree(){
 
 /* ================= 备份 / 导入导出 ================= */
 function exportJSON(){
-  const data={v:1,exportedAt:new Date().toISOString(),scores:getData(),trap:(document.getElementById('trapText').value||'')};
+  const data={v:2,exportedAt:new Date().toISOString(),tree:TREE,scores:getData(),trap:(document.getElementById('trapText').value||'')};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -503,7 +689,11 @@ function importJSON(input){
     try{
       const d=JSON.parse(r.result);
       if(Array.isArray(d)) fillTable(d);
-      else{ if(d.scores) fillTable(d.scores); if(typeof d.trap==='string'){ document.getElementById('trapText').value=d.trap; saveTrap(true); } }
+      else{
+        if(d.scores) fillTable(d.scores);
+        if(Array.isArray(d.tree)){ TREE=normalizeTree(d.tree); saveTree(); buildTree(); toggleAll(false); }
+        if(typeof d.trap==='string'){ document.getElementById('trapText').value=d.trap; saveTrap(true); }
+      }
       autoSave(); toast("导入成功");
     }catch(e){ toast("文件格式不正确"); }
     input.value='';
@@ -516,6 +706,241 @@ function exportTrap(){
   a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain;charset=utf-8'}));
   a.download='CPA陷阱笔记_'+new Date().toISOString().slice(0,10)+'.txt';
   a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ================= CSV 模板引擎 ================= */
+function csvCell(v){
+  const s=String(v==null?'':v);
+  return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function toCSV(rows){
+  return '\uFEFF'+rows.map(function(r){ return r.map(csvCell).join(','); }).join('\r\n');
+}
+/* 支持引号包裹、字段内换行与逗号；自动去除 BOM、空行与表头 */
+function parseCSV(text){
+  text=String(text||'').replace(/^\uFEFF/,'');
+  const rows=[]; let row=[], cur='', q=false, started=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else q=false; }
+      else cur+=c;
+    }else{
+      if(c==='"'){ q=true; started=true; }
+      else if(c===','){ row.push(cur); cur=''; started=true; }
+      else if(c==='\r'){ /* 忽略 */ }
+      else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; started=false; }
+      else { cur+=c; started=true; }
+    }
+  }
+  if(cur!==''||started||row.length){ row.push(cur); rows.push(row); }
+  const clean=rows.filter(function(r){
+    return r.some(function(x){ return String(x).trim()!==''; });
+  });
+  if(clean.length){
+    const h0=String(clean[0][0]||'').trim();
+    if(h0==='章'||h0==='章节'||h0==='知识点') clean.shift();
+  }
+  return clean;
+}
+function dl(name, content, mime){
+  const blob=new Blob([content],{type:mime||'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} },0);
+}
+function stamp(){ return new Date().toISOString().slice(0,10); }
+function readText(input, cb){
+  const f=input.files&&input.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=function(){ cb(String(r.result||'')); input.value=''; };
+  r.readAsText(f,'utf-8');
+}
+function getTplMode(kind){
+  const el=document.querySelector('input[name="'+(kind==='tree'?'tplModeTree':'tplModeScore')+'"]:checked');
+  return el?el.value:'merge';
+}
+
+/* ---------- 知识树模板 ---------- */
+const TREE_HEAD=['章','节','三级标题','四级标题'];
+function treeRows(){
+  const rows=[TREE_HEAD.slice()];
+  TREE.forEach(function(item){
+    const ch=item[0];
+    (item[1]||[]).forEach(function(s){
+      const sec=s[0], subs=s[1]||[];
+      if(!subs.length){ rows.push([ch,sec,'','']); return; }
+      subs.forEach(function(t3){
+        const t4=t3[1]||[];
+        if(!t4.length){ rows.push([ch,sec,t3[0],'']); return; }
+        t4.forEach(function(x){ rows.push([ch,sec,t3[0],x]); });
+      });
+    });
+  });
+  return rows;
+}
+function exportTreeTpl(){
+  dl('CPA知识树模板_'+stamp()+'.csv', toCSV(treeRows()));
+  toast('知识树模板已导出');
+}
+function exportTreeBlank(){
+  dl('CPA知识树模板_空白_'+stamp()+'.csv', toCSV([TREE_HEAD.slice(),
+    ['第X章 示例章','X.1 示例节','X.1.1 三级标题',''],
+    ['第X章 示例章','X.1 示例节','X.1.2 三级标题','四级细目'],
+    ['第X章 示例章','X.2 另一节','','']]));
+  toast('空白模板已导出');
+}
+/* 行 → 层级：同一章/节在多行重复出现会自动归并 */
+function treeFromRows(rows){
+  const order=[], map=new Map();
+  rows.forEach(function(r){
+    const ch=String(r[0]||'').trim(); if(!ch) return;
+    const sec=String(r[1]||'').trim();
+    const t3=String(r[2]||'').trim();
+    const t4=String(r[3]||'').trim();
+    if(!map.has(ch)){ map.set(ch,new Map()); order.push(ch); }
+    const sm=map.get(ch);
+    if(sec && !sm.has(sec)) sm.set(sec,new Map());
+    if(sec && t3){
+      const tm=sm.get(sec);
+      if(!tm.has(t3)) tm.set(t3,[]);
+      if(t4 && tm.get(t3).indexOf(t4)<0) tm.get(t3).push(t4);
+    }
+  });
+  return normalizeTree(order.map(function(ch){
+    const secs=[];
+    map.get(ch).forEach(function(tm,secName){
+      const subs=[];
+      tm.forEach(function(t4s,t3Name){ subs.push([t3Name,t4s]); });
+      secs.push([secName,subs]);
+    });
+    return [ch,secs];
+  }));
+}
+function mergeTree(base,add){
+  const map=new Map();
+  base.forEach(function(item){
+    map.set(item[0], new Map((item[1]||[]).map(function(s){
+      return [s[0], new Map((s[1]||[]).map(function(t){ return [t[0],(t[1]||[]).slice()]; }))];
+    })));
+  });
+  add.forEach(function(item){
+    if(!map.has(item[0])) map.set(item[0], new Map());
+    const sm=map.get(item[0]);
+    (item[1]||[]).forEach(function(s){
+      if(!sm.has(s[0])) sm.set(s[0], new Map());
+      const tm=sm.get(s[0]);
+      (s[1]||[]).forEach(function(t){
+        if(!tm.has(t[0])){ tm.set(t[0],(t[1]||[]).slice()); return; }
+        const arr=tm.get(t[0]);
+        (t[1]||[]).forEach(function(x){ if(arr.indexOf(x)<0) arr.push(x); });
+      });
+    });
+  });
+  const out=[];
+  map.forEach(function(sm,ch){
+    const secs=[];
+    sm.forEach(function(tm,secName){
+      const subs=[];
+      tm.forEach(function(t4s,t3Name){ subs.push([t3Name,t4s]); });
+      secs.push([secName,subs]);
+    });
+    out.push([ch,secs]);
+  });
+  return out;
+}
+function importTreeCsv(input,mode){
+  readText(input,function(text){
+    let rows;
+    try{ rows=parseCSV(text); }catch(e){ toast('CSV 解析失败'); return; }
+    if(!rows.length){ toast('模板为空或格式不正确'); return; }
+    const parsed=treeFromRows(rows);
+    if(!parsed.length){ toast('未识别到有效数据，请检查第 1 列是否为章'); return; }
+    if(mode==='overwrite'){
+      if(!confirm('将覆盖现有知识树（'+TREE.length+' 章），导入 '+parsed.length+' 章。确定继续？')) return;
+      TREE=parsed;
+    }else{
+      TREE=mergeTree(TREE,parsed);
+    }
+    saveTree(); buildTree(); toggleAll(false); notifyHeight();
+    toast('已导入，当前共 '+TREE.length+' 章');
+  });
+}
+
+/* ---------- 打分台账模板 ---------- */
+const SCORE_HEAD=['章节','知识点','考纲等级','能力要求','框架自检','做题实测','漏洞备注'];
+function scoreRows(data){
+  const rows=[SCORE_HEAD.slice()];
+  (data||[]).forEach(function(x){
+    rows.push([x.chapter,x.point,x.level,x.req||'',x.frame,x.exam,x.note]);
+  });
+  return rows;
+}
+function exportScoreTpl(){
+  dl('CPA打分台账模板_'+stamp()+'.csv', toCSV(scoreRows(getData())));
+  toast('台账模板已导出');
+}
+function exportScoreBlank(){
+  dl('CPA打分台账模板_空白_'+stamp()+'.csv', toCSV([SCORE_HEAD.slice(),
+    ['第6章 长期股权投资','权益法逆流交易调整',3,'应用','','',''],
+    ['第14章 租赁','承租人使用权资产初始计量',3,'应用','','','']]));
+  toast('空白模板已导出');
+}
+/* 按知识树生成骨架：章节与能力要求已预填，只需回填分数 */
+function exportScoreSkeleton(){
+  const rows=[SCORE_HEAD.slice()];
+  treePoints().forEach(function(p){ rows.push([p[0],p[1],p[2],reqOfLevel(p[2]),'','','']); });
+  dl('CPA台账骨架_按知识树_'+stamp()+'.csv', toCSV(rows));
+  toast('已按知识树导出 '+(rows.length-1)+' 行骨架');
+}
+function clamp05(v){
+  const n=Number(String(v==null?'':v).trim());
+  if(isNaN(n)) return 0;
+  return Math.max(0,Math.min(5,Math.round(n)));
+}
+function scoreFromRows(rows){
+  return rows.map(function(r){
+    const lvRaw=Number(String(r[2]||'').trim());
+    const lv=(lvRaw>=1&&lvRaw<=3)?lvRaw:levelOfChapter(r[0]);
+    const reqRaw=String(r[3]||'').trim();
+    const req=reqRaw?reqRaw:reqOfLevel(lv);
+    return {
+      chapter:String(r[0]||'').trim(),
+      point:String(r[1]||'').trim(),
+      level:lv, req:req,
+      frame:clamp05(r[4]), exam:clamp05(r[5]),
+      note:String(r[6]||'').trim()
+    };
+  }).filter(function(x){ return x.chapter||x.point; });
+}
+function importScoreCsv(input,mode){
+  readText(input,function(text){
+    let rows;
+    try{ rows=parseCSV(text); }catch(e){ toast('CSV 解析失败'); return; }
+    if(!rows.length){ toast('模板为空或格式不正确'); return; }
+    const list=scoreFromRows(rows);
+    if(!list.length){ toast('未识别到有效数据'); return; }
+    if(mode==='overwrite'){
+      if(!confirm('将覆盖现有台账（'+getData().length+' 条），导入 '+list.length+' 条。确定继续？')) return;
+      fillTable(list);
+      toast('已覆盖导入 '+list.length+' 条');
+      return;
+    }
+    const cur=getData();
+    const idx=new Map();
+    cur.forEach(function(x,i){ idx.set((x.chapter||'')+'|'+(x.point||''),i); });
+    let added=0, updated=0;
+    list.forEach(function(x){
+      const k=(x.chapter||'')+'|'+(x.point||'');
+      if(idx.has(k)){ cur[idx.get(k)]=x; updated++; }
+      else { idx.set(k,cur.length); cur.push(x); added++; }
+    });
+    fillTable(cur);
+    autoSave();
+    toast('导入完成：新增 '+added+' 条，更新 '+updated+' 条');
+  });
 }
 
 /* ================= 陷阱笔记 ================= */
@@ -539,6 +964,7 @@ if(window.ResizeObserver&&document.body){
 document.addEventListener('input',()=>{ clearTimeout(window._nh); window._nh=setTimeout(notifyHeight,120); },true);
 
 /* ================= 启动 ================= */
+loadTree();          // 先读自定义知识树，读不到则用内置 30 章
 buildTree();
 toggleAll(false);   // 默认只展开 30 个章标题，按需下钻
 loadData(true);
