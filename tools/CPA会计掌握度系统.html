@@ -998,7 +998,7 @@ function addRow(item){
    '<td data-col="chapter"><input class="f-chapter" value="'+esc(item.chapter)+'" placeholder="第6章"></td>'
   +'<td data-col="point"><input class="f-point" value="'+esc(item.point)+'" placeholder="权益法逆流交易调整"></td>'
   +'<td data-col="level"><select class="f-level">'+[1,2,3].map(function(x){return '<option'+(lv===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
-  +'<td data-col="req"><select class="f-req">'+REQ_LIST.map(function(x){return '<option value="'+esc(x)+'"'+(req===x?' selected':'')+'>'+'(x||'自动')+'</option>';}).join('')+'</select></td>'
+  +'<td data-col="req"><select class="f-req">'+REQ_LIST.map(function(x){return '<option value="'+esc(x)+'"'+(req===x?' selected':'')+'>'+(x||'自动')+'</option>';}).join('')+'</select></td>'
   +'<td data-col="frame"><select class="f-frame">'+LEVELS.map(function(x){return '<option'+(Number(item.frame||0)===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
   +'<td data-col="exam"><select class="f-exam">'+LEVELS.map(function(x){return '<option'+(Number(item.exam||0)===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
   +'<td data-col="final"><input class="f-final" readonly value=""></td>'
