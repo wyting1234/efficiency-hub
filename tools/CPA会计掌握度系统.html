@@ -171,9 +171,10 @@ textarea{resize:vertical;line-height:1.6}
       <button class="btn ghost" onclick="exportTreeTpl()">⬇ 模板导出</button>
       <button class="btn ghost" onclick="document.getElementById('treeCsv').click()">⬆ 模板导入</button>
       <button class="btn ghost" onclick="resetTree()" title="恢复内置 30 章默认知识树">↺ 恢复默认</button>
+      <button class="btn" onclick="syncFromWorkbench()" title="直接读取备考学习工作台已录入的科目 / 章 / 节，生成知识树">⇄ 从工作台同步</button>
       <input type="file" id="treeCsv" accept=".xlsx,.csv,.txt" style="display:none" onchange="importTreeFile(this,'merge')">
     </div>
-    <div class="tpl-note">模板列为 <b>章 / 节 / 三级标题 / 四级标题</b>，在 Excel 里按教材目录逐级填写后导入即可，无需手动逐条添加。</div>
+    <div class="tpl-note">模板列为 <b>章 / 节 / 三级标题 / 四级标题</b>，在 Excel 里按教材目录逐级填写后导入即可，无需手动逐条添加。若目录已在<b>备考学习工作台</b>里录过，直接点<b>「⇄ 从工作台同步」</b>即可一键生成，不必重复录入。</div>
     <ul class="tree" id="treeRoot"></ul>
   </div>
 </div>
@@ -454,6 +455,83 @@ function resetTree(){
 /* 按考纲等级推断：章名含「3级」即 3 级考点，否则 2 级 */
 function levelOfChapter(ch){ return /3\s*级/.test(String(ch||''))?3:2; }
 function reqOfLevel(lv){ return REQ_BY_LEVEL[Number(lv)]||''; }
+
+/* ============ 与备考学习工作台联动 ============
+   工作台的章节热力图数据存在同源 localStorage 的 wb_bk_heat，
+   行结构：{kind:'sec'|'kp', sub, chNo, chName, secNo, secName, st}
+   直接读取生成知识树，避免目录重复维护。独立打开（非工作台内嵌）时同样可用。 */
+const WB_HEAT_KEY='wb_bk_heat';
+function readWorkbenchHeat(){
+  let raw=null;
+  try{ raw=localStorage.getItem(WB_HEAT_KEY); }catch(e){ return null; }
+  if(!raw) return null;
+  try{
+    const rows=JSON.parse(raw);
+    return Array.isArray(rows)?rows:null;
+  }catch(e){ return null; }
+}
+/* 工作台行 → 知识树（章 → 节 → [知识点]），返回 [[章,[[节,[[三级,[四级]]]]]]] */
+function treeFromWorkbench(rows,pick){
+  const order=[],map=new Map();
+  rows.forEach(function(r){
+    if(!r) return;
+    if(pick && r.sub!==pick) return;
+    if(r.kind==='kp'){
+      const ch=String(r.sub||'未分类').trim()+' · 知识点';
+      const sec=String(r.secName||r.secNo||'').trim();
+      if(!sec) return;
+      if(!map.has(ch)){ map.set(ch,new Map()); order.push(ch); }
+      const sm=map.get(ch);
+      if(!sm.has(sec)) sm.set(sec,new Map());
+      return;
+    }
+    const chLine=(String(r.chNo||'').trim()?('第'+String(r.chNo).trim()+'章 '):'')+String(r.chName||'').trim();
+    if(!chLine.trim()) return;
+    const ch=(pick?'':(String(r.sub||'').trim()?String(r.sub).trim()+' · ':'')) + chLine;
+    const sec=(String(r.secNo||'').trim()?String(r.secNo).trim()+' ':'')+String(r.secName||'').trim();
+    if(!map.has(ch)){ map.set(ch,new Map()); order.push(ch); }
+    const sm=map.get(ch);
+    if(sec.trim()&&!sm.has(sec)) sm.set(sec,new Map());
+  });
+  return order.map(function(ch){
+    const secs=[];
+    map.get(ch).forEach(function(tm,sec){ secs.push([sec,[]]); });
+    return [ch,secs];
+  }).filter(function(x){ return x[1].length; });
+}
+function syncFromWorkbench(){
+  const rows=readWorkbenchHeat();
+  if(!rows||!rows.length){
+    toast('未读取到工作台章节数据');
+    alert('没有读取到备考学习工作台的章节数据。\n\n请先在「备考学习工作台 → 章节掌握热力图」里录入至少一条章/节记录，\n或直接在此用 Excel 模板导入目录。');
+    return;
+  }
+  /* 科目统计，多科目时让用户选 */
+  const cnt={},ord=[];
+  rows.forEach(function(r){ if(r&&r.sub){ if(!cnt[r.sub]){ cnt[r.sub]=0; ord.push(r.sub); } cnt[r.sub]++; } });
+  let pick=null;
+  if(ord.length>1){
+    const tip='检测到工作台中 '+rows.length+' 条章节记录，涉及 '+ord.length+' 个科目：\n\n'
+      +ord.map(function(s,i){ return '  '+(i+1)+'. '+s+'（'+cnt[s]+' 条）'; }).join('\n')
+      +'\n\n请输入序号或科目名（留空 = 全部同步，章名会带科目前缀）：';
+    const ans=window.prompt(tip,'');
+    if(ans===null) return;
+    const t=String(ans).trim();
+    if(t){
+      pick=ord.filter(function(s,i){ return s===t||String(i+1)===t; })[0];
+      if(!pick){ toast('未匹配到科目：'+t); return; }
+    }
+  }
+  const built=treeFromWorkbench(rows,pick);
+  if(!built.length){ toast('未识别到有效的章 / 节数据'); return; }
+  const parsed=normalizeTree(built);
+  const nSec=parsed.reduce(function(a,x){ return a+(x[1]||[]).length; },0);
+  const merge=window.confirm('已从工作台整理出 '+parsed.length+' 章 / '+nSec+' 节。\n\n'
+    +'【确定】合并到现有知识树（同名章去重合并）\n【取消】覆盖现有知识树（替换全部）');
+  TREE = merge ? mergeTree(TREE,parsed) : parsed;
+  saveTree(); buildTree(); toggleAll(false); notifyHeight();
+  toast('已同步 '+TREE.length+' 章 · 当前知识树共 '+TREE.length+' 章');
+}
 
 /* ================= 工具 ================= */
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
