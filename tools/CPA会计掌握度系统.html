@@ -91,6 +91,8 @@ textarea{resize:vertical;line-height:1.6}
 .level2{color:var(--umber-d)}
 .level3{color:var(--ink-soft)}
 .level4{color:var(--ink-mute);font-size:13px}
+.level5{color:var(--ink-mute);font-size:13px;font-style:normal}
+.level6{color:var(--ink-mute);font-size:12.5px;opacity:.9}
 .tree-tools{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
 .tree-tools input{flex:1;min-width:180px}
 .tree-hit{background:var(--amber);color:#fff;border-radius:4px;padding:0 3px}
@@ -174,7 +176,7 @@ textarea{resize:vertical;line-height:1.6}
       <button class="btn" onclick="syncFromWorkbench()" title="直接读取备考学习工作台已录入的科目 / 章 / 节，生成知识树">⇄ 从工作台同步</button>
       <input type="file" id="treeCsv" accept=".xlsx,.csv,.txt" style="display:none" onchange="importTreeFile(this,'merge')">
     </div>
-    <div class="tpl-note">模板列为 <b>章 / 节 / 三级标题 / 四级标题</b>，在 Excel 里按教材目录逐级填写后导入即可，无需手动逐条添加。若目录已在<b>备考学习工作台</b>里录过，直接点<b>「⇄ 从工作台同步」</b>即可一键生成，不必重复录入。</div>
+    <div class="tpl-note">六级知识体系：<b>章 / 节 / 一级 / 二级 / 三级 / 四级</b>（对应教材目录的 第X章 → 第X节 → 一、→（一）→ 1. →（1））。在 Excel 里按目录逐级填写后导入即可；只填前几级也行，空列之后的层级会自动忽略。若目录已在<b>备考学习工作台</b>里录过，直接点<b>「⇄ 从工作台同步」</b>即可一键生成。</div>
     <ul class="tree" id="treeRoot"></ul>
   </div>
 </div>
@@ -284,9 +286,9 @@ textarea{resize:vertical;line-height:1.6}
       <!-- 知识树模板 -->
       <div class="tpl-box">
         <h3>📖 知识树模板</h3>
-        <div class="sub">按教材目录逐级拆解：章 → 节 → 三级 → 四级</div>
-        <div class="tpl-cols">章,节,三级标题,四级标题</div>
-        <div class="tpl-note">同一章 / 节在多行重复填写即可自动归并为层级，空单元格表示跳过该级。</div>
+        <div class="sub">按教材目录逐级拆解：章 → 节 → 一级 → 二级 → 三级 → 四级</div>
+        <div class="tpl-cols">章,节,一级,二级,三级,四级</div>
+        <div class="tpl-note">对应教材目录的 第X章 / 第X节 / 一、/（一）/ 1. /（1）。同一上级在多行重复填写即可自动归并为层级；空单元格表示跳过该级及其后的层级。</div>
         <div class="btns" style="margin:10px 0 0">
           <button class="btn" onclick="exportTreeTpl()">⬇ 导出 Excel</button>
           <button class="btn ghost" onclick="exportTreeBlank()">⬇ 空白 Excel</button>
@@ -338,7 +340,7 @@ textarea{resize:vertical;line-height:1.6}
       适合随手改几行、或当前环境不方便上传文件的场景。
     </p>
     <textarea id="pasteBox" style="height:150px;margin-top:8px"
-      placeholder="在此粘贴 Excel 区域…&#10;知识树：章 / 节 / 三级标题 / 四级标题&#10;台账：章节 / 知识点 / 考纲等级 / 能力要求 / 框架自检 / 做题实测 / 漏洞备注"></textarea>
+      placeholder="在此粘贴 Excel 区域…&#10;知识树：章 / 节 / 一级 / 二级 / 三级 / 四级&#10;台账：章节 / 知识点 / 考纲等级 / 能力要求 / 框架自检 / 做题实测 / 漏洞备注"></textarea>
     <div class="radio-row">
       <span style="color:var(--cocoa);font-weight:600">导入到：</span>
       <label><input type="radio" name="pasteTarget" value="tree">知识树</label>
@@ -415,21 +417,27 @@ const LEVELS=[0,1,2,3,4,5];
 const REQ_LIST=['','识记','理解','应用','综合分析'];
 const REQ_BY_LEVEL={1:'识记',2:'理解',3:'应用'};
 
-/* 知识树统一结构：[[章名, [[节名, [[三级名, [四级名...]], ...]], ...]], ...]
-   normalizeTree 兼容旧的三级写法（节下直接是字符串数组） */
+/* 知识树：六级知识体系（章 / 节 / 一级 / 二级 / 三级 / 四级）
+   统一结构：[名称, 子节点数组]，子节点元素为 [名称, 子节点数组] 或字符串（叶子）。
+   递归实现 —— 层级数由 TREE_DEPTH 决定，改层级不用重写渲染与导入逻辑；
+   旧的四层写法（节下直接是字符串数组）天然符合该结构，自动兼容。 */
+const TREE_DEPTH=6;
+const TREE_LV=['章','节','一级','二级','三级','四级'];
+function normalizeNode(x,depth){
+  if(x==null) return null;
+  if(typeof x==='string'||typeof x==='number'){
+    const s=String(x).trim(); return s?[s,[]]:null;
+  }
+  if(!Array.isArray(x)) return null;
+  const nm=String(x[0]==null?'':x[0]).trim(); if(!nm) return null;
+  const kids=[];
+  if(depth<TREE_DEPTH-1&&Array.isArray(x[1])){
+    x[1].forEach(function(c){ const n=normalizeNode(c,depth+1); if(n) kids.push(n); });
+  }
+  return [nm,kids];
+}
 function normalizeTree(t){
-  return (t||[]).map(function(item){
-    const ch=String((item&&item[0])||'').trim(); if(!ch) return null;
-    const secs=(item[1]||[]).map(function(s){
-      const name=String((s&&s[0])||'').trim(); if(!name) return null;
-      const subs=(s[1]||[]).map(function(x){
-        if(Array.isArray(x)) return [String((x[0]||'')).trim(), (x[1]||[]).map(function(y){return String(y||'').trim();}).filter(Boolean)];
-        return [String(x||'').trim(), []];
-      }).filter(function(x){ return x[0]; });
-      return [name, subs];
-    }).filter(Boolean);
-    return [ch, secs];
-  }).filter(Boolean);
+  return (Array.isArray(t)?t:[]).map(function(x){ return normalizeNode(x,0); }).filter(Boolean);
 }
 let TREE=normalizeTree(DEFAULT_TREE);
 function saveTree(){
@@ -558,23 +566,20 @@ tabList.forEach(tab=>{
 /* ================= 知识树渲染 ================= */
 function buildTree(){
   const root=document.getElementById('treeRoot');
+  if(!root) return;
+  /* 递归渲染，depth 0=章 … 5=四级；层级数由 TREE_DEPTH 决定 */
+  function nodeHtml(node,depth){
+    const cls='level'+Math.min(depth+1,TREE_DEPTH);
+    const kids=node[1]||[];
+    if(!kids.length) return '<li class="'+cls+'">'+esc(node[0])+'</li>';
+    return '<li class="'+cls+'">'+esc(node[0])
+      +'<ul>'+kids.map(function(c){ return nodeHtml(c,depth+1); }).join('')+'</ul></li>';
+  }
   root.innerHTML=TREE.map(function(item,i){
-    const secs=item[1]||[];
-    const inner=secs.map(function(s){
-      const subs=s[1]||[];
-      const sub=subs.length
-        ? '<ul>'+subs.map(function(t3){
-            const t4=t3[1]||[];
-            const inner4=t4.length
-              ? '<ul>'+t4.map(function(x){return '<li class="level4">'+esc(x)+'</li>';}).join('')+'</ul>'
-              : '';
-            return '<li class="level3">'+esc(t3[0])+inner4+'</li>';
-          }).join('')+'</ul>'
-        : '';
-      return '<li class="level2">'+esc(s[0])+sub+'</li>';
-    }).join('');
+    const kids=item[1]||[];
     return '<li class="level1" data-ch="'+i+'"><span class="ch-t">'+esc(item[0])+'</span>'
-      +(inner?'<ul>'+inner+'</ul>':'')+'</li>';
+      +(kids.length?'<ul>'+kids.map(function(c){ return nodeHtml(c,1); }).join('')+'</ul>':'')
+      +'</li>';
   }).join('');
 }
 function toggleAll(open){
@@ -746,21 +751,23 @@ function recalcStats(){
   document.getElementById("emptyHint").style.display=total?'none':'block';
   tableBody.querySelectorAll("tr").forEach(paintWeak);
 }
+/* 深度优先收集叶子节点（最深一级），cb(名称, 从章起的完整路径数组) */
+function walkLeaves(nodes,cb,path){
+  (nodes||[]).forEach(function(n){
+    const p=(path||[]).concat([n[0]]);
+    const kids=n[1]||[];
+    if(!kids.length) cb(n[0],p); else walkLeaves(kids,cb,p);
+  });
+}
 /* 知识树 → 扁平知识点：[章简称, 知识点(取最深一级), 考纲等级] */
 function treePoints(){
   const out=[];
   TREE.forEach(function(item){
     const chShort=item[0].split('【')[0].trim();
     const lv=levelOfChapter(item[0]);
-    (item[1]||[]).forEach(function(s){
-      const subs=s[1]||[];
-      if(!subs.length){ out.push([chShort,s[0],lv]); return; }
-      subs.forEach(function(t3){
-        const t4=t3[1]||[];
-        if(!t4.length){ out.push([chShort,t3[0],lv]); return; }
-        t4.forEach(function(x){ out.push([chShort,x,lv]); });
-      });
-    });
+    const kids=item[1]||[];
+    if(!kids.length) return;          /* 章下为空则不产出条目 */
+    walkLeaves(kids,function(name){ out.push([chShort,name,lv]); },[chShort]);
   });
   return out;
 }
@@ -991,88 +998,84 @@ function getTplMode(kind){
 }
 
 /* ---------- 知识树模板 ---------- */
-const TREE_HEAD=['章','节','三级标题','四级标题'];
+const TREE_HEAD=TREE_LV.slice();          /* 章 / 节 / 一级 / 二级 / 三级 / 四级 */
+/* 递归展开为 TREE_DEPTH 列：每个叶子节点输出一行，祖先层级填在对应列 */
 function treeRows(){
   const rows=[TREE_HEAD.slice()];
-  TREE.forEach(function(item){
-    const ch=item[0];
-    (item[1]||[]).forEach(function(s){
-      const sec=s[0], subs=s[1]||[];
-      if(!subs.length){ rows.push([ch,sec,'','']); return; }
-      subs.forEach(function(t3){
-        const t4=t3[1]||[];
-        if(!t4.length){ rows.push([ch,sec,t3[0],'']); return; }
-        t4.forEach(function(x){ rows.push([ch,sec,t3[0],x]); });
-      });
+  const path=[];
+  function pushRow(){
+    const row=[];
+    for(let i=0;i<TREE_DEPTH;i++) row.push(path[i]||'');
+    rows.push(row);
+  }
+  function walk(nodes,depth){
+    (nodes||[]).forEach(function(n){
+      path[depth]=n[0];
+      const kids=n[1]||[];
+      if(!kids.length) pushRow(); else walk(kids,depth+1);
+      path.length=depth;
     });
+  }
+  TREE.forEach(function(item){
+    path[0]=item[0];
+    const kids=item[1]||[];
+    if(!kids.length){ path.length=1; pushRow(); } else walk(kids,1);
   });
+  path.length=0;
   return rows;
 }
 const TREE_BLANK=[TREE_HEAD.slice(),
-  ['第X章 示例章','X.1 示例节','X.1.1 三级标题',''],
-  ['第X章 示例章','X.1 示例节','X.1.2 三级标题','四级细目'],
-  ['第X章 示例章','X.2 另一节','','']];
+  ['第X章 示例章','X.1 示例节','一、一级标题','（一）二级标题','1. 三级标题','（1）四级细目'],
+  ['第X章 示例章','X.1 示例节','一、一级标题','（一）二级标题','2. 三级标题',''],
+  ['第X章 示例章','X.2 另一节','','','','']];
 function exportTreeTpl(){ exportXlsx(treeRows(),'CPA知识树模板_'+stamp(),'知识树'); }
 function exportTreeBlank(){ exportXlsx(TREE_BLANK,'CPA知识树模板_空白_'+stamp(),'知识树'); }
 function exportTreeTplCsv(){ dl('CPA知识树模板_'+stamp()+'.csv', toCSV(treeRows())); toast('CSV 已导出'); }
-/* 行 → 层级：同一章/节在多行重复出现会自动归并 */
+/* 行 → 层级：逐级下沉，同一上级在多行重复出现会自动归并；
+   某列为空即停止下沉（其后的列忽略），因此可只填前几级 */
 function treeFromRows(rows){
-  const order=[], map=new Map();
-  rows.forEach(function(r){
-    const ch=String(r[0]||'').trim(); if(!ch) return;
-    const sec=String(r[1]||'').trim();
-    const t3=String(r[2]||'').trim();
-    const t4=String(r[3]||'').trim();
-    if(!map.has(ch)){ map.set(ch,new Map()); order.push(ch); }
-    const sm=map.get(ch);
-    if(sec && !sm.has(sec)) sm.set(sec,new Map());
-    if(sec && t3){
-      const tm=sm.get(sec);
-      if(!tm.has(t3)) tm.set(t3,[]);
-      if(t4 && tm.get(t3).indexOf(t4)<0) tm.get(t3).push(t4);
+  const holder={kids:new Map()};
+  (rows||[]).forEach(function(r){
+    if(!r) return;
+    const ch=String(r[0]==null?'':r[0]).trim();
+    if(!ch) return;
+    let cur=holder;
+    for(let d=0;d<TREE_DEPTH;d++){
+      const nm=String(r[d]==null?'':r[d]).trim();
+      if(!nm) break;
+      if(!cur.kids.has(nm)) cur.kids.set(nm,{kids:new Map()});
+      cur=cur.kids.get(nm);
     }
   });
-  return normalizeTree(order.map(function(ch){
-    const secs=[];
-    map.get(ch).forEach(function(tm,secName){
-      const subs=[];
-      tm.forEach(function(t4s,t3Name){ subs.push([t3Name,t4s]); });
-      secs.push([secName,subs]);
-    });
-    return [ch,secs];
-  }));
+  function toArr(h){
+    const out=[];
+    h.kids.forEach(function(v,k){ out.push([k,toArr(v)]); });
+    return out;
+  }
+  return normalizeTree(toArr(holder));
+}
+/* 递归深拷贝：章→节→一级…任意深度 */
+function cloneNode(n){ return [n[0], (n[1]||[]).map(cloneNode)]; }
+/* 把 src 的子孙并入 dst（同名节点递归合并） */
+function mergeNode(dst,src){
+  if(!dst[1]) dst[1]=[];
+  const idx=new Map();
+  dst[1].forEach(function(c,i){ if(!idx.has(c[0])) idx.set(c[0],i); });
+  (src[1]||[]).forEach(function(c){
+    if(!idx.has(c[0])){ dst[1].push(cloneNode(c)); idx.set(c[0],dst[1].length-1); return; }
+    mergeNode(dst[1][idx.get(c[0])], c);
+  });
 }
 function mergeTree(base,add){
   const map=new Map();
-  base.forEach(function(item){
-    map.set(item[0], new Map((item[1]||[]).map(function(s){
-      return [s[0], new Map((s[1]||[]).map(function(t){ return [t[0],(t[1]||[]).slice()]; }))];
-    })));
-  });
-  add.forEach(function(item){
-    if(!map.has(item[0])) map.set(item[0], new Map());
-    const sm=map.get(item[0]);
-    (item[1]||[]).forEach(function(s){
-      if(!sm.has(s[0])) sm.set(s[0], new Map());
-      const tm=sm.get(s[0]);
-      (s[1]||[]).forEach(function(t){
-        if(!tm.has(t[0])){ tm.set(t[0],(t[1]||[]).slice()); return; }
-        const arr=tm.get(t[0]);
-        (t[1]||[]).forEach(function(x){ if(arr.indexOf(x)<0) arr.push(x); });
-      });
-    });
+  (base||[]).forEach(function(n){ if(!map.has(n[0])) map.set(n[0],cloneNode(n)); });
+  (add||[]).forEach(function(n){
+    if(!map.has(n[0])){ map.set(n[0],cloneNode(n)); return; }
+    mergeNode(map.get(n[0]), n);
   });
   const out=[];
-  map.forEach(function(sm,ch){
-    const secs=[];
-    sm.forEach(function(tm,secName){
-      const subs=[];
-      tm.forEach(function(t4s,t3Name){ subs.push([t3Name,t4s]); });
-      secs.push([secName,subs]);
-    });
-    out.push([ch,secs]);
-  });
-  return out;
+  map.forEach(function(v){ out.push(v); });
+  return normalizeTree(out);
 }
 /* ---------- 读取：xlsx / csv / tsv 通用 ---------- */
 function inflateRaw(u8){
