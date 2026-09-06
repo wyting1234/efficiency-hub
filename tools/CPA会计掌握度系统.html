@@ -97,6 +97,27 @@ textarea{resize:vertical;line-height:1.6}
 .tree-tools input{flex:1;min-width:180px}
 .tree-hit{background:var(--amber);color:#fff;border-radius:4px;padding:0 3px}
 
+/* 知识树：单击编辑 / 增删 / 调序 */
+.kids.hide{display:none}
+.nrow{display:flex;align-items:center;gap:3px}
+.caret{flex:0 0 18px;width:18px;height:18px;padding:0;border:0;background:none;
+  color:var(--ink-mute);font-size:11px;line-height:18px;cursor:pointer;
+  transition:transform .15s var(--e);transform:rotate(0deg)}
+.caret.open{transform:rotate(90deg);color:var(--umber)}
+.caret.ph{display:inline-block}
+.node-t{cursor:text;padding:1px 5px;border-radius:5px;border:1px dashed transparent}
+.node-t:hover{background:rgba(176,138,74,.13);border-color:var(--clay)}
+.node-edit{width:100%;min-width:130px;font:inherit;color:var(--cocoa);
+  padding:1px 5px;border:1px solid var(--umber);border-radius:5px;background:#fff;outline:none}
+.nact{display:inline-flex;gap:2px;margin-left:6px;opacity:0;transition:opacity .15s var(--e)}
+.tree li:hover > .nrow > .nact{opacity:1}
+.nact button{border:1px solid var(--line);background:rgba(255,255,255,.75);color:var(--ink-soft);
+  font-size:11px;line-height:1;padding:3px 5px;border-radius:5px;cursor:pointer;font-family:var(--sans)}
+.nact button:hover{background:var(--amber);color:#fff;border-color:var(--amber)}
+.nact button.del:hover{background:var(--crimson);border-color:var(--crimson)}
+@media(hover:none){.nact{opacity:1}}
+@media(max-width:640px){.nact{opacity:1}.nact button{padding:5px 7px;font-size:12px}}
+
 /* 模板中心 */
 .tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .tpl-box{background:var(--sand);border:1px solid var(--line-soft);border-radius:var(--r-sm);padding:14px}
@@ -173,10 +194,13 @@ textarea{resize:vertical;line-height:1.6}
       <button class="btn ghost" onclick="exportTreeTpl()">⬇ 模板导出</button>
       <button class="btn ghost" onclick="document.getElementById('treeCsv').click()">⬆ 模板导入</button>
       <button class="btn ghost" onclick="resetTree()" title="恢复内置 30 章默认知识树">↺ 恢复默认</button>
+      <button class="btn" onclick="addChapter()" title="在末尾新增一章并立即进入编辑">＋ 新增章</button>
       <button class="btn" onclick="syncFromWorkbench()" title="直接读取备考学习工作台已录入的科目 / 章 / 节，生成知识树">⇄ 从工作台同步</button>
       <input type="file" id="treeCsv" accept=".xlsx,.csv,.txt" style="display:none" onchange="importTreeFile(this,'merge')">
     </div>
-    <div class="tpl-note">六级知识体系：<b>章 / 节 / 一级 / 二级 / 三级 / 四级</b>（对应教材目录的 第X章 → 第X节 → 一、→（一）→ 1. →（1））。在 Excel 里按目录逐级填写后导入即可；只填前几级也行，空列之后的层级会自动忽略。若目录已在<b>备考学习工作台</b>里录过，直接点<b>「⇄ 从工作台同步」</b>即可一键生成。</div>
+    <div class="tpl-note">六级知识体系：<b>章 / 节 / 一级 / 二级 / 三级 / 四级</b>（对应教材目录的 第X章 → 第X节 → 一、→（一）→ 1. →（1））。
+      <b>单击任意节点名称即可直接改名</b>；悬停节点右侧出现 <b>＋加下级 / ✎改名 / ↑↓调序 / ✕删除</b>；点左侧 <b>▸</b> 展开折叠。
+      批量录入仍推荐用 Excel 模板：只填前几级也行，空列之后的层级会自动忽略。若目录已在<b>备考学习工作台</b>里录过，直接点<b>「⇄ 从工作台同步」</b>即可一键生成。</div>
     <ul class="tree" id="treeRoot"></ul>
   </div>
 </div>
@@ -564,75 +588,217 @@ tabList.forEach(tab=>{
 });
 
 /* ================= 知识树渲染 ================= */
+/* 展开状态：存已展开节点的路径（"0" / "0.2.1"），重建后自动恢复，编辑时不丢失折叠位置 */
+let EXP=new Set();
+function pathStr(p){ return (p||[]).join('.'); }
+function pathArr(s){ return String(s||'').split('.').filter(function(x){ return x!==''; }).map(Number); }
+/* 取该路径所属的同级数组：章级返回 TREE，其余返回父节点的 kids */
+function parentListOf(p){
+  if(!p.length) return null;
+  let list=TREE;
+  for(let i=0;i<p.length-1;i++){
+    const n=list[p[i]]; if(!n) return null;
+    list=n[1]||[];
+  }
+  return list;
+}
+function nodeAt(p){
+  const list=parentListOf(p);
+  const n=list?list[p[p.length-1]]:null;
+  return n||null;
+}
+function countNodes(n){ return 1+(n[1]||[]).reduce(function(a,c){ return a+countNodes(c); },0); }
+
+/* 递归渲染：每个节点带 data-p 路径，支持改名 / 加下级 / 删除 / 上下调序 */
 function buildTree(){
   const root=document.getElementById('treeRoot');
   if(!root) return;
-  /* 递归渲染，depth 0=章 … 5=四级；层级数由 TREE_DEPTH 决定 */
-  function nodeHtml(node,depth){
+  function nodeHtml(node,depth,path){
     const cls='level'+Math.min(depth+1,TREE_DEPTH);
+    const p=pathStr(path);
     const kids=node[1]||[];
-    if(!kids.length) return '<li class="'+cls+'">'+esc(node[0])+'</li>';
-    return '<li class="'+cls+'">'+esc(node[0])
-      +'<ul>'+kids.map(function(c){ return nodeHtml(c,depth+1); }).join('')+'</ul></li>';
+    const hasKids=kids.length>0;
+    const open=EXP.has(p);
+    const caret=hasKids
+      ? '<button class="caret'+(open?' open':'')+'" onclick="toggleNode(\''+p+'\')" title="展开 / 折叠">▸</button>'
+      : '<span class="caret ph"></span>';
+    const lvName=TREE_LV[depth+1]||'下级';
+    const act='<span class="nact">'
+      +(depth+1<TREE_DEPTH
+        ? '<button onclick="addChildNode(\''+p+'\')" title="在此添加'+lvName+'">＋</button>'
+        : '')
+      +'<button onclick="editNode(\''+p+'\')" title="改名（也可直接单击名称）">✎</button>'
+      +'<button onclick="moveNode(\''+p+'\',-1)" title="上移">↑</button>'
+      +'<button onclick="moveNode(\''+p+'\',1)" title="下移">↓</button>'
+      +'<button class="del" onclick="delNode(\''+p+'\')" title="删除">✕</button>'
+      +'</span>';
+    const inner='<span class="nrow">'+caret
+      +'<span class="node-t" onclick="editNode(\''+p+'\')" title="单击即可编辑">'+esc(node[0])+'</span>'
+      +act+'</span>';
+    if(!hasKids) return '<li class="'+cls+' node" data-p="'+p+'">'+inner+'</li>';
+    return '<li class="'+cls+' node" data-p="'+p+'">'+inner
+      +'<ul class="kids'+(open?'':' hide')+'">'
+      +kids.map(function(c,i){ return nodeHtml(c,depth+1,path.concat([i])); }).join('')
+      +'</ul></li>';
   }
-  root.innerHTML=TREE.map(function(item,i){
-    const kids=item[1]||[];
-    return '<li class="level1" data-ch="'+i+'"><span class="ch-t">'+esc(item[0])+'</span>'
-      +(kids.length?'<ul>'+kids.map(function(c){ return nodeHtml(c,1); }).join('')+'</ul>':'')
-      +'</li>';
-  }).join('');
+  root.innerHTML=TREE.map(function(item,i){ return nodeHtml(item,0,[i]); }).join('');
+}
+function toggleNode(p){
+  if(EXP.has(p)) EXP.delete(p); else EXP.add(p);
+  buildTree(); notifyHeight();
 }
 function toggleAll(open){
-  document.querySelectorAll('#treeRoot li').forEach(li=>li.style.display='');
-  document.querySelectorAll('#treeRoot ul').forEach(u=>u.style.display='');
-  if(!open) document.querySelectorAll('#treeRoot li.level1 > ul').forEach(u=>u.style.display='none');
+  EXP=new Set();
+  if(open){
+    (function walk(nodes,path){
+      (nodes||[]).forEach(function(n,i){
+        const p=path.concat([i]);
+        if((n[1]||[]).length){ EXP.add(pathStr(p)); walk(n[1],p); }
+      });
+    })(TREE,[]);
+  }
+  buildTree(); notifyHeight();
+}
+
+/* ---------- 单击编辑 / 新增 / 删除 / 调序 ---------- */
+function editNode(p){
+  const li=document.querySelector('#treeRoot li[data-p="'+p+'"]');
+  if(!li) return;
+  const row=li.firstElementChild;
+  const span=row&&row.querySelector('.node-t');
+  if(!span||span.querySelector('input')) return;
+  const old=span.textContent;
+  const inp=document.createElement('input');
+  inp.className='node-edit';
+  inp.value=old;
+  span.textContent='';
+  span.appendChild(inp);
+  inp.focus(); inp.select();
+  let done=false;
+  const finish=function(ok){
+    if(done) return; done=true;
+    const v=inp.value.trim();
+    span.textContent=v;
+    if(ok&&v&&v!==old){
+      const n=nodeAt(pathArr(p));
+      if(n){ n[0]=v; saveTree(); toast('已改名'); }
+    }
+    buildTree(); notifyHeight();
+  };
+  inp.addEventListener('keydown',function(e){
+    e.stopPropagation();
+    if(e.key==='Enter'){ e.preventDefault(); finish(true); }
+    else if(e.key==='Escape'){ e.preventDefault(); span.textContent=old; done=true; buildTree(); notifyHeight(); }
+  });
+  inp.addEventListener('blur',function(){ finish(true); });
+  inp.addEventListener('click',function(e){ e.stopPropagation(); });
   notifyHeight();
 }
+/* 新增：定位到新节点并立即进入编辑 */
+function focusAndEdit(p){
+  buildTree();
+  const li=document.querySelector('#treeRoot li[data-p="'+p+'"]');
+  if(li&&li.scrollIntoView) li.scrollIntoView({block:'nearest'});
+  editNode(p);
+  notifyHeight();
+}
+function addChapter(){
+  TREE.push(['新章标题',[]]);
+  const p=String(TREE.length-1);
+  EXP.add(p);
+  saveTree();
+  focusAndEdit(p);
+}
+function addChildNode(p){
+  const arr=pathArr(p);
+  const n=nodeAt(arr);
+  if(!n) return;
+  const depth=arr.length-1;
+  if(depth+1>=TREE_DEPTH){ toast('已是最深一级（'+TREE_LV[TREE_DEPTH-1]+'），不能再加下级'); return; }
+  if(!n[1]) n[1]=[];
+  n[1].push(['新'+(TREE_LV[depth+1]||'下级')+'标题',[]]);
+  EXP.add(p);
+  saveTree();
+  focusAndEdit(p+'.'+(n[1].length-1));
+}
+function delNode(p){
+  const arr=pathArr(p);
+  const list=parentListOf(arr);
+  const n=list&&list[arr[arr.length-1]];
+  if(!n) return;
+  const kids=(n[1]||[]).length;
+  const msg='确定删除「'+n[0]+'」？'
+    +(kids?('\n含 '+kids+' 个直接下级，共 '+countNodes(n)+' 个节点将一并删除。'):'')
+    +'\n\n该操作无法撤销（可用「↺ 恢复默认」还原内置目录，但自定义改动会丢失）。';
+  if(!confirm(msg)) return;
+  list.splice(arr[arr.length-1],1);
+  saveTree(); buildTree(); notifyHeight();
+  toast('已删除「'+n[0]+'」');
+}
+function moveNode(p,dir){
+  const arr=pathArr(p);
+  const list=parentListOf(arr);
+  if(!list) return;
+  const i=arr[arr.length-1], j=i+dir;
+  if(j<0||j>=list.length) return;
+  const pre=pathStr(arr.slice(0,-1));
+  const pi=pre?pre+'.'+i:String(i);
+  const pj=pre?pre+'.'+j:String(j);
+  const ei=EXP.has(pi), ej=EXP.has(pj);
+  const t=list[i]; list[i]=list[j]; list[j]=t;
+  EXP.delete(pi); EXP.delete(pj);
+  if(ej) EXP.add(pi);
+  if(ei) EXP.add(pj);
+  saveTree(); buildTree(); notifyHeight();
+}
+
 function ownText(li){
-  return [...li.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('');
+  const row=li.firstElementChild;
+  const t=row&&row.querySelector('.node-t');
+  return t?t.textContent:'';
 }
 function searchTree(kw){
   kw=(kw||'').trim();
   const root=document.getElementById('treeRoot');
-  // 清除上一次的高亮
-  root.querySelectorAll('.tree-hit').forEach(s=>{
+  if(!root) return;
+  root.querySelectorAll('.tree-hit').forEach(function(s){
     const p=s.parentNode;
     p.replaceChild(document.createTextNode(s.textContent),s);
     p.normalize();
   });
-  document.querySelectorAll('#treeRoot li, #treeRoot ul').forEach(el=>el.style.display='');
-  if(!kw){
-    document.querySelectorAll('#treeRoot > li.level1 > ul').forEach(u=>u.style.display='none');
-    notifyHeight(); return;
-  }
+  root.querySelectorAll('li').forEach(function(li){ li.style.display=''; });
+  root.querySelectorAll('ul.kids').forEach(function(u){
+    const owner=u.parentElement&&u.parentElement.getAttribute('data-p');
+    u.classList.toggle('hide', !EXP.has(owner));
+  });
+  if(!kw){ notifyHeight(); return; }
   const lower=kw.toLowerCase();
-  const all=[...root.querySelectorAll('li')];
-  const hitMap=new Map();
-  // 自底向上判断：命中 = 自身文本匹配 或 任一后代命中
-  [...all].reverse().forEach(li=>{
-    const self=ownText(li).toLowerCase().includes(lower);
-    const child=[...li.children].filter(c=>c.tagName==='UL'||c.tagName==='LI')
-      .some(c=>hitMap.get(c)===true || [...c.querySelectorAll('li')].some(x=>hitMap.get(x)===true));
-    hitMap.set(li, self||child);
+  const all=[].slice.call(root.querySelectorAll('li'));
+  const hit=new Map();
+  [].slice.call(all).reverse().forEach(function(li){
+    const self=ownText(li).toLowerCase().indexOf(lower)>=0;
+    const child=[].slice.call(li.children).some(function(c){
+      if(c.tagName!=='UL') return false;
+      return [].slice.call(c.children).some(function(x){ return hit.get(x)===true; });
+    });
+    hit.set(li, self||child);
   });
   let any=false;
-  all.forEach(li=>{
-    const show=hitMap.get(li)===true;
-    if(show){
-      any=true;
-      li.style.display='';
-      if(li.parentElement&&li.parentElement.tagName==='UL') li.parentElement.style.display='';
-      // 高亮自身文本中的关键词
-      const txtNode=[...li.childNodes].filter(n=>n.nodeType===3&&n.textContent.trim())[0];
-      if(txtNode&&txtNode.textContent.toLowerCase().includes(lower)){
-        const frag=document.createElement('span');
-        frag.innerHTML=esc(txtNode.textContent).replace(
-          new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),
-          m=>'<span class="tree-hit">'+m+'</span>');
-        li.replaceChild(frag,txtNode);
-      }
-    }else{
-      li.style.display='none';
+  all.forEach(function(li){
+    const show=hit.get(li)===true;
+    li.style.display=show?'':'none';
+    if(!show) return;
+    any=true;
+    const u=li.parentElement;
+    if(u&&u.tagName==='UL') u.classList.remove('hide');
+    const t=li.firstElementChild&&li.firstElementChild.querySelector('.node-t');
+    if(t&&!t.querySelector('input')&&t.textContent.toLowerCase().indexOf(lower)>=0){
+      const frag=document.createElement('span');
+      frag.innerHTML=esc(t.textContent).replace(
+        new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),
+        function(m){ return '<span class="tree-hit">'+m+'</span>'; });
+      t.textContent='';
+      t.appendChild(frag);
     }
   });
   notifyHeight();
