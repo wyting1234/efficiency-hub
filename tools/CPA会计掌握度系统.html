@@ -148,6 +148,32 @@ textarea{resize:vertical;line-height:1.6}
 .req-map th{background:var(--clay);color:var(--cocoa)}
 .req-map td:first-child{font-family:var(--serif);color:var(--cocoa)}
 
+/* 显示项（列 / 层级）选择器 */
+.colwrap{position:relative;display:inline-flex}
+.colpanel{position:absolute;top:calc(100% + 6px);left:0;z-index:60;min-width:186px;max-width:min(260px,calc(100vw - 48px));
+  background:var(--cream);border:1px solid var(--line);border-radius:var(--r-sm);
+  box-shadow:var(--sh-2);padding:9px;display:none}
+.colpanel.open{display:block}
+.colpanel .cp-t{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;
+  color:var(--ink-mute);padding:2px 6px 6px}
+.colpanel label{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;
+  font-size:13.5px;color:var(--ink-soft);cursor:pointer;white-space:nowrap;transition:background .14s var(--e)}
+.colpanel label:hover{background:var(--sand)}
+.colpanel label.dis{color:var(--ink-mute);opacity:.55;cursor:default}
+.colpanel label.dis:hover{background:none}
+.colpanel input{width:15px;height:15px;accent-color:var(--umber);margin:0;flex:0 0 15px}
+.colpanel .cp-note{font-size:11.5px;color:var(--ink-mute);padding:2px 6px 6px;line-height:1.6}
+.colpanel .cp-f{display:flex;gap:6px;border-top:1px solid var(--line-soft);margin-top:7px;padding-top:8px}
+.colpanel .cp-f button{flex:1;font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid var(--clay);
+  background:transparent;color:var(--umber);cursor:pointer;font-family:var(--sans);transition:all .14s var(--e)}
+.colpanel .cp-f button:hover{background:var(--sand);color:var(--umber-d)}
+/* 台账列隐藏：table 上挂 h-<列名> 即可整列（表头 + 所有行）消失，新增行无需重新应用 */
+#scoreTable.h-chapter [data-col="chapter"],#scoreTable.h-point [data-col="point"],
+#scoreTable.h-level [data-col="level"],#scoreTable.h-req [data-col="req"],
+#scoreTable.h-frame [data-col="frame"],#scoreTable.h-exam [data-col="exam"],
+#scoreTable.h-final [data-col="final"],#scoreTable.h-note [data-col="note"],
+#scoreTable.h-del [data-col="del"]{display:none}
+
 .note{background:var(--sand);border-left:3px solid var(--amber);padding:10px 14px;border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:13px;color:var(--ink-soft);margin:10px 0}
 
 @media(max-width:800px){
@@ -208,6 +234,7 @@ textarea{resize:vertical;line-height:1.6}
       <span class="sep"></span>
       <button class="btn ghost" onclick="toggleAll(true)">全部展开</button>
       <button class="btn ghost" onclick="toggleAll(false)">全部折叠</button>
+      <span class="colwrap" id="vw-tree"></span>
       <span class="sep"></span>
       <button class="btn" onclick="addChapter()" title="在末尾新增一章并立即进入编辑">＋ 新增章</button>
       <button class="btn" onclick="syncFromWorkbench()" title="直接读取备考学习工作台已录入的科目 / 章 / 节，生成知识树">⇄ 从工作台同步</button>
@@ -236,6 +263,7 @@ textarea{resize:vertical;line-height:1.6}
       <button class="btn ghost" onclick="exportScoreTpl()">⬇ 模板导出</button>
       <button class="btn ghost" onclick="document.getElementById('scoreCsv').click()">⬆ 模板导入</button>
       <button class="btn ghost" onclick="recalcStats()">📊 重新统计</button>
+      <span class="colwrap" id="vw-score"></span>
       <input type="file" id="scoreCsv" accept=".xlsx,.csv,.txt" style="display:none" onchange="importScoreFile(this,'merge')">
     </div>
     <div class="tpl-note">模板列含 <b>考纲等级</b> 与 <b>能力要求</b>：先在 Excel 里按考纲填好各章节的能力要求，再逐轮回填框架自检分 / 做题实测分，用于检测与复查。</div>
@@ -243,15 +271,15 @@ textarea{resize:vertical;line-height:1.6}
       <table id="scoreTable">
         <thead>
           <tr>
-            <th style="min-width:120px">章节</th>
-            <th style="min-width:200px">四级细知识点</th>
-            <th style="width:90px">考纲等级</th>
-            <th style="width:104px">能力要求</th>
-            <th style="width:96px">框架自检 0‑5</th>
-            <th style="width:96px">做题实测 0‑5</th>
-            <th style="width:86px">最终得分</th>
-            <th style="min-width:160px">漏洞备注</th>
-            <th style="width:60px">删除</th>
+            <th style="min-width:120px" data-col="chapter">章节</th>
+            <th style="min-width:200px" data-col="point">四级细知识点</th>
+            <th style="width:90px" data-col="level">考纲等级</th>
+            <th style="width:104px" data-col="req">能力要求</th>
+            <th style="width:96px" data-col="frame">框架自检 0‑5</th>
+            <th style="width:96px" data-col="exam">做题实测 0‑5</th>
+            <th style="width:86px" data-col="final">最终得分</th>
+            <th style="min-width:160px" data-col="note">漏洞备注</th>
+            <th style="width:60px" data-col="del">删除</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -603,6 +631,7 @@ tabList.forEach(tab=>{
     contentList.forEach(c=>c.classList.remove("active"));
     tab.classList.add("active");
     document.getElementById(tab.dataset.tab).classList.add("active");
+    if(typeof closeViewPanels==='function') closeViewPanels();   /* 切页签时收起显示项面板 */
     notifyHeight();
   }
 });
@@ -629,6 +658,107 @@ function setEditMode(on,silent){
   notifyHeight();
 }
 function toggleEditMode(){ setEditMode(!EDIT_MODE); }
+
+/* ================= 显示项（台账列 / 知识树层级） ================= */
+/* 只存「隐藏集合」：以后新增列默认显示，历史偏好不会把新列吞掉；必显项（req）不可隐藏 */
+const VIEW_DEFS={
+  score:{key:'cpaScoreCols_v1',btn:'▦ 显示列',title:'选择要显示的列',
+    note:'仅影响页面查看；导出模板、统计与保存仍按全部数据。',
+    cols:[
+      ['chapter','章节',1],['point','四级细知识点',1],['level','考纲等级'],['req','能力要求'],
+      ['frame','框架自检 0‑5'],['exam','做题实测 0‑5'],['final','最终得分'],
+      ['note','漏洞备注'],['del','删除']
+    ]},
+  tree:{key:'cpaTreeLv_v1',btn:'▦ 显示层级',title:'选择要显示的层级',
+    note:'未勾选的层级整层隐藏（含其所有下级）；仅影响查看，不影响数据与导出。',
+    cols:[['lv1','章',1],['lv2','节'],['lv3','一级'],['lv4','二级'],['lv5','三级'],['lv6','四级']]}
+};
+const VIEW_HIDDEN={score:[],tree:[]};
+let LV_ON=[true,true,true,true,true,true];   /* 各层级是否显示，buildTree 用 */
+function loadView(k){
+  const d=VIEW_DEFS[k];
+  let arr=[];
+  try{ arr=JSON.parse(localStorage.getItem(d.key)||'[]'); }catch(e){}
+  if(!Array.isArray(arr)) arr=[];
+  /* 必显项即使被旧数据误存也要剔除 */
+  VIEW_HIDDEN[k]=arr.filter(function(x){
+    return !d.cols.some(function(c){ return c[0]===x&&c[2]; });
+  });
+}
+function viewOn(k,key){ return VIEW_HIDDEN[k].indexOf(key)<0; }
+function viewShown(k){
+  return VIEW_DEFS[k].cols.filter(function(c){ return viewOn(k,c[0]); }).length;
+}
+function saveView(k){ try{ localStorage.setItem(VIEW_DEFS[k].key,JSON.stringify(VIEW_HIDDEN[k])); }catch(e){} }
+function setView(k,key,on){
+  const h=VIEW_HIDDEN[k], i=h.indexOf(key);
+  if(on&&i>=0) h.splice(i,1);
+  if(!on&&i<0) h.push(key);
+  saveView(k); applyView(k); renderViewPanel(k);
+}
+function viewAll(k,on){
+  VIEW_HIDDEN[k]=on?[]:VIEW_DEFS[k].cols.filter(function(c){ return !c[2]; }).map(function(c){ return c[0]; });
+  saveView(k); applyView(k); renderViewPanel(k);
+}
+function viewReset(k){ VIEW_HIDDEN[k]=[]; saveView(k); applyView(k); renderViewPanel(k); }
+function renderViewPanel(k){
+  const d=VIEW_DEFS[k], wrap=document.getElementById('vw-'+k);
+  if(!wrap) return;
+  let h='<button class="btn ghost" onclick="toggleViewPanel(\''+k+'\')" title="'+esc(d.title)+'">'
+    +d.btn+' ('+viewShown(k)+'/'+d.cols.length+')</button>'
+    +'<div class="colpanel" id="cp-'+k+'"><div class="cp-t">'+esc(d.title)+'</div>';
+  d.cols.forEach(function(c){
+    const on=viewOn(k,c[0]);
+    h+='<label'+(c[2]?' class="dis"':'')+'><input type="checkbox" '+(on?'checked':'')
+      +(c[2]?' disabled':'')+' onchange="setView(\''+k+'\',\''+c[0]+'\',this.checked)">'
+      +esc(c[1])+(c[2]?' · 必显':'')+'</label>';
+  });
+  h+='<div class="cp-note">'+esc(d.note)+'</div>'
+    +'<div class="cp-f"><button onclick="viewAll(\''+k+'\',true)">全显</button>'
+    +'<button onclick="viewAll(\''+k+'\',false)">仅必显</button>'
+    +'<button onclick="viewReset(\''+k+'\')">默认</button></div></div>';
+  wrap.innerHTML=h;
+}
+function closeViewPanels(){
+  ['score','tree'].forEach(function(k){
+    const p=document.getElementById('cp-'+k);
+    if(p) p.classList.remove('open');
+    const w=document.getElementById('vw-'+k);
+    if(w) w.style.marginBottom='';          /* 收起后释放预留空间 */
+  });
+  notifyHeight();
+}
+function toggleViewPanel(k){
+  const p=document.getElementById('cp-'+k);
+  if(!p) return;
+  const open=!p.classList.contains('open');
+  closeViewPanels();
+  if(!open) return;
+  p.classList.add('open');
+  /* 面板是浮层、不占高度：在 iframe 里会被父窗口裁掉。
+     展开时给按钮补一段下外边距撑开所在行，父窗口高度随之自适应。 */
+  const w=document.getElementById('vw-'+k);
+  if(w&&p.offsetHeight) w.style.marginBottom=(p.offsetHeight+10)+'px';
+  notifyHeight();
+}
+function applyView(k){
+  if(k==='score'){
+    const t=document.getElementById('scoreTable');
+    if(t) VIEW_DEFS.score.cols.forEach(function(c){
+      t.classList.toggle('h-'+c[0], !viewOn('score',c[0]));
+    });
+    return;
+  }
+  LV_ON=VIEW_DEFS.tree.cols.map(function(c){ return viewOn('tree',c[0]); });
+  buildTree(); notifyHeight();
+}
+function initViews(){
+  ['score','tree'].forEach(function(k){ loadView(k); renderViewPanel(k); applyView(k); });
+}
+document.addEventListener('click',function(e){
+  if(e.target&&e.target.closest&&e.target.closest('.colwrap')) return;
+  closeViewPanels();
+});
 
 /* ================= 知识树渲染 ================= */
 /* 展开状态：存已展开节点的路径（"0" / "0.2.1"），重建后自动恢复，编辑时不丢失折叠位置 */
@@ -659,7 +789,8 @@ function buildTree(){
   function nodeHtml(node,depth,path){
     const cls='level'+Math.min(depth+1,TREE_DEPTH);
     const p=pathStr(path);
-    const kids=node[1]||[];
+    /* 层级被隐藏则整层不渲染（索引不变，编辑路径仍然稳定） */
+    const kids=(LV_ON[depth+1]&&node[1])?node[1]:[];
     const hasKids=kids.length>0;
     const open=EXP.has(p);
     const caret=hasKids
@@ -864,15 +995,15 @@ function addRow(item){
   const lv=Number(item.level)||1;
   const req=(item.req||reqOfLevel(lv)||'');
   tr.innerHTML=
-   '<td><input class="f-chapter" value="'+esc(item.chapter)+'" placeholder="第6章"></td>'
-  +'<td><input class="f-point" value="'+esc(item.point)+'" placeholder="权益法逆流交易调整"></td>'
-  +'<td><select class="f-level">'+[1,2,3].map(function(x){return '<option'+(lv===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
-  +'<td><select class="f-req">'+REQ_LIST.map(function(x){return '<option value="'+esc(x)+'"'+(req===x?' selected':'')+'>'+(x||'自动')+'</option>';}).join('')+'</select></td>'
-  +'<td><select class="f-frame">'+LEVELS.map(function(x){return '<option'+(Number(item.frame||0)===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
-  +'<td><select class="f-exam">'+LEVELS.map(function(x){return '<option'+(Number(item.exam||0)===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
-  +'<td><input class="f-final" readonly value=""></td>'
-  +'<td><textarea class="f-note" rows="1" placeholder="错在哪 / 断点在哪">'+esc(item.note)+'</textarea></td>'
-  +'<td><button class="btn danger" style="padding:5px 9px" onclick="delRow(this)">删</button></td>';
+   '<td data-col="chapter"><input class="f-chapter" value="'+esc(item.chapter)+'" placeholder="第6章"></td>'
+  +'<td data-col="point"><input class="f-point" value="'+esc(item.point)+'" placeholder="权益法逆流交易调整"></td>'
+  +'<td data-col="level"><select class="f-level">'+[1,2,3].map(function(x){return '<option'+(lv===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
+  +'<td data-col="req"><select class="f-req">'+REQ_LIST.map(function(x){return '<option value="'+esc(x)+'"'+(req===x?' selected':'')+'>'+'(x||'自动')+'</option>';}).join('')+'</select></td>'
+  +'<td data-col="frame"><select class="f-frame">'+LEVELS.map(function(x){return '<option'+(Number(item.frame||0)===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
+  +'<td data-col="exam"><select class="f-exam">'+LEVELS.map(function(x){return '<option'+(Number(item.exam||0)===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></td>'
+  +'<td data-col="final"><input class="f-final" readonly value=""></td>'
+  +'<td data-col="note"><textarea class="f-note" rows="1" placeholder="错在哪 / 断点在哪">'+esc(item.note)+'</textarea></td>'
+  +'<td data-col="del"><button class="btn danger" style="padding:5px 9px" onclick="delRow(this)">删</button></td>';
   const levelSel=tr.querySelector(".f-level");
   const reqSel=tr.querySelector(".f-req");
   const frameSel=tr.querySelector(".f-frame");
@@ -1549,6 +1680,7 @@ document.addEventListener('input',()=>{ clearTimeout(window._nh); window._nh=set
 
 /* ================= 启动 ================= */
 loadTree();          // 先读自定义知识树，读不到则用内置 30 章
+initViews();         // 恢复上次的「显示列 / 显示层级」偏好（内含首次 buildTree）
 buildTree();
 toggleAll(false);   // 默认只展开 30 个章标题，按需下钻
 setEditMode(EDIT_MODE,true); // 恢复上次的编辑图标显示状态（默认隐藏）
