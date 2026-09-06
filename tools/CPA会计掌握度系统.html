@@ -613,6 +613,44 @@ function syncFromWorkbench(){
   toast('已同步 '+TREE.length+' 章 · 当前知识树共 '+TREE.length+' 章');
 }
 
+/* 台账 → 工作台热力图回写：框架自检记到「精讲听课」，做题实测记到「章节习题」。
+   与工作台的 syncLedger 互为补充：这里在打分当下即时回写，那边在打开台账时对齐。 */
+function pushToWorkbench(silent){
+  try{
+    const KEY='wb_bk_heat';
+    let heat=[];
+    try{ heat=JSON.parse(localStorage.getItem(KEY)||'[]'); }catch(e){ heat=[]; }
+    if(!Array.isArray(heat)) heat=[];
+    let sub='';
+    try{ sub=localStorage.getItem('cpaMasterySub_v1')||''; }catch(e){}
+    const d=new Date(), p=function(n){ return String(n).padStart(2,'0'); };
+    const today=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+    const data=getData(); let ch=0;
+    data.forEach(function(r){
+      const cn=String(r.chapter||'').trim(), pt=String(r.point||'').trim();
+      if(!cn&&!pt) return;
+      const f=(r.frame===''||r.frame==null)?null:Number(r.frame);
+      const e=(r.exam===''||r.exam==null)?null:Number(r.exam);
+      if(f===null&&e===null) return;
+      let row=null;
+      for(let i=0;i<heat.length;i++){
+        const h=heat[i];
+        if(h.sub!==sub) continue;
+        if((h.chName||'')===cn&&(h.secName||'')===pt){ row=h; break; }
+      }
+      if(!row){
+        row={id:'kp'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),rid:'',
+             kind:pt?'kp':'ch',sub:sub,chNo:'',chName:cn,secNo:'',secName:pt,st:{},date:today};
+        heat.push(row);
+      }
+      if(f!==null&&row.st['精讲听课']!==f){ row.st['精讲听课']=f; ch++; }
+      if(e!==null&&row.st['章节习题']!==e){ row.st['章节习题']=e; ch++; }
+    });
+    if(ch){ localStorage.setItem(KEY,JSON.stringify(heat)); if(!silent) toast('已回写 '+ch+' 处掌握度到工作台'); }
+    return ch;
+  }catch(e){ return 0; }
+}
+
 /* ================= 工具 ================= */
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function toast(msg){
@@ -1059,10 +1097,10 @@ function fillTable(arr){
   renderFilter(); recalcStats();
 }
 function autoSave(){
-  try{ localStorage.setItem(K_SCORE,JSON.stringify(getData())); }catch(e){}
+  try{ localStorage.setItem(K_SCORE,JSON.stringify(getData())); pushToWorkbench(true); }catch(e){}
 }
 function saveData(){
-  try{ localStorage.setItem(K_SCORE,JSON.stringify(getData())); toast("已保存到本机浏览器"); }
+  try{ localStorage.setItem(K_SCORE,JSON.stringify(getData())); pushToWorkbench(true); toast("已保存到本机浏览器"); }
   catch(e){ toast("保存失败："+e.message); }
 }
 function loadData(silent){
