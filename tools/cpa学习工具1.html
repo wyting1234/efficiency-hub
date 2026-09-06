@@ -395,6 +395,65 @@
             font-weight: 500;
             margin-top: 2px;
         }
+        /* ===== 知识点（序号 + 知识点） ===== */
+        .kp-list { display: flex; flex-direction: column; gap: 8px; }
+        .kp-row { display: flex; align-items: center; gap: 8px; }
+        .kp-no {
+            flex: 0 0 auto; min-width: 28px; height: 28px; padding: 0 7px;
+            border-radius: 8px; background: var(--primary-bg); color: var(--primary-dark);
+            font-size: 12px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .kp-row .kp-input { flex: 1; min-width: 0; padding: 9px 12px; font-size: 16px; }
+        .kp-del {
+            flex: 0 0 auto; width: 32px; height: 32px; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--card-bg);
+            color: var(--text-secondary); font-size: 13px; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .kp-del:hover { background: #FEF2F2; color: var(--red); border-color: #FECACA; }
+        .kp-add {
+            align-self: flex-start; margin-top: 10px; padding: 8px 14px;
+            border-radius: var(--radius-sm); border: 1px dashed var(--primary-light);
+            background: var(--primary-bg); color: var(--primary-dark);
+            font-size: 13px; font-weight: 600;
+        }
+        .kp-add:hover { background: #E4E8FF; }
+        .kp-hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; line-height: 1.6; }
+        .kp-hint code {
+            background: var(--primary-bg); color: var(--primary-dark);
+            border-radius: 4px; padding: 1px 5px; font-size: 11.5px;
+        }
+        /* ===== 记忆曲线开关 ===== */
+        .mem-switch {
+            display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none;
+            padding: 11px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+            background: #F8FAFF; transition: background 0.15s, border-color 0.15s;
+        }
+        .mem-switch.on { border-color: var(--primary-light); background: var(--primary-bg); }
+        .mem-switch input[type="checkbox"] {
+            width: 18px; height: 18px; accent-color: var(--primary);
+            cursor: pointer; flex: 0 0 auto; margin-top: 2px;
+        }
+        .mem-switch .ms-txt { font-size: 13.5px; font-weight: 600; color: var(--text); }
+        .mem-switch .ms-sub {
+            display: block; font-size: 12px; color: var(--text-secondary);
+            font-weight: 400; margin-top: 3px; line-height: 1.55;
+        }
+        /* ===== 知识点展示（记录卡片 / 复习清单） ===== */
+        .kp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .kp-chip {
+            display: inline-block; font-size: 11.5px; background: var(--primary-bg);
+            color: var(--primary-dark); border-radius: 999px; padding: 2px 10px;
+            max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .rv-kp { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+        .rv-kp .kp-chip { background: #EEF2FF; font-size: 11px; padding: 1px 8px; }
+        .mem-tag {
+            display: inline-block; font-size: 11px; font-weight: 700; color: #fff;
+            background: var(--primary); border-radius: 999px; padding: 1px 8px;
+        }
+        .mem-tag.off { background: #CBD5E1; }
         .form-actions {
             display: flex;
             gap: 12px;
@@ -1474,6 +1533,189 @@
         .gsp-chip .v { font-size: 17px; font-weight: 700; color: var(--primary-dark); }
         .gsp-chart svg { width: 100%; height: 190px; display: block; }
         .gsp-note { font-size: 11px; color: var(--text-secondary); margin-top: 8px; }
+
+        /* ============================================================
+           输出自检工作台（移植模块）· 燕麦赭石主题
+           所有选择器以 sc- 前缀隔离，不污染宿主页面
+        ============================================================ */
+        .sc-app{
+          --sc-oat:#F2EDE4; --sc-cream:#FAF7F1; --sc-sand:#EAE2D5; --sc-clay:#D6C9B4;
+          --sc-umber:#8A7358; --sc-umber-d:#6F5C45; --sc-umber-l:#A08869; --sc-cocoa:#463A2E;
+          --sc-ink:#33291F; --sc-ink-soft:#6E6355; --sc-ink-mute:#9C9080;
+          --sc-line:#E5DCCD; --sc-line-soft:#EFE8DC;
+          --sc-crimson:#A6503C; --sc-olive:#77805C; --sc-amber:#B08A4A;
+          --sc-viz:#B5622F; --sc-viz-l:#D4884A; --sc-viz-done:#7E8C4E; --sc-viz-gold:#D4A24A; --sc-viz-track:#EADFCB;
+          --sc-paper:#FAF7F1; --sc-card:#FFFFFF;
+          --sc-primary:#8A7358; --sc-primary-ink:#6F5C45;
+          --sc-pass:#77805C; --sc-pass-bg:#EDF1E2;
+          --sc-warn:#B08A4A;  --sc-warn-bg:#F7EFDC;
+          --sc-danger:#A6503C;--sc-danger-bg:#F8E8E3;
+          --sc-shadow:0 1px 2px rgba(70,58,46,.04),0 6px 18px rgba(70,58,46,.06);
+          --sc-radius:16px; --sc-r-sm:10px;
+          --sc-serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Songti SC","Source Han Serif SC",STSong,serif;
+          --sc-sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+          font-family:var(--sc-sans);
+          color:var(--sc-ink);
+        }
+        .sc-app .sc-serif{font-family:var(--sc-serif)}
+        .sc-app .sc-chapter-progress{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--sc-ink-soft);flex-wrap:wrap}
+        .sc-app .sc-chapter-progress b{color:var(--sc-primary-ink)}
+
+        .sc-app .sc-card{background:var(--sc-card);border:1px solid var(--sc-line);border-radius:var(--sc-radius);box-shadow:var(--sc-shadow);margin-bottom:18px;overflow:hidden}
+        .sc-app .sc-card-head{padding:15px 20px;border-bottom:1px solid var(--sc-line);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:var(--sc-cream)}
+        .sc-app .sc-card-head h2{font-size:16px;font-weight:700;color:var(--sc-primary-ink);font-family:var(--sc-serif)}
+        .sc-app .sc-card-head .sc-hint{font-size:12.5px;color:var(--sc-ink-soft);font-weight:400}
+        .sc-app .sc-card-body{padding:20px}
+        @media(max-width:640px){.sc-app .sc-card-body{padding:14px}}
+
+        .sc-app .sc-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+        .sc-app .sc-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+        .sc-app .sc-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+        .sc-app .sc-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+        @media(max-width:860px){.sc-app .sc-grid-3,.sc-app .sc-grid-4,.sc-app .sc-grid-5{grid-template-columns:1fr 1fr}}
+        @media(max-width:560px){.sc-app .sc-grid-2,.sc-app .sc-grid-3,.sc-app .sc-grid-4,.sc-app .sc-grid-5{grid-template-columns:1fr}}
+
+        .sc-app .sc-field label{display:block;font-size:12.5px;font-weight:600;color:var(--sc-ink-soft);margin-bottom:5px}
+        .sc-app .sc-field input,.sc-app .sc-field select{
+          width:100%;padding:9px 11px;border:1px solid var(--sc-line);border-radius:var(--sc-r-sm);
+          font-family:inherit;font-size:16px;background:#fff;color:var(--sc-ink);transition:border .15s,box-shadow .15s;
+        }
+        @media(min-width:768px){.sc-app .sc-field input,.sc-app .sc-field select{font-size:14px}}
+        .sc-app .sc-field input:focus,.sc-app .sc-field select:focus{outline:none;border-color:var(--sc-umber);box-shadow:0 0 0 3px rgba(138,115,88,.14)}
+        .sc-app .sc-field textarea{width:100%;padding:9px 11px;border:1px solid var(--sc-line);border-radius:var(--sc-r-sm);font-family:inherit;font-size:14px;resize:vertical;color:var(--sc-ink)}
+
+        .sc-app .sc-mod-table{width:100%;border-collapse:collapse}
+        .sc-app .sc-mod-table th,.sc-app .sc-mod-table td{border:1px solid var(--sc-line);padding:9px 12px;text-align:left;vertical-align:middle}
+        .sc-app .sc-mod-table th{background:var(--sc-oat);font-size:12.5px;font-weight:600;color:var(--sc-ink-soft)}
+        .sc-app .sc-mod-table td{font-size:13.5px}
+        .sc-app .sc-mod-table .sc-num{width:110px}
+        .sc-app .sc-mod-table .sc-reason{min-width:180px}
+        .sc-app .sc-mod-table input[type=number]{width:100%;padding:7px 9px;border:1px solid var(--sc-line);border-radius:7px;font-family:inherit;font-size:16px}
+        .sc-app .sc-mod-table input.sc-reason-in,.sc-app .sc-mod-table input[type=text]{width:100%;padding:7px 9px;border:1px solid var(--sc-line);border-radius:7px;font-family:inherit;font-size:12.5px}
+        .sc-app .sc-mod-table input.sc-score-in{width:100%;padding:7px 9px;border:1px solid var(--sc-line);border-radius:7px;font-family:inherit;font-size:16px}
+        .sc-app input.sc-mod-name,.sc-app input.sc-mod-full,.sc-app input.sc-mod-ans{width:100%;padding:6px 8px;border:1px solid var(--sc-line);border-radius:6px;font-family:inherit;font-size:12.5px}
+        .sc-app .sc-mod-table textarea{width:100%;min-height:54px;padding:8px 9px;border:1px solid var(--sc-line);border-radius:7px;font-family:inherit;font-size:12.5px;resize:vertical;color:var(--sc-ink)}
+        @media(max-width:700px){.sc-app .sc-mod-table{display:block;overflow-x:auto;white-space:nowrap}}
+
+        .sc-app .sc-lvl{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;line-height:1}
+        .sc-app .sc-lvl.sc-l0{color:#8A8375;background:#F1EDE4;border:1px solid #DFD8C9}
+        .sc-app .sc-lvl.sc-l1{color:var(--sc-amber);background:var(--sc-warn-bg);border:1px solid #E5D3A8}
+        .sc-app .sc-lvl.sc-l2{color:var(--sc-crimson);background:var(--sc-danger-bg);border:1px solid #EBC6BC}
+        .sc-app .sc-lvl.sc-l3{color:var(--sc-umber);background:#EFEAE0;border:1px solid #D6C9B4}
+        .sc-app .sc-lvl.sc-l4{color:var(--sc-olive);background:var(--sc-pass-bg);border:1px solid #C6D2AB}
+
+        .sc-app .sc-answers{margin-top:14px}
+        .sc-app .sc-ans-item{border:1px solid var(--sc-line);border-radius:var(--sc-r-sm);margin-bottom:10px;overflow:hidden;background:#fff}
+        .sc-app .sc-ans-item summary{cursor:pointer;padding:10px 14px;font-size:13px;font-weight:600;color:var(--sc-primary-ink);background:var(--sc-cream);list-style:none;display:flex;align-items:center;gap:8px}
+        .sc-app .sc-ans-item summary::-webkit-details-marker{display:none}
+        .sc-app .sc-ans-item summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--sc-umber);border-bottom:2px solid var(--sc-umber);transform:rotate(45deg);transition:transform .15s;flex:none}
+        .sc-app .sc-ans-item[open] summary::before{transform:rotate(225deg)}
+        .sc-app .sc-ans-item summary .sc-sub{font-weight:400;color:var(--sc-ink-soft);font-size:12px;flex:1}
+        .sc-app .sc-ans-item .sc-ans-body{padding:12px 14px;border-top:1px solid var(--sc-line)}
+        .sc-app .sc-ans-item textarea{width:100%;min-height:80px;padding:9px 11px;border:1px solid var(--sc-line);border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;color:var(--sc-ink)}
+        .sc-app .sc-ans-item textarea:focus{outline:none;border-color:var(--sc-umber)}
+
+        .sc-app .sc-scoreband{display:flex;flex-wrap:wrap;gap:14px;align-items:stretch;margin-top:18px}
+        .sc-app .sc-scorecell{flex:1;min-width:160px;background:var(--sc-cream);border:1px solid var(--sc-line);border-radius:var(--sc-r-sm);padding:14px 16px}
+        .sc-app .sc-scorecell .sc-lab{font-size:12px;color:var(--sc-ink-soft);font-weight:600}
+        .sc-app .sc-scorecell .sc-val{font-size:26px;font-weight:700;color:var(--sc-primary-ink);margin-top:2px;font-family:var(--sc-serif)}
+        .sc-app .sc-scorecell .sc-val small{font-size:14px;font-weight:500;color:var(--sc-ink-soft)}
+        .sc-app .sc-scorecell .sc-meta{font-size:12px;color:var(--sc-ink-soft);margin-top:2px}
+        .sc-app .sc-seal{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:7px;font-size:13px;font-weight:700;letter-spacing:1px}
+        .sc-app .sc-seal.sc-pass{color:var(--sc-olive);background:var(--sc-pass-bg);border:1px solid #C6D2AB}
+        .sc-app .sc-seal.sc-warn{color:var(--sc-amber);background:var(--sc-warn-bg);border:1px solid #E5D3A8}
+        .sc-app .sc-seal.sc-danger{color:var(--sc-crimson);background:var(--sc-danger-bg);border:1px solid #EBC6BC}
+
+        .sc-app .sc-btn-group{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+        .sc-app .sc-btn{
+          appearance:none;border:1px solid transparent;cursor:pointer;font-family:inherit;
+          padding:10px 18px;border-radius:9px;font-size:14px;font-weight:600;
+          display:inline-flex;align-items:center;gap:8px;transition:filter .15s,transform .05s;
+          min-height:40px;
+        }
+        .sc-app .sc-btn:active{transform:translateY(1px)}
+        .sc-app .sc-btn.sc-primary{background:var(--sc-umber);color:#fff}
+        .sc-app .sc-btn.sc-primary:hover{filter:brightness(1.08)}
+        .sc-app .sc-btn.sc-ink{background:var(--sc-primary-ink);color:#fff}
+        .sc-app .sc-btn.sc-ink:hover{filter:brightness(1.15)}
+        .sc-app .sc-btn.sc-ghost{background:#fff;color:var(--sc-ink-soft);border-color:var(--sc-line)}
+        .sc-app .sc-btn.sc-ghost:hover{color:var(--sc-umber);border-color:var(--sc-umber)}
+        .sc-app .sc-btn.sc-pass-btn{background:var(--sc-olive);color:#fff}
+        .sc-app .sc-btn.sc-pass-btn:hover{filter:brightness(1.08)}
+        .sc-app .sc-btn.sc-danger-btn{background:#fff;color:var(--sc-crimson);border-color:#EBC6BC}
+        .sc-app .sc-btn.sc-danger-btn:hover{background:var(--sc-danger-bg)}
+        .sc-app .sc-btn.sc-sm{padding:6px 11px;font-size:12px;border-radius:7px;min-height:32px}
+
+        .sc-app .sc-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+        @media(max-width:760px){.sc-app .sc-stat-grid{grid-template-columns:repeat(2,1fr)}}
+        .sc-app .sc-stat-card{background:var(--sc-card);border:1px solid var(--sc-line);border-radius:11px;padding:16px;box-shadow:var(--sc-shadow)}
+        .sc-app .sc-stat-card .sc-v{font-size:30px;font-weight:700;color:var(--sc-primary-ink);font-family:var(--sc-serif)}
+        .sc-app .sc-stat-card .sc-v.sc-sm{font-size:22px}
+        .sc-app .sc-stat-card .sc-l{font-size:12.5px;color:var(--sc-ink-soft);margin-top:3px}
+        .sc-app .sc-chart-wrap{background:var(--sc-card);border:1px solid var(--sc-line);border-radius:11px;padding:18px;margin-bottom:18px;box-shadow:var(--sc-shadow)}
+        .sc-app .sc-chart-wrap h3{font-size:14px;font-weight:700;color:var(--sc-primary-ink);margin-bottom:12px;font-family:var(--sc-serif)}
+        .sc-app .sc-chart-scroll{overflow-x:auto}
+        .sc-app .sc-chart-scroll svg{min-width:480px;display:block}
+        .sc-app .sc-chart-grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+        @media(max-width:860px){.sc-app .sc-chart-grid2{grid-template-columns:1fr}}
+
+        .sc-app .sc-filterbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:var(--sc-card);border:1px solid var(--sc-line);border-radius:11px;padding:14px 18px;margin-bottom:18px;box-shadow:var(--sc-shadow)}
+        .sc-app .sc-filterbar .sc-f{min-width:150px;flex:1}
+
+        .sc-app .sc-chapter-block{margin-bottom:22px}
+        .sc-app .sc-chapter-block .sc-cb-head{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:13px 18px;border:1px solid var(--sc-line);border-bottom:none;border-radius:11px 11px 0 0;background:var(--sc-primary-ink);color:#F7F2E9}
+        .sc-app .sc-chapter-block .sc-cb-head .sc-name{font-weight:700;font-size:15px}
+        .sc-app .sc-chapter-block .sc-cb-head .sc-cnt{font-size:12.5px;color:#DCD2BF;margin-left:auto}
+        .sc-app .sc-chapter-block .sc-cb-body{border:1px solid var(--sc-line);border-top:none;border-radius:0 0 11px 11px;background:#fff}
+        .sc-app .sc-rec-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:11px 18px;border-top:1px solid var(--sc-line);transition:background .12s}
+        .sc-app .sc-rec-row:first-of-type{border-top:none}
+        .sc-app .sc-rec-row:hover{background:var(--sc-cream)}
+        .sc-app .sc-rec-row.sc-remind{background:var(--sc-warn-bg);box-shadow:inset 3px 0 0 var(--sc-amber)}
+        .sc-app .sc-rec-row .sc-r-sub{font-weight:600;font-size:13.5px;min-width:140px}
+        .sc-app .sc-rec-row .sc-r-meta{font-size:12px;color:var(--sc-ink-soft)}
+        .sc-app .sc-rec-row .sc-r-score{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .sc-app .sc-rec-row .sc-r-score b{font-size:16px;color:var(--sc-primary-ink)}
+        .sc-app .sc-rec-actions{display:flex;gap:6px}
+        .sc-app .sc-remind-tag{font-size:11px;font-weight:700;color:var(--sc-amber);background:var(--sc-warn-bg);border:1px solid #E5D3A8;padding:2px 7px;border-radius:999px;display:inline-flex;align-items:center;gap:4px}
+        .sc-app .sc-progress-outer{height:8px;background:var(--sc-viz-track);border-radius:999px;overflow:hidden;margin-top:8px}
+        .sc-app .sc-progress-in{height:100%;border-radius:999px;background:var(--sc-viz);transition:width .3s}
+
+        .sc-app .sc-wrong-item{display:grid;grid-template-columns:1fr auto;gap:10px;padding:14px 18px;border-top:1px solid var(--sc-line);background:#fff;transition:background .12s}
+        .sc-app .sc-wrong-item:first-of-type{border-top:none}
+        .sc-app .sc-wrong-item:hover{background:var(--sc-cream)}
+        .sc-app .sc-wrong-item .sc-w-q{font-weight:600;font-size:13.5px}
+        .sc-app .sc-wrong-item .sc-w-meta{font-size:12px;color:var(--sc-ink-soft);margin-top:3px}
+        .sc-app .sc-wrong-item .sc-w-detail{font-size:13px;color:var(--sc-ink-soft);margin-top:6px;border-left:3px solid var(--sc-clay);padding-left:10px}
+        .sc-app .sc-wrong-item .sc-w-detail b{color:var(--sc-ink)}
+        .sc-app .sc-wrong-item.sc-done{opacity:.62}
+        .sc-app .sc-wrong-actions{display:flex;flex-direction:column;gap:6px;justify-content:center}
+        @media(max-width:640px){.sc-app .sc-wrong-item{grid-template-columns:1fr}.sc-app .sc-wrong-actions{flex-direction:row}}
+
+        .sc-app .sc-plan-band{display:flex;flex-wrap:wrap;gap:16px;align-items:center;background:var(--sc-card);border:1px solid var(--sc-line);border-radius:11px;padding:16px 20px;margin-bottom:18px;box-shadow:var(--sc-shadow)}
+        .sc-app .sc-plan-band .sc-p-cell{min-width:150px;flex:1}
+        .sc-app .sc-plan-band .sc-p-cell .sc-lab{font-size:12px;color:var(--sc-ink-soft);font-weight:600}
+        .sc-app .sc-plan-band .sc-p-cell .sc-val{font-size:22px;font-weight:700;color:var(--sc-primary-ink);margin-top:2px;font-family:var(--sc-serif)}
+        .sc-app .sc-plan-band .sc-p-progress{flex:2;min-width:220px}
+
+        .sc-app .sc-empty{padding:44px 20px;text-align:center;color:var(--sc-ink-soft)}
+        .sc-app .sc-empty .sc-big{font-size:32px;font-family:var(--sc-serif);color:var(--sc-clay)}
+        .sc-app .sc-empty p{margin-top:8px;font-size:14px}
+
+        .sc-app .sc-topbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:var(--sc-cream);border:1px solid var(--sc-line);border-radius:11px;padding:13px 18px;margin-bottom:18px}
+        .sc-app .sc-topbar .sc-title{font-family:var(--sc-serif);font-size:17px;font-weight:700;color:var(--sc-primary-ink)}
+        .sc-app .sc-topbar .sc-sub{font-size:12.5px;color:var(--sc-ink-soft);margin-top:2px}
+
+        #sc-toast{
+          position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);
+          background:var(--sc-primary-ink,#6F5C45);color:#fff;padding:11px 20px;border-radius:9px;
+          font-size:13.5px;opacity:0;pointer-events:none;transition:all .25s;
+          box-shadow:0 8px 24px rgba(70,58,46,.25);z-index:9999;
+        }
+        #sc-toast.sc-show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+        .vtab .sc-tab-badge{margin-left:5px;background:#8A7358;color:#fff;font-size:10.5px;line-height:1;padding:3px 6px;border-radius:999px;font-weight:700}
+        .vtab .sc-tab-badge.sc-warn-badge{background:#A6503C}
+        .vtab.active .sc-tab-badge{background:#6F5C45}
     </style>
     <!-- SheetJS：用于科目目标模板的 Excel 导入导出（加载失败时自动降级为 CSV） -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -1535,6 +1777,10 @@
             <button type="button" class="vtab active" data-view="study">📚 学习进度</button>
             <button type="button" class="vtab" data-view="memory">🧠 记忆曲线</button>
             <button type="button" class="vtab vtab-small" data-view="goal" title="科目目标导入 / 导出">🎯 目标</button>
+            <button type="button" class="vtab" data-view="scsec" title="小节精简自检">📝 小节自检</button>
+            <button type="button" class="vtab" data-view="scchap" title="整章综合复盘">🗂 整章复盘</button>
+            <button type="button" class="vtab" data-view="scboard" title="自检看板">📊 自检看板<span class="sc-tab-badge" id="sc-recCount">0</span></button>
+            <button type="button" class="vtab" data-view="scwrong" title="错题登记与复习">❌ 错题本<span class="sc-tab-badge" id="sc-wrongCount">0</span></button>
         </div>
 
         <div class="view-pane" id="view-study">
@@ -1580,6 +1826,28 @@
                         <div class="field">
                             <label>节 <span class="required">*</span></label>
                             <select id="fSection" required></select>
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="field">
+                            <label>📌 知识点 <span style="font-weight:400;color:var(--text-secondary);">(序号 + 知识点，一行一条)</span></label>
+                            <div class="kp-list" id="kpList"></div>
+                            <button type="button" class="kp-add" id="addKpBtn">➕ 添加知识点</button>
+                            <span class="kp-hint">
+                                序号自动生成，回车可快速新增下一条；支持整段粘贴，按换行 / <code>；</code> / <code>、</code> 自动拆条并重新编号。<br>
+                                粘贴内容自带序号（如 <code>1. 存货的初始计量</code>、<code>2 固定资产折旧</code>）会被自动识别，不会重复编号。
+                            </span>
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="field">
+                            <label class="mem-switch on" id="memSwitchLabel" for="fAddToMemory">
+                                <input type="checkbox" id="fAddToMemory" checked />
+                                <span>
+                                    <span class="ms-txt">🧠 加入记忆曲线 · 记忆清单任务</span>
+                                    <span class="ms-sub">勾选后，本条记录按艾宾浩斯节点（学习后 1 / 2 / 4 / 7 / 15 天）生成 5 条复习任务并进入「记忆曲线 → 复习清单」；取消勾选则只记录学习时长，不产生复习任务。</span>
+                                </span>
+                            </label>
                         </div>
                     </div>
                     <div class="form-row three">
@@ -1803,6 +2071,232 @@
                 <div class="gsp-chart" id="gspChart"></div>
                 <div class="gsp-note">统计口径：复习清单中已勾选完成的复习次数。蓝色柱 = 最近 12 周每周完成数，橙色折线 = 按周累计。</div>
             </div>
+        </div>
+        <div class="view-pane sc-app" id="view-scsec" style="display:none;">
+
+    <div class="sc-card">
+      <div class="sc-card-head">
+        <h2>小节精简自检 <span class="sc-hint" id="sc-secHint">· 每学完一节立即自测</span></h2>
+        <span id="sc-sectionSeal" class="sc-seal sc-warn">未提交</span>
+      </div>
+      <div class="sc-card-body">
+        <div class="sc-grid-3">
+          <div class="sc-field"><label>章节（可下拉选择或自定义）</label>
+            <input type="text" id="sc-secChapter" placeholder="如：租赁" list="sc-chapterList">
+          </div>
+          <div class="sc-field"><label>小节名称</label>
+            <input type="text" id="sc-secSub" placeholder="如：承租人的会计处理" list="sc-subList">
+          </div>
+          <div class="sc-field"><label>完成日期</label><input type="date" id="sc-secDate"></div>
+        </div>
+        <div class="sc-grid-3" style="margin-top:14px">
+          <div class="sc-field"><label>掌握等级（学完自评）</label>
+            <select id="sc-secLvl">
+              <option value="2">薄弱 · 需返工</option>
+              <option value="3" selected>熟练 · 可下一节</option>
+              <option value="4">精通 · 能输出讲清</option>
+              <option value="1">初学 · 刚接触</option>
+              <option value="0">未学 · 仅眼熟</option>
+            </select>
+          </div>
+          <div class="sc-field"><label>7 日后复测得分</label><input type="number" id="sc-secS7" min="0" max="60" placeholder="可暂不填"></div>
+          <div class="sc-field"><label>21 日后复测得分</label><input type="number" id="sc-secS21" min="0" max="60" placeholder="可暂不填"></div>
+        </div>
+        <datalist id="sc-chapterList"></datalist>
+        <datalist id="sc-subList"></datalist>
+
+        <table class="sc-mod-table" style="margin-top:16px">
+          <thead><tr><th>自检模块</th><th>满分</th><th>得分</th><th>失分原因（简短）</th></tr></thead>
+          <tbody id="sc-sectionRows"></tbody>
+        </table>
+
+        <div class="sc-answers" id="sc-sectionAnswers"></div>
+
+        <div class="sc-scoreband">
+          <div class="sc-scorecell"><div class="sc-lab">小节总分</div><div class="sc-val" id="sc-secTotal">0<small> / 0</small></div><div class="sc-meta" id="sc-secPassMeta">达标线 48</div></div>
+          <div class="sc-scorecell"><div class="sc-lab">掌握度</div><div class="sc-val" id="sc-secPct">0<small>%</small></div></div>
+        </div>
+
+        <div class="sc-btn-group">
+          <button class="sc-btn sc-primary" id="sc-secSave"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span id="sc-secSaveLabel">保存本节记录</span></button>
+          <button class="sc-btn sc-ghost" id="sc-secClear">清空表单</button>
+          <button class="sc-btn sc-ghost sc-print-hide" id="sc-secPrint">打印本表</button>
+        </div>
+      </div>
+    </div>
+        </div>
+
+        <div class="view-pane sc-app" id="view-scchap" style="display:none;">
+
+    <div class="sc-card">
+      <div class="sc-card-head">
+        <h2>整章综合复盘 <span class="sc-hint" id="sc-chapHint">· 全部小节达标后执行</span></h2>
+        <span id="sc-chapSeal" class="sc-seal sc-warn">未提交</span>
+      </div>
+      <div class="sc-card-body">
+        <div class="sc-grid-3">
+          <div class="sc-field"><label>章节名称</label><input type="text" id="sc-chapChapter" list="sc-chapterList"></div>
+          <div class="sc-field"><label>完成日期</label><input type="date" id="sc-chapDate"></div>
+          <div class="sc-field"><label>本次性质</label>
+            <select id="sc-chapKind">
+              <option value="初次">初次整章复盘</option>
+              <option value="复测">整章复测</option>
+            </select>
+          </div>
+        </div>
+        <div class="sc-grid-3" style="margin-top:14px">
+          <div class="sc-field"><label>整章掌握等级</label>
+            <select id="sc-chapLvl">
+              <option value="2">薄弱 · 需返工</option>
+              <option value="3" selected>熟练 · 体系成型</option>
+              <option value="4">精通 · 能讲清全章</option>
+              <option value="1">初学 · 刚接触</option>
+              <option value="0">未学 · 仅眼熟</option>
+            </select>
+          </div>
+          <div class="sc-field"><label>7 日后复测日期</label><input type="date" id="sc-chapD7"></div>
+          <div class="sc-field"><label>7 日后复测得分</label><input type="number" id="sc-chapS7" min="0" max="100"></div>
+        </div>
+        <div class="sc-grid-3" style="margin-top:14px">
+          <div class="sc-field"><label>21 日后复测得分</label><input type="number" id="sc-chapS21" min="0" max="100"></div>
+        </div>
+
+        <table class="sc-mod-table" style="margin-top:16px">
+          <thead><tr><th>自检模块</th><th>满分</th><th>得分</th><th>失分原因（简短）</th></tr></thead>
+          <tbody id="sc-chapRows"></tbody>
+        </table>
+
+        <div class="sc-answers" id="sc-chapAnswers"></div>
+
+        <div class="sc-scoreband">
+          <div class="sc-scorecell"><div class="sc-lab" id="sc-chapBaseLab">基础总分（95）</div><div class="sc-val" id="sc-chapBase">0<small> / 0</small></div></div>
+          <div class="sc-scorecell"><div class="sc-lab" id="sc-chapBonusLab">加分项</div><div class="sc-val" id="sc-chapBonus">0<small> / 0</small></div></div>
+          <div class="sc-scorecell"><div class="sc-lab">综合得分</div><div class="sc-val" id="sc-chapTotal">0<small> / 0</small></div><div class="sc-meta" id="sc-chapPassMeta">达标线 80</div></div>
+        </div>
+
+        <div class="sc-btn-group">
+          <button class="sc-btn sc-primary" id="sc-chapSave"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span id="sc-chapSaveLabel">保存整章记录</span></button>
+          <button class="sc-btn sc-ghost" id="sc-chapClear">清空表单</button>
+          <button class="sc-btn sc-ghost sc-print-hide" id="sc-chapPrint">打印本表</button>
+        </div>
+      </div>
+    </div>
+        </div>
+
+        <div class="view-pane sc-app" id="view-scboard" style="display:none;">
+    <div class="sc-topbar">
+      <div>
+        <div class="sc-title">输出自检看板</div>
+        <div class="sc-sub">以输出验证学透 · 小节逐节堵漏 · 整章缝合体系 · 错题闭环</div>
+      </div>
+      <div class="sc-chapter-progress" id="sc-topProgress"></div>
+    </div>
+
+    <div class="sc-plan-band sc-print-hide">
+      <div class="sc-p-cell"><div class="sc-lab">今日学习计划</div><div class="sc-val" id="sc-planToday">0<small style="font-size:13px;color:var(--sc-ink-soft)"> 小节</small></div></div>
+      <div class="sc-p-cell"><div class="sc-lab">今日已完成</div><div class="sc-val" id="sc-planDone">0<small style="font-size:13px;color:var(--sc-ink-soft)"> 达标</small></div></div>
+      <div class="sc-p-progress"><div class="sc-lab">今日进度</div><div class="sc-progress-outer" style="margin-top:6px"><div class="sc-progress-in" id="sc-planBar" style="width:0%"></div></div><div style="font-size:11.5px;color:var(--sc-ink-soft);margin-top:4px" id="sc-planMeta"></div></div>
+    </div>
+
+    <div class="sc-stat-grid" id="sc-statGrid"></div>
+
+    <div class="sc-filterbar sc-print-hide">
+      <div class="sc-f sc-field"><label>按章节筛选</label>
+        <select id="sc-filterChapter"><option value="">全部章节</option></select>
+      </div>
+      <div class="sc-f sc-field"><label>按掌握等级</label>
+        <select id="sc-filterLvl"><option value="">全部等级</option><option value="0">未学</option><option value="1">初学</option><option value="2">薄弱</option><option value="3">熟练</option><option value="4">精通</option></select>
+      </div>
+      <div class="sc-f sc-field"><label>按类型</label>
+        <select id="sc-filterType"><option value="">全部</option><option value="section">小节</option><option value="chapter">整章</option></select>
+      </div>
+      <button class="sc-btn sc-ghost" id="sc-filterReset" style="margin-top:20px">重置筛选</button>
+    </div>
+
+    <div class="sc-chart-grid2">
+      <div class="sc-chart-wrap">
+        <h3>薄弱模块统计（按各模块平均掌握率，越靠右越薄弱）</h3>
+        <div class="sc-chart-scroll" id="sc-weakChart"></div>
+      </div>
+      <div class="sc-chart-wrap">
+        <h3>能力雷达（7 大自检模块）</h3>
+        <div class="sc-chart-scroll" id="sc-radarChart"></div>
+      </div>
+    </div>
+
+    <div class="sc-chart-wrap">
+      <h3>学习趋势（按日期综合得分）</h3>
+      <div class="sc-chart-scroll" id="sc-trendChart"></div>
+    </div>
+
+    <div class="sc-btn-group sc-print-hide" style="margin-bottom:20px">
+      <button class="sc-btn sc-ink" id="sc-exportCsv">导出 CSV（Excel 打开）</button>
+      <button class="sc-btn sc-ink" id="sc-exportBackup">备份全部（JSON）</button>
+      <button class="sc-btn sc-ghost" id="sc-importBackup">导入备份</button>
+      <button class="sc-btn sc-danger-btn" id="sc-clearAll">清空全部存档</button>
+      <input type="file" id="sc-importFile" accept=".json,application/json" style="display:none">
+    </div>
+
+    <div id="sc-chapterGroups"></div>
+    <div class="sc-empty" id="sc-emptyState" style="display:none">
+      <div class="sc-big">尚无记录</div>
+      <p>先到「小节自检」完成一次自测并保存，学习进度会自动汇总到这里。</p>
+    </div>    <details class="sc-ans-item" style="margin-bottom:20px">
+      <summary>⚙️ 计划与自检模板设置<span class="sc-sub">每日目标 / 模块满分 / 提示语</span></summary>
+      <div class="sc-ans-body">
+      <div class="sc-field" style="max-width:260px"><label>每日计划完成小节数</label><input type="number" id="sc-planTarget" min="1" max="20" placeholder="如 2"></div>
+      <div class="sc-btn-group"><button class="sc-btn sc-primary" id="sc-planSave">保存计划</button><button class="sc-btn sc-ghost sc-sm" id="sc-modReset">恢复默认模板</button></div>
+      <h3 style="font-size:14px;font-weight:700;color:var(--sc-primary-ink);margin-bottom:8px">小节模板（满分随自定义变化）</h3>
+        <table class="sc-mod-table">
+          <thead><tr><th>模块名</th><th>满分</th><th>提示语</th></tr></thead>
+          <tbody id="sc-modSectionRows"></tbody>
+        </table>
+        <h3 style="font-size:14px;font-weight:700;color:var(--sc-primary-ink);margin:18px 0 8px">整章模板</h3>
+        <table class="sc-mod-table">
+          <thead><tr><th>模块名</th><th>满分</th><th>提示语</th></tr></thead>
+          <tbody id="sc-modChapterRows"></tbody>
+        </table>
+        <div class="sc-btn-group"><button class="sc-btn sc-primary" id="sc-modSave">保存模板</button></div>
+      </div>
+    </details>
+
+        </div>
+
+        <div class="view-pane sc-app" id="view-scwrong" style="display:none;">
+
+    <div class="sc-card">
+      <div class="sc-card-head">
+        <h2>错题登记 <span class="sc-hint">· 从自检作答区一键存入，或手动登记</span></h2>
+      </div>
+      <div class="sc-card-body">
+        <div class="sc-grid-3">
+          <div class="sc-field"><label>所属章节</label><input type="text" id="sc-wChapter" list="sc-chapterList"></div>
+          <div class="sc-field"><label>所属小节</label><input type="text" id="sc-wSub" list="sc-subList"></div>
+          <div class="sc-field"><label>登记日期</label><input type="date" id="sc-wDate"></div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="sc-field"><label>题目 / 场景描述</label><input type="text" id="sc-wQ" placeholder="例：租赁激励应计入哪个科目"></div>
+        </div>
+        <div class="sc-grid-2" style="margin-top:14px">
+          <div class="sc-field"><label>我的错误 / 当时的思路</label><textarea id="sc-wMistake" style="width:100%;min-height:70px;padding:9px 11px;border:1px solid var(--sc-line);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea></div>
+          <div class="sc-field"><label>正确规则 / 改正思路</label><textarea id="sc-wCorrect" style="width:100%;min-height:70px;padding:9px 11px;border:1px solid var(--sc-line);border-radius:8px;font-family:inherit;font-size:13px;resize:vertical"></textarea></div>
+        </div>
+        <div class="sc-btn-group">
+          <button class="sc-btn sc-primary" id="sc-wrongSave">存入错题库</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sc-card">
+      <div class="sc-card-head">
+        <h2>错题列表 <span class="sc-hint">· 未掌握优先复习</span></h2>
+      </div>
+      <div class="sc-card-body" id="sc-wrongList" style="padding:0"></div>
+      <div class="sc-empty" id="sc-wrongEmpty" style="display:none">
+        <div class="sc-big">暂无错题</div>
+        <p>把每次自检/做题的错题沉淀到这里，形成自己的错题闭环。</p>
+      </div>
+    </div>
         </div>
     </main>
 
@@ -2831,6 +3325,17 @@
 
             document.getElementById('fDate').value = getToday();
 
+            // 知识点输入区初始化
+            resetKnowledgePoints();
+            bindKpList();
+            const memSw = document.getElementById('fAddToMemory');
+            if (memSw) {
+                memSw.addEventListener('change', () => {
+                    const lab = document.getElementById('memSwitchLabel');
+                    if (lab) lab.classList.toggle('on', memSw.checked);
+                });
+            }
+
             // 表单提交
             document.getElementById('recordForm').addEventListener('submit', handleFormSubmit);
             document.getElementById('recordForm').addEventListener('reset', () => {
@@ -2853,6 +3358,7 @@
                     document.getElementById('fMemoryNetwork').value = '';
                     document.getElementById('fAiQA').value = '';
                     document.getElementById('fNotes').value = '';
+                    resetKnowledgePoints();
                     state.editingId = null;
                     document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                     document.getElementById('cancelEditBtn').classList.remove('visible');
@@ -2893,6 +3399,7 @@
                     document.getElementById('fDurationHours').readOnly = false;
                     document.getElementById('autoCalcHint').textContent = '⏱️ 填写起止时间自动计算';
                     document.getElementById('autoCalcHint').style.color = 'var(--primary)';
+                    resetKnowledgePoints();
                     updateChapterSelect(state.currentCourse);
                 }, 10);
                 document.getElementById('formContainer').classList.add('collapsed');
@@ -2920,6 +3427,143 @@
             return map[val] || '点击星星评级';
         }
 
+        // ---------- 知识点（序号 + 知识点） ----------
+        function kpEsc(s) {
+            return String(s === undefined || s === null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // 去掉粘贴文本自带的序号：1. / 1、/ 1) / （1）/ 1 空格
+        function stripKpNo(s) {
+            return String(s || '')
+                .replace(/^\s*[0-9]{1,3}\s*[.、．)）:：]\s*/, '')
+                .replace(/^\s*[(\uff08\u3010]?\s*[0-9]{1,3}\s*[)\uff09\u3011]?\s*[.、．:：]?\s+(?=\S)/, '')
+                .trim();
+        }
+
+        function kpRowHTML(no, text) {
+            return '<div class="kp-row">' +
+                '<span class="kp-no">' + no + '</span>' +
+                '<input type="text" class="kp-input" value="' + kpEsc(text) + '" placeholder="输入知识点，如：存货的初始计量" />' +
+                '<button type="button" class="kp-del" title="删除该条">✕</button>' +
+                '</div>';
+        }
+
+        // 只负责渲染自身，不调用任何其他 render 函数（保持调用链单向）
+        function renderKnowledgePoints(list) {
+            const box = document.getElementById('kpList');
+            if (!box) return;
+            const arr = (Array.isArray(list) && list.length) ? list : [{ text: '' }];
+            box.innerHTML = arr.map((k, i) => kpRowHTML(i + 1, (k && k.text) || (typeof k === 'string' ? k : ''))).join('');
+        }
+
+        function renumberKpRows() {
+            const box = document.getElementById('kpList');
+            if (!box) return;
+            box.querySelectorAll('.kp-row').forEach((r, i) => {
+                const no = r.querySelector('.kp-no');
+                if (no) no.textContent = i + 1;
+            });
+        }
+
+        function addKpRow(text) {
+            const box = document.getElementById('kpList');
+            if (!box) return;
+            const row = document.createElement('div');
+            row.className = 'kp-row';
+            row.innerHTML = '<span class="kp-no"></span>' +
+                '<input type="text" class="kp-input" placeholder="输入知识点，如：存货的初始计量" />' +
+                '<button type="button" class="kp-del" title="删除该条">✕</button>';
+            box.appendChild(row);
+            if (text) row.querySelector('.kp-input').value = text;
+            renumberKpRows();
+            const inp = row.querySelector('.kp-input');
+            if (inp) inp.focus();
+        }
+
+        // 事件委托，只绑定一次，避免重复监听
+        function bindKpList() {
+            const box = document.getElementById('kpList');
+            const addBtn = document.getElementById('addKpBtn');
+            if (!box || box.dataset.bound === '1') return;
+            box.dataset.bound = '1';
+
+            box.addEventListener('click', (e) => {
+                const del = e.target.closest ? e.target.closest('.kp-del') : null;
+                if (!del) return;
+                const rows = box.querySelectorAll('.kp-row');
+                if (rows.length <= 1) {
+                    const only = del.closest('.kp-row').querySelector('.kp-input');
+                    if (only) { only.value = ''; only.focus(); }
+                } else {
+                    del.closest('.kp-row').remove();
+                    renumberKpRows();
+                }
+            });
+
+            box.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('kp-input')) {
+                    e.preventDefault();
+                    addKpRow('');
+                }
+            });
+
+            box.addEventListener('paste', (e) => {
+                const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
+                if (!/[\n\r\uff1b;\u3001]/.test(txt)) return;   // 单行粘贴走默认行为
+                e.preventDefault();
+                const parts = txt.split(/[\n\r\uff1b;\u3001]+/).map(s => s.trim()).filter(Boolean);
+                if (!parts.length) return;
+                const rows = Array.prototype.slice.call(box.querySelectorAll('.kp-row'));
+                const cur = e.target.closest ? e.target.closest('.kp-row') : null;
+                const idx = cur ? rows.indexOf(cur) : rows.length - 1;
+                const before = rows.slice(0, idx).map(r => r.querySelector('.kp-input').value.trim());
+                const after = rows.slice(idx + 1).map(r => r.querySelector('.kp-input').value.trim());
+                const cleaned = parts.map(stripKpNo).filter(Boolean);
+                const merged = before.concat(cleaned, after).map(t => ({ text: t }));
+                renderKnowledgePoints(merged);
+                const inputs = box.querySelectorAll('.kp-input');
+                const focusIdx = Math.min(before.length + cleaned.length - 1, inputs.length - 1);
+                if (inputs[focusIdx]) inputs[focusIdx].focus();
+            });
+
+            if (addBtn) addBtn.addEventListener('click', () => addKpRow(''));
+        }
+
+        // 从 DOM 收集知识点，自动重排序号
+        function getKnowledgePoints() {
+            const box = document.getElementById('kpList');
+            if (!box) return [];
+            const out = [];
+            box.querySelectorAll('.kp-row').forEach((r) => {
+                const inp = r.querySelector('.kp-input');
+                const t = stripKpNo((inp && inp.value) || '');
+                if (t) out.push({ no: out.length + 1, text: t });
+            });
+            return out;
+        }
+
+        function resetKnowledgePoints() {
+            renderKnowledgePoints([{ text: '' }]);
+            const cb = document.getElementById('fAddToMemory');
+            if (cb) {
+                cb.checked = true;
+                const lab = document.getElementById('memSwitchLabel');
+                if (lab) lab.classList.add('on');
+            }
+        }
+
+        function kpChipsHTML(list, max) {
+            const arr = list || [];
+            const lim = max ? arr.slice(0, max) : arr;
+            let h = lim.map(k => '<span class="kp-chip">' + kpEsc((k.no ? k.no + '. ' : '') + (k.text || '')) + '</span>').join('');
+            if (max && arr.length > max) {
+                h += '<span class="kp-chip" style="background:#F1F5F9;color:#64748B;">+' + (arr.length - max) + '</span>';
+            }
+            return h;
+        }
+
         // ---------- 表单提交 ----------
         function handleFormSubmit(e) {
             e.preventDefault();
@@ -2939,6 +3583,8 @@
             const memoryNetwork = document.getElementById('fMemoryNetwork').value.trim();
             const aiQA = document.getElementById('fAiQA').value.trim();
             const notes = document.getElementById('fNotes').value.trim();
+            const knowledgePoints = getKnowledgePoints();
+            const addToMemory = !!(document.getElementById('fAddToMemory') && document.getElementById('fAddToMemory').checked);
 
             if (!date) { alert('请选择日期'); return; }
             if (!chapter || chapter < 1 || chapter > getMaxChapter(course)) { alert('请选择有效的章'); return; }
@@ -2992,6 +3638,8 @@
                 memoryNetwork: memoryNetwork || '',
                 aiQA: aiQA || '',
                 notes: notes || '',
+                knowledgePoints: knowledgePoints,
+                addToMemory: addToMemory,
             };
 
             if (state.editingId) {
@@ -3033,6 +3681,7 @@
                 document.getElementById('fMemoryNetwork').value = '';
                 document.getElementById('fAiQA').value = '';
                 document.getElementById('fNotes').value = '';
+                resetKnowledgePoints();
                 document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                 document.getElementById('cancelEditBtn').classList.remove('visible');
                 updateChapterSelect(state.currentCourse);
@@ -3093,6 +3742,7 @@
                                     <span class="tag">${r.resourceType || '其他'}</span>
                                     <span class="tag source">${r.source || '未知'}</span>
                                     ${r.selfAssessment ? `<span class="tag ${assessmentClass}">${assessmentEmoji} ${r.selfAssessment}</span>` : ''}
+                                    ${r.addToMemory === false ? '<span class="mem-tag off">不进记忆曲线</span>' : '<span class="mem-tag">🧠 记忆曲线</span>'}
                                 </div>
                                 <div class="stars">${stars}</div>
                             </div>
@@ -3111,6 +3761,7 @@
                                 <span class="lbl">🔗 记忆网络</span>
                                 <span class="val ${r.memoryNetwork ? '' : 'empty'}">${r.memoryNetwork || '未记录'}</span>
                             </div>
+                            ${(r.knowledgePoints && r.knowledgePoints.length) ? `<div class="item full"><span class="lbl">📌 知识点</span><span class="val"><span class="kp-chips" style="display:inline-flex;">${kpChipsHTML(r.knowledgePoints)}</span></span></div>` : ''}
                             ${r.aiQA ? `<div class="item full"><span class="lbl">🤖 AI 问答</span><span class="val">${r.aiQA}</span></div>` : ''}
                             ${r.assessmentReason ? `<div class="item full"><span class="lbl">📝 自评原因</span><span class="val">${r.assessmentReason}</span></div>` : ''}
                             ${r.notes ? `<div class="item full"><span class="lbl">📌 备注</span><span class="val">${r.notes}</span></div>` : ''}
@@ -3164,6 +3815,13 @@
             document.getElementById('fMemoryNetwork').value = record.memoryNetwork || '';
             document.getElementById('fAiQA').value = record.aiQA || '';
             document.getElementById('fNotes').value = record.notes || '';
+            renderKnowledgePoints(record.knowledgePoints && record.knowledgePoints.length ? record.knowledgePoints : [{ text: '' }]);
+            const memCb = document.getElementById('fAddToMemory');
+            if (memCb) {
+                memCb.checked = record.addToMemory !== false;
+                const lab = document.getElementById('memSwitchLabel');
+                if (lab) lab.classList.toggle('on', memCb.checked);
+            }
             selectedStar = record.understanding || 0;
             document.getElementById('fUnderstanding').value = selectedStar;
             updateStars(selectedStar);
@@ -3750,9 +4408,9 @@
                     tabs.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
                     const view = btn.dataset.view;
-                    document.getElementById('view-study').style.display = view === 'study' ? '' : 'none';
-                    document.getElementById('view-memory').style.display = view === 'memory' ? '' : 'none';
-                    document.getElementById('view-goal').style.display = view === 'goal' ? '' : 'none';
+                    document.querySelectorAll('.view-pane').forEach(p => {
+                        p.style.display = (p.id === 'view-' + view) ? '' : 'none';
+                    });
                     if (view === 'memory') renderMemoryView();
                     if (view === 'goal') { renderGoalSummary(); renderGoalStatsPanel(); }
                 });
@@ -3921,6 +4579,7 @@
             const doneKeys = new Set(doneList.map(x => x.recordId + '#' + x.round));
             const pending = [], done = [];
             (state.records || []).forEach(r => {
+                if (r.addToMemory === false) return;   // 未加入记忆曲线 → 不生成复习任务
                 REVIEW_INTERVALS.forEach((iv, i) => {
                     const round = i + 1;
                     const sched = memAddDays(r.date, iv);
@@ -3955,6 +4614,7 @@
                 '<div class="rv-check">' + (isDone ? '✓' : '') + '</div>' +
                 '<div class="rv-main">' +
                     '<div class="rv-title">' + r.course + ' · 第' + r.chapter + '章 · ' + ROUND_NAMES[it.round - 1] + '</div>' +
+                    ((r.knowledgePoints && r.knowledgePoints.length) ? '<div class="rv-kp">' + kpChipsHTML(r.knowledgePoints, 3) + '</div>' : '') +
                     '<div class="rv-meta">学习于 ' + r.date + ' ｜ ⏱ ' + r.durationHours + 'h ｜ ' + status + '</div>' +
                 '</div>' +
                 '<div class="rv-date">' +
@@ -4049,6 +4709,8 @@
                         </div>
                         <span class="ret-badge" style="background:${color};">记忆保持 ${ret}%</span>
                     </div>
+                    ${(r.knowledgePoints && r.knowledgePoints.length) ? `<div class="rv-kp" style="margin-top:6px;">${kpChipsHTML(r.knowledgePoints)}</div>` : ''}
+                    ${r.addToMemory === false ? '<div class="rv-kp"><span class="kp-chip" style="background:#F1F5F9;color:#64748B;">未加入记忆曲线</span></div>' : ''}
                     <div class="ret-bar"><i style="width:${ret}%;background:${color};"></i></div>
                     <svg class="curve" viewBox="0 0 200 54" preserveAspectRatio="none">
                         ${rvMarks}
@@ -4201,7 +4863,838 @@
             });
         }
 
+        // ============================================================
+        //  输出自检工作台（小节自检 / 整章复盘 / 自检看板 / 错题登记）
+        //  移植自「会计输出自检工作台」，配色沿用备考学习工作台的燕麦赭石主题
+        // ============================================================
+        (function(){
+
+    /* ============================================================
+       数据层
+    ============================================================ */
+    const STORE_KEY = "accCheck_v3";
+    const WRONG_KEY = "accWrong_v3";
+    const MODS_KEY = "accMods_v3";
+    const PLAN_KEY = "accPlan_v3";
+
+    let store = loadStore();
+    let wrongStore = loadWrong();
+    let modConfig = loadMods();
+    let plan = loadPlan();
+
+    function loadStore(){
+      if(false){
+        ["accCheck_v3","accWrong_v3","accMods_v3","accPlan_v3"].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+        try{history.replaceState(null,"",location.pathname);}catch(e){}
+        return [];
+      }
+      try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }catch(e){ return []; }
+    }
+    function saveStore(){ localStorage.setItem(STORE_KEY, JSON.stringify(store)); refreshCounts(); }
+    function loadWrong(){ try{ return JSON.parse(localStorage.getItem(WRONG_KEY)) || []; }catch(e){ return []; } }
+    function saveWrong(){ localStorage.setItem(WRONG_KEY, JSON.stringify(wrongStore)); refreshCounts(); }
+    function loadMods(){
+      try{
+        const m = JSON.parse(localStorage.getItem(MODS_KEY));
+        if(m && m.section && m.chapter) return m;
+      }catch(e){}
+      return { section: null, chapter: null };
+    }
+    function saveMods(){ localStorage.setItem(MODS_KEY, JSON.stringify(modConfig)); }
+    function loadPlan(){
+      try{ const p = JSON.parse(localStorage.getItem(PLAN_KEY)); return p||{}; }catch(e){ return {}; }
+    }
+    function savePlan(){ localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); }
+
+    function uid(){ return "r" + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+    function today(){
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    }
+    function addDays(dateStr, n){
+      const d = new Date(dateStr+"T00:00:00");
+      d.setDate(d.getDate()+n);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    }
+
+    /* ============================================================
+       模板定义（可自定义）
+    ============================================================ */
+    const DEFAULT_SECTION_MODS = [
+      {key:"feyn",   name:"费曼口头输出",        full:10, ans:"闭卷 3 分钟讲清：本节解决什么会计问题 / 核心确认计量规则 / 本节高频陷阱。"},
+      {key:"frame",  name:"闭卷框架梳理",        full:15, ans:"不翻资料写出：核算范围 → 确认条件 → 初始计量 → 后续计量 → 终止确认。"},
+      {key:"bound",  name:"边界与易混辨析",      full:12, ans:"列出本节至少 2 组易混淆概念，写清区分要点（确认条件 / 计量 / 列报差异）。"},
+      {key:"sc-reason", name:"简答推理自测",        full:10, ans:"2 道简答，写出判断理由与准则依据，不只写结论。"},
+      {key:"entry",  name:"业务分录推演",        full:8,  ans:"1 道常规业务 + 1 个条件变形，先做职业判断，再分步推演分录。"},
+      {key:"review", name:"错题复盘输出",        full:5,  ans:"选取本节 2–3 道错题：原始逻辑错误点 / 准则正确规则复述。"},
+    ];
+    const DEFAULT_CHAPTER_MODS = [
+      {key:"feyn",    name:"费曼口头输出自测",   full:15, ans:"闭卷向零基础学员讲清本章完整逻辑：准则目的 / 业务全链路 / 核心判断条件 / 例外豁免。"},
+      {key:"frame",   name:"闭卷书面框架输出",   full:25, ans:"核算范围（含不属于本章业务）/ 确认条件 / 计量属性 / 后续变动处理 / 终止确认损益与科目。"},
+      {key:"bound",   name:"边界辨析自制对比表", full:15, ans:"至少 3 组易混项目对比：确认条件 / 初始计量 / 后续计量 / 减值能否转回 / 报表列报。"},
+      {key:"sc-reason",  name:"简答推理自测",       full:12, ans:"确认条件与例外 / 关键职业判断与陷阱 / 政策vs估计变更及理由 / 常见逻辑缺陷。"},
+      {key:"entry",   name:"分录推演测试",       full:12, ans:"2 道常规业务分步分录 + 条件变形重新推演，拒绝死记模板。"},
+      {key:"flow",    name:"流程图建模输出",     full:6,  ans:"业务起点 → 判断分支 → 正常路径 → 例外/豁免分支（文字或简图）。"},
+      {key:"review",  name:"错题复盘输出",       full:10, ans:"3–5 道错题：逻辑错误点 / 正确规则复述 / 改编同类型陷阱题干。"},
+      {key:"bonus",   name:"【加分】高阶自检",   full:5,  ans:"自主出题（基础+陷阱，标注坑点采分点）/ 财报附注解读（政策、估计、报表影响）。"},
+    ];
+    const DEFAULT_CPAS = [
+      ["第一章 总论","会计基本概念 / 财务报告目标 / 会计信息质量要求 / 会计要素及其确认计量"],
+      ["第二章 存货","存货确认与初始计量 / 发出计量 / 期末计量与跌价准备"],
+      ["第三章 固定资产","初始计量 / 折旧 / 后续支出 / 处置与持有待售"],
+      ["第四章 无形资产","确认与初始计量 / 摊销与减值 / 内部研究开发"],
+      ["第五章 投资性房地产","确认与后续计量 / 转换与处置"],
+      ["第六章 长期股权投资与合营安排","长期股权投资初始计量 / 成本法与权益法 / 合营安排"],
+      ["第七章 资产减值","减值测试与可收回金额 / 资产组减值 / 商誉减值"],
+      ["第八章 负债","流动负债 / 非流动负债 / 应付债券与可转换债券"],
+      ["第九章 职工薪酬","短期薪酬 / 辞退福利 / 其他长期职工福利"],
+      ["第十章 股份支付","股份支付的确认计量 / 权益结算与现金结算"],
+      ["第十一章 借款费用","资本化条件 / 资本化金额 / 暂停与停止资本化"],
+      ["第十二章 或有事项","或有事项确认 / 预计负债计量 / 或有负债与或有资产"],
+      ["第十三章 金融工具","金融资产分类 / 金融负债与权益工具 / 金融资产转移 / 套期会计"],
+      ["第十四章 租赁","租赁识别与租赁期 / 承租人会计处理 / 出租人会计处理 / 特殊租赁与售后租回"],
+      ["第十五章 持有待售与终止经营","持有待售划分 / 终止经营列报"],
+      ["第十六章 所有者权益","实收资本 / 资本公积 / 其他综合收益 / 留存收益"],
+      ["第十七章 收入费用和利润","收入五步法 / 合同成本 / 特定交易处理 / 费用与利润"],
+      ["第十八章 政府补助","政府补助特征 / 与资产相关 / 与收益相关"],
+      ["第十九章 所得税","计税基础与暂时性差异 / 递延所得税确认 / 所得税费用"],
+      ["第二十章 非货币性资产交换","换入资产计量 / 公允价值计量 / 账面价值计量"],
+      ["第二十一章 债务重组","债务重组方式 / 债务人处理 / 债权人处理"],
+      ["第二十二章 外币折算","记账本位币 / 外币交易折算 / 外币报表折算"],
+      ["第二十三章 财务报告","资产负债表 / 利润表 / 现金流量表 / 附注"],
+      ["第二十四章 会计政策估计变更与差错更正","会计政策变更 / 会计估计变更 / 前期差错更正"],
+      ["第二十五章 资产负债表日后事项","调整事项 / 非调整事项"],
+      ["第二十六章 企业合并","同一控制下合并 / 非同一控制下合并 / 商誉"],
+      ["第二十七章 合并财务报表","合并范围 / 合并抵销 / 内部交易 / 合并现金流量表"],
+      ["第二十八章 每股收益","基本每股收益 / 稀释每股收益"],
+      ["第二十九章 公允价值计量","公允价值层级 / 估值技术"],
+      ["第三十章 政府及民间非营利组织会计","政府会计 / 民间非营利组织会计"]
+    ];
+    const DEFAULT_SUB_MAP = {};
+    DEFAULT_CPAS.forEach(([c,subs])=>DEFAULT_SUB_MAP[c]=subs.split(" / "));
+
+    function getSectionMods(){ return modConfig.section || DEFAULT_SECTION_MODS; }
+    function getChapterMods(){ return modConfig.chapter || DEFAULT_CHAPTER_MODS; }
+    function sectionFull(){ return getSectionMods().reduce((a,m)=>a+m.full,0); }
+    function sectionPass(){ return Math.round(sectionFull()*0.8); }
+    function chapterMods(){ return getChapterMods(); }
+    function chapterBaseFull(){ return chapterMods().slice(0,-1).reduce((a,m)=>a+m.full,0); }
+    function chapterBonusFull(){ const m=chapterMods(); return m.length?m[m.length-1].full:0; }
+    function chapterFull(){ return chapterBaseFull()+chapterBonusFull(); }
+    function chapterPass(){ return Math.round(chapterFull()*0.8); }
+
+    /* ============================================================
+       渲染模板行
+    ============================================================ */
+    function buildModTable(mods, rowsId, prefix, withWrong){
+      const tb = document.getElementById(rowsId);
+      tb.innerHTML = mods.map((m,i)=>`
+        <tr>
+          <td>${esc(m.name)}</td>
+          <td>${m.full}</td>
+          <td class="sc-num"><input type="number" min="0" max="${m.full}" data-prefix="${prefix}" data-i="${i}" class="sc-score-in"></td>
+          <td class="sc-reason"><input type="text" class="sc-reason-in" data-prefix="${prefix}" data-i="${i}" placeholder="选填"></td>
+        </tr>`).join("");
+    }
+    function buildAnswers(mods, wrapId, prefix){
+      const wrap = document.getElementById(wrapId);
+      wrap.innerHTML = mods.map((m,i)=>{
+        const hasWrong = m.key==="review" || m.key==="entry";
+        const btn = hasWrong ? `<button class="sc-btn sc-danger-btn sc-sm sc-to-wrong" data-prefix="${prefix}" data-i="${i}">存入错题库</button>` : "";
+        return `
+        <details class="sc-ans-item">
+          <summary>${esc(m.name)}<span class="sc-sub">${esc(m.ans)}</span>${btn}</summary>
+          <div class="sc-ans-body"><textarea data-prefix="${prefix}" data-i="${i}" placeholder="在此独立作答，完成后对照讲义批改。"></textarea></div>
+        </details>`;
+      }).join("");
+    }
+
+    /* ============================================================
+       初始化模板
+    ============================================================ */
+    function initTemplates(){
+      buildModTable(getSectionMods(), "sc-sectionRows", "sec");
+      buildAnswers(getSectionMods(), "sc-sectionAnswers", "sec");
+      buildModTable(chapterMods(), "sc-chapRows", "chap");
+      buildAnswers(chapterMods(), "sc-chapAnswers", "chap");
+      buildModTable(DEFAULT_SECTION_MODS, "sc-modSectionRows", "modS");
+      buildModTable(DEFAULT_CHAPTER_MODS, "sc-modChapterRows", "modC");
+      // 设置页模板编辑行：用可输入控件
+      const mS = document.getElementById("sc-modSectionRows");
+      mS.innerHTML = DEFAULT_SECTION_MODS.map((m,i)=>`
+        <tr>
+          <td><input type="text" class="sc-mod-name" data-m="s" data-i="${i}" value="${esc(m.name)}" style="width:100%;padding:6px 8px;border:1px solid var(--sc-line);border-radius:6px"></td>
+          <td class="sc-num"><input type="number" class="sc-mod-full" data-m="s" data-i="${i}" min="1" max="60" value="${m.full}" style="width:100%;padding:6px 8px;border:1px solid var(--sc-line);border-radius:6px"></td>
+          <td><input type="text" class="sc-mod-ans" data-m="s" data-i="${i}" value="${esc(m.ans)}" style="width:100%;padding:6px 8px;border:1px solid var(--sc-line);border-radius:6px"></td>
+        </tr>`).join("");
+      const mC = document.getElementById("sc-modChapterRows");
+      mC.innerHTML = DEFAULT_CHAPTER_MODS.map((m,i)=>`
+        <tr>
+          <td><input type="text" class="sc-mod-name" data-m="c" data-i="${i}" value="${esc(m.name)}" style="width:100%;padding:6px 8px;border:1px solid var(--sc-line);border-radius:6px"></td>
+          <td class="sc-num"><input type="number" class="sc-mod-full" data-m="c" data-i="${i}" min="1" max="60" value="${m.full}" style="width:100%;padding:6px 8px;border:1px solid var(--sc-line);border-radius:6px"></td>
+          <td><input type="text" class="sc-mod-ans" data-m="c" data-i="${i}" value="${esc(m.ans)}" style="width:100%;padding:6px 8px;border:1px solid var(--sc-line);border-radius:6px"></td>
+        </tr>`).join("");
+      if(modConfig.section){
+        const vals = modConfig.section;
+        mS.querySelectorAll('.sc-mod-name[data-m="s"]').forEach((el,i)=>el.value=vals[i].name);
+        mS.querySelectorAll('.sc-mod-full[data-m="s"]').forEach((el,i)=>el.value=vals[i].full);
+        mS.querySelectorAll('.sc-mod-ans[data-m="s"]').forEach((el,i)=>el.value=vals[i].ans);
+      }
+      if(modConfig.chapter){
+        const vals = modConfig.chapter;
+        mC.querySelectorAll('.sc-mod-name[data-m="c"]').forEach((el,i)=>el.value=vals[i].name);
+        mC.querySelectorAll('.sc-mod-full[data-m="c"]').forEach((el,i)=>el.value=vals[i].full);
+        mC.querySelectorAll('.sc-mod-ans[data-m="c"]').forEach((el,i)=>el.value=vals[i].ans);
+      }
+      bindScoreListeners();
+      updateSeals();
+      updateModHints();
+    }
+    function updateModHints(){
+      document.getElementById("sc-secHint").textContent = "· 每学完一节立即自测 · 满分 "+sectionFull()+" · 达标 ≥ "+sectionPass();
+      document.getElementById("sc-secPassMeta").textContent = "达标线 "+sectionPass();
+      document.getElementById("sc-chapHint").textContent = "· 全部小节达标后执行 · 基础 "+chapterBaseFull()+" + 加分 "+chapterBonusFull()+" = "+chapterFull()+" · 达标 ≥ "+chapterPass();
+      document.getElementById("sc-chapBaseLab").textContent = "基础总分（"+chapterBaseFull()+"）";
+      document.getElementById("sc-chapBonusLab").textContent = "加分项（+"+chapterBonusFull()+"）";
+      document.getElementById("sc-chapPassMeta").textContent = "达标线 "+chapterPass();
+    }
+
+    /* ============================================================
+       计分
+    ============================================================ */
+    function secScore(){
+      let s=0;
+      document.querySelectorAll('#sc-sectionRows .sc-score-in').forEach(el=>s+=Number(el.value||0));
+      return s;
+    }
+    function chapScore(){
+      let base=0,bonus=0;
+      const mods=chapterMods();
+      document.querySelectorAll('#sc-chapRows .sc-score-in').forEach(el=>{
+        const i=Number(el.dataset.i);
+        if(i<mods.length-1) base+=Number(el.value||0); else bonus+=Number(el.value||0);
+      });
+      return {base,bonus};
+    }
+    function updateSeals(){
+      const s=secScore();
+      document.getElementById("sc-secTotal").innerHTML = s+"<small> / "+sectionFull()+"</small>";
+      document.getElementById("sc-secPct").innerHTML = Math.round(s/sectionFull()*100)+"<small>%</small>";
+      const sSeal=document.getElementById("sc-sectionSeal");
+      sSeal.className="sc-seal "+(s>=sectionPass()?"sc-pass":s>=sectionFull()*0.6?"sc-warn":"sc-danger");
+      sSeal.textContent = s>=sectionPass()?"已达标":s>=sectionFull()*0.6?"待补":"未达标";
+
+      const c=chapScore();
+      document.getElementById("sc-chapBase").innerHTML=c.base+"<small> / "+chapterBaseFull()+"</small>";
+      document.getElementById("sc-chapBonus").innerHTML=c.bonus+"<small> / "+chapterBonusFull()+"</small>";
+      const tot=c.base+c.bonus;
+      document.getElementById("sc-chapTotal").innerHTML=tot+"<small> / "+chapterFull()+"</small>";
+      const cSeal=document.getElementById("sc-chapSeal");
+      cSeal.className="sc-seal "+(tot>=chapterPass()?"sc-pass":tot>=chapterFull()*0.6?"sc-warn":"sc-danger");
+      cSeal.textContent=tot>=chapterPass()?"已达标":tot>=chapterFull()*0.6?"待补":"未达标";
+    }
+    function bindScoreListeners(){
+      document.querySelectorAll('#sc-sectionRows .sc-score-in').forEach(el=>el.removeEventListener("input",updateSeals));
+      document.querySelectorAll('#sc-sectionRows .sc-score-in').forEach(el=>el.addEventListener("input",updateSeals));
+      document.querySelectorAll('#sc-chapRows .sc-score-in').forEach(el=>el.removeEventListener("input",updateSeals));
+      document.querySelectorAll('#sc-chapRows .sc-score-in').forEach(el=>el.addEventListener("input",updateSeals));
+      document.querySelectorAll('.sc-to-wrong').forEach(el=>{
+        el.onclick = ()=>{
+          const prefix = el.dataset.prefix;
+          const idx = Number(el.dataset.i);
+          const isSec = prefix==="sec";
+          const chapEl = isSec ? document.getElementById("sc-secChapter") : document.getElementById("sc-chapChapter");
+          const subEl = isSec ? document.getElementById("sc-secSub") : null;
+          const ansEl = document.querySelector(`#${isSec?"sc-sectionAnswers":"sc-chapAnswers"} textarea[data-prefix="${prefix}"][data-i="${idx}"]`);
+          const reasonEl = document.querySelector(`#${isSec?"sc-sectionRows":"sc-chapRows"} .reason-in[data-prefix="${prefix}"][data-i="${idx}"]`);
+          set("sc-wChapter", chapEl.value);
+          set("sc-wSub", subEl ? subEl.value : "");
+          set("sc-wDate", today());
+          set("sc-wQ", (isSec?subEl?"["+subEl.value+"] ":"":"[整章] ") + "模块错题");
+          set("sc-wMistake", reasonEl ? reasonEl.value : "");
+          set("sc-wCorrect", ansEl ? ansEl.value : "");
+          switchTab("tabWrong");
+          toast("已带出到错题库，请补充题目");
+        };
+      });
+      updateSeals();
+    }
+
+    /* 编辑态 */
+    let editingId=null;
+
+    function collectSection(){
+      return {
+        id: editingId||uid(), type:"section",
+        chapter: val("sc-secChapter"), sub: val("sc-secSub"), date: val("sc-secDate")||today(),
+        lvl: Number(val("sc-secLvl")||3),
+        scores: Array.from(document.querySelectorAll('#sc-sectionRows .sc-score-in')).map(el=>Number(el.value||0)),
+        reasons: Array.from(document.querySelectorAll('#sc-sectionRows .sc-reason-in')).map(el=>el.value),
+        answers: Array.from(document.querySelectorAll('#sc-sectionAnswers textarea')).map(el=>el.value),
+        total: secScore(), pass: secScore()>=sectionPass(),
+        s7: Number(val("sc-secS7")||0), s21: Number(val("sc-secS21")||0),
+      };
+    }
+    function fillSection(r){
+      editingId=r.id;
+      set("sc-secChapter",r.chapter); set("sc-secSub",r.sub); set("sc-secDate",r.date);
+      set("sc-secS7",r.s7||""); set("sc-secS21",r.s21||""); set("sc-secLvl", r.lvl!=null?r.lvl:3);
+      const scores=document.querySelectorAll('#sc-sectionRows .sc-score-in');
+      const reasons=document.querySelectorAll('#sc-sectionRows .sc-reason-in');
+      const ans=document.querySelectorAll('#sc-sectionAnswers textarea');
+      r.scores.forEach((v,i)=>{if(scores[i])scores[i].value=v;});
+      (r.reasons||[]).forEach((v,i)=>{if(reasons[i])reasons[i].value=v;});
+      (r.answers||[]).forEach((v,i)=>{if(ans[i])ans[i].value=v;});
+      updateSeals();
+      set("sc-secSaveLabel","更新本节记录");
+      document.querySelector('#sc-sectionSeal').textContent="编辑中";
+    }
+    function clearSection(){
+      editingId=null;
+      ["sc-secChapter","sc-secSub","sc-secDate","sc-secS7","sc-secS21"].forEach(id=>set(id,""));
+      set("sc-secLvl","3");
+      document.querySelectorAll('#sc-sectionRows input,#sc-sectionRows textarea,#sc-sectionAnswers textarea').forEach(el=>el.value="");
+      updateSeals();
+      set("sc-secSaveLabel","保存本节记录");
+    }
+    document.getElementById("sc-secSave").addEventListener("click",()=>{
+      const r=collectSection();
+      if(!r.chapter||!r.sub){ toast("请填写章节与小节名称"); return; }
+      const idx=store.findIndex(x=>x.id===r.id);
+      if(idx>=0) store[idx]=r; else store.push(r);
+      saveStore(); toast("小节记录已保存"); clearSection(); switchTab("tabBoard");
+    });
+    document.getElementById("sc-secClear").addEventListener("click",clearSection);
+    document.getElementById("sc-secPrint").addEventListener("click",()=>window.print());
+
+    /* ============================================================
+       整章表单
+    ============================================================ */
+    function collectChapter(){
+      const c=chapScore();
+      return {
+        id: editingId||uid(), type:"chapter",
+        chapter: val("sc-chapChapter"), date: val("sc-chapDate")||today(), kind: val("sc-chapKind")||"初次",
+        lvl: Number(val("sc-chapLvl")||3),
+        scores: Array.from(document.querySelectorAll('#sc-chapRows .sc-score-in')).map(el=>Number(el.value||0)),
+        reasons: Array.from(document.querySelectorAll('#sc-chapRows .sc-reason-in')).map(el=>el.value),
+        answers: Array.from(document.querySelectorAll('#sc-chapAnswers textarea')).map(el=>el.value),
+        base:c.base, bonus:c.bonus, total:c.base+c.bonus, pass:(c.base+c.bonus)>=chapterPass(),
+        d7: val("sc-chapD7"), s7: Number(val("sc-chapS7")||0), s21: Number(val("sc-chapS21")||0),
+      };
+    }
+    function fillChapter(r){
+      editingId=r.id;
+      set("sc-chapChapter",r.chapter); set("sc-chapDate",r.date); set("sc-chapKind",r.kind||"初次");
+      set("sc-chapD7",r.d7||""); set("sc-chapS7",r.s7||""); set("sc-chapS21",r.s21||""); set("sc-chapLvl",r.lvl!=null?r.lvl:3);
+      const scores=document.querySelectorAll('#sc-chapRows .sc-score-in');
+      const reasons=document.querySelectorAll('#sc-chapRows .sc-reason-in');
+      const ans=document.querySelectorAll('#sc-chapAnswers textarea');
+      r.scores.forEach((v,i)=>{if(scores[i])scores[i].value=v;});
+      (r.reasons||[]).forEach((v,i)=>{if(reasons[i])reasons[i].value=v;});
+      (r.answers||[]).forEach((v,i)=>{if(ans[i])ans[i].value=v;});
+      updateSeals();
+      set("sc-chapSaveLabel","更新整章记录");
+      document.querySelector('#sc-chapSeal').textContent="编辑中";
+    }
+    function clearChapter(){
+      editingId=null;
+      ["sc-chapChapter","sc-chapDate","sc-chapD7","sc-chapS7","sc-chapS21"].forEach(id=>set(id,""));
+      set("sc-chapKind","初次"); set("sc-chapLvl","3");
+      document.querySelectorAll('#sc-chapRows input,#sc-chapRows textarea,#sc-chapAnswers textarea').forEach(el=>el.value="");
+      updateSeals();
+      set("sc-chapSaveLabel","保存整章记录");
+    }
+    document.getElementById("sc-chapSave").addEventListener("click",()=>{
+      const r=collectChapter();
+      if(!r.chapter){ toast("请填写章节名称"); return; }
+      const idx=store.findIndex(x=>x.id===r.id);
+      if(idx>=0) store[idx]=r; else store.push(r);
+      saveStore(); toast("整章记录已保存"); clearChapter(); switchTab("tabBoard");
+    });
+    document.getElementById("sc-chapClear").addEventListener("click",clearChapter);
+    document.getElementById("sc-chapPrint").addEventListener("click",()=>window.print());
+
+    /* ============================================================
+       工具函数
+    ============================================================ */
+    function val(id){ return document.getElementById(id).value; }
+    function set(id,v){ document.getElementById(id).value=v; }
+    function toast(msg){
+      const t=document.getElementById("sc-toast");
+      t.textContent=msg; t.classList.add("sc-show");
+      clearTimeout(t._timer);
+      t._timer=setTimeout(()=>t.classList.remove("sc-show"),2000);
+    }
+    function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+    const LVL_NAME=["未学","初学","薄弱","熟练","精通"];
+    function lvlHtml(l){ return `<span class="sc-lvl l${l}">${LVL_NAME[l]||"熟练"}</span>`; }
+
+    /* ============================================================
+       复测提醒
+    ============================================================ */
+    function remindState(r){
+      const todayStr=today();
+      if(r.type==="section"){
+        if(r.s21>0 && r.s21>=sectionPass()) return "none";
+        if(!r.s21 && r.s7>0 && r.s7>=sectionPass()) return "none"; // 7日已达标待21日
+        if(addDays(r.date,21)<=todayStr && !r.s21) return "21日";
+        if(addDays(r.date,7)<=todayStr && !r.s7) return "7日";
+        return "none";
+      }else{
+        if(r.s21>0 && r.s21>=chapterPass()) return "none";
+        if(addDays(r.date,21)<=todayStr && !r.s21) return "21日";
+        if(addDays(r.date,7)<=todayStr && !r.s7) return "7日";
+        return "none";
+      }
+    }
+    function remindCounts(){
+      let c7=0,c21=0;
+      store.forEach(r=>{
+        const rs=remindState(r);
+        if(rs==="7日")c7++; else if(rs==="21日")c21++;
+      });
+      return {c7,c21};
+    }
+
+    /* ============================================================
+       看板渲染
+    ============================================================ */
+    function refreshCounts(){
+      document.getElementById("sc-recCount").textContent=store.length;
+      const wc=document.getElementById("sc-wrongCount");
+      wc.textContent=wrongStore.length;
+      const open=wrongStore.filter(w=>!w.done).length;
+      wc.className="sc-tab-badge"+(open>0?" sc-warn-badge":"");
+    }
+
+    function currentFilter(){
+      return {
+        chapter: val("sc-filterChapter"),
+        lvl: val("sc-filterLvl"),
+        type: val("sc-filterType"),
+      };
+    }
+    function applyFilter(list){
+      const f=currentFilter();
+      return list.filter(r=>
+        (!f.chapter||r.chapter===f.chapter) &&
+        (f.lvl===""||String(r.lvl)===f.lvl) &&
+        (!f.type||r.type===f.type)
+      );
+    }
+
+    function renderBoard(){
+      refreshCounts();
+      renderFilterOptions();
+      renderPlan();
+      renderStats();
+      renderWeakChart();
+      renderRadar();
+      renderTrend();
+      renderGroups();
+      renderTopProgress();
+    }
+
+    function renderFilterOptions(){
+      const sel=document.getElementById("sc-filterChapter");
+      const names=[...new Set(store.map(x=>x.chapter).filter(Boolean))];
+      const cur=sel.value;
+      sel.innerHTML='<option value="">全部章节</option>'+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+      if(names.includes(cur)) sel.value=cur;
+    }
+
+    function renderPlan(){
+      const target=Number(plan.dailyTarget||0);
+      const t=document.getElementById("sc-planToday");
+      t.innerHTML = (target||0)+"<small style='font-size:13px;color:var(--sc-ink-soft)'> 小节/日</small>";
+      if(!target){ document.getElementById("sc-planDone").textContent="—"; document.getElementById("sc-planBar").style.width="0%"; document.getElementById("sc-planMeta").textContent="尚未设置每日目标（到「设置」页设定）"; return; }
+      const todayStr=today();
+      const done=store.filter(r=>r.type==="section"&&r.date===todayStr&&r.pass).length;
+      document.getElementById("sc-planDone").textContent=done;
+      const pct=Math.min(100,Math.round(done/target*100));
+      document.getElementById("sc-planBar").style.width=pct+"%";
+      document.getElementById("sc-planBar").style.background=pct>=100?"#77805C":"#8A7358";
+      document.getElementById("sc-planMeta").textContent = pct>=100?("今日目标已完成，进度 "+pct+"%"):("已完成 "+done+" / "+target+" 节，进度 "+pct+"%，加油");
+    }
+
+    function renderStats(){
+      const all=store, sections=all.filter(x=>x.type==="section"), chapters=all.filter(x=>x.type==="chapter");
+      const passedS=sections.filter(x=>x.pass).length;
+      const chapNames=[...new Set(all.map(x=>x.chapter).filter(Boolean))];
+      let chapPassed=0;
+      chapNames.forEach(nm=>{
+        const sc=sections.filter(x=>x.chapter===nm);
+        if(sc.length>0&&sc.every(x=>x.pass)) chapPassed++;
+        else if(chapters.find(x=>x.chapter===nm&&x.pass)) chapPassed++;
+      });
+      const rc=remindCounts();
+      document.getElementById("sc-statGrid").innerHTML=`
+        <div class="sc-stat-card"><div class="sc-v">${sections.length}</div><div class="sc-l">小节自检记录</div></div>
+        <div class="sc-stat-card"><div class="sc-v">${passedS}/${sections.length||0}</div><div class="sc-l">小节已达标</div></div>
+        <div class="sc-stat-card"><div class="sc-v">${chapters.length}</div><div class="sc-l">整章复盘记录</div></div>
+        <div class="sc-stat-card"><div class="sc-v">${chapPassed}/${chapNames.length||0}</div><div class="sc-l">整章达标</div></div>
+        <div class="sc-stat-card"><div class="sc-v sc-sm" style="color:${rc.c7?`var(--sc-warn)`:`var(--sc-ink-soft)`}">${rc.c7}</div><div class="sc-l">7 日复测待做</div></div>
+        <div class="sc-stat-card"><div class="sc-v sc-sm" style="color:${rc.c21?`var(--sc-danger)`:`var(--sc-ink-soft)`}">${rc.c21}</div><div class="sc-l">21 日复测待做</div></div>
+        <div class="sc-stat-card"><div class="sc-v sc-sm">${wrongStore.length}</div><div class="sc-l">错题总数</div></div>
+        <div class="sc-stat-card"><div class="sc-v sc-sm" style="color:var(--sc-pass)">${wrongStore.filter(w=>w.done).length}</div><div class="sc-l">错题已掌握</div></div>`;
+    }
+
+    function renderWeakChart(){
+      const wrap=document.getElementById("sc-weakChart");
+      const mods=getSectionMods();
+      const sections=applyFilter(store).filter(x=>x.type==="section");
+      if(sections.length===0){ wrap.innerHTML="<p style='color:var(--sc-ink-soft);font-size:13px'>完成小节自检后，这里会自动统计各模块薄弱程度。</p>"; return; }
+      const rates=mods.map((m,i)=>{
+        const sum=sections.reduce((a,r)=>a+(r.scores[i]||0),0);
+        const full=sections.reduce((a,r)=>a+m.full,0);
+        return {name:m.name,rate:full>0?sum/full:0};
+      });
+      const sorted=[...rates].sort((a,b)=>a.rate-b.rate);
+      const W=560,H=240,padL=150,padR=30,padT=30,padB=50;
+      const cw=W-padL-padR,chh=H-padT-padB;
+      const bw=cw/sorted.length;
+      let bars="",labels="",vals="",grid="";
+      sorted.forEach((d,i)=>{
+        const h=d.rate*chh,x=padL+i*bw+bw*0.22,w=bw*0.56,y=padT+(chh-h);
+        const col=d.rate>=0.8?"#77805C":d.rate>=0.6?"#B08A4A":"#A6503C";
+        bars+=`<rect x="${x}" y="${y}" width="${w}" height="${Math.max(h,2)}" rx="3" fill="${col}" opacity="0.9"/>`;
+        labels+=`<text x="${padL+i*bw+bw/2}" y="${H-padB+16}" text-anchor="middle" font-size="11" fill="#6E6355">${d.name}</text>`;
+        vals+=`<text x="${padL+i*bw+bw/2}" y="${y-7}" text-anchor="middle" font-size="11" fill="#33291F" font-weight="600">${Math.round(d.rate*100)}%</text>`;
+      });
+      for(let g=0;g<=4;g++){ const gy=padT+chh-(g/4)*chh; grid+=`<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="#E5DCCD"/><text x="${padL-7}" y="${gy+4}" text-anchor="end" font-size="10" fill="#9C9080">${g*25}%</text>`; }
+      wrap.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:480px">${grid}${bars}${vals}${labels}</svg>`;
+    }
+
+    function renderRadar(){
+      const wrap=document.getElementById("sc-radarChart");
+      // 7大模块：以整章前7个(去掉加分)为准，若无整章数据则用小节同名模块key聚合
+      const baseMods=chapterMods().slice(0,-1);
+      const recs=applyFilter(store);
+      const allKeys=new Set(["feyn","frame","bound","sc-reason","entry","flow","review"]);
+      const rates=baseMods.map(m=>{
+        let sum=0,full=0,cnt=0;
+        recs.forEach(r=>{
+          const mods = r.type==="section"?getSectionMods():chapterMods();
+          const idx=mods.findIndex(x=>x.key===m.key);
+          if(idx<0) return;
+          sum+=(r.scores[idx]||0); full+=mods[idx].full; cnt++;
+        });
+        return {name:m.name,rate:cnt>0?sum/full:0};
+      });
+      if(recs.length===0){ wrap.innerHTML="<p style='color:var(--sc-ink-soft);font-size:13px'>保存记录后，这里按 7 大能力维度展示强弱分布。</p>"; return; }
+      const n=rates.length, cx=200, cy=180, R=120;
+      const angle=i=> (Math.PI*2*i/n - Math.PI/2);
+      const pt=(i,r)=>`${(cx+r*Math.cos(angle(i))).toFixed(1)},${(cy+r*Math.sin(angle(i))).toFixed(1)}`;
+      let rings="", axes="", labels="", area="", ptsArr=[];
+      for(let ring=1;ring<=4;ring++){
+        const rr=R*ring/4;
+        let poly="";
+        for(let i=0;i<n;i++) poly+=pt(i,rr)+" ";
+        rings+=`<polygon points="${poly}" fill="none" stroke="#E5DCCD" stroke-width="1"/>`;
+      }
+      for(let i=0;i<n;i++){ axes+=`<line x1="${cx}" y1="${cy}" x2="${pt(i,R).split(",")[0]}" y2="${pt(i,R).split(",")[1]}" stroke="#E5DCCD"/>`; }
+      for(let i=0;i<n;i++){ const [lx,ly]=pt(i,R+22); labels+=`<text x="${lx}" y="${ly}" text-anchor="middle" font-size="11" fill="#6E6355">${rates[i].name}</text>`; }
+      rates.forEach((d,i)=>ptsArr.push(pt(i,d.rate*R)));
+      area=`<polygon points="${ptsArr.join(" ")}" fill="rgba(138,115,88,.20)" stroke="#8A7358" stroke-width="2" stroke-linejoin="round"/>`;
+      let dots="";
+      rates.forEach((d,i)=>{ const [dx,dy]=pt(i,d.rate*R).split(","); dots+=`<circle cx="${dx}" cy="${dy}" r="3.5" fill="#8A7358"/>`; });
+      wrap.innerHTML=`<svg viewBox="0 0 ${cx*2} ${cy*2+30}" width="100%" style="min-width:420px">${rings}${axes}${labels}${area}${dots}<text x="${cx}" y="14" text-anchor="middle" font-size="12" fill="#6E6355">能力雷达（0–100%）</text></svg>`;
+    }
+
+    function renderTrend(){
+      const wrap=document.getElementById("sc-trendChart");
+      const recs=[...store].filter(r=>r.date).sort((a,b)=>a.date.localeCompare(b.date));
+      if(recs.length===0){ wrap.innerHTML="<p style='color:var(--sc-ink-soft);font-size:13px'>保存记录后，这里按日期展示综合得分趋势。</p>"; return; }
+      const fullMax=Math.max(...recs.map(r=>r.total),1);
+      const W=760,H=260,padL=48,padR=20,padT=24,padB=46;
+      const cw=W-padL-padR,chh=H-padT-padB;
+      const n=recs.length, step=n>1?cw/(n-1):0;
+      let pts="",dots="",labs="",grid="";
+      recs.forEach((r,i)=>{
+        const x=padL+i*step, y=padT+chh-(r.total/fullMax)*chh;
+        pts+=`${x},${y} `;
+        const col=r.pass?"#77805C":"#A6503C";
+        dots+=`<circle cx="${x}" cy="${y}" r="4.5" fill="${col}"/>`;
+        labs+=`<text x="${x}" y="${H-padB+18}" text-anchor="middle" font-size="11" fill="#6E6355" transform="rotate(-30 ${x} ${H-padB+18})">${r.date.slice(5)}${r.type==="section"?"·节":""}</text>`;
+      });
+      for(let g=0;g<=4;g++){ const gy=padT+chh-(g/4)*chh; grid+=`<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="#E5DCCD"/><text x="${padL-8}" y="${gy+4}" text-anchor="end" font-size="11" fill="#9C9080">${Math.round(fullMax*g/4)}</text>`; }
+      wrap.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:560px">${grid}<polyline points="${pts.trim()}" fill="none" stroke="#8A7358" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labs}</svg>`;
+    }
+
+    function renderGroups(){
+      const wrap=document.getElementById("sc-chapterGroups");
+      const empty=document.getElementById("sc-emptyState");
+      const filtered=applyFilter(store);
+      const chapNames=[...new Set(filtered.map(x=>x.chapter).filter(Boolean))];
+      if(chapNames.length===0){ wrap.innerHTML=""; empty.style.display="block"; return; }
+      empty.style.display="none";
+      let html="";
+      chapNames.forEach(nm=>{
+        const recs=filtered.filter(x=>x.chapter===nm);
+        const secs=recs.filter(x=>x.type==="section");
+        const chaps=recs.filter(x=>x.type==="chapter");
+        const passCount=secs.filter(x=>x.pass).length;
+        const prog=secs.length>0?Math.round(passCount/secs.length*100):0;
+        html+=`<div class="sc-chapter-block">
+          <div class="sc-cb-head"><span class="sc-name sc-serif">${esc(nm)}</span><span class="sc-cnt">小节 ${passCount}/${secs.length} 达标 · 整章 ${chaps.filter(c=>c.pass).length} 达标</span></div>
+          <div class="sc-cb-body">`;
+        if(secs.length>0){
+          const progCol=prog>=100?"#77805C":prog>=60?"#B08A4A":"#A6503C";
+          html+=`<div style="padding:8px 18px 0"><div class="sc-progress-outer"><div class="sc-progress-in" style="width:${prog}%;background:${progCol}"></div></div><div style="font-size:11.5px;color:var(--sc-ink-soft);margin:4px 0 2px">本章小节达标进度 ${prog}%${prog<100?"（全部小节达标后，执行整章综合复盘）":""}</div></div>`;
+        }
+        recs.forEach(r=>{
+          const seal=r.pass?'<span class="sc-seal sc-pass">达标</span>':'<span class="sc-seal sc-danger">待补</span>';
+          const typeTag=r.type==="section"?"小节":"整章";
+          const rs=remindState(r);
+          const rm=rs!=="none"?(rs==="21日"?'<span class="sc-remind-tag">21日复测</span>':'<span class="sc-remind-tag">7日复测</span>'):"";
+          const rowCls=rs!=="none"?"sc-remind":"";
+          html+=`<div class="sc-rec-row ${rowCls}" data-id="${r.id}">
+            <span class="sc-r-sub">${typeTag} · ${esc(r.sub||"综合复盘")}</span>
+            ${lvlHtml(r.lvl!=null?r.lvl:3)}
+            <span class="sc-r-meta">${r.date||""}${r.type==="chapter"&&r.kind?" · "+esc(r.kind):""}</span>
+            <span class="sc-r-score">${rm}${seal}<b>${r.total}</b><span style="font-size:12px;color:var(--sc-ink-soft)">/${r.type==="section"?sectionFull():chapterFull()}</span></span>
+            <span class="sc-rec-actions">
+              <button class="sc-btn sc-ghost sc-sm" data-act="edit">编辑</button>
+              <button class="sc-btn sc-danger-btn sc-sm" data-act="del">删除</button>
+            </span>
+          </div>`;
+        });
+        html+=`</div></div>`;
+      });
+      wrap.innerHTML=html;
+      wrap.querySelectorAll('.sc-rec-row').forEach(row=>{
+        const id=row.dataset.id;
+        row.querySelector('[data-act="edit"]').addEventListener("click",()=>editRecord(id));
+        row.querySelector('[data-act="del"]').addEventListener("click",()=>delRecord(id));
+      });
+    }
+
+    function editRecord(id){
+      const r=store.find(x=>x.id===id);
+      if(!r) return;
+      if(r.type==="section"){ switchTab("tabSection"); fillSection(r); }
+      else{ switchTab("tabChapter"); fillChapter(r); }
+      window.scrollTo(0,0);
+    }
+    function delRecord(id){
+      if(!confirm("删除这条记录？此操作不可撤销。")) return;
+      store=store.filter(x=>x.id!==id);
+      saveStore(); renderBoard(); toast("记录已删除");
+    }
+
+    /* ============================================================
+       章节进度（顶栏）
+    ============================================================ */
+    function renderTopProgress(){
+      const chapNames=[...new Set(store.map(x=>x.chapter).filter(Boolean))];
+      let passed=0;
+      chapNames.forEach(nm=>{
+        const secs=store.filter(x=>x.chapter===nm&&x.type==="section");
+        if(secs.length>0&&secs.every(x=>x.pass)) passed++;
+        else if(store.find(x=>x.chapter===nm&&x.type==="chapter"&&x.pass)) passed++;
+      });
+      const rc=remindCounts();
+      let rmHtml="";
+      if(rc.c7||rc.c21) rmHtml=`<span style="color:var(--sc-warn);font-weight:700">${rc.c7+rc.c21} 条待复测</span>`;
+      document.getElementById("sc-topProgress").innerHTML=`章节进度：<b>${passed}</b> / ${chapNames.length||0} 章达标${rmHtml}`;
+    }
+
+    /* ============================================================
+       错题库
+    ============================================================ */
+    function collectWrong(){
+      return {
+        id: uid(),
+        chapter: val("sc-wChapter"), sub: val("sc-wSub"), date: val("sc-wDate")||today(),
+        q: val("sc-wQ"), mistake: val("sc-wMistake"), correct: val("sc-wCorrect"),
+        done: false,
+      };
+    }
+    function clearWrongForm(){
+      ["sc-wChapter","sc-wSub","sc-wQ","sc-wMistake","sc-wCorrect"].forEach(id=>set(id,""));
+      set("sc-wDate",today());
+    }
+    document.getElementById("sc-wrongSave").addEventListener("click",()=>{
+      const w=collectWrong();
+      if(!w.q||!w.chapter){ toast("请填写章节与题目"); return; }
+      wrongStore.push(w); saveWrong(); clearWrongForm(); renderWrongList(); toast("已存入错题库");
+    });
+
+    function renderWrongList(){
+      const wrap=document.getElementById("sc-wrongList");
+      const empty=document.getElementById("sc-wrongEmpty");
+      wrap.innerHTML="";
+      if(wrongStore.length===0){ empty.style.display="block"; return; }
+      empty.style.display="none";
+      // 未掌握在前
+      const sorted=[...wrongStore].sort((a,b)=>(a.done?1:0)-(b.done?1:0));
+      sorted.forEach(w=>{
+        const div=document.createElement("div");
+        div.className="sc-wrong-item"+(w.done?" sc-done":"");
+        div.innerHTML=`
+          <div>
+            <div class="sc-w-q">${esc(w.q)} ${w.done?'<span class="sc-seal sc-pass" style="font-size:11px;padding:2px 8px">已掌握</span>':""}</div>
+            <div class="sc-w-meta">${esc(w.chapter)}${w.sub?" · "+esc(w.sub):""} · ${w.date}</div>
+            ${w.mistake?`<div class="sc-w-detail"><b>我的错误：</b>${esc(w.mistake)}</div>`:""}
+            ${w.correct?`<div class="sc-w-detail"><b>正确规则：</b>${esc(w.correct)}</div>`:""}
+          </div>
+          <div class="sc-wrong-actions">
+            ${w.done?"":`<button class="sc-btn sc-pass-btn sc-sm" data-w="done">标记掌握</button>`}
+            <button class="sc-btn sc-ghost sc-sm" data-w="del">删除</button>
+          </div>`;
+        div.querySelector('[data-w="done"]')&&div.querySelector('[data-w="done"]').addEventListener("click",()=>{w.done=true;saveWrong();renderWrongList();toast("已标记掌握");});
+        div.querySelector('[data-w="del"]').addEventListener("click",()=>{wrongStore=wrongStore.filter(x=>x.id!==w.id);saveWrong();renderWrongList();toast("错题已删除");});
+        wrap.appendChild(div);
+      });
+    }
+
+    /* ============================================================
+       导入导出
+    ============================================================ */
+    document.getElementById("sc-exportCsv").addEventListener("click",()=>{
+      if(store.length===0){ toast("暂无记录可导出"); return; }
+      const head=["类型","章节","小节","掌握等级","完成日期","总分","满分","是否达标","7日复测","21日复测","失分原因汇总"];
+      const rows=store.map(r=>[
+        r.type==="section"?"小节":"整章", r.chapter, r.sub||"综合复盘", LVL_NAME[r.lvl!=null?r.lvl:3], r.date, r.total,
+        r.type==="section"?sectionFull():chapterFull(), r.pass?"是":"否", r.s7||"", r.s21||"",
+        (r.reasons||[]).filter(Boolean).join("；")
+      ]);
+      const csv=[head,...rows].map(arr=>arr.map(c=>`"${String(c==null?"":c).replace(/"/g,'""')}"`).join(",")).join("\n");
+      download("\uFEFF"+csv,"会计自检记录.csv","text/csv;charset=utf-8");
+    });
+    document.getElementById("sc-exportBackup").addEventListener("click",()=>{
+      if(store.length===0&&wrongStore.length===0){ toast("暂无数据可备份"); return; }
+      download(JSON.stringify({store,wrongStore,modConfig,plan},null,2),"会计自检备份_"+today()+".json","application/json");
+    });
+    document.getElementById("sc-importBackup").addEventListener("click",()=>document.getElementById("sc-importFile").click());
+    document.getElementById("sc-importFile").addEventListener("change",e=>{
+      const f=e.target.files[0]; if(!f) return;
+      const rd=new FileReader();
+      rd.onload=()=>{
+        try{
+          const data=JSON.parse(rd.result);
+          if(Array.isArray(data)){ store=store.concat(data); saveStore(); toast("已导入 "+data.length+" 条记录"); }
+          else if(data.store){ store=store.concat(data.store); if(Array.isArray(data.wrongStore))wrongStore=wrongStore.concat(data.wrongStore); saveWrong(); saveStore(); toast("已导入备份数据"); }
+          else throw new Error("格式错误");
+          renderBoard();
+        }catch(err){ toast("备份文件无法解析"); }
+      };
+      rd.readAsText(f);
+      e.target.value="";
+    });
+    document.getElementById("sc-clearAll").addEventListener("click",()=>{
+      if(!confirm("确定清空全部存档？将清空自检记录、错题库、自定义模板与每日计划，此操作不可恢复，建议先导出备份。")) return;
+      ["accCheck_v3","accWrong_v3","accMods_v3","accPlan_v3"].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+      store=[]; wrongStore=[]; modConfig={section:null,chapter:null}; plan={};
+      refreshCounts(); renderBoard(); renderWrongList(); initTemplates(); buildLists();
+      toast("全部存档已清空");
+    });
+
+    function download(content,filename,mime){
+      const blob=new Blob([content],{type:mime});
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob); a.download=filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},100);
+    }
+
+    /* ============================================================
+       设置：模板自定义 + 计划
+    ============================================================ */
+    document.getElementById("sc-modSave").addEventListener("click",()=>{
+      const readRow=(m)=>{
+        return { key: m.key, name: val2(document.querySelector(`.sc-mod-name[data-m="${m.mk}"][data-i="${m.i}"]`)), full: Number(document.querySelector(`.sc-mod-full[data-m="${m.mk}"][data-i="${m.i}"]`).value)||0, ans: val2(document.querySelector(`.sc-mod-ans[data-m="${m.mk}"][data-i="${m.i}"]`)) };
+      };
+      const sec=[]; DEFAULT_SECTION_MODS.forEach((m,i)=>sec.push(readRow({key:m.key,mk:"s",i})));
+      const chap=[]; DEFAULT_CHAPTER_MODS.forEach((m,i)=>chap.push(readRow({key:m.key,mk:"c",i})));
+      if(sec.some(x=>x.full<=0)||chap.some(x=>x.full<=0)){ toast("模块满分必须大于 0"); return; }
+      modConfig={section:sec,chapter:chap}; saveMods(); initTemplates(); toast("模板已保存");
+    });
+    document.getElementById("sc-modReset").addEventListener("click",()=>{
+      if(!confirm("恢复默认模板？")) return;
+      localStorage.removeItem(MODS_KEY); modConfig={section:null,chapter:null}; initTemplates(); toast("已恢复默认模板");
+    });
+    function val2(el){ return el?el.value:""; }
+
+    document.getElementById("sc-planSave").addEventListener("click",()=>{
+      const t=Number(document.getElementById("sc-planTarget").value||0);
+      if(t<=0){ toast("请输入每日计划小节数"); return; }
+      plan={dailyTarget:t}; savePlan(); toast("学习计划已保存"); renderPlan();
+    });
+
+    /* ============================================================
+       标签切换
+    ============================================================ */
+    function switchTab(name){
+      var map={tabSection:"scsec",tabChapter:"scchap",tabBoard:"scboard",tabWrong:"scwrong"};
+      var key=String(name||"").replace(/^sc-/,"");
+      var view=map[key]; if(!view) return;
+      var btn=document.querySelector('#viewTabs .vtab[data-view="'+view+'"]');
+      if(btn) btn.click();
+      if(window.ScRefresh && window.ScRefresh[view]) window.ScRefresh[view]();
+      window.scrollTo(0,0);
+    }
+
+    document.getElementById("sc-filterReset").addEventListener("click",()=>{ set("sc-filterChapter",""); set("sc-filterLvl",""); set("sc-filterType",""); renderBoard(); toast("筛选已重置"); });
+    ["sc-filterChapter","sc-filterLvl","sc-filterType"].forEach(id=>document.getElementById(id).addEventListener("change",renderBoard));
+
+    /* ============================================================
+       章节/小节 datalist + 联动
+    ============================================================ */
+    function buildLists(){
+      const dl=document.getElementById("sc-chapterList");
+      const names=[...new Set(store.map(x=>x.chapter).filter(Boolean))];
+      const allNames=[...new Set([...names,...DEFAULT_CPAS.map(c=>c[0])])];
+      try{ if(typeof COURSES!=="undefined"&&COURSES&&COURSES.length){ COURSES.forEach(function(c){ if(c) allNames.push(c); }); } }catch(e){}
+      try{ if(typeof state!=="undefined"&&state&&state.currentCourse){ var CN=(typeof CHAPTER_NAMES!=="undefined"?CHAPTER_NAMES:null); if(CN&&CN[state.currentCourse]){ Object.keys(CN[state.currentCourse]).forEach(function(k){ allNames.push("第"+k+"章 "+CN[state.currentCourse][k]); }); } } }catch(e){}
+      dl.innerHTML=allNames.map(n=>`<option value="${esc(n)}">`).join("");
+
+      const sl=document.getElementById("sc-subList");
+      const subs=new Set(store.map(x=>x.sub).filter(Boolean));
+      DEFAULT_CPAS.forEach(([c,subsStr])=>{ subsStr.split(" / ").forEach(s=>subs.add(s)); });
+      sl.innerHTML=[...subs].map(s=>`<option value="${esc(s)}">`).join("");
+    }
+    // 输入章节时联动小节占位
+    ["sc-secChapter","sc-wChapter"].forEach(id=>{
+      document.getElementById(id).addEventListener("change",()=>{
+        const c=document.getElementById(id).value;
+        const subs=DEFAULT_SUB_MAP[c];
+        const target=id==="sc-secChapter"?"sc-secSub":"sc-wSub";
+        if(subs&&subs.length&&!document.getElementById(target).value) document.getElementById(target).placeholder="如："+subs[0];
+      });
+    });
+
+    /* ============================================================
+       初始化
+    ============================================================ */
+    set("sc-secDate",today()); set("sc-chapDate",today()); set("sc-wDate",today());
+    set("sc-secLvl","3"); set("sc-chapLvl","3");
+    document.getElementById("sc-planTarget").value=plan.dailyTarget||"";
+    initTemplates();
+    buildLists();
+    renderWrongList();
+    renderBoard();
+
+    /* ---- 与主页面 vtab 联动 ---- */
+    window.ScRefresh = {
+      scboard: function(){ renderBoard(); },
+      scwrong: function(){ renderWrongList(); },
+      scsec:   function(){ updateSeals(); },
+      scchap:  function(){ updateSeals(); }
+    };
+    document.querySelectorAll('#viewTabs .vtab').forEach(function(b){
+      b.addEventListener('click', function(){
+        var v=b.dataset.view;
+        if(window.ScRefresh[v]) window.ScRefresh[v]();
+      });
+    });
+
+        })();
+
         document.addEventListener('DOMContentLoaded', init);
     </script>
+    <div id="sc-toast"></div>
+
 </body>
 </html>
