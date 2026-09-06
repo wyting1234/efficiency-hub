@@ -1502,6 +1502,13 @@
         .rv-main { flex: 1; min-width: 0; }
         .rv-title { font-size: 13px; font-weight: 600; color: var(--text); }
         .rv-item.done .rv-title { text-decoration: line-through; color: var(--text-secondary); }
+        .rv-item.editing { border-left-color: #B08A4A; background: var(--primary-bg); cursor: default; }
+        .rv-edit-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .rv-edit-row label { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        .rv-edit-row input[type="date"] { padding: 5px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; font-family: inherit; background: var(--card-bg); color: var(--text); }
+        .rv-btn { padding: 5px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 12px; cursor: pointer; }
+        .rv-btn.rv-b-save { background: #77805C; border-color: #77805C; color: #FAF7F1; }
+        .rv-btn.rv-b-del { background: #A6503C; border-color: #A6503C; color: #FAF7F1; }
         .rv-meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
         .rv-meta .late { color: #A6503C; font-weight: 600; }
         .rv-date {
@@ -1593,6 +1600,12 @@
         .sc-app .sc-mod-table .sc-reason{min-width:180px}
         .sc-app .sc-mod-table input[type=number]{width:100%;padding:7px 9px;border:1px solid var(--sc-line);border-radius:7px;font-family:inherit;font-size:16px}
         .sc-app .sc-mod-table input.sc-reason-in,.sc-app .sc-mod-table input[type=text]{width:100%;padding:7px 9px;border:1px solid var(--sc-line);border-radius:7px;font-family:inherit;font-size:12.5px}
+      .sc-todo-list{display:flex;flex-direction:column;gap:8px}
+      .sc-todo-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;border:1px solid var(--sc-line);border-radius:10px;background:var(--sc-paper)}
+      .sc-todo-tag{flex:0 0 auto;font-size:11px;font-weight:700;color:#FAF7F1;background:#8A7358;border-radius:999px;padding:2px 10px}
+      .sc-todo-title{flex:1 1 auto;min-width:180px;font-size:13px;font-weight:600;color:var(--sc-ink)}
+      .sc-todo-due{font-size:12px;color:var(--sc-ink-soft)}
+      .sc-todo-row .sc-todo-go{flex:0 0 auto}
         .sc-app .sc-mod-table input.sc-score-in{width:100%;padding:7px 9px;border:1px solid var(--sc-line);border-radius:7px;font-family:inherit;font-size:16px}
         .sc-app input.sc-mod-name,.sc-app input.sc-mod-full,.sc-app input.sc-mod-ans{width:100%;padding:6px 8px;border:1px solid var(--sc-line);border-radius:6px;font-family:inherit;font-size:12.5px}
         .sc-app .sc-mod-table textarea{width:100%;min-height:54px;padding:8px 9px;border:1px solid var(--sc-line);border-radius:7px;font-family:inherit;font-size:12.5px;resize:vertical;color:var(--sc-ink)}
@@ -2128,7 +2141,7 @@
           <div class="sc-field"><label>节</label><select id="sc-secSubSel"></select></div>
         </div>
         <div class="sc-grid-3" style="margin-top:14px">
-          <div class="sc-field"><label>完成日期</label><input type="date" id="sc-secDate"></div>
+          <div class="sc-field"><label>完成日期</label><input type="date" id="sc-secDate"><div class="sc-hint" id="sc-secRevHint" style="margin-top:5px"></div></div>
         </div>
         <div class="sc-grid-3" style="margin-top:14px">
           <div class="sc-field"><label>掌握等级（学完自评）</label>
@@ -2178,7 +2191,7 @@
         <div class="sc-grid-3">
           <div class="sc-field"><label>课程</label><select id="sc-chapCourse"></select></div>
           <div class="sc-field"><label>章</label><select id="sc-chapChapterSel"></select></div>
-          <div class="sc-field"><label>完成日期</label><input type="date" id="sc-chapDate"></div>
+          <div class="sc-field"><label>完成日期</label><input type="date" id="sc-chapDate"><div class="sc-hint" id="sc-chapRevHint" style="margin-top:5px"></div></div>
         </div>
         <div class="sc-grid-3" style="margin-top:14px">
           <div class="sc-field"><label>本次性质</label>
@@ -2279,6 +2292,8 @@
       <button class="sc-btn sc-danger-btn" id="sc-clearAll">清空全部存档</button>
       <input type="file" id="sc-importFile" accept=".json,application/json" style="display:none">
     </div>
+
+    <div id="sc-reviewTodo" class="sc-chart-wrap"></div>
 
     <div id="sc-chapterGroups"></div>
     <div class="sc-empty" id="sc-emptyState" style="display:none">
@@ -2779,6 +2794,7 @@
             COURSES = proj.courses.slice();
             ACTIVE_CHAPTER_NAMES = proj.chapterNames || {};
             GUIDE_DATA = buildGuideData(proj);
+            try{ window.dispatchEvent(new CustomEvent('cpaProjectApplied')); }catch(e){}
             if (!COURSES.includes(state.currentCourse)) {
                 state.currentCourse = COURSES[0] || '';
             }
@@ -2791,6 +2807,8 @@
         let state = {
             records: [],
             reviewDone: [],
+            reviewOverrides: {},
+            reviewDeleted: {},
             currentCourse: '会计',
             editingId: null,
             filterStar: 'all',
@@ -2829,6 +2847,8 @@
                     const data = JSON.parse(raw);
                     state.records = data.records || [];
                     state.reviewDone = Array.isArray(data.reviewDone) ? data.reviewDone : [];
+                    state.reviewOverrides = (data.reviewOverrides && typeof data.reviewOverrides === 'object') ? data.reviewOverrides : {};
+                    state.reviewDeleted = (data.reviewDeleted && typeof data.reviewDeleted === 'object') ? data.reviewDeleted : {};
                     if (data.tomato) {
                         state.tomato.count = data.tomato.count || 0;
                     }
@@ -2878,6 +2898,8 @@
             const data = {
                 records: state.records,
                 reviewDone: state.reviewDone || [],
+                reviewOverrides: state.reviewOverrides || {},
+                reviewDeleted: state.reviewDeleted || {},
                 tomato: { count: state.tomato.count }
             };
             localStorage.setItem(getStorageKey(), JSON.stringify(data));
@@ -4630,12 +4652,15 @@
             const doneList = state.reviewDone || [];
             const doneKeys = new Set(doneList.map(x => x.recordId + '#' + x.round));
             const pending = [], done = [];
+            const rvOv = state.reviewOverrides || {};
+            const rvDel = state.reviewDeleted || {};
             (state.records || []).forEach(r => {
                 if (r.addToMemory === false) return;   // 未加入记忆曲线 → 不生成复习任务
                 REVIEW_INTERVALS.forEach((iv, i) => {
                     const round = i + 1;
-                    const sched = memAddDays(r.date, iv);
                     const key = r.id + '#' + round;
+                    if (rvDel[key]) return;            // 已删除的复习任务不再出现
+                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
                     if (doneKeys.has(key)) {
                         const doneRec = doneList.find(x => x.recordId === r.id && x.round === round);
                         done.push({ record: r, round, sched, doneAt: doneRec.date, key });
@@ -4649,8 +4674,24 @@
             return { pending, done };
         }
 
+        let rvEditingKey = null;
+
         function rvItemHTML(it, isDone, todayStr) {
             const r = it.record;
+            if (rvEditingKey === it.key && !isDone) {
+                return '<div class="rv-item editing" data-key="' + it.key + '">' +
+                    '<div class="rv-main">' +
+                        '<div class="rv-title">' + r.course + ' · 第' + r.chapter + '章 · ' + ROUND_NAMES[it.round - 1] + '</div>' +
+                        '<div class="rv-edit-row">' +
+                            '<label>复习日期 <input type="date" class="rv-edit-date" value="' + it.sched + '"></label>' +
+                            '<button class="rv-btn rv-b-save">保存</button>' +
+                            '<button class="rv-btn rv-b-del">删除</button>' +
+                            '<button class="rv-btn rv-b-cancel">取消</button>' +
+                        '</div>' +
+                        '<div class="rv-meta">单击=勾选完成；双击=编辑（改日期 / 删除该次复习）</div>' +
+                    '</div>' +
+                '</div>';
+            }
             const ret = recordRetention(r, todayStr);
             const [y, m, d] = it.sched.split('-').map(Number);
             const week = '日一二三四五六'[new Date(y, m - 1, d).getDay()];
@@ -4693,9 +4734,38 @@
                     '<div class="rv-section-title">✅ 已完成<span class="rv-count" style="background:#77805C;">' + items.done.length + '</span></div>' +
                     doneHTML +
                 '</div>';
-            // 勾选 / 取消勾选
+            // 单击延迟执行勾选，避免与双击编辑冲突
             body.querySelectorAll('.rv-item').forEach(el => {
-                el.addEventListener('click', () => toggleReview(el.dataset.key, todayStr));
+                el.addEventListener('click', () => {
+                    if (el.dataset.key === rvEditingKey) return;
+                    clearTimeout(el._rvT);
+                    el._rvT = setTimeout(() => toggleReview(el.dataset.key, todayStr), 280);
+                });
+                el.addEventListener('dblclick', () => {
+                    clearTimeout(el._rvT);
+                    rvEditingKey = el.dataset.key;
+                    renderMemoryView();
+                });
+            });
+            // 编辑态：保存 / 删除 / 取消
+            body.querySelectorAll('.rv-item.editing').forEach(el => {
+                const key = el.dataset.key;
+                const finish = () => { rvEditingKey = null; saveData(); renderMemoryView(); renderGoalStatsPanel(); };
+                el.querySelector('.rv-b-cancel').addEventListener('click', () => { rvEditingKey = null; renderMemoryView(); });
+                el.querySelector('.rv-b-save').addEventListener('click', () => {
+                    const v = el.querySelector('.rv-edit-date').value;
+                    if (!v) return;
+                    state.reviewOverrides = state.reviewOverrides || {};
+                    state.reviewOverrides[key] = { sched: v };
+                    finish();
+                });
+                el.querySelector('.rv-b-del').addEventListener('click', () => {
+                    if (!confirm('确定删除该次复习任务？删除后不再出现在清单中。')) return;
+                    state.reviewDeleted = state.reviewDeleted || {};
+                    state.reviewDeleted[key] = true;
+                    state.reviewDone = (state.reviewDone || []).filter(x => (x.recordId + '#' + x.round) !== key);
+                    finish();
+                });
             });
         }
 
@@ -4940,7 +5010,20 @@
         try{history.replaceState(null,"",location.pathname);}catch(e){}
         return [];
       }
-      try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }catch(e){ return []; }
+      try{
+        const arr = JSON.parse(localStorage.getItem(STORE_KEY)) || [];
+        return (Array.isArray(arr)?arr:[]).filter(x=>x&&typeof x==="object").map(x=>{
+          if(!Array.isArray(x.scores)) x.scores=[];
+          if(!Array.isArray(x.reasons)) x.reasons=[];
+          if(!Array.isArray(x.answers)) x.answers=[];
+          if(typeof x.total!=="number"||isNaN(x.total)) x.total=0;
+          if(typeof x.pass!=="boolean") x.pass=false;
+          if(typeof x.s7!=="number"||isNaN(x.s7)) x.s7=0;
+          if(typeof x.s21!=="number"||isNaN(x.s21)) x.s21=0;
+          if(typeof x.lvl!=="number"||isNaN(x.lvl)) x.lvl=3;
+          return x;
+        });
+      }catch(e){ return []; }
     }
     function saveStore(){ localStorage.setItem(STORE_KEY, JSON.stringify(store)); refreshCounts(); }
     function loadWrong(){ try{ return JSON.parse(localStorage.getItem(WRONG_KEY)) || []; }catch(e){ return []; } }
@@ -5176,9 +5259,12 @@
     let editingId=null;
 
     function collectSection(){
+      const d=val("sc-secDate")||today();
       return {
         id: editingId||uid(), type:"section",
-        chapter: scChapterStr("sec"), sub: scSubStr("sec"), date: val("sc-secDate")||today(),
+        course: scCourseVal("sec"),
+        chapter: scChapterStr("sec"), sub: scSubStr("sec"), date: d,
+        review7: addDays(d,7), review21: addDays(d,21),
         lvl: Number(val("sc-secLvl")||3),
         scores: Array.from(document.querySelectorAll('#sc-sectionRows .sc-score-in')).map(el=>Number(el.value||0)),
         reasons: Array.from(document.querySelectorAll('#sc-sectionRows .sc-reason-in')).map(el=>el.value),
@@ -5190,6 +5276,7 @@
     function fillSection(r){
       editingId=r.id;
       const cs=document.getElementById("sc-secCourse");
+      if(r.course && [...cs.options].some(function(o){return o.value===r.course;})) cs.value=r.course;
       scFillChapters(document.getElementById("sc-secChapterSel"), cs.value, r.chapter);
       scFillSections(document.getElementById("sc-secSubSel"), cs.value, parseInt(document.getElementById("sc-secChapterSel").value,10)||1, r.sub);
       set("sc-secDate",r.date);
@@ -5218,7 +5305,7 @@
       if(!r.chapter||!r.sub){ toast("请填写章节与小节名称"); return; }
       const idx=store.findIndex(x=>x.id===r.id);
       if(idx>=0) store[idx]=r; else store.push(r);
-      saveStore(); toast("小节记录已保存"); clearSection(); switchTab("tabBoard");
+      saveStore(); toast("小节记录已保存，已自动生成复测：7日 " + r.review7 + " · 21日 " + r.review21); clearSection(); switchTab("tabBoard");
     });
     document.getElementById("sc-secClear").addEventListener("click",clearSection);
     document.getElementById("sc-secPrint").addEventListener("click",()=>window.print());
@@ -5228,9 +5315,12 @@
     ============================================================ */
     function collectChapter(){
       const c=chapScore();
+      const d=val("sc-chapDate")||today();
       return {
         id: editingId||uid(), type:"chapter",
-        chapter: scChapterStr("chap"), date: val("sc-chapDate")||today(), kind: val("sc-chapKind")||"初次",
+        course: scCourseVal("chap"),
+        chapter: scChapterStr("chap"), date: d, kind: val("sc-chapKind")||"初次",
+        review7: addDays(d,7), review21: addDays(d,21),
         lvl: Number(val("sc-chapLvl")||3),
         scores: Array.from(document.querySelectorAll('#sc-chapRows .sc-score-in')).map(el=>Number(el.value||0)),
         reasons: Array.from(document.querySelectorAll('#sc-chapRows .sc-reason-in')).map(el=>el.value),
@@ -5241,7 +5331,9 @@
     }
     function fillChapter(r){
       editingId=r.id;
-      scFillChapters(document.getElementById("sc-chapChapterSel"), document.getElementById("sc-chapCourse").value, r.chapter);
+      const cc=document.getElementById("sc-chapCourse");
+      if(r.course && [...cc.options].some(function(o){return o.value===r.course;})) cc.value=r.course;
+      scFillChapters(document.getElementById("sc-chapChapterSel"), cc.value, r.chapter);
       set("sc-chapDate",r.date); set("sc-chapKind",r.kind||"初次");
       set("sc-chapD7",r.d7||""); set("sc-chapS7",r.s7||""); set("sc-chapS21",r.s21||""); set("sc-chapLvl",r.lvl!=null?r.lvl:3);
       const scores=document.querySelectorAll('#sc-chapRows .sc-score-in');
@@ -5268,7 +5360,7 @@
       if(!r.chapter){ toast("请填写章节名称"); return; }
       const idx=store.findIndex(x=>x.id===r.id);
       if(idx>=0) store[idx]=r; else store.push(r);
-      saveStore(); toast("整章记录已保存"); clearChapter(); switchTab("tabBoard");
+      saveStore(); toast("整章记录已保存，已自动生成复测：7日 " + r.review7 + " · 21日 " + r.review21); clearChapter(); switchTab("tabBoard");
     });
     document.getElementById("sc-chapClear").addEventListener("click",clearChapter);
     document.getElementById("sc-chapPrint").addEventListener("click",()=>window.print());
@@ -5343,16 +5435,62 @@
       );
     }
 
+    function reviewDueDate(r, which){
+      if(which===7) return r.review7 || addDays(r.date,7);
+      return r.review21 || addDays(r.date,21);
+    }
+    function renderReviewTodo(){
+      const box=document.getElementById("sc-reviewTodo");
+      if(!box) return;
+      const td=today();
+      const items=[];
+      store.forEach(function(r){
+        if(!r.date) return;
+        if(!r.s7) items.push({r:r,round:"7日",due:reviewDueDate(r,7)});
+        if(!r.s21) items.push({r:r,round:"21日",due:reviewDueDate(r,21)});
+      });
+      items.sort(function(a,b){ return a.due.localeCompare(b.due) || a.round.localeCompare(b.round); });
+      const LIMIT=30;
+      const shown=items.slice(0,LIMIT);
+      let html='<h3>复查待办清单（7日 / 21日 复测，保存记录后自动生成）<span class="sc-cnt" style="margin-left:8px">'+items.length+' 项待复测</span></h3>';
+      if(items.length===0){
+        html+='<div class="sc-hint" style="padding:10px 0">暂无待复测项目。到「小节自检 / 整章复盘」保存一条记录后，将自动生成 7日、21日 两次复测任务。</div>';
+      }else{
+        html+='<div class="sc-todo-list">';
+        shown.forEach(function(it){
+          const r=it.r;
+          const diff=Math.round((new Date(it.due+"T00:00:00")-new Date(td+"T00:00:00"))/86400000);
+          const st=diff<0?'<span style="color:#A6503C;font-weight:700">已过期 '+(-diff)+' 天</span>'
+                 : diff===0?'<span style="color:#B08A4A;font-weight:700">今天到期</span>'
+                 : '还有 '+diff+' 天';
+          const typeTag=r.type==="section"?"小节":"整章";
+          const title=(r.course?esc(r.course)+" · ":"")+esc(r.chapter||"")+(r.sub?" · "+esc(r.sub):"");
+          html+='<div class="sc-todo-row" data-id="'+r.id+'" data-type="'+r.type+'">'
+            +'<span class="sc-todo-tag">'+it.round+'复测</span>'
+            +'<span class="sc-todo-title">'+typeTag+' · '+title+'</span>'
+            +'<span class="sc-todo-due">应复测 '+it.due+' ｜ '+st+'</span>'
+            +'<button class="sc-btn sc-primary sc-sm sc-todo-go">去复测</button>'
+            +'</div>';
+        });
+        if(items.length>shown.length) html+='<div class="sc-hint" style="padding:6px 0">另有 '+(items.length-shown.length)+' 项未展示，完成后自动从清单消失。</div>';
+        html+='</div>';
+      }
+      box.innerHTML=html;
+      box.querySelectorAll(".sc-todo-go").forEach(function(btn){
+        btn.addEventListener("click",function(){
+          const row=btn.closest(".sc-todo-row");
+          const rec=store.find(function(x){return x.id===row.dataset.id;});
+          if(!rec) return;
+          if(rec.type==="chapter"){ fillChapter(rec); switchTab("tabChapter"); }
+          else{ fillSection(rec); switchTab("tabSection"); }
+          toast("已载入该记录，填写复测成绩后点保存即可完成复测");
+        });
+      });
+    }
     function renderBoard(){
-      refreshCounts();
-      renderFilterOptions();
-      renderPlan();
-      renderStats();
-      renderWeakChart();
-      renderRadar();
-      renderTrend();
-      renderGroups();
-      renderTopProgress();
+      [refreshCounts,renderFilterOptions,renderReviewTodo,renderPlan,renderStats,renderWeakChart,renderRadar,renderTrend,renderGroups,renderTopProgress].forEach(function(fn){
+        try{ fn(); }catch(e){ console.error("[看板]"+(fn.name||"渲染块")+"失败:",e); }
+      });
     }
 
     function renderFilterOptions(){
@@ -5509,7 +5647,7 @@
           const rm=rs!=="none"?(rs==="21日"?'<span class="sc-remind-tag">21日复测</span>':'<span class="sc-remind-tag">7日复测</span>'):"";
           const rowCls=rs!=="none"?"sc-remind":"";
           html+=`<div class="sc-rec-row ${rowCls}" data-id="${r.id}">
-            <span class="sc-r-sub">${typeTag} · ${esc(r.sub||"综合复盘")}</span>
+            <span class="sc-r-sub">${typeTag}${r.course?" · "+esc(r.course):""} · ${esc(r.sub||"综合复盘")}</span>
             ${lvlHtml(r.lvl!=null?r.lvl:3)}
             <span class="sc-r-meta">${r.date||""}${r.type==="chapter"&&r.kind?" · "+esc(r.kind):""}</span>
             <span class="sc-r-score">${rm}${seal}<b>${r.total}</b><span style="font-size:12px;color:var(--sc-ink-soft)">/${r.type==="section"?sectionFull():chapterFull()}</span></span>
@@ -5752,7 +5890,8 @@
     }
     function scCourseList(){
       try{ if(typeof COURSES!=="undefined"&&COURSES&&COURSES.length) return COURSES.filter(Boolean); }catch(e){}
-      try{ return DEFAULT_CPAS.map(function(c){return c[0];}); }catch(e){ return []; }
+      try{ if(typeof CHAPTER_NAMES!=="undefined"&&CHAPTER_NAMES&&Object.keys(CHAPTER_NAMES).length) return Object.keys(CHAPTER_NAMES).filter(Boolean); }catch(e){}
+      return ["会计","审计"];
     }
     function scDefCourse(){
       try{ if(typeof state!=="undefined"&&state&&state.currentCourse) return state.currentCourse; }catch(e){}
@@ -5829,13 +5968,13 @@
         if(!cs||!hs) return;
         cs.innerHTML=scCourseList().map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join("");
         cs.value=scDefCourse();
-        cs.addEventListener("change",function(){
+        cs.onchange=function(){
           scFillChapters(hs, cs.value, null);
           if(ss) scFillSections(ss, cs.value, parseInt(hs.value,10)||1, null);
-        });
-        hs.addEventListener("change",function(){
+        };
+        hs.onchange=function(){
           if(ss) scFillSections(ss, cs.value, parseInt(hs.value,10)||1, null);
-        });
+        };
         scFillChapters(hs, cs.value, null);
         if(ss) scFillSections(ss, cs.value, parseInt(hs.value,10)||1, null);
       });
@@ -5894,12 +6033,31 @@
     /* ============================================================
        初始化
     ============================================================ */
+    function scUpdateRevHint(prefix){
+      const inp=document.getElementById("sc-"+prefix+"Date");
+      const hint=document.getElementById("sc-"+prefix+"RevHint");
+      if(!inp||!hint) return;
+      const d=inp.value||today();
+      const wk="日一二三四五六";
+      function fmt(s){ const dt=new Date(s+"T00:00:00"); return s.slice(5).replace("-","/")+"（周"+wk[dt.getDay()]+"）"; }
+      hint.textContent="保存后自动生成复测：7日 "+fmt(addDays(d,7))+" · 21日 "+fmt(addDays(d,21));
+    }
+    ["sec","chap"].forEach(function(p){
+      const el=document.getElementById("sc-"+p+"Date");
+      if(el) el.addEventListener("change",function(){ scUpdateRevHint(p); });
+      scUpdateRevHint(p);
+    });
     set("sc-secDate",today()); set("sc-chapDate",today()); set("sc-wDate",today());
     set("sc-secLvl","3"); set("sc-chapLvl","3");
     document.getElementById("sc-planTarget").value=plan.dailyTarget||"";
     initTemplates();
     buildLists();
-    scInitCascades();
+    (function(){
+      function boot(){ try{ scInitCascades(); }catch(e){} }
+      if(document.readyState==="loading"){ document.addEventListener("DOMContentLoaded",function(){ setTimeout(boot,0); }); }
+      else setTimeout(boot,0);
+      try{ window.addEventListener("cpaProjectApplied",boot); }catch(e){}
+    })();
     apInit();
     renderWrongList();
     renderBoard();
