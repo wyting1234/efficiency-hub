@@ -2666,10 +2666,10 @@ function delSub(id){
    在 Excel/WPS 里填好，再整批粘回来或传回来，按「科目名」自动新建/更新。 */
 function clearSub(){ curSub=''; save(K.cur,curSub); renderAll(); kick(); }
 function dlSubTpl(){
-  const head=['科目名(必填,导入按此识别)','考试名称','目标(一句话)','考试日期(格式:2027-08-27)','目标小时(纯数字)','当前阶段(标准:预习导学/精讲听课/章节习题/强化提高/真题模考/冲刺串讲/错题复盘/考前定心;口语写法如预习/精讲/刷题/真题/冲刺也能自动识别)','状态(备考中/已通过/暂停中)','备注'];
+  const head=['科目名(必填,导入按此识别)','考试名称','目标(一句话)','考试日期(格式:2027-08-27)','目标小时(纯数字)','当前阶段(旧字段,可留空)','状态(备考中/已通过/暂停中)','备注'];
   const rows=[
-    ['注册会计师','2027年注册会计师全国统一考试','专业阶段六科三年通过','2027-08-27','1200','精讲听课','备考中','示例行·可整行替换'],
-    ['法律职业资格证','2027年国家统一法律职业资格考试','客观题稳过180分','2027-09-11','800','精讲听课','备考中','示例行·可整行替换']
+    ['注册会计师','2027年注册会计师全国统一考试','专业阶段六科三年通过','2027-08-27','1200','','备考中','示例行·可整行替换'],
+    ['法律职业资格证','2027年国家统一法律职业资格考试','客观题稳过180分','2027-09-11','800','','备考中','示例行·可整行替换']
   ];
   dlFile('科目目标导入模板_'+today()+'.csv',csvRows(head,rows));
   toast('模板已下载，用 Excel/WPS 填好后再导入');
@@ -2678,10 +2678,10 @@ function openSubImport(){
   sheet(shHead('Import','批量导入科目目标')
     +'<div class="insight" style="margin-bottom:14px">'+I.bulb+'<p><b>第 1 步</b>：点下方「下载模板」拿到 CSV，用 Excel / WPS 打开——表头里写了每一列的格式要求（日期怎么写、状态能填什么），把两条示例行换成你的真实科目，<b>一行就是一门科目</b>。'
       +'<br><b>第 2 步</b>：填好后<b>直接从 Excel 里选中数据区域复制、粘贴到下面</b>，或上传 CSV 文件。系统按<b>科目名</b>识别：已有科目只更新你填了的字段，没填的保持不变；新科目自动创建。'
-      +'<br><b>关于「当前阶段」</b>：标准写法是 预习导学/精讲听课/章节习题/强化提高/真题模考/冲刺串讲/错题复盘/考前定心；写<b>预习、精讲、刷题、真题、冲刺、错题、考前</b>这类简称也会自动对齐到标准阶段，导入后正常参与阶段筛选。</p></div>'
+      +'<br><b>关于「当前阶段」列</b>：这是旧版遗留字段，<b>可直接留空</b>；万一填了内容也会原样存档，不影响任何功能。</p></div>'
     +'<div class="fld"><button class="btn" type="button" onclick="dlSubTpl()">下载模板 CSV（Excel 可直接打开）</button></div>'
     +'<div class="fld"><label>粘贴科目表格（支持 Excel 直接复制粘贴，或 CSV 内容）</label>'
-      +'<textarea id="siText" rows="7" placeholder="科目名	考试名称	目标	考试日期	目标小时	当前阶段	状态	备注&#10;注册会计师	2027年注册会计师考试	六科三年通过	2027-08-27	1200	精讲听课	备考中	主攻会计+税法"></textarea></div>'
+      +'<textarea id="siText" rows="7" placeholder="科目名	考试名称	目标	考试日期	目标小时	当前阶段(可留空)	状态	备注&#10;注册会计师	2027年注册会计师考试	六科三年通过	2027-08-27	1200		备考中	主攻会计+税法"></textarea></div>'
     +'<div class="fld"><label>或从文件导入（CSV / TXT，UTF-8 编码）</label>'
       +'<input type="file" id="siFile" accept=".csv,.txt,text/csv,text/plain" onchange="readSubFile(this)" style="font-size:13.5px"></div>'
     +'<div id="siPrev"></div>'
@@ -2754,18 +2754,12 @@ function previewSubImport(){
   }
   const isNew=rows.map(function(r){ return !subs.some(function(s){ return s.name===r.name; }); });
   const nNew=isNew.filter(Boolean).length;
-  const mapped=rows.filter(function(r){ return r.stageRaw&&r.stage&&r.stageRaw!==r.stage; }).length;
-  const unknown=rows.filter(function(r){ return r.stageRaw&&!r.stage; }).length;
   box.innerHTML='<div class="notice" style="margin-top:14px">'+I.bulb+'<p>解析到 <b>'+rows.length+'</b> 门科目：新建 <b>'+nNew+'</b> 门 · 更新 <b>'+(rows.length-nNew)+'</b> 门。'
-    +(mapped?'<br>有 <b>'+mapped+'</b> 条「当前阶段」是口语写法，已自动对齐到标准阶段（预览中标注）。':'')
-    +(unknown?'<br><b>注意</b>：有 '+unknown+' 条阶段写法完全认不出，将保持留空——可填预习/精讲/刷题/真题/冲刺等关键词。':'')
     +(rows.length>nNew?'<br>更新只覆盖你填了的列，留空的保持原样。':'')+'</p></div>'
     +'<div class="rows" style="margin-top:10px">'+rows.map(function(r,i){
-      const stgShow=r.stage
-        ?(r.stageRaw!==r.stage
-          ? esc(r.stage)+' <span class="mt" style="color:var(--olive)">←「'+esc(r.stageRaw)+'」</span>'
-          : esc(r.stage))
-        :(r.stageRaw?'<span style="color:var(--crimson)">「'+esc(r.stageRaw)+'」未识别，留空</span>':'阶段未填');
+      const stgShow=r.stageRaw
+        ?esc(r.stageRaw)+'（旧字段，仅存档）'
+        :'—';
       return '<div class="row"><div class="r-b"><div class="r-t">'+esc(r.name)
         +'<span class="mt'+(isNew[i]?' ok':'')+'" style="margin-left:8px">'+(isNew[i]?'新建':'更新')+'</span></div>'
         +'<div class="r-m"><span>'+esc(r.exam||'考试名称未填')+'</span><span>'+esc(r.goal||'目标未填')+'</span>'
