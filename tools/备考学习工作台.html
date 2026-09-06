@@ -1525,7 +1525,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
             <div class="cap" id="sylCap"></div>
           </div>
         </div>
-        <div class="hintline">学习主线：<b>教材目录</b> → 生成六级章节主数据 → 按「章节 × 阶段」铺开学习待办并自动排期（按教材的步骤去学）；
+        <div class="hintline">学习主线：<b>教材目录</b> → 生成六级章节主数据 → 按「章节顺序 × 学习动作」铺开学习待办并自动排期（严格按教材的步骤去学）；
           再粘<b>考纲</b> → 生成掌握度台账骨架，逐条回填分数（按考纲核查学习成果）。所有生成的记录都带章节节点 id，可在章节库里回溯整条学习轨迹。</div>
         <div id="sylBody"></div>
       </div>
@@ -1851,9 +1851,9 @@ heat.forEach(hmMigrate); save(K.heat,heat);
 let hmView=load(K.hmview,'ch'); if(['sub','ch','sec','kp'].indexOf(hmView)<0) hmView='ch';
 let hmSub=load(K.hmsub,'');
 let hmShow=load(K.hmshow,'full'); if(['no','name','full'].indexOf(hmShow)<0) hmShow='full';
-/* 首页热力图两个视图：mst=章节掌握（阶段×章节，格子改六档） / exec=六档执行（档位×阶段，看分布） */
+/* 首页热力图两个视图：mst=章节掌握（行=章节，列=验收轮次） / exec=六档执行（行=档位，列=验收轮次，看分布） */
 let hmMode=load(K.hmmode,'mst'); if(['mst','exec'].indexOf(hmMode)<0) hmMode='mst';
-let hmHiStage='';   /* 从执行视图点回来时短暂高亮的阶段 */
+let hmHiStage='';   /* 从执行视图点回来时短暂高亮的验收轮次（r1/r2…） */
 /* 章节主数据：{ 科目名: [节点树] }，节点 = {id,lv,no,name,kids}，是各模块挂靠的共同锚点 */
 let chs=load(K.chs,null)||{};
 
@@ -2039,27 +2039,43 @@ function chStat(sub){
   return m;
 }
 
-/* ================= 验收通过 → 回写掌握度 =================
-   验收是对「某一阶段学习成果」的确认，通过即把该章节在该阶段的掌握度抬到 4（应试合格）；
-   只升不降，避免误点把已有高分拉下来。 */
+/* ================= 验收 → 回写掌握度热力图 =================
+   一次验收 = 该章节的一个「验收轮次」，得分写进 第 N 次验收 格。
+   同一条验收项反复编辑只更新它自己那一轮（靠 c.round 记住），不会重复占列；
+   得分以验收项里的「实测得分」为准，允许比上一轮低 —— 热力图看的是演进，不是只升不降。 */
+function checkHeatRows(c){
+  const nm=String((c&&c.chapter)||'').trim();
+  if(!c||!c.sub||!nm) return [];
+  return heat.filter(function(h){
+    if(h.sub!==c.sub) return false;
+    if(h.chName&&(h.chName===nm||nm.indexOf(h.chName)>=0)) return true;
+    if(h.secName&&h.secName===nm) return true;
+    return false;
+  });
+}
+function checkMaxRound(rows){
+  let n=0;
+  (rows||[]).forEach(function(h){
+    Object.keys(h.st||{}).forEach(function(k){
+      const m=/^r(\d+)$/.exec(k); if(m&&+m[1]>n) n=+m[1];
+    });
+  });
+  return n;
+}
 function checkWriteHeat(c){
-  if(!c||!c.sub||!c.chapter) return 0;
-  const sg=c.stage||curStage()||'章节习题';
-  const nm=String(c.chapter).trim();
-  let row=null;
-  for(let i=0;i<heat.length;i++){
-    const h=heat[i];
-    if(h.sub!==c.sub) continue;
-    if(h.chName&&(h.chName===nm||nm.indexOf(h.chName)>=0)){ row=h; break; }
-    if(h.secName&&h.secName===nm){ row=h; break; }
+  const rows=checkHeatRows(c);
+  if(!rows.length){
+    const nm=String((c&&c.chapter)||'').trim();
+    if(!c||!c.sub||!nm) return 0;
+    rows.push({id:uid(),rid:'',kind:'ch',sub:c.sub,chNo:'',chName:nm,secNo:'',secName:'',st:{},date:today()});
+    heat.push(rows[0]);
   }
-  if(!row){
-    row={id:uid(),rid:'',kind:'ch',sub:c.sub,chNo:'',chName:nm,secNo:'',secName:'',st:{},date:today()};
-    heat.push(row);
-  }
-  const cur=mstNum(row.st[sg]);
-  if(cur===null||cur<4){ row.st[sg]=4; return 1; }
-  return 0;
+  const sc=mstNum(c.score);
+  if(sc===null) return 0;
+  let n=Number(c.round)||0;
+  if(!n){ n=checkMaxRound(rows)+1; c.round=n; }
+  rows.forEach(function(h){ h.st=h.st||{}; h.st['r'+n]=sc; h.date=today(); });
+  return n;
 }
 
 /* ================= 台账 ↔ 热力图 双向同步 =================
@@ -3059,7 +3075,7 @@ function toggleTodo(id){
 function openTodo(id,presetStage,presetType){
   const x=id?todos.find(t=>t.id===id):null;
   const c=x||{type:'日常待办',sub:curSub,chapter:'',stage:presetStage||'',title:'',priority:'P1',
-    mastery:'',plan:'',real:0,rs:'',rf:'',done:false,cat:'刷题练习',due:'',needReview:false,note:''};
+    mastery:'',plan:'',real:0,rs:'',rf:'',done:false,cat:'刷题练习',due:'',needReview:false,note:'',act:'',round:''};
   if(presetType) c.type=presetType;
   sheet(shHead('Task',x?'编辑事项':'新增待办')
     +'<div class="fld"><label>类型</label><select id="tdType" onchange="tdTypeChg()">'+opts(TYPES,c.type)+'</select></div>'
@@ -3067,7 +3083,9 @@ function openTodo(id,presetStage,presetType){
     +'<div id="tdKpBox">'
     +'<div class="f2"><div class="fld"><label>科目</label><select id="tdSub">'+subOpts(c.sub)+'</select></div>'
     +'<div class="fld"><label>章节</label><input id="tdChapter" value="'+esc(c.chapter)+'" placeholder="第2章 存货"></div></div>'
-    +'<div class="f2"><div class="fld"><label>所属学习阶段</label><select id="tdStage"><option value="">（不挂阶段 = 日常待办）</option>'+opts(STAGES,c.stage)+'</select></div>'
+    +'<div class="f2"><div class="fld"><label>学习动作</label><select id="tdAct"><option value="">（不指定）</option>'+opts(ACTS,c.act||'')+'</select></div>'
+    +'<div class="fld"><label>轮次</label><input type="number" min="1" max="9" id="tdRound" value="'+esc(c.round||'')+'" placeholder="1"></div></div>'
+    +'<div class="f2"><div class="fld"><label>所属学习阶段（旧，可留空）</label><select id="tdStage"><option value="">（不挂阶段）</option>'+opts(STAGES,c.stage)+'</select></div>'
     +'<div class="fld"><label>掌握度</label><select id="tdMastery">'+mstOpts(c.mastery,true)+'</select></div></div>'
     +'<div class="f2"><div class="fld"><label>真实开始</label><input type="date" id="tdRs" value="'+esc(c.rs||'')+'"></div>'
     +'<div class="fld"><label>真实完成</label><input type="date" id="tdRf" value="'+esc(c.rf||'')+'"></div></div>'
@@ -3097,6 +3115,8 @@ function saveTodo(id){
   if(type==='章节知识点'){
     o.sub=document.getElementById('tdSub').value;
     o.chapter=document.getElementById('tdChapter').value.trim();
+    o.act=document.getElementById('tdAct').value;
+    o.round=document.getElementById('tdRound').value;
     o.stage=document.getElementById('tdStage').value;
     o.mastery=mstVal(document.getElementById('tdMastery').value);
     o.rs=document.getElementById('tdRs').value;
@@ -3302,16 +3322,17 @@ function setCheck(id,state){
   const c=checks.find(x=>x.id===id); if(!c) return;
   c.state=state;
   c.date=(state==='通过')?today():'';
+  if(state==='通过'&&mstNum(c.score)===null) c.score=4;   /* 通过默认记「应试合格」 */
   const bumped=(state==='通过')?checkWriteHeat(c):0;
   if(bumped) save(K.heat,heat);
   save(K.checks,checks);
   renderAll(); kick();
-  toast(state==='通过'?('验收通过'+(bumped?' · 已把该章节掌握度记为「应试合格」':'')):'已更新状态');
+  toast(state==='通过'?('验收通过'+(bumped?' · 已记入「第 '+bumped+' 次验收」':'')):'已更新状态');
   pushCheck(c);
 }
 function openCheck(id){
   const c=id?checks.find(x=>x.id===id):null;
-  const d=c||{item:'',sub:curSub,stage:curStage()||STAGES[0],std:'',state:'待验收',date:'',note:''};
+  const d=c||{item:'',sub:curSub,stage:'',std:'',state:'待验收',date:'',note:'',score:'',round:''};
   sheet(shHead('Acceptance',c?'编辑验收项':'新增验收项')
     +'<div class="fld"><label>验收项</label><input id="ckItem" value="'+esc(c?c.item:d.item)+'" placeholder="存货章节练习正确率 ≥ 75%"></div>'
     +'<div class="fld"><label>验收标准（可量化）</label><input id="ckStd" value="'+esc(c?c.std:d.std)+'" placeholder="100 题限时完成，错题全部订正"></div>'
@@ -3320,7 +3341,9 @@ function openCheck(id){
     +'<div class="f2"><div class="fld"><label>科目</label><select id="ckSub">'+subOpts(c?c.sub:d.sub)+'</select></div>'
     +'<div class="fld"><label>学习阶段</label><select id="ckStage">'+opts(STAGES,c?c.stage:d.stage)+'</select></div></div>'
     +'<div class="f2"><div class="fld"><label>状态</label><select id="ckState">'+opts(CHECK_STATES,c?c.state:d.state)+'</select></div>'
-    +'<div class="fld"><label>验收日期</label><input type="date" id="ckDate" value="'+esc(c?c.date:d.date)+'"></div></div>'
+    +'<div class="fld"><label>实测得分 0‑5（写入掌握度热力图 · 验收通过默认为 4 应试合格）</label><select id="ckScore">'+mstOpts(mstNum(c?c.score:null),true)+'</select></div></div>'
+    +'<div class="f2"><div class="fld"><label>验收日期</label><input type="date" id="ckDate" value="'+esc(c?c.date:d.date)+'"></div>'
+    +'<div class="fld"><label>轮次（留空自动分配）</label><input type="number" min="1" id="ckRound" value="'+esc(c?(c.round||''):'')+'"></div></div>'
     +'<div class="fld"><label>备注</label><textarea id="ckNote" placeholder="验收时发现问题可记在这里">'+esc(c?c.note:d.note)+'</textarea></div>'
     +shActs('saveCheck('+(id?'\''+id+'\'':'')+')',id?'delCheck(\''+id+'\')':''));
 }
@@ -3331,10 +3354,13 @@ function saveCheck(id){
     sub:document.getElementById('ckSub').value,stage:document.getElementById('ckStage').value,
     state:document.getElementById('ckState').value,date:document.getElementById('ckDate').value,
     chapter:document.getElementById('ckChapter').value.trim(),
+    score:document.getElementById('ckScore').value,round:document.getElementById('ckRound').value,
     note:document.getElementById('ckNote').value.trim()};
   let rec;
   if(id){ rec=checks.find(x=>x.id===id); Object.assign(rec,o); }
   else { o.id=uid(); checks.unshift(o); rec=checks[0]; }
+  if(mstNum(rec.score)!==null) checkWriteHeat(rec);   /* 有得分就写进掌握度热力图 */
+  save(K.heat,heat);
   save(K.checks,checks);
   closeSheet(); renderAll(); kick(); toast(id?'验收项已更新':'验收项已创建');
   if(id) focusRow('#checkRows [data-cid="'+rec.id+'"]',340);
@@ -3975,17 +4001,18 @@ function tblKps(){ return {head:['考点内容','科目','章节','已掌握','�
   rows:kps.map(k=>[k.text,k.sub,k.chapter,k.done?'是':'否',k.date])}; }
 
 /* ================= 章节掌握热力图 =================
-   行 = 阶段（与「编辑科目→当前阶段」同源，可添加/排序），列 = 视角下的科目/章/节/知识点，
-   格子 = 掌握程度：了解(红) → 熟悉(黄) → 掌握(绿=通过)。
-   章视角/科目视角的格子为汇总色：其下各节该阶段等级的均值映射。 */
+   行 = 视角下的科目/章/节/知识点，列 = 验收轮次（第 1 次 / 第 2 次…验收，每章独立计数），
+   格子 = 该次验收的实测得分 0-5（不会=红 → 融会贯通=深绿）。
+   数据来源：验收清单里带「关联章节 + 实测得分」的记录；新增一次验收多一列，空格 = 还没验到。
+   章视角/科目视角的格子为汇总色：其下各节该轮次得分的均值映射。 */
 function defHeat(){
   const R=[
-    ['sec','会计','1','会计的概念','1','会计职能',{'预习导学':2,'精讲听课':3}],
-    ['sec','会计','1','会计的概念','2','会计目标',{'预习导学':3,'精讲听课':4,'章节习题':2}],
-    ['sec','会计','2','存货','1','存货的确认与初始计量',{'精讲听课':2}],
-    ['sec','会计','2','存货','2','发出存货的计量',{'预习导学':1}],
-    ['sec','刑法','3','犯罪构成','1','构成要件',{'预习导学':4,'精讲听课':4,'章节习题':3}],
-    ['kp','Python 后端','','','','装饰器带参数的写法与执行顺序',{'预习导学':2}]
+    ['sec','会计','1','会计的概念','1','会计职能',{'r1':2,'r2':3}],
+    ['sec','会计','1','会计的概念','2','会计目标',{'r1':3,'r2':4,'r3':2}],
+    ['sec','会计','2','存货','1','存货的确认与初始计量',{'r1':2}],
+    ['sec','会计','2','存货','2','发出存货的计量',{'r1':1}],
+    ['sec','刑法','3','犯罪构成','1','构成要件',{'r1':4,'r2':4,'r3':3}],
+    ['kp','Python 后端','','','','装饰器带参数的写法与执行顺序',{'r1':2}]
   ];
   return R.map(r=>({id:uid(),rid:'',kind:r[0],sub:r[1],chNo:r[2],chName:r[3],secNo:r[4],secName:r[5],
     st:Object.assign({},r[6]),date:today()}));
@@ -4020,6 +4047,43 @@ function hmAgg(vals){
   return Math.round(s.reduce((a,b)=>a+b,0)/s.length);
 }
 function hmGet(r,sg){ const n=hmScore(r.st?r.st[sg]:null); return n===null?'':n; }
+
+/* ---------- 掌握度维度 = 验收轮次（取代原八阶段） ----------
+   阶段（真题/冲刺/定心）是跨章或全科动作，与章节正交，填进章节×阶段矩阵必然出现死格；
+   验收轮次则是「这一章第几次被检验」，每章独立计数，天然与章节矩阵对齐。 */
+const AXIS_MIN=3;   /* 至少显示 3 次验收，保证表格不空 */
+function hmAxisKeys(){
+  const set={};
+  heat.forEach(function(r){
+    Object.keys(r.st||{}).forEach(function(k){
+      const m=/^r(\d+)$/.exec(k); if(m) set[+m[1]]=1;
+    });
+  });
+  const arr=Object.keys(set).map(Number);
+  for(let i=1;i<=AXIS_MIN;i++) if(arr.indexOf(i)<0) arr.push(i);
+  return arr.sort(function(a,b){ return a-b; });
+}
+function hmAxisKey(n){ return 'r'+n; }
+function hmAxisLabel(k){
+  const m=/^r(\d+)$/.exec(String(k));
+  return m?('第 '+m[1]+' 次验收'):String(k);
+}
+/* 旧数据迁移：原来按阶段打分（st['精讲听课']=3），取最高分写进第 1 次验收，
+   旧 key 保留不删，避免丢数据；渲染只认 r 开头。 */
+function hmMigrateAxis(){
+  let n=0;
+  heat.forEach(function(r){
+    r.st=r.st||{};
+    let hasR=false,best=null;
+    Object.keys(r.st).forEach(function(k){
+      if(/^r\d+$/.test(k)) hasR=true;
+      else { const v=mstNum(r.st[k]); if(v!==null&&(best===null||v>best)) best=v; }
+    });
+    if(!hasR&&best!==null){ r.st['r1']=best; n++; }
+  });
+  if(n) save(K.heat,heat);
+  return n;
+}
 function hmSetStage(r,sg,v){ r.st=r.st||{}; const n=hmScore(v); if(n===null) delete r.st[sg]; else r.st[sg]=n; r.date=today(); }
 /* 当前视角下的列：sub=各科目一列 / ch=各章一列 / sec=各节一列 / kp=各知识点一列 */
 function hmCols(){
@@ -4075,6 +4139,7 @@ function renderHeat(){
       '<option value="'+t[0]+'"'+(hmShow===t[0]?' selected':'')+'>'+t[1]+'</option>').join(''); }
   if(isExec) return renderHeatExec();
   const cols=hmCols(); HM_COLS=cols;
+  const HMA=hmAxisKeys().map(hmAxisKey);   /* 维度 = 验收轮次 r1/r2/… */
   const cap=document.getElementById('hmCap');
   if(cap) cap.textContent='六档掌握度 0不会→5融会贯通 · '
     +(hmView==='sub'?'整科横向对比（格子改的是该科全部条目）'
@@ -4082,7 +4147,7 @@ function renderHeat(){
      :hmView==='kp'?(hmSub||'全部科目')+' 知识点逐条掌握 · 点列头可编辑/删除'
      :(hmSub||'全部科目')+' 分节掌握 · 精确到第几章第几节，点列头可编辑/删除');
   /* 统计：每列跨阶段汇总出一个档位，再按档位数列数（视角切换自动重算） */
-  const lvs=cols.map(c=>hmAgg(c.rows.map(r=>STAGES.map(sg=>hmGet(r,sg))).reduce((a,arr)=>a.concat(arr),[])));
+  const lvs=cols.map(c=>hmAgg(c.rows.map(r=>HMA.map(sg=>hmGet(r,sg))).reduce((a,arr)=>a.concat(arr),[])));
   const un=lvs.filter(v=>v==='').length;
   document.getElementById('hmSum').innerHTML=[5,4,3,2,1,0].map(lv=>
     '<span class="hm-pill p'+lv+'" title="'+HM_LV_DESC[lv]+'">'+lv+' '+HM_LV[lv]+'<b>'
@@ -4096,7 +4161,7 @@ function renderHeat(){
     return;
   }
   const showN=hmView==='ch'||hmView==='sec';   /* 展示状态只对 章/节 列头生效 */
-  let html='<table class="hm"><thead><tr><th class="hm-name"><div class="hm-n1">阶段 / '
+  let html='<table class="hm"><thead><tr><th class="hm-name"><div class="hm-n1">验收 / '
     +(hmView==='sub'?'科目':hmView==='kp'?'知识点':hmView==='ch'?'章':'章·节')+'</div><div class="hm-n2">'+esc(hmView==='sub'||hmView==='kp'?'横向对比':(hmSub||'全部科目'))+'</div></th>';
   cols.forEach((c,i)=>{
     const h=hmHead(c), r=c.rows[0]||{};
@@ -4106,9 +4171,9 @@ function renderHeat(){
       +'><div class="hm-n1">'+n1+'</div><div class="hm-n2">'+esc(n2)+'</div></th>';
   });
   html+='</tr></thead><tbody>';
-  STAGES.forEach(function(sg){
-    html+='<tr'+(hmHiStage===sg?' class="hm-hi"':'')+'><th class="hm-name"><div class="hm-n1">'+esc(sg)+'</div>'
-      +'<div class="hm-n2">'+(hmView==='ch'?'整章汇总':'掌握程度')+'</div></th>';
+  HMA.forEach(function(sg){
+    html+='<tr'+(hmHiStage===sg?' class="hm-hi"':'')+'><th class="hm-name"><div class="hm-n1">'+esc(hmAxisLabel(sg))+'</div>'
+      +'<div class="hm-n2">'+(hmView==='ch'?'整章汇总':'本次得分')+'</div></th>';
     cols.forEach((c,i)=>{
       const lv=hmAgg(c.rows.map(r=>hmGet(r,sg)));
       const opts='<option value="">'+(c.rows.length===1?'未学':'汇总')+'</option>'
@@ -4123,33 +4188,34 @@ function renderHeat(){
 }
 /* ---------- 视图②：六档执行热力图（行=六档，列=阶段，格子=条目数+占比） ---------- */
 function renderHeatExec(){
+  const HMA=hmAxisKeys().map(hmAxisKey);   /* 维度 = 验收轮次 r1/r2/… */
   const wrap=document.getElementById('hmWrap');
   const cap=document.getElementById('hmCap');
-  if(cap) cap.textContent='六档执行分布：行=掌握档位，列=学习阶段 · 格子为该档条目数（占比）· 点格子回到「章节掌握」并高亮该阶段';
+  if(cap) cap.textContent='六档执行分布：行=掌握档位，列=验收轮次 · 格子为该档条目数（占比）· 点格子回到「章节掌握」并高亮该阶段';
   const rows=heat.filter(r=>!hmSub||r.sub===hmSub);
   const dist={},tot={};
-  STAGES.forEach(sg=>{ dist[sg]=[0,0,0,0,0,0]; tot[sg]=0; });
-  rows.forEach(r=>{ STAGES.forEach(sg=>{ const v=hmGet(r,sg); if(v!==''){ dist[sg][v]++; tot[sg]++; } }); });
-  const grand=STAGES.reduce((a,sg)=>a+tot[sg],0);
+  HMA.forEach(sg=>{ dist[sg]=[0,0,0,0,0,0]; tot[sg]=0; });
+  rows.forEach(r=>{ HMA.forEach(sg=>{ const v=hmGet(r,sg); if(v!==''){ dist[sg][v]++; tot[sg]++; } }); });
+  const grand=HMA.reduce((a,sg)=>a+tot[sg],0);
   if(!rows.length){
-    wrap.innerHTML='<div class="void">还没有掌握数据。点右上「+」添加章节 / 知识点，再切到「章节掌握」逐阶段打分。</div>';
+    wrap.innerHTML='<div class="void">还没有掌握数据。新增验收项并填实测得分，或点右上「+」添加章节后直接打分。</div>';
     document.getElementById('hmSum').innerHTML='';
     return;
   }
   document.getElementById('hmSum').innerHTML=
     [['合格 ≥4','p4',[4,5]],['基础 3','p3',[3]],['薄弱 ≤2','p1',[0,1,2]]].map(function(p){
-      let n=0; STAGES.forEach(sg=>{ p[2].forEach(lv=>{ n+=dist[sg][lv]; }); });
+      let n=0; HMA.forEach(sg=>{ p[2].forEach(lv=>{ n+=dist[sg][lv]; }); });
       return '<span class="hm-pill '+p[1]+'">'+p[0]+'<b>'+(grand?Math.round(n/grand*100):0)+'%</b></span>';
     }).join('')+'<span class="hm-legend">共 '+grand+' 项已评 · 点格子回看阶段</span>';
-  let html='<table class="hm"><thead><tr><th class="hm-name"><div class="hm-n1">档位 \\ 阶段</div>'
+  let html='<table class="hm"><thead><tr><th class="hm-name"><div class="hm-n1">档位 \\ 验收</div>'
     +'<div class="hm-n2">'+esc(hmSub||'全部科目')+'</div></th>';
-  STAGES.forEach(sg=>{ html+='<th><div class="hm-n1">'+esc(sg)+'</div><div class="hm-n2">'+tot[sg]+' 项</div></th>'; });
-  html+='<th><div class="hm-n1">全阶段</div><div class="hm-n2">'+grand+' 项</div></th></tr></thead><tbody>';
+  HMA.forEach(sg=>{ html+='<th><div class="hm-n1">'+esc(hmAxisLabel(sg))+'</div><div class="hm-n2">'+tot[sg]+' 项</div></th>'; });
+  html+='<th><div class="hm-n1">全部</div><div class="hm-n2">'+grand+' 项</div></th></tr></thead><tbody>';
   for(let lv=5;lv>=0;lv--){
-    let rowSum=0; STAGES.forEach(sg=>{ rowSum+=dist[sg][lv]; });
+    let rowSum=0; HMA.forEach(sg=>{ rowSum+=dist[sg][lv]; });
     html+='<tr><th class="hm-name"><div class="hm-n1">'+lv+' '+HM_LV[lv]+'</div>'
       +'<div class="hm-n2">'+HM_LV_DESC[lv]+'</div></th>';
-    STAGES.forEach(function(sg){
+    HMA.forEach(function(sg){
       const n=dist[sg][lv], t=tot[sg];
       html+='<td class="hm-ex-cell lv'+lv+(n?'':' hm-ex-zero')+'" title="'+esc(sg+' · '+lv+' '+HM_LV[lv]+'：'+n+' 项')+'"'
         +' onclick="hmExecDrill(\''+sg+'\')"><div class="ex-n">'+n+'</div>'
@@ -4158,8 +4224,8 @@ function renderHeatExec(){
     html+='<td class="hm-ex-cell sum"><div class="ex-n">'+rowSum+'</div>'
       +(grand?'<div class="ex-p">'+Math.round(rowSum/grand*100)+'%</div>':'')+'</td></tr>';
   }
-  html+='<tr><th class="hm-name"><div class="hm-n1">已评条目</div><div class="hm-n2">该阶段有档位记录</div></th>';
-  STAGES.forEach(sg=>{ html+='<td class="hm-ex-cell sum"><div class="ex-n">'+tot[sg]+'</div></td>'; });
+  html+='<tr><th class="hm-name"><div class="hm-n1">已评条目</div><div class="hm-n2">该次有得分记录</div></th>';
+  HMA.forEach(sg=>{ html+='<td class="hm-ex-cell sum"><div class="ex-n">'+tot[sg]+'</div></td>'; });
   html+='<td class="hm-ex-cell sum"><div class="ex-n">'+grand+'</div></td></tr>';
   html+='</tbody></table>';
   wrap.innerHTML=html;
@@ -4169,7 +4235,7 @@ function hmSetMode(m){ hmMode=m; save(K.hmmode,m); hmHiStage=''; renderHeat(); k
 function hmExecDrill(sg){
   hmMode='mst'; save(K.hmmode,hmMode); hmHiStage=sg;
   renderHeat(); kick();
-  toast('已切到「章节掌握」· 高亮「'+sg+'」');
+  toast('已切到「章节掌握」· 高亮「'+hmAxisLabel(sg)+'」');
   clearTimeout(window.__hmHiT);
   window.__hmHiT=setTimeout(function(){ hmHiStage=''; renderHeat(); kick(); },3000);
 }
@@ -4827,7 +4893,14 @@ const STAGE_CAT={'预习导学':'教材讲义','精讲听课':'网课视频','�
   '真题模考':'真题模考','冲刺串讲':'教材讲义','错题复盘':'笔记整理','考前定心':'背诵记忆'};
 const STAGE_VERB={'预习导学':'通读','精讲听课':'精学','章节习题':'章节练习','强化提高':'强化',
   '真题模考':'真题','冲刺串讲':'串讲','错题复盘':'错题复盘','考前定心':'速记'};
-const GEN_STAGE_DEF=['预习导学','精讲听课','章节习题'];
+/* 章节内动作：取代原「八阶段」作为待办的执行分类。
+   阶段是全局轮次（真题/冲刺/定心），与章节正交，混排会排错顺序；
+   动作是章节内的子步骤，严格跟随教材顺序推进。 */
+const ACTS=['通读教材','精听课程','章节练习','错题订正','框架复述'];
+const ACT_HOURS={'通读教材':1,'精听课程':2,'章节练习':1.5,'错题订正':0.5,'框架复述':0.5};
+const ACT_CAT={'通读教材':'教材讲义','精听课程':'网课视频','章节练习':'刷题练习','错题订正':'笔记整理','框架复述':'背诵记忆'};
+const GEN_ACT_DEF=['通读教材','精听课程','章节练习'];
+const GEN_STAGE_DEF=['预习导学','精讲听课','章节习题'];   /* 仅兼容旧数据，不再用于生成 */
 /* 排期：从起始日起按每日可用时长依次填充，装不下就顺延到次日 */
 function planSchedule(list,start,dailyH,skipWeekend){
   dailyH=Number(dailyH)||3;
@@ -4842,19 +4915,22 @@ function planSchedule(list,start,dailyH,skipWeekend){
   });
   return list;
 }
-/* opt: {stages[], gran:'ch'|'sec', start, daily, skipWeekend} */
+/* opt: {acts[], gran:'ch'|'sec', start, daily, skipWeekend, round} */
 function genChapterTasks(sub,opt){
   opt=opt||{};
-  const stages=(opt.stages&&opt.stages.length)?opt.stages:GEN_STAGE_DEF.slice();
+  const acts=(opt.acts&&opt.acts.length)?opt.acts:GEN_ACT_DEF.slice();
   const gran=opt.gran||'ch';
+  const round=Number(opt.round)||1;
   const base=chFlat(sub).filter(function(x){ return gran==='sec'?x.lv===2:x.lv===1; });
   const list=[];
+  /* 外层遍历章节、内层遍历动作 —— 严格按教材顺序推进：
+     第 1 章的通读→精听→练习做完才进第 2 章，不会再出现「第 1 章就去真题模考」 */
   base.forEach(function(n){
-    stages.forEach(function(sg){
-      list.push({id:uid(),type:'章节知识点',sub:sub,chapter:n.label,stage:sg,
-        title:n.label+' · '+(STAGE_VERB[sg]||sg),
-        priority:'P1',mastery:'未学',plan:STAGE_HOURS[sg]||1,real:0,rs:'',rf:'',done:false,
-        cat:STAGE_CAT[sg]||'教材讲义',due:'',needReview:true,note:'',nid:n.id,gen:true});
+    acts.forEach(function(a){
+      list.push({id:uid(),type:'章节知识点',sub:sub,chapter:n.label,act:a,round:round,stage:'',
+        title:n.label+' · '+a+(round>1?('（第'+round+'轮）'):''),
+        priority:'P1',mastery:'',plan:ACT_HOURS[a]||1,real:0,rs:'',rf:'',done:false,
+        cat:ACT_CAT[a]||'教材讲义',due:'',needReview:true,note:'',nid:n.id,gen:true});
     });
   });
   planSchedule(list,opt.start||today(),opt.daily||(prof&&prof.daily)||3,!!opt.skipWeekend);
@@ -4919,9 +4995,9 @@ function sylSubOpts(){
   const v=sylSub();
   return subs.map(function(s){ return '<option'+(s.name===v?' selected':'')+'>'+esc(s.name)+'</option>'; }).join('');
 }
-function sylStageBox(){
-  return STAGES.map(function(s){
-    return '<label class="ck"><input type="checkbox" class="gen-stg" value="'+esc(s)+'"'+(GEN_STAGE_DEF.indexOf(s)>=0?' checked':'')+'>'+esc(s)+'</label>';
+function sylActBox(){
+  return ACTS.map(function(s){
+    return '<label class="ck"><input type="checkbox" class="gen-act" value="'+esc(s)+'"'+(GEN_ACT_DEF.indexOf(s)>=0?' checked':'')+'>'+esc(s)+'</label>';
   }).join('');
 }
 function renderSyl(){
@@ -4951,7 +5027,8 @@ function sylBookHtml(sub){
     +'<div class="hintline">识别不出编号且无缩进的行会被当作噪声跳过（如「本章小结」「思考题」）。行尾页码与点线会自动去掉。</div>'
     +'<div class="f2"><div class="fld"><label>起始日期</label><input type="date" id="bkStart" value="'+today()+'"></div>'
     +'<div class="fld"><label>每日可学时长（小时）</label><input type="number" id="bkDaily" step="0.5" min="0.5" value="'+((prof&&prof.daily)||3)+'"></div></div>'
-    +'<div class="fld"><label>生成哪些阶段的待办</label><div class="chips">'+sylStageBox()+'</div></div>'
+    +'<div class="fld"><label>每个章节生成哪些学习动作（按教材顺序逐章推进）</label><div class="chips">'+sylActBox()+'</div></div>'
+    +'<div class="f2"><div class="fld"><label>轮次（第 2 轮复习改成 2，排在第 1 轮之后）</label><input type="number" id="bkRound" min="1" max="9" value="1"></div></div>'
     +'<label class="ck"><input type="checkbox" id="bkWeekend"> 排期跳过周六周日</label>'
     +'<div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">'
     +'<button class="btn" onclick="sylParseBook()">🔍 解析预览</button>'
@@ -5002,11 +5079,12 @@ function sylClear(){
   delete chs[sub]; save(K.chs,chs); sylPrev=null; renderSyl(); toast('已清空');
 }
 function sylReadTasks(){
-  const stg=[];
-  document.querySelectorAll('.gen-stg').forEach(function(c){ if(c.checked) stg.push(c.value); });
+  const act=[];
+  document.querySelectorAll('.gen-act').forEach(function(c){ if(c.checked) act.push(c.value); });
   const g=function(id){ const e=document.getElementById(id); return e?e.value:''; };
-  return {stages:stg,gran:g('bkGran')||'ch',start:g('bkStart')||today(),
-    daily:Number(g('bkDaily'))||3,skipWeekend:(document.getElementById('bkWeekend')||{}).checked};
+  return {acts:act,gran:g('bkGran')||'ch',start:g('bkStart')||today(),
+    daily:Number(g('bkDaily'))||3,skipWeekend:(document.getElementById('bkWeekend')||{}).checked,
+    round:Number(g('bkRound'))||1};
 }
 function sylParseBook(){
   const sub=sylSub(), t=(document.getElementById('bkText')||{}).value||'';
@@ -5019,7 +5097,7 @@ function sylParseBook(){
   const span=(tasks.length&&tasks[tasks.length-1].due)?('，排到 '+tasks[tasks.length-1].due):'';
   let h='<div class="tpl-note">识别成功：<b>'+b.count+'</b> 行（'+n1+' 章 / '+n2+' 节）'
     +(b.skipped?'，跳过 '+b.skipped+' 行噪声':'')+'。<br>'
-    +'将生成 <b>'+tasks.length+'</b> 条待办（'+opt.stages.length+' 个阶段 × '+(opt.gran==='sec'?n2+' 节':n1+' 章')+'）'
+    +'将生成 <b>'+tasks.length+'</b> 条待办（'+opt.acts.length+' 个动作 × '+(opt.gran==='sec'?n2+' 节':n1+' 章')+'，按教材顺序逐章推进）'
     +span+'</div>';
   h+='<div class="syl-tree">'+flat.slice(0,60).map(function(x){
     return '<div class="syl-row" style="padding-left:'+((x.lv-1)*16)+'px"><span class="syl-lv">'+esc(LV_LABEL[x.lv])+'</span><span class="syl-nm">'+esc(x.label)+'</span></div>';
@@ -5250,6 +5328,7 @@ function cloudPullLedger(f){
 
 /* ================= 启动 ================= */
 mstMigrate();   /* 掌握度统一为六档：必须在所有常量与状态初始化之后 */
+hmMigrateAxis(); /* 旧「按阶段打分」数据迁入第 1 次验收 */
 (function(){ const c=STAGES.indexOf(curStage()); if(c>=0) openStages['st'+c]=true; })();
 nav();
 if(needWizard()&&!subs.length) startWizard();
