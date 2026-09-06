@@ -709,9 +709,6 @@ main{max-width:1120px;margin:0 auto;padding:34px 34px 60px}
   padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.62);color:var(--cocoa);
 }
 .kpi-tag.up{color:#5F6B4A}.kpi-tag.down{color:var(--crimson)}
-.kpi-spark{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:12px}
-.kpi-spark i{flex:1;border-radius:3px 3px 0 0;background:rgba(181,98,47,.28);transition:height .9s var(--e-out)}
-.kpi-spark i.on{background:var(--viz-done)}
 
 /* ---------- 横向柱状图（花销 Top N） ---------- */
 .hbars{margin-top:8px}
@@ -1305,9 +1302,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
         <div class="t-head">
           <div><span class="eyebrow">Mastery Map</span><h2>章节掌握热力图</h2><div class="cap" id="hmCap"></div></div>
           <div class="t-acts">
-            <button aria-label="阶段管理" class="ib sm flat tip-l" data-tip="阶段管理：增删/排序（与当前阶段同源）" onclick="openStagesMgr()">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewBox="0 0 24 24"><path d="M4 6h9M4 12h6M4 18h9"/><path d="M17 8v8M13 12h8" transform="translate(0,0)"/></svg>
-            </button>
             <button aria-label="添加章节/知识点" class="ib solid tip-l" data-tip="添加章节 / 知识点" onclick="openHeat()">
               <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             </button>
@@ -1344,9 +1338,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
             <button aria-label="批量导入科目" class="ib sm flat tip-l" data-tip="按模板批量导入科目" onclick="openSubImport()">
               <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 21h16"/></svg>
             </button>
-            <button aria-label="从模板建阶段计划" class="ib sm flat tip-l" data-tip="按模板生成阶段计划" onclick="openTpl()">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" viewBox="0 0 24 24"><path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l1.6 4.4L19 9l-4.4 1.6L13 15l-1.6-4.4L7 9l4.4-1.6z"/><path d="M14 14l7 7"/></svg>
-            </button>
             <button aria-label="新增科目" class="ib solid tip-l" data-tip="新增科目" onclick="openSub()">
               <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.9" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             </button>
@@ -1379,25 +1370,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
           <div class="kp-stats" id="progStat"></div>
           <div class="kp-box" id="kpBox"></div>
         </div>
-      </div>
-    </div>
-    <div class="bento">
-      <div class="c12 tile">
-        <div class="t-head">
-          <div><span class="eyebrow">Schedule</span><h2>学习甘特图</h2><div class="cap" id="ganttCap"></div></div>
-        </div>
-        <div class="gantt" id="gantt"></div>
-      </div>
-    </div>
-    <div class="bento">
-      <div class="c12 tile">
-        <div class="t-head">
-          <div><span class="eyebrow">Timeline</span><h2>学习阶段</h2><div class="cap" id="progCap"></div></div>
-          <div class="t-acts"><button aria-label="新增小项" class="ib sm flat tip-l" data-tip="新增小项" onclick="openTask()">
-            <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-          </button></div>
-        </div>
-        <div class="tl" id="tl"></div>
       </div>
     </div>
   </section>
@@ -1436,12 +1408,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:none;border-ra
       <div class="c7 tile">
         <div class="t-head"><div><span class="eyebrow">Top Hours</span><h3>投入 Top 10</h3><div class="cap">按实际投入排序，深色为已投入部分</div></div></div>
         <div class="hbars" id="topBars"></div>
-      </div>
-    </div>
-    <div class="bento">
-      <div class="c12 tile">
-        <div class="t-head"><div><span class="eyebrow">By Stage</span><h3>各阶段投入对比</h3><div class="cap" id="stageBarCap"></div></div></div>
-        <div class="vbars" id="stageBars"></div>
       </div>
     </div>
     <div class="bento">
@@ -1661,17 +1627,6 @@ const GAIN_STAGES=['预习','听课','复习','练习','灵机一动'];
 const GAIN_CLAZZ={'预习':'g-pre','听课':'g-lis','复习':'g-rev','练习':'g-pra','灵机一动':'g-ide'};
 /* 复习日视图时间轴刻度：早 6 点 → 晚 23 点 */
 const TL_FROM=6, TL_TO=23;
-const STAGE_TPL={
- '预习导学':['通读考纲与教材目录','了解本科目分值分布','准备资料与题库'],
- '精讲听课':['精讲班第 01-10 讲','精讲班第 11-20 讲','精讲班第 21-30 讲'],
- '章节习题':['第 1-3 章章节练习','第 4-6 章章节练习','第 7-10 章章节练习'],
- '强化提高':['重难点专项突破','高频考点二轮精讲'],
- '真题模考':['近三年真题卷（一）','近三年真题卷（二）'],
- '冲刺串讲':['高频考点串讲上','高频考点串讲下'],
- '错题复盘':['错题本第一轮清理','错题本第二轮清剿'],
- '考前定心':['公式与分录速记','机考系统模拟演练']
-};
-
 const I={
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
   pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 114 4L7.5 20.5 2 22l1.5-5.5z"/></svg>',
@@ -1911,42 +1866,13 @@ function renderSubBar(){
     +'<button class="chip" onclick="go(\'subject\')">管理科目</button>';
 }
 
-/* ================= 阶段与进度 ================= */
-function stageTasks(name){ return todos.filter(t=>t.stage===name&&inSub(t)); }
-function taskStat(s){ const t=stageTasks(s); return {n:t.length,d:t.filter(x=>x.done).length}; }
-/* 阶段的真实起止 = 该阶段所有小项的 min(真实开始) / max(真实完成)，不手填预计工期 */
-function stageSpan(name){
-  const T=stageTasks(name);
-  const ss=T.map(t=>t.rs).filter(Boolean).sort();
-  const ff=T.map(t=>t.rf).filter(Boolean).sort();
-  const allDone=T.length>0&&T.every(t=>t.done);
-  return {start:ss.length?ss[0]:'',end:allDone&&ff.length?ff[ff.length-1]:'',
-          last:ff.length?ff[ff.length-1]:'',n:T.length,done:T.filter(t=>t.done).length};
-}
+/* ================= 学习进度 =================
+   进度 = 当前范围「章节知识点」的完成率（八阶段已移除，执行按章节 × 学习动作推进） */
 function taskState(t){ return t.done?'done':(t.rs?'doing':''); }
-function stageState(name){
-  const t=taskStat({name:name});
-  if(!t.n) return '';
-  if(t.d===t.n) return 'done';
-  if(t.d>0||stageTasks(name).some(x=>x.rs)) return 'doing';
-  return '';
-}
-function stagePct(name){ const t=taskStat({name:name}); return t.n?Math.round(t.d/t.n*100):0; }
 function workPct(){
-  let n=0,d=0;
-  STAGES.forEach(s=>{ const t=taskStat({name:s}); n+=t.n; d+=t.d; });
-  return {n,d,pct:n?Math.round(d/n*100):0};
-}
-function curStage(){
-  const c=STAGES.find(s=>stageState(s)==='doing');
-  if(c) return c;
-  return STAGES.find(s=>stageState(s)==='')||'';
-}
-function curStageLabel(){
-  const c=STAGES.find(s=>stageState(s)==='doing');
-  if(c) return '正在进行：'+c;
-  const n=STAGES.find(s=>stageState(s)==='');
-  return n?'即将开始：'+n:'全部阶段已完成';
+  const T=todos.filter(t=>t.type==='章节知识点'&&inSub(t));
+  const d=T.filter(t=>t.done).length;
+  return {n:T.length,d:d,pct:T.length?Math.round(d/T.length*100):0};
 }
 /* 整体掌握度：各知识点掌握度加权平均（按计划时长加权） */
 function masterPct(){
@@ -2138,7 +2064,6 @@ function calcH(b,p){
   const diff=p-b, over=diff>=OVER_TOL?diff:0;
   return {b,p,pct:Math.min(raw,100),raw,over,ovr:b&&over>0?Math.round(over/b*100):0};
 }
-function stageHours(name){ return calcH(tSum(x=>x.stage===name,'plan'),tSum(x=>x.stage===name,'real')); }
 function catHours(cat){ return calcH(tSum(x=>x.cat===cat,'plan'),tSum(x=>x.cat===cat,'real')); }
 function totalHours(){
   return calcH(timeLog.reduce((s,x)=>s+Number(x.plan||0),0),timeLog.reduce((s,x)=>s+Number(x.real||0),0));
@@ -2242,10 +2167,6 @@ function navBadge(id){
   if(id==='review'){
     const d=dueReviews().length;
     return d?{n:d,hot:overdueReviews().length>0}:null;
-  }
-  if(id==='progress'){
-    const d=STAGES.filter(s=>stageState(s)==='done').length;
-    return {n:d+'/'+STAGES.length,hot:false};
   }
   if(id==='subject'){ const a=subs.filter(s=>s.state==='备考中').length; return a?{n:a,hot:false}:null; }
   if(id==='gains'){ const a=gains.filter(inSub).length; return a?{n:a,hot:false}:null; }
@@ -2394,7 +2315,6 @@ function toggleAcc(el){
   const a=el.closest('.acc'),b=a.querySelector('.acc-body');
   const open=a.classList.toggle('open');
   b.style.maxHeight=open?b.scrollHeight+'px':'0px';
-  if(a.dataset.sid!==undefined) openStages[a.dataset.sid]=open;
   if(a.dataset.cid!==undefined) openCats[a.dataset.cid]=open;
 }
 let tT;
@@ -2455,14 +2375,11 @@ function renderKPI(){
   const W=workPct(), T=totalHoursIn(), M=masterPct(), t=today();
   const openN=todos.filter(x=>!x.done&&inSub(x)).length;
   const odN=todos.filter(x=>!x.done&&x.due&&x.due<t&&inSub(x)).length;
-  const doneN=STAGES.filter(s=>stageState(s)==='done').length;
   const days=daysToExam();
   const rvN=dueReviews().length;
-  const spark=STAGES.map(s=>{ const p=stagePct(s); return '<i class="'+(p>=100?'on':'')+'" style="height:'+Math.max(p,8)+'%"></i>'; }).join('');
   const K=[
-    {c:'k1',t:'学习进度',v:W.pct,u:'%',s:'知识点 '+W.d+' / '+W.n+' 项',tag:doneN+'/'+STAGES.length+' 阶段',
-      go:"go('progress')",ic:'<path d="M3 21h18"/><path d="M6 21V9l6-5 6 5v12"/><path d="M10 21v-6h4v6"/>',
-      extra:'<div class="kpi-spark">'+spark+'</div>'},
+    {c:'k1',t:'学习进度',v:W.pct,u:'%',s:'知识点 '+W.d+' / '+W.n+' 项',tag:'距考试 '+days+' 天',
+      go:"go('progress')",ic:'<path d="M3 21h18"/><path d="M6 21V9l6-5 6 5v12"/><path d="M10 21v-6h4v6"/>'},
     {c:'k2',t:'累计时间投入',v:hK(T.p),u:'h',s:'计划时长 '+hK(T.b)+'h',go:"go('time')",db:DB_TIME,
       tag:T.pct+'%',tagCls:T.over>0?'down':'up',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'},
     {c:'k3',t:T.over>0?'超出计划':'剩余时间预算',v:hK(T.over>0?T.over:T.b-T.p),u:'h',db:DB_TIME,
@@ -2543,7 +2460,7 @@ function renderHome(){
   renderProfile();
   const W=workPct(), M=masterPct();
   document.getElementById('homeGauge').innerHTML=gauge(W.pct,'学习进度')
-    +'<div class="gauge-cap"><h3>'+esc(curStageLabel())+'</h3><p>距考试 '+daysToExam()+' 天</p></div>'
+    +'<div class="gauge-cap"><h3>'+esc(subName()||'备考')+'</h3><p>距考试 '+daysToExam()+' 天</p></div>'
     +'<div class="gauge-sum">知识点 '+W.d+' / '+W.n+' 项 · 掌握度 '+M+'%</div>';
 
   const T=totalHoursIn();
@@ -2570,15 +2487,13 @@ function renderHome(){
       +'第 '+(Number(dr[0].count||0)+1)+' 轮 · '+esc(dr[0].sub||'')+(dr[0].next<today()?' · <span style="color:var(--crimson)">已逾期</span>':'')
       +'</div>':'<div class="rule"></div><div style="font-size:12px;color:var(--ink-mute);line-height:1.7">今天没有到期复习项，记忆曲线很健康。</div>');
 
-  /* 首页验收提醒：待验收的项，优先列出「所属阶段已完成但还没验收」的 */
+  /* 首页验收提醒 */
   const pend=checks.filter(c=>c.state==='待验收'&&inSub(c));
-  const hot=pend.filter(c=>c.stage&&stageState(c.stage)==='done');
-  document.getElementById('homeCheckCap').textContent=pend.length?(hot.length?hot.length+' 项所属阶段已完成，可以验收了':'共 '+pend.length+' 项待验收'):'';
+  document.getElementById('homeCheckCap').textContent=pend.length?('共 '+pend.length+' 项待验收'):'';
   document.getElementById('homeCheck').innerHTML=pend.length
     ? '<div class="rows">'+pend.slice(0,5).map(c=>
-        '<div class="li"><div class="li-l"><div class="li-n">'+esc(c.item)
-        +(hot.indexOf(c)>=0?'<span class="mt al">可验收</span>':'')+'</div>'
-        +'<div class="li-s">'+esc(c.sub||'')+(c.stage?' · '+esc(c.stage):'')+'</div>'
+        '<div class="li"><div class="li-l"><div class="li-n">'+esc(c.item)+'</div>'
+        +'<div class="li-s">'+esc(c.sub||'')+'</div>'
         +(c.std?'<div class="li-note">'+esc(c.std)+'</div>':'')+'</div>'
         +'<div class="li-r"><button class="ib sm flat tip-l" data-tip="通过" onclick="setCheck(\''+c.id+'\',\'通过\')">'+I.check+'</button></div></div>'
       ).join('')+'</div>'
@@ -2668,7 +2583,7 @@ function renderSubject(){
     return '<div class="acc'+(curSub===s.name?' open':'')+'" data-sid="sub-'+s.id+'">'
       +'<div class="acc-hd" onclick="toggleAcc(this)">'+I.chev
       +'<div class="stg-b"><div class="stg-n">'+esc(s.name)+(s.state!=='备考中'?'<span class="mt" style="margin-left:8px">'+esc(s.state)+'</span>':'')+'</div>'
-      +'<div class="stg-d">'+esc(s.exam||'')+' · '+esc(s.stage||'')+' · 知识点 '+kd+'/'+kp.length+'</div></div>'
+      +'<div class="stg-d">'+esc(s.exam||'')+' · 知识点 '+kd+'/'+kp.length+'</div></div>'
       +'<div class="bar"><i class="'+(T.over>0?'ov':'')+'" data-w="'+T.pct+'"></i></div>'
       +'<div class="mny"><span class="a'+(T.over>0?' ov':'')+'">'+hnum(T.p)+'h</span> <span class="b">/ '+hnum(T.b)+'h</span></div>'
       +'<div class="pctv">'+(dd!==null?(dd>=0?dd+'天':'已考'):'—')+'</div>'
@@ -2678,7 +2593,7 @@ function renderSubject(){
       +'</div>'
       +'<div class="acc-body"><div class="acc-in">'
       +'<div class="spec-grid q4">'+spec('考试名称',esc(s.exam||'—'),'')+spec('考试日期',cnD(s.date),'')
-      +spec('目标时长',hnum(s.hours),'h')+spec('当前阶段',esc(s.stage||'—'),'')+'</div>'
+      +spec('目标时长',hnum(s.hours),'h')+'</div>'
       +(s.goal?'<div class="hintline" style="margin-top:14px">目标：'+esc(s.goal)+'</div>':'')
       +(s.note?'<div class="li-note" style="margin-top:10px">'+esc(s.note)+'</div>':'')
       +'</div></div></div>';
@@ -2690,9 +2605,9 @@ function renderSubject(){
 function renderKP(){
   const box=document.getElementById('kpRows'); if(!box) return;
   document.getElementById('kpChips').innerHTML=
-    ['all'].concat(STAGES).map(s=>'<button class="chip'+(kf===s?' on':'')+'" onclick="kf=\''+s+'\';renderSubject()">'
-      +(s==='all'?'全部阶段':s)+'</button>').join('');
-  const L=todos.filter(t=>t.type==='章节知识点'&&inSub(t)&&(kf==='all'||t.stage===kf));
+    ['all'].concat(ACTS).map(s=>'<button class="chip'+(kf===s?' on':'')+'" onclick="kf=\''+s+'\';renderSubject()">'
+      +(s==='all'?'全部':s)+'</button>').join('');
+  const L=todos.filter(t=>t.type==='章节知识点'&&inSub(t)&&(kf==='all'||(t.act||'')===kf));
   document.getElementById('kpCap').textContent=L.filter(t=>t.done).length+' / '+L.length+' 项已完成 · 点标题可编辑';
   if(!L.length){ box.innerHTML='<div class="void">这个范围内还没有知识点</div>'; return; }
   box.innerHTML='<div class="rows">'+L.map(t=>{
@@ -2702,7 +2617,7 @@ function renderKP(){
       +'<div class="r-b"><div class="r-t">'+esc(t.title)+'</div>'
       +'<div class="r-m"><span class="pri '+t.priority+'">'+t.priority+'</span>'
       +'<span>'+esc(t.sub||'未归属')+'</span><span>'+esc(t.chapter||'')+'</span>'
-      +'<span class="r-stg'+(t.stage===curStage()?' cur':'')+'">'+esc(t.stage||'未排阶段')+'</span>'
+      +((t.act||'')?'<span class="r-stg">'+esc(t.act)+'</span>':'')
       +(mstNum(t.mastery)!==null?'<span class="mt'+(mstNum(t.mastery)>=4?' ok':'')+'">'+esc(mstName(t.mastery))+'</span>':'')
       +'<span>'+hnum(t.real)+' / '+hnum(t.plan)+'h</span>'
       +(t.rs?'<span>'+cnD(t.rs)+' → '+(t.rf?cnD(t.rf):'进行中')+'</span>':'<span>未开始</span>')
@@ -2720,8 +2635,7 @@ function openSub(id){
     +'<div class="fld"><label>目标（一句话）</label><input id="sfGoal" value="'+esc(c.goal)+'" placeholder="首年过两科，会计保 75+"></div>'
     +'<div class="f2"><div class="fld"><label>考试日期</label><input type="date" id="sfDate" value="'+esc(c.date)+'"></div>'
     +'<div class="fld"><label>目标总时长（小时）</label><input type="number" min="0" id="sfHours" value="'+esc(c.hours)+'"></div></div>'
-    +'<div class="f2"><div class="fld"><label>当前阶段</label><select id="sfStage">'+opts(STAGES,c.stage)+'</select></div>'
-    +'<div class="fld"><label>状态</label><select id="sfState">'+opts(SUB_STATES,c.state)+'</select></div></div>'
+    +'<div class="fld"><label>状态</label><select id="sfState">'+opts(SUB_STATES,c.state)+'</select></div>'
     +'<div class="fld"><label>备注</label><textarea id="sfNote" placeholder="这科的难重点、资料来源…">'+esc(c.note)+'</textarea></div>'
     +shActs('saveSub('+(id?'\''+id+'\'':'')+')',id?'delSub(\''+id+'\')':''));
 }
@@ -2731,7 +2645,7 @@ function saveSub(id){
   const o={name:name,exam:document.getElementById('sfExam').value.trim(),
     goal:document.getElementById('sfGoal').value.trim(),date:document.getElementById('sfDate').value,
     hours:Number(document.getElementById('sfHours').value||0),
-    stage:document.getElementById('sfStage').value,state:document.getElementById('sfState').value,
+    state:document.getElementById('sfState').value,
     note:document.getElementById('sfNote').value.trim()};
   if(id){ Object.assign(subs.find(x=>x.id===id),o); }
   else { o.id=uid(); subs.push(o); curSub=name; save(K.cur,curSub); }
@@ -2886,140 +2800,17 @@ function doSubImport(){
   toast('导入完成：新建 '+created+' 门 · 更新 '+updated+' 门');
   touched.forEach(function(s){ pushSub(s); });
 }
-/* 按模板批量生成阶段计划：给当前科目一次性铺出八个阶段的基础小项 */
-function openTpl(){
-  if(!subs.length){ toast('先新增一门科目'); return; }
-  sheet(shHead('Template','按模板生成阶段计划')
-    +'<div class="fld"><label>套用到哪门科目</label><select id="tpSub">'+subOpts(curSub||subs[0].name)+'</select></div>'
-    +'<div class="fld"><label>起始阶段</label><select id="tpFrom">'+opts(STAGES,STAGES[0])+'</select></div>'
-    +'<div class="fld"><label>每项的计划时长（小时）</label><input type="number" min="0" id="tpHours" value="16"></div>'
-    +'<div class="hintline">会按八个阶段的默认模板批量生成知识点小项，已存在的同名项会自动跳过。</div>'
-    +shActs('saveTpl()'));
-}
-function saveTpl(){
-  const sub=document.getElementById('tpSub').value;
-  const from=document.getElementById('tpFrom').value;
-  const h=Number(document.getElementById('tpHours').value||0);
-  let n=0;
-  STAGES.slice(STAGES.indexOf(from)).forEach(st=>{
-    (STAGE_TPL[st]||[]).forEach(name=>{
-      if(todos.some(t=>t.sub===sub&&t.title===name)) return;
-      todos.push({id:uid(),type:'章节知识点',sub:sub,chapter:'',stage:st,title:name,
-        priority:'P1',mastery:'未学',plan:h,real:0,rs:'',rf:'',done:false,
-        cat:'刷题练习',due:'',needReview:false,note:''});
-      n++;
-    });
-  });
-  save(K.todos,todos);
-  closeSheet(); renderAll(); kick(); toast('已生成 '+n+' 项知识点');
-  if(db&&cloudOn) todos.slice(-n).forEach(pushTodo);
-}
 
 /* ================= 学习进度 ================= */
-let openStages={};
-function renderGantt(){
-  const box=document.getElementById('gantt');
-  const S=STAGES.map(s=>({n:s,sp:stageSpan(s),pct:stagePct(s),st:stageState(s)})).filter(x=>x.sp.n>0);
-  if(!S.length){ box.innerHTML='<div class="void">还没有学习小项</div>'; document.getElementById('ganttCap').textContent=''; return; }
-  const D=x=>new Date(x+'T00:00:00').getTime();
-  const t=today(), tD=D(t), tgt=examDate();
-  const starts=S.map(x=>x.sp.start).filter(Boolean).map(D);
-  const finish=S.map(x=>x.sp.last).filter(Boolean).map(D);
-  const min=starts.length?Math.min.apply(null,starts):tD;
-  const max=Math.max(tD, tgt?D(tgt):tD, finish.length?Math.max.apply(null,finish):tD);
-  const span=Math.max(max-min,864e5);
-  const pos=x=>(D(x)-min)/span*100;
-  const posT=ms=>(ms-min)/span*100;
-  let ticks='',grid='',cur=new Date(min); cur.setDate(1);
-  while(cur.getTime()<=max){
-    const pp=(cur.getTime()-min)/span*100;
-    if(pp>=0&&pp<=100){
-      ticks+='<span class="gt-tick" style="left:'+pp.toFixed(2)+'%"></span>'
-        +'<span class="gt-mo" style="left:'+pp.toFixed(2)+'%">'+(cur.getMonth()+1)+'月</span>';
-      if(pp>0&&pp<100) grid+='<span class="gt-grid" style="left:'+pp.toFixed(2)+'%"></span>';
-    }
-    cur.setMonth(cur.getMonth()+1);
-  }
-  const nowL=posT(tD);
-  box.innerHTML='<div class="gantt-in">'
-    +'<div class="gt-head" style="margin-left:104px">'+ticks+'</div>'
-    +S.map(x=>{
-      const sp=x.sp;
-      let left,w,cls='',fillW=0;
-      if(sp.start){
-        left=pos(sp.start);
-        const endD=sp.end?D(sp.end):(tD>D(sp.last||sp.start)?tD:D(sp.last||sp.start));
-        w=Math.max((endD-D(sp.start))/span*100,1.2);
-        fillW=(sp.end?100:(sp.last?Math.min((D(sp.last)-D(sp.start))/(endD-D(sp.start))*100,100):0));
-        if(x.st==='done') cls='done';
-      } else {
-        left=posT(tD); w=6; cls='pending';
-      }
-      const pctCls=x.pct>=100?'':'mute';
-      return '<div class="gt-row"><div class="gt-lbl" title="'+esc(x.n)+'">'+esc(x.n)+'</div>'
-        +'<div class="gt-track">'+grid
-        +'<div class="gt-bar '+cls+'" style="left:'+left.toFixed(2)+'%;width:'+w.toFixed(2)+'%">'
-        +(cls!=='pending'?'<div class="gt-fill" data-w="'+fillW.toFixed(2)+'"></div>':'')+'</div>'
-        +'<span class="gt-pct '+pctCls+'" style="left:'+Math.min(left+w+1.2,92).toFixed(2)+'%">'+x.pct+'%</span>'
-        +'</div></div>';
-    }).join('')
-    +'<div class="gt-row"><div class="gt-lbl"></div><div class="gt-track" style="position:relative">'
-    +'<span class="gt-now" style="left:'+nowL.toFixed(2)+'%"></span></div></div>'
-    +'<div class="gt-legend">'
-    +'<span class="gt-lg"><i style="background:var(--viz)"></i>进行中</span>'
-    +'<span class="gt-lg"><i style="background:var(--olive)"></i>已完成</span>'
-    +'<span class="gt-lg"><i style="background:transparent;box-shadow:inset 0 0 0 1.5px var(--clay)"></i>未开工（预留）</span>'
-    +'<span class="gt-lg"><i style="background:var(--crimson);width:2px;border-radius:2px"></i>今天</span>'
-    +'</div></div>';
-  document.getElementById('ganttCap').textContent='共 '+S.length+' 个阶段 · 起止由小项真实日期自动汇总 · 红线为今天';
-  animateBars();
-}
 function renderProg(){
   const W=workPct(), M=masterPct(), T=totalHoursIn();
   document.getElementById('progGauge').innerHTML=gauge(W.pct,'学习进度');
-  const doneN=STAGES.filter(s=>stageState(s)==='done').length;
   document.getElementById('progStat').innerHTML=
-    '<span class="kp-stat">当前<b>'+esc(curStageLabel())+'</b></span>'
-    +'<span class="kp-stat">知识点<b>'+W.d+' / '+W.n+'</b></span>'
+    '<span class="kp-stat">知识点<b>'+W.d+' / '+W.n+'</b></span>'
     +'<span class="kp-stat">平均掌握度<b>'+M+'%</b></span>'
-    +'<span class="kp-stat">已投入<b>'+hnum(T.p)+'h</b></span>'
-    +'<span class="kp-stat">阶段完成<b'+(doneN===STAGES.length?' style="color:var(--olive)"':'')+'>'+doneN+' / '+STAGES.length+'</b></span>';
+    +'<span class="kp-stat">已投入<b>'+hnum(T.p)+'h</b></span>';
   renderKps();
-  document.getElementById('progCap').textContent=curSub?('当前科目：'+curSub):'全部科目 · 点阶段展开内部小项';
-  document.getElementById('tl').innerHTML=STAGES.map((s,i)=>{
-    const st=stageState(s), t=taskStat({name:s}), sp=stageSpan(s), p=stagePct(s);
-    const open=openStages['st'+i]!==undefined?openStages['st'+i]:(st==='doing');
-    return '<div class="acc '+(st||'')+(open?' open':'')+'" data-sid="st'+i+'">'
-      +'<div class="acc-hd" onclick="toggleAcc(this)">'+I.chev+'<span class="node"></span>'
-      +'<div class="stg-b"><div class="stg-n">'+esc(s)+'</div>'
-      +'<div class="stg-d">'+(sp.start?(cnD(sp.start)+' → '+(sp.end?cnD(sp.end):'进行中')):'尚未开始')+' · '+t.d+'/'+t.n+' 项</div></div>'
-      +'<div class="bar"><i class="'+(p>=100?'done':'')+'" data-w="'+p+'"></i></div>'
-      +'<div class="pctv">'+p+'%</div>'
-      +'<div class="t-acts" onclick="event.stopPropagation()">'
-      +'<button class="ib sm flat tip-l" data-tip="新增小项" onclick="openTask(\'\',\''+s+'\')">'+I.plus+'</button></div>'
-      +'</div>'
-      +'<div class="acc-body"><div class="acc-in">'
-      +'<div class="sub-hd"><span class="sh-n">小项</span><span class="sh-d">计划/实际</span><span class="sh-s">状态</span></div>'
-      +(t.n?stageTasks(s).map(x=>{
-        const xs=taskState(x);
-        return '<div class="sub '+xs+'" data-tid="'+x.id+'">'
-          +'<span class="hit" onclick="toggleTask(\''+s+'\',\''+x.id+'\')"><span class="tick s'+(x.done?' on':'')+'">'+I.check+'</span></span>'
-          +'<span class="sub-n">'+esc(x.title)
-          +(x.sub?'<span class="r-stg">'+esc(x.sub)+'</span>':'')
-          +(mstNum(x.mastery)!==null?'<span class="mt'+(mstNum(x.mastery)>=4?' ok':'')+'">'+esc(mstName(x.mastery))+'</span>':'')
-          +'</span>'
-          +'<span class="sub-dt">'+hnum(x.real)+' / '+hnum(x.plan)+'h</span>'
-          +'<span class="sub-st '+xs+'">'+(xs==='done'?'完成':(xs==='doing'?'进行中':'未开始'))+'</span>'
-          +'<button class="ib xs flat tip-l" data-tip="编辑" onclick="openTask(\''+x.id+'\')">'+I.pencil+'</button>'
-          +'</div>';
-      }).join(''):'<div class="void" style="padding:12px 10px">这个阶段还没有小项</div>')
-      +'<button class="sub-add" onclick="openTask(\'\',\''+s+'\')">'+I.plus+'<span>给「'+esc(s)+'」加一个小项</span></button>'
-      +'</div></div></div>';
-  }).join('');
-  paintAcc(document.getElementById('p-progress'));
-  animateBars();
 }
-function toggleTask(sid,tid){ toggleTodo(tid); }
 
 /* ================= 待办清单 ================= */
 let tf='now';
@@ -3050,8 +2841,7 @@ function renderTodos(){
       +'<div class="r-b"><div class="r-t">'+esc(x.title)+'</div>'
       +'<div class="r-m"><span class="pri '+x.priority+'">'+x.priority+'</span>'
       +'<span class="mt'+(x.type==='章节知识点'?'':' wt')+'">'+esc(x.type)+'</span>'
-      +(x.stage?'<span class="r-stg'+(x.stage===curStage()?' cur':'')+'">'+esc(x.stage)+'</span>'
-              :'<span class="r-stg free">日常待办</span>')
+      +(x.type==='日常待办'?'<span class="r-stg free">日常待办</span>':'')
       +(x.sub?'<span>'+esc(x.sub)+'</span>':'')
       +(x.chapter?'<span>'+esc(x.chapter)+'</span>':'')
       +(x.cat?'<span>'+esc(x.cat)+'</span>':'')
@@ -3085,8 +2875,7 @@ function openTodo(id,presetStage,presetType){
     +'<div class="fld"><label>章节</label><input id="tdChapter" value="'+esc(c.chapter)+'" placeholder="第2章 存货"></div></div>'
     +'<div class="f2"><div class="fld"><label>学习动作</label><select id="tdAct"><option value="">（不指定）</option>'+opts(ACTS,c.act||'')+'</select></div>'
     +'<div class="fld"><label>轮次</label><input type="number" min="1" max="9" id="tdRound" value="'+esc(c.round||'')+'" placeholder="1"></div></div>'
-    +'<div class="f2"><div class="fld"><label>所属学习阶段（旧，可留空）</label><select id="tdStage"><option value="">（不挂阶段）</option>'+opts(STAGES,c.stage)+'</select></div>'
-    +'<div class="fld"><label>掌握度</label><select id="tdMastery">'+mstOpts(c.mastery,true)+'</select></div></div>'
+    +'<div class="fld"><label>掌握度</label><select id="tdMastery">'+mstOpts(c.mastery,true)+'</select></div>'
     +'<div class="f2"><div class="fld"><label>真实开始</label><input type="date" id="tdRs" value="'+esc(c.rs||'')+'"></div>'
     +'<div class="fld"><label>真实完成</label><input type="date" id="tdRf" value="'+esc(c.rf||'')+'"></div></div>'
     +'<div class="f2"><div class="fld"><label>计划时长 h</label><input type="number" min="0" step="0.5" id="tdPlan" value="'+esc(c.plan)+'"></div>'
@@ -3117,7 +2906,6 @@ function saveTodo(id){
     o.chapter=document.getElementById('tdChapter').value.trim();
     o.act=document.getElementById('tdAct').value;
     o.round=document.getElementById('tdRound').value;
-    o.stage=document.getElementById('tdStage').value;
     o.mastery=mstVal(document.getElementById('tdMastery').value);
     o.rs=document.getElementById('tdRs').value;
     o.rf=document.getElementById('tdRf').value;
@@ -3168,7 +2956,6 @@ function renderTime(){
   document.getElementById('timeCap').textContent=V.length+' 条明细'+(ovN?' · '+ovN+' 项超出计划':'')+' · 当前科目：'+subName();
   renderDonut(V);
   renderTopBars(V);
-  renderStageBars(L);
   renderCats();
   afterCats();
 }
@@ -3210,21 +2997,6 @@ function renderTopBars(L){
   }).join('');
   animateBars();
 }
-function renderStageBars(L){
-  const box=document.getElementById('stageBars'); if(!box) return;
-  const rows=STAGES.map(s=>({n:s,
-    p:L.filter(x=>x.stage===s).reduce((a,b)=>a+Number(b.plan||0),0),
-    r:L.filter(x=>x.stage===s).reduce((a,b)=>a+Number(b.real||0),0)}));
-  const max=Math.max.apply(null,rows.map(x=>Math.max(x.p,x.r)).concat([1]));
-  document.getElementById('stageBarCap').textContent='按学习阶段对比计划与实际投入（小时）';
-  box.innerHTML=rows.map(x=>
-    '<div class="vb"><div class="vb-i" style="height:'+Math.round(x.r/max*100)+'%" data-h="'+Math.round(x.r/max*100)+'" title="'+esc(x.n)+' 实际 '+hnum(x.r)+'h"></div>'
-    +'<div class="vb-i" style="height:'+Math.round(x.p/max*100)+'%;background:var(--clay);opacity:.4" data-h="'+Math.round(x.p/max*100)+'" title="'+esc(x.n)+' 计划 '+hnum(x.p)+'h"></div>'
-    +'<span class="vb-l">'+esc(x.n.slice(0,4))+'</span></div>').join('')
-    +'<div class="vb-legend" style="width:100%;margin-top:10px"><span class="gt-lg"><i style="background:var(--viz)"></i>实际投入</span>'
-    +'<span class="gt-lg"><i style="background:var(--clay)"></i>计划时长</span></div>';
-  animateBars();
-}
 function renderCats(){
   const box=document.getElementById('cats'); if(!box) return;
   const L=T_().filter(timeVisible);
@@ -3244,7 +3016,7 @@ function renderCats(){
       +rows.map(x=>{
         const ov=isOver(x), d=Number(x.real||0)-Number(x.plan||0);
         return '<div class="li'+(ov?' ovr':'')+'" data-bid="'+x.id+'"><div class="li-l">'
-          +'<div class="li-n">'+esc(x.name)+'<span class="mt">'+esc(x.stage||'未分阶段')+'</span>'+(x.sub?'<span class="mt wt">'+esc(x.sub)+'</span>':'')+'</div>'
+          +'<div class="li-n">'+esc(x.name)+(x.sub?'<span class="mt wt">'+esc(x.sub)+'</span>':'')+'</div>'
           +'<div class="li-s">计划 '+hnum(x.plan)+'h · 实际 '+hnum(x.real)+'h'+(ov?' · <span class="over">超 '+hnum(d)+'h</span>':'')+'</div>'
           +(x.note?'<div class="li-note">'+esc(x.note)+'</div>':'')+'</div>'
           +'<div class="li-r"><div class="li-a'+(ov?' ov':'')+'">'+hnum(x.real)+'h</div><div class="li-p">/ '+hnum(x.plan)+'h</div>'
@@ -3257,11 +3029,10 @@ function renderCats(){
 function afterCats(){ requestAnimationFrame(()=>{ paintAcc(document.getElementById('p-time')); animateBars(); }); }
 function openTime(id){
   const b=id?timeLog.find(x=>x.id===id):null;
-  const c=b||{name:'',cat:CATS[0],stage:curStage()||STAGES[0],sub:curSub,plan:'',real:'',note:''};
+  const c=b||{name:'',cat:CATS[0],sub:curSub,plan:'',real:'',note:''};
   sheet(shHead('Time',b?'编辑时间明细':'新增时间明细')
     +'<div class="fld"><label>项目名称</label><input id="tmName" value="'+esc(c.name)+'" placeholder="精讲网课（存货）"></div>'
-    +'<div class="f2"><div class="fld"><label>时间分类</label><select id="tmCat">'+opts(CATS,c.cat)+'</select></div>'
-    +'<div class="fld"><label>学习阶段</label><select id="tmStage">'+opts(STAGES,c.stage)+'</select></div></div>'
+    +'<div class="fld"><label>时间分类</label><select id="tmCat">'+opts(CATS,c.cat)+'</select></div>'
     +'<div class="fld"><label>科目</label><select id="tmSub"><option value="">（不限）</option>'+subOpts(c.sub)+'</select></div>'
     +'<div class="f2"><div class="fld"><label>计划时长 h</label><input type="number" min="0" step="0.5" id="tmPlan" value="'+esc(c.plan)+'"></div>'
     +'<div class="fld"><label>实际时长 h</label><input type="number" min="0" step="0.5" id="tmReal" value="'+esc(c.real)+'"></div></div>'
@@ -3271,7 +3042,7 @@ function openTime(id){
 function saveTime(id){
   const n=document.getElementById('tmName').value.trim();
   if(!n){ toast('项目名称不能为空'); return; }
-  const o={name:n,cat:document.getElementById('tmCat').value,stage:document.getElementById('tmStage').value,
+  const o={name:n,cat:document.getElementById('tmCat').value,
     sub:document.getElementById('tmSub').value,plan:Number(document.getElementById('tmPlan').value||0),
     real:Number(document.getElementById('tmReal').value||0),note:document.getElementById('tmNote').value.trim()};
   let rec;
@@ -3302,13 +3073,10 @@ function renderChecks(){
   const box=document.getElementById('checkRows');
   if(!L.length){ box.innerHTML='<div class="void">这个筛选下没有验收项</div>'; return; }
   box.innerHTML='<div class="rows">'+L.map(c=>{
-    const ready=c.stage&&stageState(c.stage)==='done';
     const cls=c.state==='通过'?'ok':(c.state==='不通过'?'al':'');
     return '<div class="row'+(c.state==='通过'?' off':'')+'">'
-      +'<div class="r-b"><div class="r-t">'+esc(c.item)+' <span class="mt '+cls+'">'+esc(c.state)+'</span>'
-      +(ready&&c.state==='待验收'?'<span class="mt al">阶段已完成</span>':'')+'</div>'
+      +'<div class="r-b"><div class="r-t">'+esc(c.item)+' <span class="mt '+cls+'">'+esc(c.state)+'</span></div>'
       +'<div class="r-m">'+(c.sub?'<span>'+esc(c.sub)+'</span>':'')
-      +(c.stage?'<span class="r-stg'+(c.stage===curStage()?' cur':'')+'">'+esc(c.stage)+'</span>':'')
       +(c.date?'<span>验收于 '+cnD(c.date)+'</span>':'<span>未验收</span>')+'</div>'
       +(c.std?'<div class="li-note">标准：'+esc(c.std)+'</div>':'')
       +(c.note?'<div class="li-note">'+esc(c.note)+'</div>':'')+'</div>'
@@ -3338,8 +3106,7 @@ function openCheck(id){
     +'<div class="fld"><label>验收标准（可量化）</label><input id="ckStd" value="'+esc(c?c.std:d.std)+'" placeholder="100 题限时完成，错题全部订正"></div>'
     +'<div class="fld"><label>关联章节（验收通过会把该章节的掌握度抬到「应试合格」）</label><input id="ckChapter" value="'+esc(c?(c.chapter||''):'')+'" placeholder="第2章 存货" list="ckChList"></div>'
     +'<datalist id="ckChList">'+chOptList(c?c.sub:d.sub)+'</datalist>'
-    +'<div class="f2"><div class="fld"><label>科目</label><select id="ckSub">'+subOpts(c?c.sub:d.sub)+'</select></div>'
-    +'<div class="fld"><label>学习阶段</label><select id="ckStage">'+opts(STAGES,c?c.stage:d.stage)+'</select></div></div>'
+    +'<div class="fld"><label>科目</label><select id="ckSub">'+subOpts(c?c.sub:d.sub)+'</select></div>'
     +'<div class="f2"><div class="fld"><label>状态</label><select id="ckState">'+opts(CHECK_STATES,c?c.state:d.state)+'</select></div>'
     +'<div class="fld"><label>实测得分 0‑5（写入掌握度热力图 · 验收通过默认为 4 应试合格）</label><select id="ckScore">'+mstOpts(mstNum(c?c.score:null),true)+'</select></div></div>'
     +'<div class="f2"><div class="fld"><label>验收日期</label><input type="date" id="ckDate" value="'+esc(c?c.date:d.date)+'"></div>'
@@ -3351,7 +3118,7 @@ function saveCheck(id){
   const it=document.getElementById('ckItem').value.trim();
   if(!it){ toast('验收项不能为空'); return; }
   const o={item:it,std:document.getElementById('ckStd').value.trim(),
-    sub:document.getElementById('ckSub').value,stage:document.getElementById('ckStage').value,
+    sub:document.getElementById('ckSub').value,
     state:document.getElementById('ckState').value,date:document.getElementById('ckDate').value,
     chapter:document.getElementById('ckChapter').value.trim(),
     score:document.getElementById('ckScore').value,round:document.getElementById('ckRound').value,
@@ -4260,7 +4027,7 @@ function openHeat(id){
     +'<div class="fld"><label>章名（知识点可留空）</label><input id="hmChName" value="'+esc(c.chName)+'" placeholder="会计的概念"></div></div>'
     +'<div class="f2"><div class="fld"><label>'+(c.kind==='kp'?'知识点名称':'节号（可留空 = 整章）')+'</label><input id="hmSecNo" value="'+esc(c.secNo)+'" placeholder="'+(c.kind==='kp'?'长投权益法转换的处理':'1')+'"></div>'
     +'<div class="fld"><label>节名 / 补充说明（可留空）</label><input id="hmSecName" value="'+esc(c.secName)+'" placeholder="会计职能"></div></div>'
-    +'<div class="hintline">行是阶段（与「编辑科目→当前阶段」同源，可在热力图「阶段」按钮里增删排序）；格子选 了解 / 熟悉 / 掌握，绿=通过。</div>'
+    +'<div class="hintline">列是「第 N 次验收」，由带实测得分的验收项自动生成，也可直接在格子里打分。</div>'
     +shActs('saveHeat('+(r?'\''+r.id+'\'':'')+')',r?'delHeatRow(\''+r.id+'\')':''));
 }
 function saveHeat(id){
@@ -4293,36 +4060,6 @@ function delHeatRow(id){
   if(db&&cloudOn) delRecord(DB_HEAT,id);
   closeSheet(); renderHeat(); kick(); toast('已删除');
 }
-/* ---------- 阶段管理：与「编辑科目→当前阶段」同源 ---------- */
-function saveStages(){ save(K.stg,STAGES); renderAll(); kick(); }
-function hmStageMove(i,d){
-  const j=i+d; if(j<0||j>=STAGES.length) return;
-  const t=STAGES[i]; STAGES[i]=STAGES[j]; STAGES[j]=t;
-  saveStages(); openStagesMgr();
-}
-function hmStageDel(i){
-  if(!confirm('删除阶段「'+STAGES[i]+'」？只从列表移除，不影响已填数据。')) return;
-  STAGES.splice(i,1); saveStages(); openStagesMgr();
-}
-function openStagesMgr(){
-  sheet(shHead('Stages','阶段管理')
-    +'<div class="hintline">这里的阶段就是「编辑科目 → 当前阶段」下拉的选项，也是热力图的行。可添加、排序、删除。</div>'
-    +STAGES.map((s,i)=>'<div class="li" style="cursor:default"><div class="li-l"><div class="li-n">'+esc(s)+'</div></div>'
-      +'<div class="li-r" style="min-width:auto;display:flex;gap:4px">'
-      +'<button class="ib xs flat'+(i===0?' flat':'')+'" aria-label="上移" onclick="hmStageMove('+i+',-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>'
-      +'<button class="ib xs flat" aria-label="下移" onclick="hmStageMove('+i+',1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg></button>'
-      +'<button class="ib xs flat" aria-label="删除" onclick="hmStageDel('+i+')">'+I.trash+'</button>'
-      +'</div></div>').join('')
-    +'<div class="kp-add"><input id="stgNew" placeholder="输入新阶段名，回车添加（如：主观题专练）" onkeydown="if(event.key===\'Enter\')hmStageAdd()">'
-      +'<button class="ib solid sm tip-l" data-tip="添加阶段" onclick="hmStageAdd()">'+I.plus+'</button></div>');
-}
-function hmStageAdd(){
-  const el=document.getElementById('stgNew'); if(!el) return;
-  const v=el.value.trim();
-  if(!v){ toast('先输入阶段名'); return; }
-  if(STAGES.indexOf(v)>=0){ toast('这个阶段已经在列表里了'); return; }
-  STAGES.push(v); saveStages(); openStagesMgr(); toast('阶段「'+v+'」已添加');
-}
 function pushHeat(r){
   if(!db||!cloudOn) return;
   var props={'科目':{text:r.sub||''},'章号':{text:r.chNo||''},'章名':{text:r.chName||''},
@@ -4335,9 +4072,10 @@ function pushHeat(r){
     .then(function(x){ if(x&&x.id){ r.rid=x.id; save(K.heat,heat); } }).catch(function(){});
 }
 function tblHeat(){
-  return {head:['类型','科目','章号','章名','节号','节名/知识点'].concat(STAGES).concat(['日期']),
+  const rounds=hmAxisKeys();   /* P3 后维度 = 验收轮次，这里补齐导出列（P3 漏改） */
+  return {head:['类型','科目','章号','章名','节号','节名/知识点'].concat(rounds.map(n=>'第 '+n+' 次验收')).concat(['日期']),
     rows:heat.map(r=>[r.kind==='kp'?'知识点':'章节',r.sub,r.chNo,r.chName,r.secNo,r.secName]
-      .concat(STAGES.map(sg=>hmName(hmGet(r,sg)))).concat([r.date]))};
+      .concat(rounds.map(n=>hmName(hmGet(r,'r'+n)))).concat([r.date]))};
 }
 
 /* ---------- 疑难清理 ---------- */
@@ -4529,6 +4267,526 @@ function wizFinish(){
   pushSub(s);
 }
 
+/* ================= Excel（xlsx）引擎：零依赖，手写 OOXML + ZIP(STORE) =================
+   与 CPA 掌握度系统同一套实现，扩展为多 Sheet 读写。 */
+let _crcT=null;
+function crc32(buf){
+  if(!_crcT){
+    _crcT=[];
+    for(let n=0;n<256;n++){
+      let c=n;
+      for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);
+      _crcT[n]=c>>>0;
+    }
+  }
+  let crc=(-1);
+  for(let i=0;i<buf.length;i++) crc=(crc>>>8)^_crcT[(crc^buf[i])&0xFF];
+  return (crc^(-1))>>>0;
+}
+function zipStore(files){
+  const enc=new TextEncoder();
+  const parts=[], central=[];
+  let offset=0;
+  files.forEach(function(f){
+    const nb=enc.encode(f.name);
+    const crc=crc32(f.data), size=f.data.length;
+    const lfh=new Uint8Array(30+nb.length);
+    const d1=new DataView(lfh.buffer);
+    d1.setUint32(0,0x04034b50,true); d1.setUint16(4,20,true);
+    d1.setUint16(6,0x0800,true); d1.setUint16(8,0,true);
+    d1.setUint16(10,0,true); d1.setUint16(12,0x5021,true);
+    d1.setUint32(14,crc,true); d1.setUint32(18,size,true); d1.setUint32(22,size,true);
+    d1.setUint16(26,nb.length,true); d1.setUint16(28,0,true);
+    lfh.set(nb,30);
+    parts.push(lfh,f.data);
+    const cdh=new Uint8Array(46+nb.length);
+    const d2=new DataView(cdh.buffer);
+    d2.setUint32(0,0x02014b50,true); d2.setUint16(4,20,true); d2.setUint16(6,20,true);
+    d2.setUint16(8,0x0800,true); d2.setUint16(10,0,true);
+    d2.setUint16(12,0,true); d2.setUint16(14,0x5021,true);
+    d2.setUint32(16,crc,true); d2.setUint32(20,size,true); d2.setUint32(24,size,true);
+    d2.setUint16(28,nb.length,true);
+    d2.setUint16(30,0,true); d2.setUint16(32,0,true); d2.setUint16(34,0,true);
+    d2.setUint16(36,0,true); d2.setUint32(38,0,true); d2.setUint32(42,offset,true);
+    cdh.set(nb,46);
+    central.push(cdh);
+    offset+=lfh.length+size;
+  });
+  const cdSize=central.reduce(function(a,c){ return a+c.length; },0);
+  const eo=new Uint8Array(22);
+  const d3=new DataView(eo.buffer);
+  d3.setUint32(0,0x06054b50,true);
+  d3.setUint16(8,files.length,true); d3.setUint16(10,files.length,true);
+  d3.setUint32(12,cdSize,true); d3.setUint32(16,offset,true);
+  const total=offset+cdSize+22;
+  const out=new Uint8Array(total);
+  let p=0;
+  parts.concat(central,[eo]).forEach(function(c){ out.set(c,p); p+=c.length; });
+  return out;
+}
+function xesc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
+}
+function colName(n){
+  let s2='';
+  while(n>0){ const m=(n-1)%26; s2=String.fromCharCode(65+m)+s2; n=(n-m-1)/26; }
+  return s2;
+}
+const NUM_RE=/^-?\d+$/;
+function sheetXML(rows){
+  let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+  (rows||[]).forEach(function(r,ri){
+    x+='<row r="'+(ri+1)+'">';
+    (r||[]).forEach(function(cell,ci){
+      const ref=colName(ci+1)+(ri+1);
+      const v=(cell==null)?'':String(cell);
+      if(v!==''&&NUM_RE.test(v)) x+='<c r="'+ref+'"><v>'+v+'</v></c>';
+      else x+='<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+xesc(v)+'</t></is></c>';
+    });
+    x+='</row>';
+  });
+  return x+'</sheetData></worksheet>';
+}
+function buildXlsxMulti(sheets){
+  const enc=new TextEncoder();
+  const E=function(x){ return enc.encode(x); };
+  const n=(sheets&&sheets.length)||1;
+  const ct=['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+    +'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+    +'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+    +'<Default Extension="xml" ContentType="application/xml"/>'
+    +'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'];
+  const wbSheets=[], wbRels=[], files=[];
+  for(let i=1;i<=n;i++){
+    const sh=sheets[i-1];
+    ct.push('<Override PartName="/xl/worksheets/sheet'+i+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>');
+    wbSheets.push('<sheet name="'+xesc(sh?sh.name:('Sheet'+i))+'" sheetId="'+i+'" r:id="rId'+i+'"/>');
+    wbRels.push('<Relationship Id="rId'+i+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+i+'.xml"/>');
+    files.push({name:'xl/worksheets/sheet'+i+'.xml',data:E(sheetXML(sh?sh.rows:[]))});
+  }
+  ct.push('</Types>');
+  files.unshift(
+    {name:'[Content_Types].xml',data:E(ct.join(''))},
+    {name:'_rels/.rels',data:E('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      +'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+      +'</Relationships>')},
+    {name:'xl/workbook.xml',data:E('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+      +'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+      +'<sheets>'+wbSheets.join('')+'</sheets></workbook>')},
+    {name:'xl/_rels/workbook.xml.rels',data:E('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+      +'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+      +wbRels.join('')+'</Relationships>')}
+  );
+  return zipStore(files);
+}
+function dlBytes(name,bytes){
+  const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} },0);
+}
+function inflateRaw(u8){
+  if(typeof DecompressionStream==='undefined')
+    return Promise.reject(new Error('当前浏览器不支持解压 xlsx，请改用 CSV'));
+  const ds=new DecompressionStream('deflate-raw');
+  return new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer()
+    .then(function(b){ return new Uint8Array(b); });
+}
+function unzip(arrayBuffer){
+  const u8=new Uint8Array(arrayBuffer);
+  const dv=new DataView(arrayBuffer);
+  let eocd=-1;
+  const floor=Math.max(0,u8.length-66000);
+  for(let i=u8.length-22;i>=floor;i--){
+    if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; }
+  }
+  if(eocd<0) throw new Error('不是有效的 xlsx 文件');
+  let off=dv.getUint32(eocd+16,true);
+  const count=dv.getUint16(eocd+10,true);
+  const dec=new TextDecoder();
+  const jobs=[];
+  for(let i=0;i<count;i++){
+    if(off+46>u8.length||dv.getUint32(off,true)!==0x02014b50) break;
+    const method=dv.getUint16(off+10,true);
+    const compSize=dv.getUint32(off+20,true);
+    const nameLen=dv.getUint16(off+28,true);
+    const extraLen=dv.getUint16(off+30,true);
+    const cmtLen=dv.getUint16(off+32,true);
+    const lfhOff=dv.getUint32(off+42,true);
+    const name=dec.decode(u8.subarray(off+46,off+46+nameLen));
+    const lName=dv.getUint16(lfhOff+26,true);
+    const lExtra=dv.getUint16(lfhOff+28,true);
+    const start=lfhOff+30+lName+lExtra;
+    jobs.push({name:name,method:method,raw:u8.subarray(start,start+compSize)});
+    off+=46+nameLen+extraLen+cmtLen;
+  }
+  const out={};
+  return jobs.reduce(function(chain,j){
+    return chain.then(function(){
+      if(j.method===0){ out[j.name]=j.raw; return; }
+      return inflateRaw(j.raw).then(function(d){ out[j.name]=d; });
+    });
+  },Promise.resolve()).then(function(){ return out; });
+}
+function colIndex(ref){
+  const m=String(ref||'').match(/^([A-Z]+)/);
+  if(!m) return 0;
+  let n=0;
+  for(let i=0;i<m[1].length;i++) n=n*26+(m[1].charCodeAt(i)-64);
+  return n-1;
+}
+function parseSharedStrings(xml){
+  const doc=new DOMParser().parseFromString(xml,'application/xml');
+  const si=doc.getElementsByTagName('si');
+  const out=[];
+  for(let i=0;i<si.length;i++) out.push(si[i].textContent||'');
+  return out;
+}
+function parseSheetXML(xml,shared){
+  const doc=new DOMParser().parseFromString(xml,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length) throw new Error('工作表 XML 解析失败');
+  const rowEls=doc.getElementsByTagName('row');
+  const rows=[];
+  for(let i=0;i<rowEls.length;i++){
+    const cells=rowEls[i].getElementsByTagName('c');
+    const arr=[];
+    for(let j=0;j<cells.length;j++){
+      const c=cells[j];
+      const ci=colIndex(c.getAttribute('r'));
+      const t=c.getAttribute('t');
+      let v='';
+      if(t==='inlineStr'){
+        const is=c.getElementsByTagName('is')[0];
+        v=is?is.textContent:'';
+      }else{
+        const ve=c.getElementsByTagName('v')[0];
+        v=ve?ve.textContent:'';
+        if(t==='s'){ const idx=Number(v); v=(shared&&shared[idx]!=null)?shared[idx]:''; }
+      }
+      while(arr.length<ci) arr.push('');
+      arr[ci]=v;
+    }
+    rows.push(arr);
+  }
+  return rows.filter(function(r){
+    return r.some(function(x){ return String(x).trim()!==''; });
+  });
+}
+/* 读多 Sheet：解析 workbook.xml 的 sheet 列表 + rels 映射 */
+function readWorkbook(files){
+  const wb=files['xl/workbook.xml'];
+  if(!wb) throw new Error('不是有效的 xlsx');
+  const dec=new TextDecoder();
+  const doc=new DOMParser().parseFromString(dec.decode(wb),'application/xml');
+  let shared=[];
+  if(files['xl/sharedStrings.xml']) shared=parseSharedStrings(dec.decode(files['xl/sharedStrings.xml']));
+  const map={};
+  if(files['xl/_rels/workbook.xml.rels']){
+    const rd=new DOMParser().parseFromString(dec.decode(files['xl/_rels/workbook.xml.rels']),'application/xml');
+    Array.prototype.forEach.call(rd.getElementsByTagName('Relationship'),function(e){
+      map[e.getAttribute('Id')]=e.getAttribute('Target')||'';
+    });
+  }
+  const out=[];
+  Array.prototype.forEach.call(doc.getElementsByTagName('sheet'),function(e,i){
+    const rid=e.getAttribute('r:id')||('rId'+(i+1));
+    let tgt=map[rid]||('worksheets/sheet'+(i+1)+'.xml');
+    tgt=String(tgt).replace(/^\//,'');
+    if(tgt.indexOf('xl/')!==0) tgt='xl/'+tgt;
+    const raw=files[tgt];
+    if(!raw) return;
+    out.push({name:e.getAttribute('name')||('Sheet'+(i+1)),rows:parseSheetXML(dec.decode(raw),shared)});
+  });
+  return out;
+}
+/* Tab / CSV 通用解析（不去表头，调用方自行处理） */
+function bulkParseCsv(text){
+  text=String(text||'').replace(/^\uFEFF/,'');
+  const rows=[]; let row=[], cur='', q=false, started=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else q=false; }
+      else cur+=c;
+    }else{
+      if(c==='"'){ q=true; started=true; }
+      else if(c===','){ row.push(cur); cur=''; started=true; }
+      else if(c==='\r'){ /* 忽略 */ }
+      else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; started=false; }
+      else { cur+=c; started=true; }
+    }
+  }
+  if(cur!==''||started||row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(function(r){ return r.some(function(x){ return String(x).trim()!==''; }); });
+}
+function parseGrid(text){
+  text=String(text||'').replace(/^\uFEFF/,'');
+  const lines=text.split(/\r?\n/).filter(function(l){ return l.trim()!==''; });
+  if(!lines.length) return [];
+  return (lines[0].indexOf('\t')>=0)?lines.map(function(l){ return l.split('\t'); }):bulkParseCsv(text);
+}
+function cl(v){ return String(v==null?'':v).trim(); }
+
+/* ================= 批量录入模板 =================
+   复用两类数据：科目名（科目设计）与章节名（知识结构主数据）。
+   导出时这两列预填，用户只填内容列；导入时按科目校验、按章节挂 nid、按内容去重。 */
+const BULK_DEF=[
+ {k:'kps',name:'考点',head:['科目（必填）','章节（可留空）','考点内容（必填）'],
+  mk:function(r,sub,nid){ const t=cl(r[2]); if(!t) return null;
+    return {text:t.slice(0,80),sub:sub,chapter:cl(r[1]),nid:nid,done:false,date:today()}; },
+  key:function(o){ return o.sub+'|'+o.chapter+'|'+o.text; }},
+ {k:'checks',name:'验收',head:['科目（必填）','章节（可留空）','验收项（必填）','验收标准（可留空）','实测得分0-5（可留空）','轮次（可留空）'],
+  mk:function(r,sub,nid){ const it=cl(r[2]); if(!it) return null;
+    const sc=/^[0-5]$/.test(cl(r[4]))?Number(cl(r[4])):'';
+    const rd=/^\d+$/.test(cl(r[5]))?Number(cl(r[5])):'';
+    return {item:it.slice(0,80),std:cl(r[3]),sub:sub,chapter:cl(r[1]),nid:nid,stage:'',
+      state:'待验收',date:'',score:sc,round:rd,note:''}; },
+  key:function(o){ return o.sub+'|'+o.chapter+'|'+o.item; }},
+ {k:'reviews',name:'复习',head:['科目（必填）','章节（可留空）','复习内容（必填）','首次学习日YYYY-MM-DD（可留空）'],
+  mk:function(r,sub,nid){ const t=cl(r[2]); if(!t) return null;
+    const first=/^\d{4}-\d{2}-\d{2}$/.test(cl(r[3]))?cl(r[3]):today();
+    return {title:t.slice(0,80),sub:sub,chapter:cl(r[1]),nid:nid,first:first,count:0,mastery:'',
+      last:'',next:nextDue(0,null,first),slot:8+reviews.length%12,logs:[],rvKey:''}; },
+  key:function(o){ return o.sub+'|'+o.title; }},
+ {k:'issues',name:'疑难',head:['科目（必填）','章节（可留空）','标题（必填）','标签（逗号分隔，可留空）','笔记（可留空）'],
+  mk:function(r,sub,nid){ const t=cl(r[2]); if(!t) return null;
+    return {title:t.slice(0,80),sub:sub,chapter:cl(r[1]),nid:nid,tags:cl(r[3]),note:cl(r[4]),
+      img:'',fav:false,fixed:false,date:today()}; },
+  key:function(o){ return o.sub+'|'+o.title+'|'+o.chapter; }},
+ {k:'gains',name:'感悟',head:['科目（必填）','章节（可留空）','感悟内容（必填）','完成度0-100（可留空）'],
+  mk:function(r,sub,nid){ const t=cl(r[2]); if(!t) return null;
+    const rate=/^\d{1,3}$/.test(cl(r[3]))?Math.min(100,Number(cl(r[3]))):0;
+    return {title:t.slice(0,18)+(t.length>18?'…':''),sub:sub,chapter:cl(r[1]),nid:nid,section:'',
+      stage:'灵机一动',note:t,rate:rate,date:today(),from:'',fav:false}; },
+  key:function(o){ return o.sub+'|'+o.chapter+'|'+o.note; }}
+];
+function bulkReadMe(){
+  return [['备考学习工作台 · 批量录入模板'],[''],
+   ['用法：各 Sheet 的「科目 / 章节」列已预填，只需补齐内容列；不需要的行整行删掉即可。'],
+   ['填写完成后保存，回到 工作台 → 数据备份 → 「导入批量数据」选择本文件。'],[''],
+   ['为什么不用手打：科目列与章节列来自「知识结构」的章节主数据，'],
+   ['导入时会自动按章节名挂到知识树节点（nid），之后各模块都能按章节聚合。'],[''],
+   ['各 Sheet 说明：'],
+   ['· 考点：每行一个考点，同章节多个考点就多写几行。'],
+   ['· 验收：实测得分 0-5 会写入掌握度热力图（第 N 次验收）；轮次留空自动分配。'],
+   ['· 复习：首次学习日留空默认今天，导入后进入记忆曲线。'],
+   ['· 疑难：标签用逗号分隔，导入后进「复习巩固 → 疑难清理」。'],
+   ['· 感悟：标题不用填，会自动取内容前 18 字。'],[''],
+   ['注意：科目名必须与「科目设计」里的科目名一致，否则该行跳过并在导入结果里提示；'],
+   ['与已有记录重复（同科目+同章节+同内容）的行自动跳过，不会重复导入。'],
+   ['章节名允许手写简称，能对上知识树即可；对不上也能导入，只是不挂节点。']];
+}
+function bulkTplSheets(scope,depth){
+  const sheets=[{name:'说明',rows:bulkReadMe()}];
+  BULK_DEF.forEach(function(d){
+    const rest=d.head.slice(2).map(function(){ return ''; });
+    const rows=[d.head.slice()];
+    const list=(scope==='all')?subs.map(function(s){ return s.name; }):(curSub?[curSub]:[]);
+    let n=0;
+    list.forEach(function(sn){
+      const nodes=chFlat(sn).filter(function(x){ return depth==='sec'?x.lv<=2:x.lv===1; });
+      if(nodes.length){ nodes.forEach(function(nd){ rows.push([sn,nd.label].concat(rest)); n++; }); }
+      else { rows.push([sn,''].concat(rest)); n++; }
+    });
+    if(!n) rows.push(['',''].concat(rest));
+    sheets.push({name:d.name,rows:rows});
+  });
+  return sheets;
+}
+function bulkOpts(){
+  const gv=function(id){ const e=document.getElementById(id); return e?e.value:''; };
+  return {scope:gv('btScope')||'cur',depth:gv('btDepth')||'ch'};
+}
+function dlBulkTpl(){
+  const o=bulkOpts();
+  try{
+    dlBytes('批量录入模板_'+today()+'.xlsx',buildXlsxMulti(bulkTplSheets(o.scope,o.depth)));
+    toast('模板已导出，填好后到「数据备份 → 导入批量数据」');
+  }catch(e){ toast('导出失败：'+(e&&e.message||e)); }
+}
+function dlBulkTplCsv(){
+  const o=bulkOpts();
+  const sheets=bulkTplSheets(o.scope,o.depth).filter(function(x){ return x.name!=='说明'; });
+  sheets.forEach(function(x,i){
+    setTimeout(function(){ dlFile('批量录入_'+x.name+'_'+today()+'.csv',csvRows(x.rows[0],x.rows.slice(1))); },i*260);
+  });
+  toast('正在导出 '+sheets.length+' 个 CSV · 各分类一张表，填好后逐个导入');
+}
+function openBulkTpl(){
+  if(!subs.length){ toast('先在「科目设计」里新增科目'); return; }
+  sheet(shHead('Bulk Template','批量录入模板')
+    +'<div class="hintline">把「科目 / 章节」这些反复要用的列按知识结构预填好，一次导出，'
+    +'用 Excel / WPS 填完内容列，再到「数据备份 → 导入批量数据」一键录入。</div>'
+    +'<div class="fld"><label>预填范围</label><select id="btScope">'
+      +'<option value="cur"'+(curSub?' selected':'')+'>当前科目'+(curSub?'（'+esc(curSub)+'）':'')+'</option>'
+      +'<option value="all">全部科目</option></select></div>'
+    +'<div class="fld"><label>章节列预填到哪一层</label><select id="btDepth">'
+      +'<option value="ch">仅到章</option>'
+      +'<option value="sec">到节（含章，行数较多）</option></select></div>'
+    +'<div class="hintline">还没导入教材目录的科目，章节列会留空，可手填简称，导入时自动对知识树。</div>'
+    +shActs('dlBulkTpl()')
+    +'<div class="fld" style="margin-top:10px"><button class="btn ghost" type="button" onclick="dlBulkTplCsv()">CSV 备用（各分类一张表）</button></div>');
+}
+/* ---------- 导入 ---------- */
+let bulkPend=null;
+function openBulkImport(){
+  sheet(shHead('Bulk Import','导入批量数据')
+    +'<div class="hintline">支持：①「批量录入模板」导出的 .xlsx（说明 / 考点 / 验收 / 复习 / 疑难 / 感悟 一次导入）；'
+    +'② CSV 备用格式（按表头自动识别分类）。科目名须与「科目设计」一致；重复行自动跳过。</div>'
+    +'<div class="fld"><label>选择文件（.xlsx / .csv / .txt）</label>'
+      +'<input type="file" id="bulkFile" accept=".xlsx,.xlsm,.csv,.txt,.tsv" onchange="bulkImportFile(this)"></div>'
+    +'<div class="hintline">也可以直接从 Excel 复制后粘贴（Tab 或逗号分隔，首行表头自动跳过）：</div>'
+    +'<div class="fld"><textarea id="bulkPaste" rows="6" placeholder="科目（必填）&#9;章节（可留空）&#9;考点内容（必填）&#10;会计&#9;第2章 存货&#9;存货减值的转回条件"></textarea></div>'
+    +'<div class="fld"><button class="btn" type="button" onclick="bulkImportPaste()">解析粘贴内容</button></div>'
+    +'<div id="bulkPrev"></div>');
+}
+function bulkStoreArr(k){
+  return k==='kps'?kps:(k==='checks'?checks:(k==='reviews'?reviews:(k==='issues'?issues:gains)));
+}
+function bulkExistKeys(k){
+  let arr=[];
+  if(k==='kps') arr=kps.map(function(x){ return x.sub+'|'+x.chapter+'|'+x.text; });
+  else if(k==='checks') arr=checks.map(function(x){ return x.sub+'|'+x.chapter+'|'+x.item; });
+  else if(k==='reviews') arr=reviews.map(function(x){ return x.sub+'|'+x.title; });
+  else if(k==='issues') arr=issues.map(function(x){ return x.sub+'|'+x.title+'|'+x.chapter; });
+  else arr=gains.map(function(x){ return x.sub+'|'+x.chapter+'|'+x.note; });
+  return new Set(arr);
+}
+function bulkStripHead(rows){
+  rows=(rows||[]).slice();
+  if(rows.length&&cl(rows[0][0]).indexOf('科目')>=0) rows.shift();
+  return rows;
+}
+function bulkPrepare(rows,def){
+  const res={objs:[],fill:0,badSub:0,dup:0,empty:0};
+  const subSet={}; subs.forEach(function(s){ subSet[s.name]=1; });
+  const exist=bulkExistKeys(def.k);
+  bulkStripHead(rows).forEach(function(r){
+    const sub=cl(r[0]);
+    if(!sub){ res.empty++; return; }
+    if(!subSet[sub]){ res.badSub++; return; }
+    const nid=chMatchNid(sub,cl(r[1]));
+    const o=def.mk(r,sub,nid);
+    if(!o){ res.empty++; return; }
+    if(exist.has(def.key(o))){ res.dup++; return; }
+    exist.add(def.key(o));
+    o.id=uid(); o.rid='';
+    res.objs.push(o); res.fill++;
+  });
+  return res;
+}
+function bulkDetect(rows){
+  if(!rows.length) return null;
+  const h=rows[0].map(cl).join('|');
+  let d=BULK_DEF.find(function(x){ return h.indexOf(x.name)>=0; });
+  if(!d) d=BULK_DEF.find(function(x){ return x.head.slice(2).some(function(hh){ return rows[0].some(function(c){ return cl(c)===hh; }); }); });
+  if(!d) d=BULK_DEF.find(function(x){ return x.head.slice(2).some(function(hh){ const base=hh.split('（')[0]; return h.indexOf(base)>=0; }); });
+  return d||null;
+}
+function bulkPreview(list){
+  bulkPend=list;
+  let total=0, warn='';
+  let html='<div class="rule"></div>';
+  list.forEach(function(pg){
+    total+=pg.pre.fill;
+    const bits=[];
+    if(pg.pre.badSub) bits.push(pg.pre.badSub+' 行科目无法识别，将跳过');
+    if(pg.pre.dup) bits.push(pg.pre.dup+' 行与现有数据重复，将跳过');
+    if(pg.pre.empty) bits.push(pg.pre.empty+' 行内容为空，已忽略');
+    if(bits.length) warn+='<div class="li-s" style="color:var(--crimson)">'+esc(pg.def.name+'：'+bits.join(' · '))+'</div>';
+    html+='<div class="li" style="cursor:default"><div class="li-l"><div class="li-n">'+esc(pg.def.name)+'：待导入 <b>'+pg.pre.fill+'</b> 行</div>'
+      +'<div class="li-s">章节自动挂靠知识树'+(pg.pre.fill?'':' · 没有可导入的行')+'</div></div></div>';
+  });
+  if(!total){
+    document.getElementById('bulkPrev').innerHTML='<div class="void" style="margin-top:12px">没有可导入的行，检查科目名与内容列是否填写</div>';
+    bulkPend=null;
+    return;
+  }
+  html+=warn
+    +'<div class="fld" style="margin-top:12px"><button class="btn" type="button" onclick="bulkDo()">确认导入这 '+total+' 行</button></div>';
+  document.getElementById('bulkPrev').innerHTML=html;
+}
+function bulkReadFile(file){
+  const name=String(file.name||'').toLowerCase();
+  if(/\.xlsx$/.test(name)||/\.xlsm$/.test(name)){
+    return file.arrayBuffer().then(unzip).then(readWorkbook).then(function(shs){
+      const list=[];
+      shs.forEach(function(sh){
+        const nm=cl(sh.name);
+        const d=BULK_DEF.find(function(x){ return nm===x.name||nm.indexOf(x.name)>=0; });
+        if(d){ const pre=bulkPrepare(sh.rows,d); list.push({def:d,pre:pre,rows:sh.rows}); }
+      });
+      if(!list.length) throw new Error('没有找到「考点 / 验收 / 复习 / 疑难 / 感悟」工作表');
+      return list;
+    });
+  }
+  return new Promise(function(res,rej){
+    const r=new FileReader();
+    r.onload=function(){
+      try{
+        const rows=parseGrid(String(r.result||''));
+        const d=bulkDetect(rows);
+        if(!d){ rej(new Error('无法识别表格类型（表头需含 考点/验收/复习/疑难/感悟）')); return; }
+        res([{def:d,pre:bulkPrepare(rows,d),rows:rows}]);
+      }catch(e){ rej(e); }
+    };
+    r.onerror=function(){ rej(new Error('文件读取失败')); };
+    r.readAsText(file,'utf-8');
+  });
+}
+function bulkImportFile(input){
+  const f=input.files&&input.files[0];
+  if(!f) return;
+  toast('正在解析 '+f.name+' …');
+  bulkReadFile(f).then(function(list){
+    input.value='';
+    bulkPreview(list);
+    toast('解析完成，请确认后导入');
+  }).catch(function(e){ input.value=''; toast('解析失败：'+(e&&e.message||e)); });
+}
+function bulkImportPaste(){
+  const el2=document.getElementById('bulkPaste');
+  const rows=parseGrid(el2?el2.value:'');
+  const d=bulkDetect(rows);
+  if(!d){ toast('无法识别表格类型（表头需含 考点/验收/复习/疑难/感悟）'); return; }
+  bulkPreview([{def:d,pre:bulkPrepare(rows,d),rows:rows}]);
+}
+function bulkDo(){
+  if(!bulkPend||!bulkPend.length) return;
+  let n=0, heatDirty=false;
+  const touched={};
+  bulkPend.forEach(function(pg){
+    pg.pre.objs.forEach(function(o){
+      bulkStoreArr(pg.def.k).unshift(o);
+      touched[pg.def.k]=1; n++;
+      if(pg.def.k==='kps') pushKp(o);
+      else if(pg.def.k==='checks'){
+        if(mstNum(o.score)!==null){ checkWriteHeat(o); heatDirty=true; }
+        pushCheck(o);
+      }
+      else if(pg.def.k==='reviews') pushReview(o);
+      else if(pg.def.k==='issues') pushIssue(o);
+      else pushGain(o);
+    });
+  });
+  if(touched.kps) save(K.kps,kps);
+  if(touched.checks){ save(K.checks,checks); if(heatDirty) save(K.heat,heat); }
+  if(touched.reviews) save(K.reviews,reviews);
+  if(touched.issues) save(K.issues,issues);
+  if(touched.gains) save(K.gains,gains);
+  bulkPend=null;
+  closeSheet(); renderAll(); kick();
+  toast('已导入 '+n+' 条'+(heatDirty?' · 验收得分已写入热力图':''));
+}
+
 /* ================= CSV / 备份 ================= */
 function csvCell(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function csvRows(head,rows){ return [head.map(csvCell).join(',')].concat(rows.map(r=>r.map(csvCell).join(','))).join('\r\n'); }
@@ -4635,6 +4893,9 @@ function openData(){
     +dRow('导出 JSON 备份','全部数据快照，换设备时用它','exportJSON()',I.save)
     +dRow('导入 JSON 恢复','从备份文件整体还原',"document.getElementById('jsonFile').click()",I.up)
     +'<div class="rule"></div>'
+    +dRow('导出批量录入模板','考点/验收/复习/疑难/感悟 · 科目与章节列按知识结构预填','openBulkTpl()',I.save)
+    +dRow('导入批量数据','模板填好后一键导入（xlsx / CSV / 粘贴）','openBulkImport()',I.up)
+    +'<div class="rule"></div>'
     +dRow('导出全部 CSV（11 张表）','科目 / 知识点 / 时间 / 验收 / 复习 / 复习日志 / 考点 / 章节掌握 / 感悟 / 疑难 / 档案','exportAllCSV()',I.save)
     +dRow('导出科目表 CSV','','exportCSV(\'subs\')',I.arrow)
     +dRow('下载科目目标导入模板','Excel/WPS 填好 → 科目页「批量导入」一键录入','dlSubTpl()',I.arrow)
@@ -4730,7 +4991,6 @@ function renderAll(){
   renderKPI();
   renderHome();
   renderSubject();
-  renderGantt();
   renderProg();
   renderTodos();
   renderTime();
@@ -5329,7 +5589,6 @@ function cloudPullLedger(f){
 /* ================= 启动 ================= */
 mstMigrate();   /* 掌握度统一为六档：必须在所有常量与状态初始化之后 */
 hmMigrateAxis(); /* 旧「按阶段打分」数据迁入第 1 次验收 */
-(function(){ const c=STAGES.indexOf(curStage()); if(c>=0) openStages['st'+c]=true; })();
 nav();
 if(needWizard()&&!subs.length) startWizard();
 renderAll();
