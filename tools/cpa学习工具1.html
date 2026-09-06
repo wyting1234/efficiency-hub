@@ -2328,8 +2328,11 @@
       </div>
       <div class="sc-card-body">
         <div class="sc-grid-3">
-          <div class="sc-field"><label>所属章节</label><input type="text" id="sc-wChapter" list="sc-chapterList"></div>
-          <div class="sc-field"><label>所属小节</label><input type="text" id="sc-wSub" list="sc-subList"></div>
+          <div class="sc-field"><label>课程</label><select id="sc-wCourse"></select></div>
+          <div class="sc-field"><label>所属章节</label><select id="sc-wChapterSel"></select></div>
+          <div class="sc-field"><label>所属小节</label><select id="sc-wSubSel"></select></div>
+        </div>
+        <div class="sc-grid-3" style="margin-top:14px">
           <div class="sc-field"><label>登记日期</label><input type="date" id="sc-wDate"></div>
         </div>
         <div style="margin-top:14px">
@@ -5242,8 +5245,11 @@
           const subEl = isSec ? document.getElementById("sc-secSubSel") : null;
           const ansEl = document.querySelector(`#${isSec?"sc-sectionAnswers":"sc-chapAnswers"} textarea[data-prefix="${prefix}"][data-i="${idx}"]`);
           const reasonEl = document.querySelector(`#${isSec?"sc-sectionRows":"sc-chapRows"} .reason-in[data-prefix="${prefix}"][data-i="${idx}"]`);
-          set("sc-wChapter", chapVal);
-          set("sc-wSub", subEl ? scSubStr("sec") : "");
+          const wCourseEl=document.getElementById("sc-wCourse");
+          const secCourse=scCourseVal("sec");
+          if([...wCourseEl.options].some(function(o){return o.value===secCourse;})) wCourseEl.value=secCourse;
+          scFillChapters(document.getElementById("sc-wChapterSel"), secCourse, chapVal);
+          scFillSections(document.getElementById("sc-wSubSel"), secCourse, parseInt(document.getElementById("sc-wChapterSel").value,10)||1, subEl ? scSubStr("sec") : "");
           set("sc-wDate", today());
           set("sc-wQ", (isSec?subEl?"["+scSubStr("sec")+"] ":"":"[整章] ") + "模块错题");
           set("sc-wMistake", reasonEl ? reasonEl.value : "");
@@ -5704,20 +5710,26 @@
     function collectWrong(){
       return {
         id: editingWrongId||uid(),
-        chapter: val("sc-wChapter"), sub: val("sc-wSub"), date: val("sc-wDate")||today(),
+        course: scCourseVal("w"),
+        chapter: scChapterStr("w"), sub: scSubStr("w"), date: val("sc-wDate")||today(),
         q: val("sc-wQ"), mistake: val("sc-wMistake"), correct: val("sc-wCorrect"),
         done: editingWrongId?!!((wrongStore.find(x=>x.id===editingWrongId)||{}).done):false,
       };
     }
     function clearWrongForm(){
       editingWrongId=null;
-      ["sc-wChapter","sc-wSub","sc-wQ","sc-wMistake","sc-wCorrect"].forEach(id=>set(id,""));
+      ["sc-wQ","sc-wMistake","sc-wCorrect"].forEach(id=>set(id,""));
+      scResetCascade("w");
       set("sc-wDate",today());
       setLabel("sc-wrongSaveLabel","存入错题库");
     }
     function fillWrong(w){
       editingWrongId=w.id;
-      set("sc-wChapter",w.chapter); set("sc-wSub",w.sub||""); set("sc-wDate",w.date||today());
+      const wc=document.getElementById("sc-wCourse");
+      if(w.course && [...wc.options].some(function(o){return o.value===w.course;})) wc.value=w.course;
+      scFillChapters(document.getElementById("sc-wChapterSel"), wc.value, w.chapter);
+      scFillSections(document.getElementById("sc-wSubSel"), wc.value, parseInt(document.getElementById("sc-wChapterSel").value,10)||1, w.sub);
+      set("sc-wDate",w.date||today());
       set("sc-wQ",w.q); set("sc-wMistake",w.mistake||""); set("sc-wCorrect",w.correct||"");
       setLabel("sc-wrongSaveLabel","更新错题");
       try{ document.getElementById("view-scwrong").scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){}
@@ -5866,11 +5878,7 @@
       DEFAULT_CPAS.forEach(([c,subsStr])=>{ subsStr.split(" / ").forEach(s=>subs.add(s)); });
       sl.innerHTML=[...subs].map(s=>`<option value="${esc(s)}">`).join("");
     }
-    // 输入章节时联动小节占位
-    document.getElementById("sc-wChapter").addEventListener("change",()=>{
-      const subs=DEFAULT_SUB_MAP[document.getElementById("sc-wChapter").value];
-      if(subs&&subs.length&&!document.getElementById("sc-wSub").value) document.getElementById("sc-wSub").placeholder="如："+subs[0];
-    });
+    // 旧文本框+datalist 已升级为课程/章/节级联，原联动监听移除
 
     /* ============================================================
        课程/章/节 级联（复用宿主学习记录的数据源）
@@ -5945,8 +5953,8 @@
       return nm?("第"+i+"章 "+nm):("第"+i+"章");
     }
     function scSubStr(prefix){
-      if(prefix!=="sec") return "";
-      const subSel=document.getElementById("sc-secSubSel");
+      const subSel=document.getElementById("sc-"+prefix+"SubSel");
+      if(!subSel) return "";
       const i=parseInt(subSel.value,10);
       if(isNaN(i)) return subSel.value;
       let nm=""; try{ const g=getGuide(scCourseVal("sec"),i,parseInt(subSel.value,10)); nm=g&&g.name?g.name:""; }catch(e){}
@@ -5961,10 +5969,10 @@
       if(ss) scFillSections(ss, cs.value, 1, null);
     }
     function scInitCascades(){
-      ["sec","chap"].forEach(function(pfx){
+      ["sec","chap","w"].forEach(function(pfx){
         const cs=document.getElementById("sc-"+pfx+"Course");
         const hs=document.getElementById("sc-"+pfx+"ChapterSel");
-        const ss=pfx==="sec"?document.getElementById("sc-"+pfx+"SubSel"):null;
+        const ss=document.getElementById("sc-"+pfx+"SubSel");
         if(!cs||!hs) return;
         cs.innerHTML=scCourseList().map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join("");
         cs.value=scDefCourse();
