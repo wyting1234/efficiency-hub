@@ -59,6 +59,8 @@ body.embed .page-title{display:none}
 .btn:hover{background:var(--umber-d)}
 .btn.ghost{background:transparent;color:var(--umber);border:1px solid var(--clay)}
 .btn.ghost:hover{background:var(--sand);color:var(--umber-d)}
+.btn.ghost.on{background:var(--umber);border-color:var(--umber);color:var(--cream)}
+.btn.ghost.on:hover{background:var(--umber-d);color:var(--cream)}
 .btn.danger{background:var(--crimson);color:#fff}
 .btn.danger:hover{filter:brightness(.92)}
 .btn.gray{background:var(--ink-mute);color:#fff}
@@ -95,28 +97,41 @@ textarea{resize:vertical;line-height:1.6}
 .level6{color:var(--ink-mute);font-size:12.5px;opacity:.9}
 .tree-tools{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
 .tree-tools input{flex:1;min-width:180px}
+.tree-tools .btn{padding:7px 12px;font-size:13.5px}
+.tree-tools .btn.mini{background:transparent;border-color:transparent;color:var(--ink-mute);padding:6px 8px;font-size:13px}
+.tree-tools .btn.mini:hover{background:var(--sand);color:var(--umber-d)}
+.tree-tools .sep{flex:0 0 1px;width:1px;height:20px;background:var(--line)}
 .tree-hit{background:var(--amber);color:#fff;border-radius:4px;padding:0 3px}
 
-/* 知识树：单击编辑 / 增删 / 调序 */
+/* 知识树：操作图标（＋ ✎ ↑ ↓ ✕）可一键隐藏，默认隐藏以保持界面清爽 */
 .kids.hide{display:none}
-.nrow{display:flex;align-items:center;gap:3px}
+.nrow{display:flex;align-items:center;gap:2px;padding:1px 4px 1px 0;border-radius:6px;transition:background .14s var(--e)}
+#treeRoot.editing .nrow:hover{background:rgba(176,138,74,.09)}   /* 浏览态不留任何悬停痕迹 */
 .caret{flex:0 0 18px;width:18px;height:18px;padding:0;border:0;background:none;
   color:var(--ink-mute);font-size:11px;line-height:18px;cursor:pointer;
   transition:transform .15s var(--e);transform:rotate(0deg)}
+.caret:hover{color:var(--umber)}
 .caret.open{transform:rotate(90deg);color:var(--umber)}
 .caret.ph{display:inline-block}
-.node-t{cursor:text;padding:1px 5px;border-radius:5px;border:1px dashed transparent}
-.node-t:hover{background:rgba(176,138,74,.13);border-color:var(--clay)}
+.node-t{cursor:pointer;padding:1px 5px;border-radius:5px;border:1px dashed transparent;
+  transition:background .14s var(--e),border-color .14s var(--e)}
 .node-edit{width:100%;min-width:130px;font:inherit;color:var(--cocoa);
   padding:1px 5px;border:1px solid var(--umber);border-radius:5px;background:#fff;outline:none}
-.nact{display:inline-flex;gap:2px;margin-left:6px;opacity:0;transition:opacity .15s var(--e)}
-.tree li:hover > .nrow > .nact{opacity:1}
-.nact button{border:1px solid var(--line);background:rgba(255,255,255,.75);color:var(--ink-soft);
-  font-size:11px;line-height:1;padding:3px 5px;border-radius:5px;cursor:pointer;font-family:var(--sans)}
-.nact button:hover{background:var(--amber);color:#fff;border-color:var(--amber)}
-.nact button.del:hover{background:var(--crimson);border-color:var(--crimson)}
-@media(hover:none){.nact{opacity:1}}
-@media(max-width:640px){.nact{opacity:1}.nact button{padding:5px 7px;font-size:12px}}
+/* 行内图标组：整组默认不渲染；仅当 #treeRoot 带 .editing 时显示（常显淡色，悬停该行高亮） */
+.nact{display:none;gap:1px;margin-left:4px;align-items:center}
+#treeRoot.editing .nact{display:inline-flex;opacity:.28;transition:opacity .15s var(--e)}
+#treeRoot.editing .nrow:hover>.nact,
+#treeRoot.editing .nact:hover,
+#treeRoot.editing .nact:focus-within{opacity:1}
+.nact button{width:19px;height:19px;display:inline-flex;align-items:center;justify-content:center;
+  border:0;background:none;color:var(--ink-mute);font-size:12px;line-height:1;padding:0;
+  border-radius:5px;cursor:pointer;font-family:var(--sans);transition:all .14s var(--e)}
+.nact button:hover{background:var(--clay);color:var(--cocoa)}
+.nact button.del:hover{background:var(--crimson);color:#fff}
+#treeRoot.editing .node-t{cursor:text}
+#treeRoot.editing .node-t:hover{background:rgba(176,138,74,.13);border-color:var(--clay)}
+@media(hover:none){#treeRoot.editing .nact{opacity:1}}
+@media(max-width:640px){#treeRoot.editing .nact{opacity:1}.nact button{width:25px;height:25px;font-size:13px}}
 
 /* 模板中心 */
 .tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -189,17 +204,22 @@ textarea{resize:vertical;line-height:1.6}
     <h2>2026 CPA 会计 30 章多级知识树</h2>
     <div class="tree-tools">
       <input id="treeSearch" placeholder="搜索章节 / 知识点关键词（如：合并、租赁、股份支付）" oninput="searchTree(this.value)">
+      <button class="btn ghost" id="btnEditMode" onclick="toggleEditMode()">✎ 编辑</button>
+      <span class="sep"></span>
       <button class="btn ghost" onclick="toggleAll(true)">全部展开</button>
       <button class="btn ghost" onclick="toggleAll(false)">全部折叠</button>
-      <button class="btn ghost" onclick="exportTreeTpl()">⬇ 模板导出</button>
-      <button class="btn ghost" onclick="document.getElementById('treeCsv').click()">⬆ 模板导入</button>
-      <button class="btn ghost" onclick="resetTree()" title="恢复内置 30 章默认知识树">↺ 恢复默认</button>
+      <span class="sep"></span>
       <button class="btn" onclick="addChapter()" title="在末尾新增一章并立即进入编辑">＋ 新增章</button>
       <button class="btn" onclick="syncFromWorkbench()" title="直接读取备考学习工作台已录入的科目 / 章 / 节，生成知识树">⇄ 从工作台同步</button>
+      <span class="sep"></span>
+      <button class="btn ghost mini" onclick="exportTreeTpl()">⬇ 模板导出</button>
+      <button class="btn ghost mini" onclick="document.getElementById('treeCsv').click()">⬆ 模板导入</button>
+      <button class="btn ghost mini" onclick="resetTree()" title="恢复内置 30 章默认知识树">↺ 恢复默认</button>
       <input type="file" id="treeCsv" accept=".xlsx,.csv,.txt" style="display:none" onchange="importTreeFile(this,'merge')">
     </div>
     <div class="tpl-note">六级知识体系：<b>章 / 节 / 一级 / 二级 / 三级 / 四级</b>（对应教材目录的 第X章 → 第X节 → 一、→（一）→ 1. →（1））。
-      <b>单击任意节点名称即可直接改名</b>；悬停节点右侧出现 <b>＋加下级 / ✎改名 / ↑↓调序 / ✕删除</b>；点左侧 <b>▸</b> 展开折叠。
+      <b>默认处于浏览态</b>——不显示任何行内图标，单击节点名称即展开 / 折叠，界面干净、不会误改。
+      需要改动时点顶部 <b>「✎ 编辑」</b>（再次点击即隐藏），节点右侧才出现 <b>＋加下级 / ✎改名 / ↑↓调序 / ✕删除</b>，此时单击名称可直接改名。
       批量录入仍推荐用 Excel 模板：只填前几级也行，空列之后的层级会自动忽略。若目录已在<b>备考学习工作台</b>里录过，直接点<b>「⇄ 从工作台同步」</b>即可一键生成。</div>
     <ul class="tree" id="treeRoot"></ul>
   </div>
@@ -587,6 +607,29 @@ tabList.forEach(tab=>{
   }
 });
 
+/* ================= 编辑开关（行内图标显示 / 隐藏） ================= */
+/* 默认隐藏：浏览态界面最清爽，也避免误触改名或删除；状态写入 localStorage 随设备保留 */
+const EDIT_KEY='cpaTreeEditMode_v1';
+let EDIT_MODE=false;
+try{ EDIT_MODE=localStorage.getItem(EDIT_KEY)==='1'; }catch(e){}
+function setEditMode(on,silent){
+  EDIT_MODE=!!on;
+  try{ localStorage.setItem(EDIT_KEY,EDIT_MODE?'1':'0'); }catch(e){}
+  const b=document.getElementById('btnEditMode');
+  if(b){
+    b.classList.toggle('on',EDIT_MODE);
+    b.textContent=EDIT_MODE?'✎ 编辑中':'✎ 编辑';
+    b.title=EDIT_MODE
+      ? '点击隐藏各节点右侧的 ＋ ✎ ↑ ↓ ✕ 图标（防误触、界面更清爽）'
+      : '点击显示各节点右侧的 ＋加下级 / ✎改名 / ↑↓调序 / ✕删除 图标';
+  }
+  const root=document.getElementById('treeRoot');
+  if(root) root.classList.toggle('editing',EDIT_MODE);
+  if(!silent) toast(EDIT_MODE?'已开启编辑：悬停节点可见 ＋ ✎ ↑ ↓ ✕，单击名称即可改名':'已隐藏操作图标：单击名称展开 / 折叠');
+  notifyHeight();
+}
+function toggleEditMode(){ setEditMode(!EDIT_MODE); }
+
 /* ================= 知识树渲染 ================= */
 /* 展开状态：存已展开节点的路径（"0" / "0.2.1"），重建后自动恢复，编辑时不丢失折叠位置 */
 let EXP=new Set();
@@ -632,8 +675,9 @@ function buildTree(){
       +'<button onclick="moveNode(\''+p+'\',1)" title="下移">↓</button>'
       +'<button class="del" onclick="delNode(\''+p+'\')" title="删除">✕</button>'
       +'</span>';
+    const nameTip=EDIT_MODE?'单击即可改名':'单击展开 / 折叠（开启「✎ 编辑」后可改名）';
     const inner='<span class="nrow">'+caret
-      +'<span class="node-t" onclick="editNode(\''+p+'\')" title="单击即可编辑">'+esc(node[0])+'</span>'
+      +'<span class="node-t" onclick="nodeClick(\''+p+'\','+(hasKids?1:0)+')" title="'+nameTip+'">'+esc(node[0])+'</span>'
       +act+'</span>';
     if(!hasKids) return '<li class="'+cls+' node" data-p="'+p+'">'+inner+'</li>';
     return '<li class="'+cls+' node" data-p="'+p+'">'+inner
@@ -642,6 +686,12 @@ function buildTree(){
       +'</ul></li>';
   }
   root.innerHTML=TREE.map(function(item,i){ return nodeHtml(item,0,[i]); }).join('');
+  root.classList.toggle('editing',EDIT_MODE);
+}
+/* 单击节点名称：编辑态进入改名，浏览态执行展开 / 折叠 */
+function nodeClick(p,hasKids){
+  if(!EDIT_MODE){ if(hasKids) toggleNode(p); return; }
+  editNode(p);
 }
 function toggleNode(p){
   if(EXP.has(p)) EXP.delete(p); else EXP.add(p);
@@ -696,6 +746,7 @@ function editNode(p){
 }
 /* 新增：定位到新节点并立即进入编辑 */
 function focusAndEdit(p){
+  if(!EDIT_MODE) setEditMode(true,true);   // 新增节点要改名，自动打开图标并进入编辑
   buildTree();
   const li=document.querySelector('#treeRoot li[data-p="'+p+'"]');
   if(li&&li.scrollIntoView) li.scrollIntoView({block:'nearest'});
@@ -1500,6 +1551,7 @@ document.addEventListener('input',()=>{ clearTimeout(window._nh); window._nh=set
 loadTree();          // 先读自定义知识树，读不到则用内置 30 章
 buildTree();
 toggleAll(false);   // 默认只展开 30 个章标题，按需下钻
+setEditMode(EDIT_MODE,true); // 恢复上次的编辑图标显示状态（默认隐藏）
 loadData(true);
 loadTrap();
 if(!tableBody.querySelectorAll('tr').length){ document.getElementById("emptyHint").style.display='block'; }
