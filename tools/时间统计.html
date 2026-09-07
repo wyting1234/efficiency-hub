@@ -610,6 +610,93 @@
             font-size: 13px;
         }
 
+        /* ===== 已完成清单 ===== */
+        .todo-done-block {
+            margin-top: 14px;
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 12px;
+        }
+        .todo-done-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 14px;
+            font-weight: 700;
+            color: #334155;
+            padding: 2px 0 8px;
+        }
+        .todo-done-head .done-count {
+            background: #d1fae5;
+            color: #047857;
+            border-radius: 10px;
+            padding: 1px 8px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .todo-done-head .done-fold {
+            margin-left: auto;
+            color: #94a3b8;
+            font-size: 12px;
+            transition: transform 0.15s;
+        }
+        .todo-done-head.folded .done-fold {
+            transform: rotate(-90deg);
+        }
+        .todo-done-head .done-clear {
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #64748b;
+            border-radius: 8px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .todo-done-head .done-clear:hover {
+            color: #ef4444;
+            border-color: #fecaca;
+            background: #fee2e2;
+        }
+        .done-list {
+            border-top: none;
+        }
+        .done-list .todo-item {
+            opacity: 0.75;
+        }
+        .done-list .todo-title {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+        .done-list .todo-check.done {
+            background: #10b981;
+            border-color: #10b981;
+            color: #fff;
+        }
+        .done-list .todo-restore {
+            border: none;
+            background: transparent;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 4px 7px;
+            border-radius: 6px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .done-list .todo-restore:hover {
+            color: #3b82f6;
+            background: #eff6ff;
+        }
+        .done-empty {
+            text-align: center;
+            color: #cbd5e1;
+            padding: 12px 0;
+            font-size: 12.5px;
+        }
+
         /* ===== EISENHOWER MATRIX ===== */
         .eisenhower-toggle {
             display: flex;
@@ -1252,6 +1339,20 @@
                 </div>
                 <div class="todo-list" id="todoList">
                     <!-- 由 JS 动态渲染 -->
+                </div>
+
+                <!-- 已完成清单：待办打勾后自动下落到这里 -->
+                <div class="todo-done-block" id="todoDoneBlock">
+                    <div class="todo-done-head" id="todoDoneHead">
+                        <i class="fas fa-check-circle" style="color:#10b981;"></i>
+                        <span>已完成清单</span>
+                        <span class="done-count" id="doneCount">0</span>
+                        <span class="done-fold" id="doneFold">▾</span>
+                        <button type="button" class="done-clear" id="doneClearBtn">清空</button>
+                    </div>
+                    <div class="todo-list done-list" id="doneList">
+                        <!-- 由 JS 动态渲染 -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -2348,18 +2449,116 @@
         };
 
         // ============================================================
+        //  RENDER: 已完成清单（打勾后的待办落到这里，可还原 / 删除）
+        // ============================================================
+        let doneBound = false;
+        let doneFoldInit = false;
+
+        function fmtCompletedAt(iso) {
+            if (!iso) return '';
+            try { return formatDate(iso) + ' ' + formatTime(iso); } catch (e) { return String(iso).slice(0, 16).replace('T', ' '); }
+        }
+
+        function applyDoneFold() {
+            const head = $('todoDoneHead');
+            const list = $('doneList');
+            if (!head || !list) return;
+            list.style.display = head.classList.contains('folded') ? 'none' : '';
+        }
+
+        function bindDoneBlock() {
+            if (doneBound) return;
+            const head = $('todoDoneHead');
+            const clearBtn = $('doneClearBtn');
+            if (!head) return;
+            if (!doneFoldInit) {
+                try {
+                    if (localStorage.getItem('timeDoneFolded') === '1') head.classList.add('folded');
+                } catch (e) {}
+                doneFoldInit = true;
+            }
+            head.addEventListener('click', (e) => {
+                if (clearBtn && (e.target === clearBtn || clearBtn.contains(e.target))) return;
+                const folded = head.classList.toggle('folded');
+                try { localStorage.setItem('timeDoneFolded', folded ? '1' : '0'); } catch (err) {}
+                applyDoneFold();
+            });
+            if (clearBtn) {
+                clearBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const n = todos.filter(t => t.isCompleted).length;
+                    if (!n) { alert('还没有已完成的待办。'); return; }
+                    if (!confirm(`确定清空已完成清单（${n} 条）？此操作不可恢复。`)) return;
+                    todos = todos.filter(t => !t.isCompleted);
+                    saveTodos();
+                    renderTodos();
+                });
+            }
+            doneBound = true;
+        }
+
+        function renderDoneList() {
+            const box = $('doneList');
+            const cnt = $('doneCount');
+            if (!box) return;
+            bindDoneBlock();
+            const done = todos.filter(t => t.isCompleted)
+                .sort((a, b) => String(b.completedAt || '').localeCompare(String(a.completedAt || '')));
+            if (cnt) cnt.textContent = done.length;
+            if (done.length === 0) {
+                box.innerHTML = `<div class="done-empty"><i class="fas fa-inbox" style="margin-right:6px;"></i>还没有完成的待办，勾选待办左侧圆圈即可落入此处</div>`;
+                applyDoneFold();
+                return;
+            }
+            box.innerHTML = done.map(t => {
+                return `
+                    <div class="todo-item" data-id="${t.id}">
+                        <button class="todo-check done" data-id="${t.id}" title="还原为待办"><i class="fas fa-check"></i></button>
+                        <span class="todo-title">${t.title}</span>
+                        <span class="todo-meta">✅ ${fmtCompletedAt(t.completedAt) || '已完成'}</span>
+                        <button class="todo-restore" data-id="${t.id}" title="还原为待办"><i class="fas fa-undo"></i></button>
+                        <button class="todo-del" data-id="${t.id}" title="删除"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+            }).join('');
+            // 还原：勾选圆圈 / ↩ 按钮
+            box.querySelectorAll('.todo-check, .todo-restore').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleTodo(btn.dataset.id);
+                });
+            });
+            // 删除
+            box.querySelectorAll('.todo-del').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm('删除这条已完成记录？')) {
+                        todos = todos.filter(t => t.id !== btn.dataset.id);
+                        saveTodos();
+                        renderTodos();
+                    }
+                });
+            });
+            // 点击整行仍可再编辑
+            box.querySelectorAll('.todo-item').forEach(el => {
+                el.addEventListener('click', () => openTodoEditModal(el.dataset.id));
+            });
+            applyDoneFold();
+        }
+
+        // ============================================================
         //  RENDER: TODO
         // ============================================================
         function renderTodos() {
-            if (todos.length === 0) {
+            renderDoneList();
+            // 只渲染未完成项；已完成项在下方「已完成清单」单独展示
+            const pending = todos.filter(t => !t.isCompleted);
+            if (pending.length === 0) {
                 todoList.innerHTML = `<div class="todo-empty"><i class="far fa-smile" style="margin-right:6px;"></i>没有待办，轻松一下</div>`;
                 return;
             }
-            // 未完成的在前，按创建时间倒序
-            const sorted = [...todos].sort((a, b) => {
-                if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
-                return b.createdAt.localeCompare(a.createdAt);
-            });
+            // 按创建时间倒序
+            const sorted = [...pending].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
             let html = '';
             sorted.forEach(t => {
                 let metaHtml = '';
@@ -2418,9 +2617,10 @@
             });
             todoList.innerHTML = html;
 
-            // 切换完成状态
+            // 切换完成状态（打勾 → 自动落入下方「已完成清单」）
             todoList.querySelectorAll('.todo-check').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const id = btn.dataset.id;
                     const todo = todos.find(t => t.id === id);
                     if (todo) {
