@@ -1918,11 +1918,15 @@
                     </div>
                     <div class="form-row">
                         <div class="field">
-                            <label><span data-lv="chapter">章</span> <span class="required">*</span></label>
+                            <label><span data-lv="chapter">章</span> <span class="required">*</span>
+                                <button type="button" class="mini-add-btn" id="addChapterBtn">➕ 新增<span data-lv="chapter">章</span></button>
+                            </label>
                             <select id="fChapter" required></select>
                         </div>
                         <div class="field">
-                            <label><span data-lv="section">节</span> <span class="required">*</span></label>
+                            <label><span data-lv="section">节</span> <span class="required">*</span>
+                                <button type="button" class="mini-add-btn" id="addSectionBtn">➕ 新增<span data-lv="section">节</span></button>
+                            </label>
                             <select id="fSection" required></select>
                         </div>
                     </div>
@@ -3499,6 +3503,10 @@
 
             const addCourseBtn = document.getElementById('addCourseBtn');
             if (addCourseBtn) addCourseBtn.addEventListener('click', () => openCourseDialog());
+            const addChapterBtn = document.getElementById('addChapterBtn');
+            if (addChapterBtn) addChapterBtn.addEventListener('click', () => openLevelDialog('chapter'));
+            const addSectionBtn = document.getElementById('addSectionBtn');
+            if (addSectionBtn) addSectionBtn.addEventListener('click', () => openLevelDialog('section'));
 
             courseSelect.addEventListener('change', () => {
                 const course = courseSelect.value;
@@ -4528,6 +4536,30 @@
             renderGoalSummary();
         }
 
+        // ---------- 结构变更后的统一联动刷新（三处新增入口共用） ----------
+        // 保存项目 → 重建 COURSES/GUIDE_DATA 并广播给自检模块 → 重绘下拉 / 侧栏 / 进度 / 记忆曲线 / 目标统计
+        // → 展开记录表单并把选中项停在新内容上
+        function afterStructureChange(course, cb) {
+            const p = getCurrentProject();
+            if (p) p.customStructure = true;
+            saveProjects();
+            if (course) state.currentCourse = course;
+            applyProject(currentProjectId);   // 内部会派发 cpaProjectApplied，自检模块随之刷新课程/章/节级联
+            renderAll();
+            renderGoalSummary();
+            try { renderProjectSelect(); } catch (e) {}
+            try { if (typeof renderMemoryView === 'function') renderMemoryView(); } catch (e) {}
+            const fc = document.getElementById('formContainer');
+            if (fc) fc.classList.remove('collapsed');
+            if (course) {
+                const sel = document.getElementById('fCourse');
+                if (sel && COURSES.indexOf(course) >= 0) sel.value = course;
+                if (typeof cb === 'function') cb();
+                else updateChapterSelect(course);
+            }
+            try { if (typeof updateGlobalStats === 'function') updateGlobalStats(); } catch (e) {}
+        }
+
         // ---------- 章节大纲解析（新增科目时用：缩进 → 章 / 节） ----------
         function parseChapterOutline(text) {
             const items = [];
@@ -4609,20 +4641,104 @@
                     p.sectionNames[name] = outline.sectionNames;
                 } else if (!p.chapterNames[name] || Object.keys(p.chapterNames[name]).length === 0) {
                     p.chapterNames[name] = { 1: '' };
-                    p.sectionNames[name] = { 1: [] };
+                    p.sectionNames[name] = { 1: [''] };
                 }
                 saveProjects();
                 close();
-                state.currentCourse = name;
-                applyProject(currentProjectId);
-                renderAll();
-                renderGoalSummary();
-                const sel = document.getElementById('fCourse');
-                if (sel) sel.value = name;
-                updateChapterSelect(name);
-                if (typeof renderMemoryView === 'function') { try { renderMemoryView(); } catch (e) {} }
+                afterStructureChange(name);
             };
             setTimeout(function () { const el = box.querySelector('#cdName'); if (el) el.focus(); }, 30);
+        }
+
+        // ---------- 新增章 / 节（编号自动顺延：已有第1章 → 新增即第2章） ----------
+        function openLevelDialog(type) {
+            const p = getCurrentProject();
+            const cL = L('course'), chL = L('chapter'), sL = L('section');
+            const isCh = (type === 'chapter');
+            const courseSel = document.getElementById('fCourse');
+            const course = courseSel ? courseSel.value : '';
+            if (!course) { alert('当前项目还没有' + cL + '，请先新增' + cL + '。'); return; }
+            let curCh = parseInt(document.getElementById('fChapter').value, 10);
+            if (isNaN(curCh) || curCh < 1) curCh = 1;
+
+            let nextNo;
+            if (isCh) {
+                nextNo = getMaxChapter(course) + 1;
+            } else {
+                const secs = getSectionsForChapter(course, curCh);
+                nextNo = secs.length ? Math.max.apply(null, secs) + 1 : 1;
+            }
+            const curChName = getChapterName(course, curCh);
+
+            let box = document.getElementById('levelDialog');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'levelDialog';
+                document.body.appendChild(box);
+            }
+            box.className = 'proj-mask';
+            box.innerHTML =
+                '<div class="proj-dialog">' +
+                '<h3>新增' + (isCh ? chL : sL) + '</h3>' +
+                '<div class="pf"><label>所属' + cL + '</label>' +
+                '<input type="text" value="' + String(course).replace(/"/g, '&quot;') + '" disabled></div>' +
+                (isCh ? '' :
+                    '<div class="pf"><label>所属' + chL + '</label>' +
+                    '<input type="text" value="第' + curCh + chL + (curChName ? ' ' + curChName : '') + '" disabled></div>') +
+                '<div class="pf"><label>' + (isCh ? chL : sL) + '名称（可留空）</label>' +
+                '<input id="ldName" type="text" placeholder="第' + nextNo + (isCh ? chL : sL) + '"></div>' +
+                '<div class="pf-hint">编号自动顺延：' +
+                (isCh
+                    ? ('当前已有 ' + getMaxChapter(course) + ' 个' + chL + '，新增的将是<strong>第' + nextNo + chL + '</strong>，并自动带上第 1 ' + sL + '。')
+                    : ('当前' + chL + '已有 ' + getSectionsForChapter(course, curCh).length + ' 个' + sL + '，新增的将是<strong>第' + nextNo + sL + '</strong>。')) +
+                '<br>名称留空也可以，界面会按「第N' + (isCh ? chL : sL) + '」显示，之后可随时用模板批量补内容。</div>' +
+                '<div class="pf-actions">' +
+                '<button id="ldCancel" class="pd-btn">取消</button>' +
+                '<button id="ldSave" class="pd-btn primary">保存并选中</button>' +
+                '</div></div>';
+            const close = function () { if (box && box.parentNode) box.parentNode.removeChild(box); };
+            box.querySelector('#ldCancel').onclick = close;
+            box.onclick = function (e) { if (e.target === box) close(); };
+            box.querySelector('#ldSave').onclick = function () {
+                const name = (box.querySelector('#ldName').value || '').trim();
+                dettachBuiltinStructure(p);
+                p.chapterNames = p.chapterNames || {};
+                p.sectionNames = p.sectionNames || {};
+                if (!p.chapterNames[course]) p.chapterNames[course] = {};
+                if (!p.sectionNames[course]) p.sectionNames[course] = {};
+                if (isCh) {
+                    p.chapterNames[course][nextNo] = name;
+                    // 新章自动带一个空节，保证「章节」两级结构完整
+                    p.sectionNames[course][nextNo] = [''];
+                } else {
+                    if (!p.chapterNames[course][curCh]) p.chapterNames[course][curCh] = '';
+                    const arr = (p.sectionNames[course][curCh] || []).slice();
+                    while (arr.length < nextNo - 1) arr.push('');
+                    arr.push(name);
+                    p.sectionNames[course][curCh] = arr;
+                }
+                close();
+                afterStructureChange(course, function () {
+                    const chSel = document.getElementById('fChapter');
+                    const sSel = document.getElementById('fSection');
+                    if (isCh) {
+                        updateChapterSelect(course);
+                        if (chSel) chSel.value = nextNo;
+                        updateSectionSelect(course, nextNo);
+                    } else {
+                        updateChapterSelect(course);
+                        if (chSel) chSel.value = curCh;
+                        updateSectionSelect(course, curCh);
+                        if (sSel) sSel.value = nextNo;
+                    }
+                    if (typeof renumberKpRows === 'function') { try { renumberKpRows(); } catch (e) {} }
+                    // 直接改 select.value 不触发 change，这里显式刷新学习指南
+                    const _c = parseInt((chSel && chSel.value) || '1', 10);
+                    const _s = parseInt((sSel && sSel.value) || '1', 10);
+                    updateGuide(course, _c, _s);
+                });
+            };
+            setTimeout(function () { const el = box.querySelector('#ldName'); if (el) el.focus(); }, 30);
         }
 
         // ============================================================
