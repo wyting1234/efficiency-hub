@@ -186,6 +186,46 @@
         .progress-stats .p-item .p-value .todo { color: var(--red); }
         .progress-stats .p-item .p-value .highlight { color: var(--primary); }
 
+        .exam-countdown {
+            margin: 8px 12px 0; padding: 7px 10px; border-radius: 8px;
+            font-size: 12.5px; font-weight: 600; text-align: center;
+            background: rgba(138, 115, 88, 0.1); color: var(--primary);
+            border: 1px solid rgba(138, 115, 88, 0.22);
+        }
+        .exam-countdown.soon { background: rgba(186, 117, 23, 0.12); color: #8A5A0B; border-color: rgba(186, 117, 23, 0.3); }
+        .exam-countdown.urgent { background: rgba(199, 62, 58, 0.12); color: #A32D2D; border-color: rgba(199, 62, 58, 0.3); }
+        .exam-countdown.past { background: rgba(120, 120, 120, 0.1); color: #777; border-color: rgba(120, 120, 120, 0.2); }
+
+        .proj-mask {
+            position: absolute; inset: 0; z-index: 9999;
+            display: flex; align-items: flex-start; justify-content: center;
+            background: rgba(30, 26, 22, 0.45); overflow: auto; padding: 30px 16px;
+        }
+        .proj-dialog {
+            width: 100%; max-width: 520px; background: var(--panel, #fff);
+            border-radius: 12px; padding: 20px 22px 18px; box-sizing: border-box;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+        }
+        .proj-dialog h3 { margin: 0 0 14px; font-size: 16px; font-weight: 600; color: var(--text); }
+        .proj-dialog .pf { margin-bottom: 12px; }
+        .proj-dialog .pf label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text-soft, #666); margin-bottom: 5px; }
+        .proj-dialog .pf input, .proj-dialog .pf select, .proj-dialog .pf textarea {
+            width: 100%; box-sizing: border-box; padding: 7px 9px; font-size: 13px;
+            border: 1px solid var(--border, #ddd); border-radius: 7px;
+            background: var(--bg, #fff); color: var(--text); font-family: inherit;
+        }
+        .proj-dialog .pf textarea { resize: vertical; line-height: 1.5; }
+        .proj-dialog .pf-hint { font-size: 11.5px; color: var(--text-soft, #888); margin-top: 4px; }
+        .proj-dialog .pf-row { display: flex; gap: 10px; }
+        .proj-dialog .pf-row .pf { flex: 1; }
+        .proj-dialog .pf-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+        .proj-dialog .pd-btn {
+            padding: 7px 18px; font-size: 13px; border-radius: 7px; cursor: pointer;
+            border: 1px solid var(--border, #ddd); background: var(--panel, #fff); color: var(--text);
+        }
+        .proj-dialog .pd-btn.primary { background: var(--primary, #8A7358); color: #fff; border-color: var(--primary, #8A7358); }
+        .proj-dialog .pd-btn.danger { color: #A32D2D; border-color: rgba(199, 62, 58, 0.4); margin-right: auto; }
+
         .course-list-title {
             font-size: 12px;
             font-weight: 600;
@@ -1787,8 +1827,8 @@
         <!-- 进度统计 -->
         <div class="progress-stats" id="progressStats">
             <div class="p-item"><span class="p-label">📚 已学科目</span><span class="p-value"><span class="done" id="doneCourses">0</span> / <span class="highlight" id="totalCourses">6</span></span></div>
-            <div class="p-item"><span class="p-label">📖 已学章节</span><span class="p-value"><span class="done" id="doneChapters">0</span> / <span class="highlight" id="totalChapters">0</span></span></div>
-            <div class="p-item"><span class="p-label">📄 已学节数</span><span class="p-value"><span class="done" id="doneSections">0</span> / <span class="highlight" id="totalSections">0</span></span></div>
+            <div class="p-item"><span class="p-label"><span data-lv-prefix="📖 已学" data-lv="chapter" data-lv-suffix="数">📖 已学章节</span></span><span class="p-value"><span class="done" id="doneChapters">0</span> / <span class="highlight" id="totalChapters">0</span></span></div>
+            <div class="p-item"><span class="p-label"><span data-lv-prefix="📄 已学" data-lv="section" data-lv-suffix="数">📄 已学节数</span></span><span class="p-value"><span class="done" id="doneSections">0</span> / <span class="highlight" id="totalSections">0</span></span></div>
             <div class="p-item"><span class="p-label">⏳ 建议学时</span><span class="p-value"><span class="done" id="doneHoursProgress">0</span> / <span class="highlight" id="totalHoursProgress">0</span> h</span></div>
         </div>
 
@@ -1851,11 +1891,11 @@
                     </div>
                     <div class="form-row">
                         <div class="field">
-                            <label>章 <span class="required">*</span></label>
+                            <label><span data-lv="chapter">章</span> <span class="required">*</span></label>
                             <select id="fChapter" required></select>
                         </div>
                         <div class="field">
-                            <label>节 <span class="required">*</span></label>
+                            <label><span data-lv="section">节</span> <span class="required">*</span></label>
                             <select id="fSection" required></select>
                         </div>
                     </div>
@@ -1877,7 +1917,7 @@
                                 <input type="checkbox" id="fAddToMemory" checked />
                                 <span>
                                     <span class="ms-txt">🧠 加入记忆曲线 · 记忆清单任务</span>
-                                    <span class="ms-sub">勾选后，本条记录按艾宾浩斯节点（学习后 1 / 2 / 4 / 7 / 15 天）生成 5 条复习任务并进入「记忆曲线 → 复习清单」；取消勾选则只记录学习时长，不产生复习任务。</span>
+                                    <span class="ms-sub" id="msSubMemory">勾选后，本条记录按艾宾浩斯节点（学习后 1 / 2 / 4 / 7 / 15 天）生成 5 条复习任务并进入「记忆曲线 → 复习清单」；取消勾选则只记录学习时长，不产生复习任务。</span>
                                 </span>
                             </label>
                         </div>
@@ -1983,7 +2023,7 @@
                 <div class="item"><span class="label">重点难点</span><span class="value" id="guideKeypoints" contenteditable="true">-</span></div>
                 <div class="item" style="grid-column:1 / -1;"><span class="label">掌握程度</span><span class="value" id="guideMastery" contenteditable="true">-</span></div>
             </div>
-            <div class="guide-empty" id="guideEmpty" style="display:none;">该章节暂无详细指南，请参考教材。</div>
+            <div class="guide-empty" id="guideEmpty" style="display:none;"><span data-lv-prefix="该" data-lv="chapter" data-lv-suffix="暂无详细指南，请参考教材。">该章节暂无详细指南，请参考教材。</span></div>
         </div>
 
         <!-- ===== 番茄时钟 ===== -->
@@ -2094,9 +2134,9 @@
                 <div class="goal-summary" id="goalSummary">统计加载中…</div>
                 <div class="goal-body" id="goalBody">
                     <p class="goal-tip">
-                        系统已内置<strong>章节 / 节的名称与建议学时</strong>，但
+                        系统已内置<strong><span data-lv="chapter">章节</span> / <span data-lv="section">节</span>的名称与建议学时</strong>，但
                         <strong>学习目标、重点难点、掌握程度</strong>属于个性化内容，默认填充为「待补充」，需要你填写后导入才能自动识别并在学习指南中展示。<br>
-                        点击下方「导出模板」得到一份表格（含现有内容与科目结构），在 Excel / WPS 中填好后用「导入文件」一次性写入即可。模板中<strong>缺失的科目、章、节会自动创建</strong>，因此也可用来为新考试项目搭建结构。
+                        点击下方「导出模板」得到一份表格（含现有内容与科目结构），在 Excel / WPS 中填好后用「导入文件」一次性写入即可。模板中<strong>缺失的科目、<span data-lv="chapter">章</span>、<span data-lv="section">节</span>会自动创建</strong>，因此也可用来为新考试项目搭建结构。
                     </p>
                     <div class="goal-actions">
                         <button type="button" class="goal-btn primary" id="exportXlsxBtn">📥 导出模板（Excel）</button>
@@ -2107,8 +2147,8 @@
                     </div>
                     <div class="goal-result" id="goalResult"></div>
                     <div class="goal-colhint">
-                        模板列：<code>项目</code> · <code>科目</code> · <code>章</code> · <code>章名称</code> · <code>节</code> · <code>节名称</code> · <code>建议学时(h)</code> · <code>学习目标</code> · <code>重点难点</code> · <code>掌握程度</code>
-                        <br>其中 <code>项目</code> 列可留空（默认导入到当前项目）；<code>章名称</code> 填写后会覆盖系统内置章名。
+                        模板列：<code>项目</code> · <code>科目</code> · <code data-lv="chapter">章</code> · <code><span data-lv="chapter">章</span>名称</code> · <code data-lv="section">节</code> · <code><span data-lv="section">节</span>名称</code> · <code>建议学时(h)</code> · <code>学习目标</code> · <code>重点难点</code> · <code>掌握程度</code>
+                        <br>其中 <code>项目</code> 列可留空（默认导入到当前项目）；<code><span data-lv="chapter">章</span>名称</code> 填写后会覆盖系统内置<span data-lv="chapter">章</span>名。
                     </div>
                 </div>
             </div>
@@ -2617,23 +2657,52 @@
         const PROJECTS_KEY = 'cpa_study_projects_v1';
         const CURRENT_PROJECT_KEY = 'cpa_study_current_project_v1';
 
+        // 默认层级名称：所有项目通用兜底
+        const DEFAULT_LEVEL_LABELS = { course: '科目', chapter: '章', section: '节' };
+        const DEFAULT_REVIEW_INTERVALS = [1, 2, 4, 7, 15];
+
         const DEFAULT_PROJECTS = [{
             id: 'cpa',
             name: '注册会计师（CPA）',
             builtin: true,
+            projectType: 'exam',
             courses: ['会计', '审计', '财务成本管理', '税法', '经济法', '公司战略与风险管理'],
             chapterNames: CHAPTER_NAMES,
             sectionNames: SECTION_NAMES,
-            targetOverrides: {}
+            targetOverrides: {},
+            levelLabels: { course: '科目', chapter: '章', section: '节' },
+            examDate: '',
+            reviewIntervals: DEFAULT_REVIEW_INTERVALS.slice()
         }, {
             id: 'law',
             name: '法律职业资格',
             builtin: true,
+            projectType: 'exam',
             courses: ['民法', '刑法', '行政法', '民事诉讼法', '刑事诉讼法', '商经法', '理论法', '三国法'],
             chapterNames: {},
             sectionNames: {},
-            targetOverrides: {}
+            targetOverrides: {},
+            levelLabels: { course: '科目', chapter: '章', section: '节' },
+            examDate: '',
+            reviewIntervals: DEFAULT_REVIEW_INTERVALS.slice()
         }];
+
+        // 当前项目的层级文案（course / chapter / section），缺字段时回落到默认值
+        function L(key) {
+            const p = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+            const ll = (p && p.levelLabels) || {};
+            return ll[key] || DEFAULT_LEVEL_LABELS[key] || key;
+        }
+        // 当前项目的复习间隔（天）
+        function getReviewIntervals() {
+            const p = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+            const arr = p && Array.isArray(p.reviewIntervals) ? p.reviewIntervals.filter(n => !isNaN(n) && n > 0) : [];
+            return arr.length ? arr : DEFAULT_REVIEW_INTERVALS.slice();
+        }
+        // 轮次名称随间隔数量动态生成
+        function getRoundNames() {
+            return getReviewIntervals().map((_, i) => '第' + (i + 1) + '次复习');
+        }
 
         let projects = [];
         let currentProjectId = 'cpa';
@@ -2659,7 +2728,11 @@
                         chapterNames: {},
                         sectionNames: {},
                         targetOverrides: sp.targetOverrides || {},
-                        customStructure: !!sp.customStructure
+                        customStructure: !!sp.customStructure,
+                        projectType: sp.projectType || (base ? base.projectType : 'exam'),
+                        levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, sp.levelLabels || (base ? base.levelLabels : {})),
+                        examDate: sp.examDate || '',
+                        reviewIntervals: (Array.isArray(sp.reviewIntervals) && sp.reviewIntervals.length) ? sp.reviewIntervals.slice() : DEFAULT_REVIEW_INTERVALS.slice()
                     };
                     if (p.builtin && !p.customStructure && base) {
                         // 内置结构来自代码常量，不占用 localStorage
@@ -2678,7 +2751,11 @@
                             id: dp.id, name: dp.name, builtin: true,
                             courses: dp.courses.slice(),
                             chapterNames: dp.chapterNames, sectionNames: dp.sectionNames,
-                            targetOverrides: {}, customStructure: false
+                            targetOverrides: {}, customStructure: false,
+                            projectType: dp.projectType || 'exam',
+                            levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, dp.levelLabels),
+                            examDate: dp.examDate || '',
+                            reviewIntervals: (dp.reviewIntervals || DEFAULT_REVIEW_INTERVALS).slice()
                         });
                     }
                 });
@@ -2687,7 +2764,11 @@
                     id: dp.id, name: dp.name, builtin: true,
                     courses: dp.courses.slice(),
                     chapterNames: dp.chapterNames, sectionNames: dp.sectionNames,
-                    targetOverrides: {}, customStructure: false
+                    targetOverrides: {}, customStructure: false,
+                    projectType: dp.projectType || 'exam',
+                    levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, dp.levelLabels),
+                    examDate: dp.examDate || '',
+                    reviewIntervals: (dp.reviewIntervals || DEFAULT_REVIEW_INTERVALS).slice()
                 }));
                 saveProjects();
             }
@@ -2700,7 +2781,11 @@
                 const slim = projects.map(p => {
                     const o = {
                         id: p.id, name: p.name, builtin: !!p.builtin,
-                        courses: p.courses, targetOverrides: p.targetOverrides || {}
+                        courses: p.courses, targetOverrides: p.targetOverrides || {},
+                        projectType: p.projectType || 'exam',
+                        levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, p.levelLabels),
+                        examDate: p.examDate || '',
+                        reviewIntervals: (Array.isArray(p.reviewIntervals) && p.reviewIntervals.length) ? p.reviewIntervals : DEFAULT_REVIEW_INTERVALS.slice()
                     };
                     if (!p.builtin || p.customStructure) {
                         o.chapterNames = p.chapterNames;
@@ -2800,6 +2885,71 @@
             if (!COURSES.includes(state.currentCourse)) {
                 state.currentCourse = COURSES[0] || '';
             }
+            applyLevelLabels();
+            applyExamCountdown();
+        }
+
+        // ---------- 层级文案刷新：把所有 data-lv 元素按项目配置重命名 ----------
+        function applyLevelLabels() {
+            try {
+                document.querySelectorAll('[data-lv]').forEach(el => {
+                    const key = el.getAttribute('data-lv');
+                    const pre = el.getAttribute('data-lv-prefix') || '';
+                    const suf = el.getAttribute('data-lv-suffix') || '';
+                    el.textContent = pre + L(key) + suf;
+                });
+            } catch (e) {}
+            try { if (typeof updateKpBaseHint === 'function') updateKpBaseHint(); } catch (e) {}
+            try {
+                const ms = document.getElementById('msSubMemory');
+                if (ms) {
+                    const iv = getReviewIntervals();
+                    ms.textContent = '勾选后，本条记录按艾宾浩斯节点（学习后 ' + iv.join(' / ') +
+                        ' 天）生成 ' + iv.length + ' 条复习任务并进入「记忆曲线 → 复习清单」；取消勾选则只记录学习时长，不产生复习任务。';
+                }
+            } catch (e) {}
+        }
+
+        // ---------- 考试倒计时 ----------
+        function getExamCountdown() {
+            const p = getCurrentProject();
+            if (!p || !p.examDate) return null;
+            const m = String(p.examDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return null;
+            const exam = new Date(+m[1], +m[2] - 1, +m[3]);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const days = Math.round((exam - today) / 86400000);
+            return { days, date: p.examDate };
+        }
+
+        function applyExamCountdown() {
+            let box = document.getElementById('examCountdown');
+            const cd = getExamCountdown();
+            if (!cd) { if (box) box.remove(); return; }
+            if (!box) {
+                const anchor = document.getElementById('progressStats');
+                if (!anchor) return;
+                box = document.createElement('div');
+                box.id = 'examCountdown';
+                box.className = 'exam-countdown';
+                anchor.parentNode.insertBefore(box, anchor.nextSibling);
+            }
+            const p = getCurrentProject();
+            const label = (p && p.projectType === 'skill') ? '目标日' : '考试';
+            let txt, cls;
+            if (cd.days > 0) {
+                txt = '距' + label + '还有 ' + cd.days + ' 天（' + cd.date + '）';
+                cls = cd.days <= 30 ? 'urgent' : (cd.days <= 90 ? 'soon' : '');
+            } else if (cd.days === 0) {
+                txt = '今天就是' + label + '日，加油！';
+                cls = 'urgent';
+            } else {
+                txt = label + '日已过 ' + Math.abs(cd.days) + ' 天';
+                cls = 'past';
+            }
+            box.className = 'exam-countdown ' + cls;
+            box.textContent = '⏳ ' + txt;
         }
 
         // ============================================================
@@ -3217,7 +3367,8 @@
                 opt.value = i;
                 const chName = getChapterName(course, i);
                 const totalH = getChapterTotalHours(course, i);
-                opt.textContent = chName ? `第${i}章 ${chName} (${totalH.toFixed(1)}h)` : `第${i}章 (${totalH.toFixed(1)}h)`;
+                const _cl = L('chapter');
+                opt.textContent = chName ? `第${i}${_cl} ${chName} (${totalH.toFixed(1)}h)` : `第${i}${_cl} (${totalH.toFixed(1)}h)`;
                 chapterSelect.appendChild(opt);
             }
             if (currentVal <= maxCh && currentVal >= 1) chapterSelect.value = currentVal;
@@ -3234,7 +3385,7 @@
                 for (let i = 1; i <= 12; i++) {
                     const opt = document.createElement('option');
                     opt.value = i;
-                    opt.textContent = i + ' 节';
+                    opt.textContent = i + ' ' + L('section');
                     sectionSelect.appendChild(opt);
                 }
             } else {
@@ -3242,7 +3393,8 @@
                     const opt = document.createElement('option');
                     opt.value = s;
                     const secName = getSectionName(course, chapter, s);
-                    opt.textContent = secName ? `第${s}节 ${secName}` : `第${s}节`;
+                    const _sl = L('section');
+                    opt.textContent = secName ? `第${s}${_sl} ${secName}` : `第${s}${_sl}`;
                     sectionSelect.appendChild(opt);
                 });
             }
@@ -3267,12 +3419,13 @@
             const totalH = getChapterTotalHours(course, chapter);
 
             if (guide) {
+                const _cl = L('chapter'), _sl = L('section');
                 const title = chName ?
-                    (secName ? `第${chapter}章 ${chName} · 第${section}节 ${secName}` :
-                        `第${chapter}章 ${chName} · 第${section}节`) :
-                    `第${chapter}章 第${section}节`;
+                    (secName ? `第${chapter}${_cl} ${chName} · 第${section}${_sl} ${secName}` :
+                        `第${chapter}${_cl} ${chName} · 第${section}${_sl}`) :
+                    `第${chapter}${_cl} 第${section}${_sl}`;
                 titleEl.textContent = `📖 ${title} · 学习指南`;
-                durationEl.textContent = `建议时长：${guide.duration || '-'} (本章共${totalH.toFixed(1)}h)`;
+                durationEl.textContent = `建议时长：${guide.duration || '-'} (本${_cl}共${totalH.toFixed(1)}h)`;
                 objectiveEl.textContent = guide.objective || '-';
                 keypointsEl.textContent = guide.keypoints || '-';
                 const mastery = guide.mastery || '了解';
@@ -3282,7 +3435,8 @@
                 emptyEl.style.display = 'none';
                 document.querySelector('.guide-body').style.display = 'grid';
             } else {
-                const title = chName ? `第${chapter}章 ${chName}` : `第${chapter}章`;
+                const _cl2 = L('chapter');
+                const title = chName ? `第${chapter}${_cl2} ${chName}` : `第${chapter}${_cl2}`;
                 titleEl.textContent = `📖 ${title} · 学习指南`;
                 durationEl.textContent = `建议时长：${totalH.toFixed(1)}h (总计)`;
                 emptyEl.style.display = 'block';
@@ -3552,9 +3706,10 @@
             const el = document.getElementById('kpBaseHint');
             if (!el) return;
             const base = currentKpBase();
+            const _sl = L('section');
             el.textContent = base > 0
-                ? `本节已保存 ${base} 个知识点，本次新增从第 ${base + 1} 个开始编号`
-                : '本节暂无已保存知识点，本次从第 1 个开始编号';
+                ? `本${_sl}已保存 ${base} 个知识点，本次新增从第 ${base + 1} 个开始编号`
+                : `本${_sl}暂无已保存知识点，本次从第 1 个开始编号`;
         }
 
         // 只负责渲染自身，不调用任何其他 render 函数（保持调用链单向）
@@ -3841,8 +3996,8 @@
                 const durationDisplay = (r.durationHours || 0).toFixed(1) + 'h';
                 const chName = getChapterName(course, r.chapter);
                 const secName = getSectionName(course, r.chapter, r.section);
-                const chapterDisplay = chName ? `第${r.chapter}章 ${chName}` : `第${r.chapter}章`;
-                const sectionDisplay = secName ? `第${r.section}节 ${secName}` : `第${r.section}节`;
+                const chapterDisplay = chName ? `第${r.chapter}${L('chapter')} ${chName}` : `第${r.chapter}${L('chapter')}`;
+                const sectionDisplay = secName ? `第${r.section}${L('section')} ${secName}` : `第${r.section}${L('section')}`;
 
                 html += `
                     <div class="record-card" data-id="${r.id}">
@@ -4137,41 +4292,154 @@
             if (badge) badge.textContent = getCurrentProject().name + ' · 精进版';
         }
 
+        // ---------- 大纲文本解析：缩进层级 → 三层结构 ----------
+        function parseOutline(text) {
+            const items = [];
+            String(text || '').split(/\r?\n/).forEach(l => {
+                const m = l.match(/^(\s*)(\S.*)$/);
+                if (!m) return;
+                const ind = m[1].replace(/\t/g, '    ').length;
+                const name = m[2].trim().replace(/^[-*•·]\s*/, '');
+                if (name) items.push({ ind: ind, name: name });
+            });
+            if (!items.length) return null;
+            const levels = Array.from(new Set(items.map(i => i.ind))).sort(function (a, b) { return a - b; }).slice(0, 3);
+            const courses = [], chapterNames = {}, sectionNames = {};
+            let cur = null, curCh = 0;
+            items.forEach(function (it) {
+                let tier = levels.indexOf(it.ind);
+                if (tier < 0) tier = 2;
+                if (tier === 0) {
+                    cur = it.name;
+                    courses.push(cur);
+                    chapterNames[cur] = {};
+                    sectionNames[cur] = {};
+                    curCh = 0;
+                } else if (tier === 1 && cur) {
+                    curCh++;
+                    chapterNames[cur][curCh] = it.name;
+                    sectionNames[cur][curCh] = [];
+                } else if (cur && curCh) {
+                    sectionNames[cur][curCh].push(it.name);
+                }
+            });
+            return { courses: courses, chapterNames: chapterNames, sectionNames: sectionNames };
+        }
+
+        // ---------- 项目配置弹窗（新增 / 编辑） ----------
+        function openProjectDialog(mode) {
+            const editing = (mode === 'edit') ? getCurrentProject() : null;
+            const isEdit = !!editing;
+            const src = editing || {
+                name: '', projectType: 'exam',
+                levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS),
+                examDate: '', reviewIntervals: DEFAULT_REVIEW_INTERVALS.slice(), courses: []
+            };
+            const ll = Object.assign({}, DEFAULT_LEVEL_LABELS, src.levelLabels || {});
+            let box = document.getElementById('projDialog');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'projDialog';
+                document.body.appendChild(box);
+            }
+            box.className = 'proj-mask';
+            box.innerHTML =
+                '<div class="proj-dialog">' +
+                '<h3>' + (isEdit ? '编辑项目配置' : '新增学习项目') + '</h3>' +
+                '<div class="pf"><label>项目名称</label><input id="pdName" type="text" placeholder="如：GESP 四级 Python / 自学 Python"></div>' +
+                '<div class="pf"><label>类型</label><select id="pdType">' +
+                '<option value="exam">考试型（有考期，显示倒计时）</option>' +
+                '<option value="skill">技能型（无固定考期）</option></select></div>' +
+                '<div class="pf-row">' +
+                '<div class="pf"><label>一级名称</label><input id="pdL1" type="text" placeholder="科目"></div>' +
+                '<div class="pf"><label>二级名称</label><input id="pdL2" type="text" placeholder="章"></div>' +
+                '<div class="pf"><label>三级名称</label><input id="pdL3" type="text" placeholder="节"></div>' +
+                '</div>' +
+                '<div class="pf"><label>考试 / 目标日期（可留空）</label><input id="pdExam" type="date"></div>' +
+                '<div class="pf"><label>复习间隔（天，逗号分隔）</label><input id="pdIv" type="text" placeholder="1,2,4,7,15">' +
+                '<div class="pf-hint">考试型建议 1,2,4,7,15；技能型建议 1,3,7,14,30</div></div>' +
+                '<div class="pf"><label>大纲结构（可留空，边学边填）</label>' +
+                '<textarea id="pdOutline" rows="6" placeholder="四级 Python&#10;  程序基本结构&#10;    顺序结构&#10;    分支结构"></textarea>' +
+                '<div class="pf-hint">一行一条，缩进表示层级：不缩进=一级，缩进一次=二级，再缩进=三级。留空则保留现有结构。</div></div>' +
+                '<div class="pf-actions">' +
+                (isEdit ? '<button id="pdDel" class="pd-btn danger">删除项目</button>' : '') +
+                '<button id="pdCancel" class="pd-btn">取消</button>' +
+                '<button id="pdSave" class="pd-btn primary">保存</button>' +
+                '</div></div>';
+            box.querySelector('#pdName').value = src.name || '';
+            box.querySelector('#pdType').value = src.projectType || 'exam';
+            box.querySelector('#pdL1').value = ll.course;
+            box.querySelector('#pdL2').value = ll.chapter;
+            box.querySelector('#pdL3').value = ll.section;
+            box.querySelector('#pdExam').value = src.examDate || '';
+            box.querySelector('#pdIv').value = (src.reviewIntervals && src.reviewIntervals.length) ? src.reviewIntervals.join(',') : DEFAULT_REVIEW_INTERVALS.join(',');
+
+            const close = function () { if (box && box.parentNode) box.parentNode.removeChild(box); };
+            box.querySelector('#pdCancel').onclick = close;
+            box.onclick = function (e) { if (e.target === box) close(); };
+            if (isEdit) {
+                box.querySelector('#pdDel').onclick = function () {
+                    if (projects.length <= 1) { alert('至少保留一个项目。'); return; }
+                    if (!confirm('确定删除项目「' + src.name + '」？该项目的学习记录会一并删除，且不可恢复。')) return;
+                    try { localStorage.removeItem('cpa_learning_data_v3_' + src.id); } catch (e) {}
+                    projects = projects.filter(function (x) { return x.id !== src.id; });
+                    saveProjects();
+                    renderProjectSelect();
+                    close();
+                    switchProject(projects[0].id);
+                };
+            }
+            box.querySelector('#pdSave').onclick = function () {
+                const name = (box.querySelector('#pdName').value || '').trim();
+                if (!name) { alert('请填写项目名称'); return; }
+                const lv = {
+                    course: (box.querySelector('#pdL1').value || '').trim() || DEFAULT_LEVEL_LABELS.course,
+                    chapter: (box.querySelector('#pdL2').value || '').trim() || DEFAULT_LEVEL_LABELS.chapter,
+                    section: (box.querySelector('#pdL3').value || '').trim() || DEFAULT_LEVEL_LABELS.section
+                };
+                const iv = (box.querySelector('#pdIv').value || '').split(/[,，、\s]+/)
+                    .map(function (s) { return parseInt(s, 10); })
+                    .filter(function (n) { return !isNaN(n) && n > 0; });
+                const outline = parseOutline(box.querySelector('#pdOutline').value);
+
+                let target = editing;
+                if (!target) {
+                    target = {
+                        id: 'p_' + Date.now().toString(36),
+                        builtin: false,
+                        courses: [], chapterNames: {}, sectionNames: {},
+                        targetOverrides: {}, customStructure: true
+                    };
+                    projects.push(target);
+                }
+                target.name = name;
+                target.projectType = box.querySelector('#pdType').value;
+                target.levelLabels = lv;
+                target.examDate = box.querySelector('#pdExam').value || '';
+                target.reviewIntervals = iv.length ? iv : DEFAULT_REVIEW_INTERVALS.slice();
+                if (outline && outline.courses.length) {
+                    target.courses = outline.courses;
+                    target.chapterNames = outline.chapterNames;
+                    target.sectionNames = outline.sectionNames;
+                    target.customStructure = true;
+                }
+                saveProjects();
+                renderProjectSelect();
+                close();
+                switchProject(target.id);
+            };
+        }
+
         function initProjectSwitcher() {
             const sel = document.getElementById('projectSelect');
             sel.addEventListener('change', () => {
                 switchProject(sel.value);
             });
             document.getElementById('addProjectBtn').addEventListener('click', () => {
-                const name = prompt('请输入新考试项目名称（如：税务师、中级会计）：');
-                if (!name || !name.trim()) return;
-                const proj = {
-                    id: 'p_' + Date.now().toString(36),
-                    name: name.trim(),
-                    builtin: false,
-                    courses: [],
-                    chapterNames: {},
-                    sectionNames: {},
-                    targetOverrides: {},
-                    customStructure: true
-                };
-                const courseInput = prompt('请输入该项目的科目，用逗号分隔（可留空，之后用导入模板建立）：', '');
-                if (courseInput && courseInput.trim()) {
-                    proj.courses = courseInput.split(/[,，]/).map(s => s.trim()).filter(Boolean);
-                }
-                projects.push(proj);
-                saveProjects();
-                renderProjectSelect();
-                switchProject(proj.id);
+                openProjectDialog('add');
             });
             document.getElementById('renameProjectBtn').addEventListener('click', () => {
-                const proj = getCurrentProject();
-                const name = prompt('重命名项目：', proj.name);
-                if (!name || !name.trim()) return;
-                proj.name = name.trim();
-                saveProjects();
-                renderProjectSelect();
-                renderGoalSummary();
+                openProjectDialog('edit');
             });
             document.getElementById('delProjectBtn').addEventListener('click', () => {
                 if (projects.length <= 1) {
@@ -4664,7 +4932,7 @@
                 if (r.addToMemory === false) return;
                 const kpCount = (r.knowledgePoints || []).filter(k => k && String(k.text || '').trim()).length;
                 if (!kpCount) return;
-                REVIEW_INTERVALS.forEach((iv, i) => {
+                getReviewIntervals().forEach((iv, i) => {
                     const round = i + 1;
                     const key = r.id + '#' + round;
                     if (rvDel[key] || doneKeys.has(key)) return;
@@ -4733,7 +5001,7 @@
             const rvDel = state.reviewDeleted || {};
             (state.records || []).forEach(r => {
                 if (r.addToMemory === false) return;   // 未加入记忆曲线 → 不生成复习任务
-                REVIEW_INTERVALS.forEach((iv, i) => {
+                getReviewIntervals().forEach((iv, i) => {
                     const round = i + 1;
                     const key = r.id + '#' + round;
                     if (rvDel[key]) return;            // 已删除的复习任务不再出现
@@ -4753,13 +5021,19 @@
 
         let rvEditingKey = null;
 
+        // 轮次名称：随项目复习间隔数量动态生成
+        function roundName(i) {
+            const names = (typeof getRoundNames === 'function') ? getRoundNames() : [];
+            return names[i - 1] || ('第' + i + '次复习');
+        }
+
         // 复习条目标题：科目-第X章，第Y节-内容
         function rvTitleText(r) {
             const kps = (r.knowledgePoints || []).map(k => String((k && k.text) || '').trim()).filter(Boolean);
             let content = kps.join('、');
             if (content.length > 34) content = content.slice(0, 34) + '…';
-            const sec = (r.section === undefined || r.section === null || r.section === '') ? '' : '，第' + r.section + '节';
-            return kpEsc(r.course || '') + '-第' + (r.chapter || '-') + '章' + sec + (content ? '-' + kpEsc(content) : '');
+            const sec = (r.section === undefined || r.section === null || r.section === '') ? '' : '，第' + r.section + L('section');
+            return kpEsc(r.course || '') + '-第' + (r.chapter || '-') + L('chapter') + sec + (content ? '-' + kpEsc(content) : '');
         }
 
         function rvItemHTML(it, isDone, todayStr) {
@@ -4767,7 +5041,7 @@
             if (rvEditingKey === it.key && !isDone) {
                 return '<div class="rv-item editing" data-key="' + it.key + '">' +
                     '<div class="rv-main">' +
-                        '<div class="rv-title">' + rvTitleText(r) + ' · ' + ROUND_NAMES[it.round - 1] + '</div>' +
+                        '<div class="rv-title">' + rvTitleText(r) + ' · ' + roundName(it.round) + '</div>' +
                         '<div class="rv-edit-row">' +
                             '<label>复习日期 <input type="date" class="rv-edit-date" value="' + it.sched + '"></label>' +
                             '<button class="rv-btn rv-b-save">保存</button>' +
@@ -4792,7 +5066,7 @@
             return '<div class="rv-item ' + cls + '" data-key="' + it.key + '">' +
                 '<div class="rv-check">' + (isDone ? '✓' : '') + '</div>' +
                 '<div class="rv-main">' +
-                    '<div class="rv-title">' + rvTitleText(r) + ' · ' + ROUND_NAMES[it.round - 1] + '</div>' +
+                    '<div class="rv-title">' + rvTitleText(r) + ' · ' + roundName(it.round) + '</div>' +
                     ((r.knowledgePoints && r.knowledgePoints.length) ? '<div class="rv-kp">' + kpChipsHTML(r.knowledgePoints, 3) + '</div>' : '') +
                     '<div class="rv-meta">学习于 ' + r.date + ' ｜ ⏱ ' + r.durationHours + 'h ｜ ' + status + '</div>' +
                 '</div>' +
@@ -4912,7 +5186,7 @@
                 return `<div class="mem-rec">
                     <div class="top">
                         <div>
-                            <div class="t">${r.course} · 第${r.chapter}章${chName ? ' ' + chName : ''} · 第${r.section}节${secName ? ' ' + secName : ''}</div>
+                            <div class="t">${r.course} · 第${r.chapter}${L('chapter')}${chName ? ' ' + chName : ''} · 第${r.section}${L('section')}${secName ? ' ' + secName : ''}</div>
                             <div class="meta">⏱ ${r.durationHours}h ｜ 📂 ${r.resourceType || '未分类'} ｜ ⭐ 理解 ${r.understanding || '-'}${r.startTime ? ` ｜ ⏰ ${r.startTime}–${r.endTime || ''}` : ''}</div>
                         </div>
                         <span class="ret-badge" style="background:${color};">记忆保持 ${ret}%</span>
