@@ -13058,10 +13058,12 @@
     function pickImpTab(t) { impPickTab(t); }
     function impPickTab(t) {
         impTab = t;
-        // 切 tab 时，按当前所有候选的 inFocus 状态预选
-        impSelected = {};
+        /* v47 修复：切换页签不再清空已勾选项（此前 impSelected = {} 会把其他页签
+           勾的任务/习惯全部丢掉，用户跨页签多选后点导入只剩最后一页签的结果）。
+           现改为惰性预选：仅对"从未出现过"的候选项按当前 inFocus 状态预选，
+           用户显式勾选/取消过的项跨页签保留，导入时一并生效 */
         const items = impItems(t);
-        items.forEach(it => { if (it.cur) impSelected[it.scope] = true; });
+        items.forEach(it => { if (impSelected[it.scope] === undefined) impSelected[it.scope] = !!it.cur; });
         // 高亮 tab
         document.querySelectorAll('#impTabs span').forEach(s => s.classList.toggle('on', s.dataset.tab === t));
         renderImpList();
@@ -13121,7 +13123,7 @@
         } else {
             list.innerHTML = items.map(it => {
                 const on = !!impSelected[it.scope];
-                const tag = on ? '已在专注' : (it.cur ? '已勾选' : '未导入');
+                const tag = on ? (it.cur ? '已在专注' : '将导入') : (it.cur ? '将移出' : '未导入');
                 return `<div class="imp-row ${on?'on':''}" onclick="impToggle('${esc(it.scope)}')">
                     <div class="imp-ck"></div>
                     <div class="imp-info">
@@ -13157,7 +13159,10 @@
         renderImpList();
     }
     function confirmImportFocus() {
-        const items = impItems(impTab);    // 当前 tab 的全部候选：基于勾选状态对比决定增删
+        /* v47 修复：一次性处理全部三个页签（清单/子任务/习惯）的候选项。
+           此前只处理当前页签 —— 用户在其他页签勾的项会被直接丢弃；
+           未打开过的页签按现状处理（不增不减），保证行为可预期 */
+        const items = impItems('task').concat(impItems('sub'), impItems('habit'));
         let added = 0, removed = 0, filledDefault = 0;
         const stamp = Date.now();
         const findNode = (scope) => {
@@ -13171,7 +13176,8 @@
             return null;
         };
         items.forEach(it => {
-            const want = !!impSelected[it.scope];
+            /* v47：从未出现过的候选项（未打开的页签）按当前状态处理，避免误增误删 */
+            const want = (impSelected[it.scope] === undefined) ? !!it.cur : !!impSelected[it.scope];
             const node = findNode(it.scope);
             if (!node) return;
             node.timerCfg = node.timerCfg || { mode: 'none', inFocus: false, order: 0 };
@@ -13188,9 +13194,8 @@
             } else if (!want && cur) {
                 node.timerCfg.inFocus = false;
                 removed++;
-            } else if (want && cur) {
-                added++;
             }
+            /* v47：want && cur（本来就在专注）不再计入 added，修复"已加入 N 项"虚报 */
         });
         save();
         closeM('mImportFocus');
