@@ -750,7 +750,7 @@
       <div class="side-btn" id="toggleTheme"><span id="themeIco">🌙</span><span id="themeTxt">夜间模式</span></div>
 
 
-      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.07d</span></div>
+      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.07e</span></div>
 
 
     </div>
@@ -1139,7 +1139,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260907d';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260907e';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -2151,7 +2151,7 @@ function saveModuleManager(){
 function init(){
   // 版本迁移：升级到新版本时重置模块显示/排序配置，避免旧数据隐藏新增模块
   try {
-    var HUB_PATCH = 'v2026.09.07d';
+    var HUB_PATCH = 'v2026.09.07e';
     if (localStorage.getItem('hub_patch') !== HUB_PATCH) {
       localStorage.removeItem('hub_module_hidden');
       localStorage.removeItem('hub_nav_order');

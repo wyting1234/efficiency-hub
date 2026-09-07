@@ -1820,7 +1820,7 @@
         <div class="sidebar-brand">
             <div class="logo">📘</div>
             <h1>学习进度 <small id="projectBadge">CPA · 精进版</small></h1>
-            <div style="font-size:11px;color:var(--text-secondary,#8a8175);opacity:.75;margin-top:2px;">v2026.09.07d · 保存反馈增强</div>
+            <div style="font-size:11px;color:var(--text-secondary,#8a8175);opacity:.75;margin-top:2px;">v2026.09.07e · 知识点双模式输入</div>
         </div>
         <!-- 项目（考试）切换 -->
         <div class="project-switcher">
@@ -1933,7 +1933,7 @@
                     </div>
                     <div class="form-row full">
                         <div class="field">
-                            <label>📌 知识点层级 <span style="font-weight:400;color:var(--text-secondary);">（一级 → 二级 → 三级 → 四级，按预置结构逐级选，可只选到某一层）</span></label>
+                            <label>📌 知识点 <span id="kpModeLabel" style="font-weight:400;color:var(--text-secondary);"></span></label>
                             <div class="kp-cascade" id="kpCascade"></div>
                             <span class="kp-hint" id="kpBaseHint" style="display:block;margin:6px 0 2px;font-weight:600;color:var(--primary,#8A7358);"></span>
                         </div>
@@ -3468,8 +3468,8 @@
             if (sections.includes(currentVal)) sectionSelect.value = currentVal;
             else sectionSelect.value = sections.length > 0 ? sections[0] : 1;
             updateGuide(course, parseInt(document.getElementById('fChapter').value), parseInt(sectionSelect.value));
-            // 切换章/节后，知识点序号从本节已有数量继续
-            if (typeof renumberKpRows === 'function') renumberKpRows();
+            // 切换章/节后重建知识点输入区（双模式：有预置树→下拉，无→自由输入）
+            if (typeof updateKpSelects === 'function') updateKpSelects(course, parseInt(document.getElementById('fChapter').value), parseInt(sectionSelect.value));
         }
 
         // ---------- 更新学习指南 ----------
@@ -3548,7 +3548,7 @@
                 const chapter = parseInt(document.getElementById('fChapter').value);
                 const section = parseInt(document.getElementById('fSection').value);
                 updateGuide(course, chapter, section);
-                if (typeof renumberKpRows === 'function') renumberKpRows();
+                if (typeof updateKpSelects === 'function') updateKpSelects(course, chapter, section);
             });
 
             document.getElementById('fCourse').addEventListener('change', () => {
@@ -3806,18 +3806,141 @@
             o.value = name; o.textContent = name;
             return o;
         }
-        // 切换章/节后重建 4 级联动下拉
+        // ---------- 知识点双模式：有预置树 → 4级联动下拉；无预置树 → 自由文本输入 ----------
+        let kpMode = 'cascade';               // 'cascade' | 'manual'
+        let kpModeCtx = '';                   // 当前渲染上下文（course|chapter|section），防止误重建丢输入
+
+        function kpRowHTML(no, text) {
+            return '<div class="kp-row">' +
+                '<span class="kp-no">' + no + '</span>' +
+                '<input type="text" class="kp-input" value="' + kpEsc(text) + '" placeholder="输入知识点，如：存货的初始计量" />' +
+                '<button type="button" class="kp-del" title="删除该条">✕</button>' +
+                '</div>';
+        }
+
+        function renderManualKpList(list) {
+            const wrap = document.getElementById('kpCascade');
+            if (!wrap) return;
+            const arr = (Array.isArray(list) && list.length) ? list : [{ text: '' }];
+            wrap.innerHTML = '<div class="kp-list" id="kpList">' +
+                arr.map(function (k, i) { return kpRowHTML(i + 1, (k && k.text) || (typeof k === 'string' ? k : '')); }).join('') +
+                '</div>' +
+                '<button type="button" class="kp-add" id="addKpBtn">➕ 添加知识点</button>' +
+                '<span class="kp-hint">序号自动生成，回车快速新增下一条；支持整段粘贴，按换行 / ；/ 、自动拆条重新编号。</span>';
+            const lab = document.getElementById('kpModeLabel');
+            if (lab) lab.textContent = '（本节未预置知识点树，直接输入，一行一条）';
+            bindKpList();
+        }
+
+        // 恢复自由输入：添加一行（追加到列表末尾并聚焦）
+        function addKpRow(text) {
+            const box = document.getElementById('kpList');
+            if (!box) return;
+            const row = document.createElement('div');
+            row.className = 'kp-row';
+            row.innerHTML = '<span class="kp-no"></span>' +
+                '<input type="text" class="kp-input" placeholder="输入知识点，如：存货的初始计量" />' +
+                '<button type="button" class="kp-del" title="删除该条">✕</button>';
+            box.appendChild(row);
+            if (text) row.querySelector('.kp-input').value = text;
+            renumberKpRows();
+            const inp = row.querySelector('.kp-input');
+            if (inp) inp.focus();
+        }
+
+        // 事件委托（只绑定一次）：删行 / 回车加行 / 整段粘贴拆条
+        function bindKpList() {
+            const box = document.getElementById('kpList');
+            const addBtn = document.getElementById('addKpBtn');
+            if (!box || box.dataset.bound === '1') return;
+            box.dataset.bound = '1';
+
+            box.addEventListener('click', (e) => {
+                const del = e.target.closest ? e.target.closest('.kp-del') : null;
+                if (!del) return;
+                const rows = box.querySelectorAll('.kp-row');
+                if (rows.length <= 1) {
+                    const only = del.closest('.kp-row').querySelector('.kp-input');
+                    if (only) { only.value = ''; only.focus(); }
+                } else {
+                    del.closest('.kp-row').remove();
+                    renumberKpRows();
+                }
+            });
+
+            box.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('kp-input')) {
+                    e.preventDefault();
+                    addKpRow('');
+                }
+            });
+
+            box.addEventListener('paste', (e) => {
+                const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
+                if (!/[\n\r\uff1b;\u3001]/.test(txt)) return;   // 单行粘贴走默认行为
+                e.preventDefault();
+                // 先按换行分段、去序号前缀，再按分号/顿号拆条——避免 "2、规划过程组" 被顿号误拆出纯序号
+                const parts = txt.split(/[\n\r]+/)
+                    .map(stripKpNo)
+                    .flatMap(line => line.split(/[\uff1b;\u3001]+/))
+                    .map(t => t.trim())
+                    .filter(t => t && !/^[0-9]{1,3}[.、．)）:：]?$/.test(t));
+                if (!parts.length) return;
+                const rows = Array.prototype.slice.call(box.querySelectorAll('.kp-row'));
+                const cur = e.target.closest ? e.target.closest('.kp-row') : null;
+                const idx = cur ? rows.indexOf(cur) : rows.length - 1;
+                const before = rows.slice(0, idx).map(r => r.querySelector('.kp-input').value.trim());
+                const after = rows.slice(idx + 1).map(r => r.querySelector('.kp-input').value.trim());
+                const cleaned = parts.map(stripKpNo).filter(Boolean);
+                const merged = before.concat(cleaned, after).map(t => ({ text: t }));
+                renderKnowledgePoints(merged);
+                const inputs = box.querySelectorAll('.kp-input');
+                const focusIdx = Math.min(before.length + cleaned.length - 1, inputs.length - 1);
+                if (inputs[focusIdx]) inputs[focusIdx].focus();
+            });
+
+            if (addBtn) addBtn.addEventListener('click', () => addKpRow(''));
+        }
+
+        // 切换章/节后重建知识点输入区（双模式）
         function updateKpSelects(course, chapter, section) {
             const wrap = document.getElementById('kpCascade');
             if (!wrap) return;
+            const tree = getKpTreeForSection(course, chapter, section);
+            const cnt = countKpLeaves(tree);
+            // ctx 指纹：项目+章节+树的叶子数与首节点名——kpTree 更新后指纹变化，强制重建
+            const treeSig = cnt + '|' + (tree && tree[0] ? (tree[0].name || '') : '');
+            const ctx = (typeof currentProjectId !== 'undefined' ? currentProjectId : '') + '|' + course + '|' + chapter + '|' + section + '|' + treeSig;
+
+            // 手动模式且上下文未变：只刷新编号，不重建（保护正在输入的内容）
+            if (kpMode === 'manual' && kpModeCtx === ctx && document.getElementById('kpList')) {
+                renumberKpOnly();
+                return;
+            }
+            kpModeCtx = ctx;
+            kpMode = cnt > 0 ? 'cascade' : 'manual';
+
+            const guide = getGuide(course, chapter, section);
+            const hint = document.getElementById('kpBaseHint');
+            const _sl = L('section');
+            const plan = (guide && guide.duration) ? guide.duration : '—';
+
+            if (kpMode === 'manual') {
+                renderManualKpList([]);
+                if (hint) hint.textContent = `本${_sl}计划学时 ${plan}，暂无预置知识点——直接在下方输入本次学到的知识点（可不填）`;
+                return;
+            }
+
+            // 有预置树：4 级联动下拉
             wrap.innerHTML =
                 '<div class="field"><label>' + L('l1') + ' <span class="kp-opt">(选填)</span></label><select id="fL1"><option value="">— 不指定 —</option></select></div>' +
                 '<div class="field"><label>' + L('l2') + ' <span class="kp-opt">(选填)</span></label><select id="fL2"><option value="">— 不指定 —</option></select></div>' +
                 '<div class="field"><label>' + L('l3') + ' <span class="kp-opt">(选填)</span></label><select id="fL3"><option value="">— 不指定 —</option></select></div>' +
                 '<div class="field"><label>' + L('l4') + ' <span class="kp-opt">(选填)</span></label><select id="fL4"><option value="">— 不指定 —</option></select></div>';
+            const lab = document.getElementById('kpModeLabel');
+            if (lab) lab.textContent = '（已预置 ' + cnt + ' 个，按层级选，可只选到某一层）';
             const fL1 = document.getElementById('fL1'), fL2 = document.getElementById('fL2'),
                   fL3 = document.getElementById('fL3'), fL4 = document.getElementById('fL4');
-            const tree = getKpTreeForSection(course, chapter, section);
             const fill = function (sel, nodes) {
                 const prev = sel.value;
                 sel.innerHTML = '<option value="">— 不指定 —</option>';
@@ -3835,16 +3958,19 @@
                 else if (!fL3.value) { fL4.value = ''; }
             };
             fL1.onchange = cascade; fL2.onchange = cascade; fL3.onchange = cascade; fL4.onchange = cascade;
-            const guide = getGuide(course, chapter, section);
-            const hint = document.getElementById('kpBaseHint');
-            if (hint) {
-                const _sl = L('section');
-                const plan = (guide && guide.duration) ? guide.duration : '—';
-                const cnt = countKpLeaves(tree);
-                hint.textContent = `本${_sl}计划学时 ${plan}` + (cnt ? `，已预置 ${cnt} 个知识点（下拉按层级选）` : '，暂无预置知识点（不影响保存记录，直接提交表单即可）');
-            }
+            if (hint) hint.textContent = `本${_sl}计划学时 ${plan}，已预置 ${cnt} 个知识点（末级）`;
         }
         function bindKpSelects() {}
+
+        // 仅重编号（手动模式），不重建 DOM
+        function renumberKpOnly() {
+            const box = document.getElementById('kpList');
+            if (!box) return;
+            box.querySelectorAll('.kp-row').forEach((r, i) => {
+                const no = r.querySelector('.kp-no');
+                if (no) no.textContent = i + 1;
+            });
+        }
 
         // 刷新「本节」提示（兼容旧调用点 applyLevelLabels / renumberKpRows）
         function updateKpBaseHint() {
@@ -3852,9 +3978,14 @@
             if (c && ch && s) updateKpSelects(c.value, parseInt(ch.value), parseInt(s.value));
         }
 
-        // 编辑回填：把已存的知识点路径 [一级,二级,三级,四级] 填回下拉
+        // 编辑回填（双模式）：cascade 模式按层级回填下拉；manual 模式渲染多行文本
         function renderKnowledgePoints(list) {
             const arr = (Array.isArray(list) && list.length) ? list : [];
+            if (kpMode === 'manual') {
+                const rows = arr.map(function (k) { return (k && k.text) || (typeof k === 'string' ? k : ''); }).filter(Boolean);
+                renderManualKpList(rows.length ? rows.map(t => ({ text: t })) : [{ text: '' }]);
+                return;
+            }
             const path = arr.map(function (k) { return (k && k.text) || (typeof k === 'string' ? k : ''); }).filter(Boolean);
             ['fL1', 'fL2', 'fL3', 'fL4'].forEach(function (id, i) {
                 const el = document.getElementById(id);
@@ -3863,16 +3994,23 @@
         }
 
         function renumberKpRows() {
+            if (kpMode === 'manual') { renumberKpOnly(); return; }
             const c = document.getElementById('fCourse'), ch = document.getElementById('fChapter'), s = document.getElementById('fSection');
             if (c && ch && s) updateKpSelects(c.value, parseInt(ch.value), parseInt(s.value));
         }
 
-        function addKpRow(text) {}
-        function bindKpList() {}
-
-        // 从 4 级下拉收集知识点路径，作为 knowledgePoints 数组（保持 {text} 结构，卡片 chips 照常展示）
+        // 双模式收集：手动模式从输入行收集 {no,text}；下拉模式从 4 级收集 {text}
         function getKnowledgePoints() {
             const out = [];
+            if (kpMode === 'manual') {
+                const box = document.getElementById('kpList');
+                if (box) box.querySelectorAll('.kp-row').forEach((r) => {
+                    const inp = r.querySelector('.kp-input');
+                    const t = stripKpNo((inp && inp.value) || '');
+                    if (t) out.push({ no: out.length + 1, text: t });
+                });
+                return out;
+            }
             ['fL1', 'fL2', 'fL3', 'fL4'].forEach(function (id) {
                 const el = document.getElementById(id);
                 if (el && el.value) out.push({ text: el.value });
@@ -3881,11 +4019,17 @@
         }
 
         function resetKnowledgePoints() {
-            // 直接清空 4 级联动下拉，避免上一条记录的已选知识点残留到下一条
+            // 双模式清空：下拉全归「不指定」，手动列表重置为单个空行
             ['fL1', 'fL2', 'fL3', 'fL4'].forEach(function (id) {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+            const box = document.getElementById('kpList');
+            if (box) {
+                box.innerHTML = kpRowHTML(1, '');
+                box.dataset.bound = '';
+                bindKpList();
+            }
             const cb = document.getElementById('fAddToMemory');
             if (cb) {
                 cb.checked = true;
