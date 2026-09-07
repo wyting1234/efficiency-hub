@@ -1820,6 +1820,7 @@
         <div class="sidebar-brand">
             <div class="logo">📘</div>
             <h1>学习进度 <small id="projectBadge">CPA · 精进版</small></h1>
+            <div style="font-size:11px;color:var(--text-secondary,#8a8175);opacity:.75;margin-top:2px;">v2026.09.07d · 保存反馈增强</div>
         </div>
         <!-- 项目（考试）切换 -->
         <div class="project-switcher">
@@ -1898,7 +1899,7 @@
                 <span class="form-toggle-icon">▶</span>
             </div>
             <div class="form-body" id="formBody">
-                <form id="recordForm" autocomplete="off">
+                <form id="recordForm" autocomplete="off" novalidate>
                     <div class="form-row">
                         <div class="field">
                             <label><span data-lv="course">课程</span> <span class="required">*</span>
@@ -3090,7 +3091,7 @@
                 if (r.section > 12) r.section = 12;
                 r.understanding = r.understanding || 0;
             });
-            saveData();
+            try { saveData(); } catch (e) {}
         }
 
         function saveData() {
@@ -3101,7 +3102,19 @@
                 reviewDeleted: state.reviewDeleted || {},
                 tomato: { count: state.tomato.count }
             };
-            localStorage.setItem(getStorageKey(), JSON.stringify(data));
+            try {
+                localStorage.setItem(getStorageKey(), JSON.stringify(data));
+            } catch (err) {
+                // 写入失败必须让用户知道：否则记录只在内存里，刷新就丢，看起来像"添加不上"
+                alert('⚠️ 保存失败：浏览器本地存储写入不成功。\n\n' +
+                    '常见原因：\n' +
+                    '1. 存储空间已满（可清理其他网站数据或删除部分旧项目）；\n' +
+                    '2. 当前处于无痕/隐私模式；\n' +
+                    '3. 浏览器禁止了本地存储。\n\n' +
+                    '本条记录目前只显示在页面上，未保存到本机，刷新后会丢失。');
+                return false;
+            }
+            return true;
         }
 
         function getSampleData() {
@@ -3828,7 +3841,7 @@
                 const _sl = L('section');
                 const plan = (guide && guide.duration) ? guide.duration : '—';
                 const cnt = countKpLeaves(tree);
-                hint.textContent = `本${_sl}计划学时 ${plan}` + (cnt ? `，已预置 ${cnt} 个知识点（末级）` : '，暂无预置知识点（可直接保存本节）');
+                hint.textContent = `本${_sl}计划学时 ${plan}` + (cnt ? `，已预置 ${cnt} 个知识点（下拉按层级选）` : '，暂无预置知识点（不影响保存记录，直接提交表单即可）');
             }
         }
         function bindKpSelects() {}
@@ -3892,6 +3905,31 @@
         }
 
         // ---------- 表单提交 ----------
+        // 全局轻提示（保存成功/失败反馈）
+        function showToast(msg) {
+            let t = document.getElementById('appToast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'appToast';
+                t.className = 'app-toast';
+                document.body.appendChild(t);
+            }
+            t.textContent = msg;
+            t.classList.add('show');
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+        }
+
+        // 任一表单控件重新输入时，自动清除校验红框
+        (function bindFieldErrorClear() {
+            document.addEventListener('input', e => {
+                if (e.target && e.target.classList && e.target.classList.contains('field-error')) e.target.classList.remove('field-error');
+            }, true);
+            document.addEventListener('change', e => {
+                if (e.target && e.target.classList && e.target.classList.contains('field-error')) e.target.classList.remove('field-error');
+            }, true);
+        })();
+
         function handleFormSubmit(e) {
             e.preventDefault();
             const course = document.getElementById('fCourse').value;
@@ -3913,9 +3951,17 @@
             const knowledgePoints = getKnowledgePoints();
             const addToMemory = !!(document.getElementById('fAddToMemory') && document.getElementById('fAddToMemory').checked);
 
-            if (!date) { alert('请选择日期'); return; }
-            if (!chapter || chapter < 1 || chapter > getMaxChapter(course)) { alert('请选择有效的章'); return; }
-            if (!section || section < 1) { alert('请选择有效的节'); return; }
+            // ---- 必填校验：一次性收集所有缺失项，统一提示并高亮定位 ----
+            const problems = [];
+            const markErr = (id, bad, label) => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('field-error', !!bad);
+                if (bad) problems.push(label);
+            };
+            markErr('fDate', !date, '学习日期');
+            markErr('fChapter', !chapter || chapter < 1 || chapter > getMaxChapter(course), '有效的章');
+            markErr('fSection', !section || section < 1, '有效的节');
+            let durationInvalid = false;
             if (!durationHours || durationHours <= 0) {
                 if (startTime && endTime) {
                     const d = calcDuration(startTime, endTime);
@@ -3923,16 +3969,27 @@
                         durationHours = d;
                         document.getElementById('fDurationHours').value = d;
                     } else {
-                        alert('请填写有效时长（小时）或确保起止时间正确');
-                        return;
+                        durationInvalid = true;
                     }
                 } else {
-                    alert('请填写学习时长（小时）');
-                    return;
+                    durationInvalid = true;
                 }
             }
-            if (!understanding || understanding < 1) { alert('请选择理解程度'); return; }
-            if (!selfAssessment) { alert('请选择学习状态自评'); return; }
+            markErr('fDurationHours', durationInvalid, '学习时长（小时），或填起止时间自动计算');
+            markErr('fUnderstanding', !understanding || understanding < 1, '理解程度（点击星星）');
+            markErr('fSelfAssessment', !selfAssessment, '学习状态自评');
+            if (problems.length) {
+                alert('还差 ' + problems.length + ' 项就能保存：\n\n' + problems.map((p, i) => (i + 1) + '. ' + p).join('\n') +
+                    '\n\n（已用红框标出对应输入框）');
+                const order = ['fDate', 'fChapter', 'fSection', 'fDurationHours', 'fUnderstanding', 'fSelfAssessment'];
+                const firstBad = order.find(id => document.getElementById(id)?.classList.contains('field-error'));
+                if (firstBad) {
+                    const el = document.getElementById(firstBad);
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => { try { el.focus({ preventScroll: true }); } catch (e) {} }, 350);
+                }
+                return;
+            }
 
             if (startTime && endTime) {
                 const d = calcDuration(startTime, endTime);
@@ -3969,6 +4026,7 @@
                 addToMemory: addToMemory,
             };
 
+            const isEdit = !!state.editingId;
             if (state.editingId) {
                 const idx = state.records.findIndex(r => r.id === state.editingId);
                 if (idx !== -1) {
@@ -3981,7 +4039,12 @@
                 state.records.push(record);
             }
 
-            saveData();
+            if (saveData() === false) {
+                // 本地存储写入失败：记录不落盘，不能当成功处理，表单内容保留让用户复制或截图
+                return;
+            }
+            showToast(isEdit ? '✏️ 记录已更新' :
+                `✅ 已保存第 ${state.records.length} 条记录：${course} ${date} ${durationHours}h`);
             if (state.currentCourse !== course) {
                 state.currentCourse = course;
                 renderAll();
