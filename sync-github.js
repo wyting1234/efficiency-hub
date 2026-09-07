@@ -87,7 +87,11 @@
 
     statusEl = document.getElementById('syncStatus');
     syncBtn = document.getElementById('syncStatusBtn');
-    syncBtn.addEventListener('click', openSyncPanel);
+    if (syncBtn) {
+      syncBtn.addEventListener('click', openSyncPanel);
+    } else {
+      row.addEventListener('click', openSyncPanel);
+    }
   }
 
   function updateStatus(text) {

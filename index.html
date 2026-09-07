@@ -408,6 +408,17 @@
   iframe.tool{width:100%;height:100%;border:none;background:var(--panel)}
 
 
+  /* iframe 加载提示与兜底 */
+  .frame-tip{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:var(--panel);z-index:2}
+  .frame-tip.show{display:flex}
+  .frame-tip.hide{display:none!important}
+  .frame-tip-inner{text-align:center;color:var(--muted);font-size:14px}
+  .frame-tip .spinner{width:28px;height:28px;margin:0 auto 12px;border:3px solid var(--border,#e2e8f0);border-top-color:var(--accent,#2563eb);border-radius:50%;animation:ftspin .8s linear infinite}
+  @keyframes ftspin{to{transform:rotate(360deg)}}
+  .frame-tip .frame-pop{display:none;margin:16px auto 0;padding:8px 16px;border:1px solid var(--border,#e2e8f0);border-radius:8px;background:var(--panel);color:var(--text);font-size:13px;cursor:pointer}
+  .frame-tip.slow .frame-pop{display:block}
+
+
 
 
 
@@ -1434,6 +1445,8 @@ function buildIframes(){
   const c=$('#toolContainer');
 
 
+  c.innerHTML=''; // 重建时先清空，避免重复创建
+
   getModules().forEach(m=>{
 
 
@@ -1446,13 +1459,14 @@ function buildIframes(){
     box.id='frame-'+m.id;
 
 
+    // 懒加载：不立即设置 src，首次切换到该模块时才加载，避免同时加载全部工具导致移动端白屏/卡顿
+    box.dataset.file=m.file;
+
+
     const f=document.createElement('iframe');
 
 
     f.className='tool';
-
-
-    f.src=normFile(m.file);
 
 
     f.setAttribute('title',m.name);
@@ -1465,12 +1479,45 @@ function buildIframes(){
     box.appendChild(f);
 
 
+    // 加载提示层（含"新窗口打开"兜底按钮）
+    const tip=document.createElement('div');
+    tip.className='frame-tip';
+    tip.innerHTML='<div class="frame-tip-inner"><div class="spinner"></div>正在加载工具…<br><button class="frame-pop" type="button">长时间未显示？在新窗口打开</button></div>';
+    tip.querySelector('.frame-pop').addEventListener('click',()=>{ window.open(normFile(box.dataset.file),'_blank'); });
+    box.appendChild(tip);
+    f.addEventListener('load',()=>{ tip.classList.add('hide'); tip.classList.remove('show','slow'); clearTimeout(box._slowT); });
+
     c.appendChild(box);
 
 
   });
 
 
+}
+
+
+// 按需加载某个工具 iframe（已加载则跳过）
+function ensureFrameLoaded(id){
+  const box=document.getElementById('frame-'+id);
+  if(!box) return;
+  if(!box.dataset.file || box.dataset.loaded==='1') return;
+  const f=box.querySelector('iframe');
+  const tip=box.querySelector('.frame-tip');
+  f.src=normFile(box.dataset.file);
+  box.dataset.loaded='1';
+  tip.classList.remove('hide');
+  tip.classList.add('show');
+  clearTimeout(box._slowT);
+  box._slowT=setTimeout(()=>{ if(!tip.classList.contains('hide')) tip.classList.add('slow'); },8000);
+}
+
+
+// 强制重新加载某个工具 iframe
+function reloadFrame(id){
+  const box=document.getElementById('frame-'+id);
+  if(!box) return;
+  box.dataset.loaded='';
+  ensureFrameLoaded(id);
 }
 
 
@@ -1537,6 +1584,10 @@ function openModule(type,id){
   });
 
 
+  // 首次切入该模块时才真正加载 iframe（懒加载）
+  if(type==='tool') ensureFrameLoaded(id);
+
+
   localStorage.setItem('hub_lastModule', JSON.stringify({type,id}));
 
 
@@ -1552,7 +1603,7 @@ function refreshCurrent(){
   const cur=JSON.parse(localStorage.getItem('hub_lastModule')||'{"type":"dashboard"}');
 
 
-  if(cur.type==='tool'){const f=getFrame(cur.id);if(f){const m=MODULES.find(x=>x.id===cur.id);if(m)f.src=normFile(m.file);}}
+  if(cur.type==='tool'){ if(document.getElementById('frame-'+cur.id)) reloadFrame(cur.id); }
 
 
   else{$('#dashboard').style.display='block';}
@@ -2026,10 +2077,16 @@ function saveModuleManager(){
   $('#moduleModal').classList.remove('show');
 
 
-  // 重建导航 / 卡片 / iframe
+  // 重建导航 / 卡片 / iframe，并恢复当前视图
 
 
   buildNav(); buildCards(); buildIframes();
+
+  try{
+    const last=JSON.parse(localStorage.getItem('hub_lastModule')||'{"type":"dashboard"}');
+    if(last.type==='tool' && document.getElementById('frame-'+last.id)){ openModule('tool',last.id); }
+    else { openModule('dashboard'); }
+  }catch(_){ openModule('dashboard'); }
 
 
   $('#hubCount').textContent=getModules().length;
