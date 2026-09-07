@@ -405,8 +405,19 @@
   .tool-container.active{display:block}
 
 
+  /* iOS：外层滚动，iframe 高度由 JS 跟随内容 */
+  .tool-container.ios-scroll{overflow:auto;-webkit-overflow-scrolling:touch}
+  .tool-container.ios-scroll iframe.tool{height:auto;min-height:100%;display:block}
+
+
   iframe.tool{width:100%;height:100%;border:none;background:var(--panel)}
 
+
+  /* 卡片右上角：新窗口打开 */
+  .card-pop{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;border:1px solid var(--border,#e2e8f0);background:var(--panel);color:var(--muted);font-size:14px;line-height:1;cursor:pointer;opacity:0;transition:.15s;z-index:3}
+  .card:hover .card-pop{opacity:1}
+  @media (hover:none){ .card-pop{opacity:.75} }
+  .card-pop:hover{background:var(--accent,#2563eb);color:#fff;border-color:transparent}
 
   /* iframe 加载提示与兜底 */
   .frame-tip{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:var(--panel);z-index:2}
@@ -415,8 +426,10 @@
   .frame-tip-inner{text-align:center;color:var(--muted);font-size:14px}
   .frame-tip .spinner{width:28px;height:28px;margin:0 auto 12px;border:3px solid var(--border,#e2e8f0);border-top-color:var(--accent,#2563eb);border-radius:50%;animation:ftspin .8s linear infinite}
   @keyframes ftspin{to{transform:rotate(360deg)}}
-  .frame-tip .frame-pop{display:none;margin:16px auto 0;padding:8px 16px;border:1px solid var(--border,#e2e8f0);border-radius:8px;background:var(--panel);color:var(--text);font-size:13px;cursor:pointer}
-  .frame-tip.slow .frame-pop{display:block}
+  .frame-tip .frame-btns{display:none;margin-top:14px;gap:10px;justify-content:center;flex-wrap:wrap}
+  .frame-tip.slow .frame-btns{display:flex}
+  .frame-tip .frame-btns button{padding:8px 16px;border:1px solid var(--border,#e2e8f0);border-radius:8px;background:var(--panel);color:var(--text);font-size:13px;cursor:pointer}
+  .frame-tip .frame-btns .frame-pop{background:var(--accent,#2563eb);color:#fff;border-color:transparent}
 
 
 
@@ -735,6 +748,9 @@
 
 
       <div class="side-btn" id="toggleTheme"><span id="themeIco">🌙</span><span id="themeTxt">夜间模式</span></div>
+
+
+      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.07b</span></div>
 
 
     </div>
@@ -1367,6 +1383,9 @@ function buildCards(){
     card.innerHTML=`
 
 
+      <button class="card-pop" type="button" title="在新窗口打开">↗</button>
+
+
       <div class="c-top">
 
 
@@ -1392,6 +1411,10 @@ function buildCards(){
 
 
       </div>`;
+
+
+    const popBtn=card.querySelector('.card-pop');
+    popBtn.addEventListener('click',e=>{ e.stopPropagation(); window.open(normFile(m.file),'_blank'); });
 
 
     card.addEventListener('click',()=>openModule('tool',m.id));
@@ -1439,6 +1462,9 @@ function refreshBadges(){
 /* ============== iframe 容器 ============== */
 
 
+// iOS Safari 判定（iframe 高度行为不同，需要外层滚动兜底）
+var IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+
 function buildIframes(){
 
 
@@ -1482,10 +1508,25 @@ function buildIframes(){
     // 加载提示层（含"新窗口打开"兜底按钮）
     const tip=document.createElement('div');
     tip.className='frame-tip';
-    tip.innerHTML='<div class="frame-tip-inner"><div class="spinner"></div>正在加载工具…<br><button class="frame-pop" type="button">长时间未显示？在新窗口打开</button></div>';
+    tip.innerHTML='<div class="frame-tip-inner"><div class="spinner"></div>正在加载工具…<div class="frame-btns"><button class="frame-reload" type="button">重新加载</button><button class="frame-pop" type="button">在新窗口打开</button></div></div>';
     tip.querySelector('.frame-pop').addEventListener('click',()=>{ window.open(normFile(box.dataset.file),'_blank'); });
+    tip.querySelector('.frame-reload').addEventListener('click',()=>{ reloadFrame(m.id); });
     box.appendChild(tip);
     f.addEventListener('load',()=>{ tip.classList.add('hide'); tip.classList.remove('show','slow'); clearTimeout(box._slowT); });
+
+    // iOS Safari：iframe 会被内容撑高但外层不可滚动，改为外层滚动 + iframe 高度跟随内容
+    if(IS_IOS){
+      box.classList.add('ios-scroll');
+      const syncH=()=>{ try{ const dc=f.contentDocument; if(!dc) return; const h=Math.max(dc.documentElement.scrollHeight||0,(dc.body&&dc.body.scrollHeight)||0); if(h>0) f.style.height=h+'px'; }catch(e){} };
+      f.addEventListener('load',()=>{
+        syncH(); setTimeout(syncH,300); setTimeout(syncH,1200);
+        try{
+          const dc=f.contentDocument;
+          if(dc && window.MutationObserver){ const mo=new MutationObserver(()=>syncH()); mo.observe(dc.documentElement,{subtree:true,childList:true,attributes:true}); }
+          if(dc && dc.defaultView) dc.defaultView.addEventListener('resize',syncH);
+        }catch(e){}
+      });
+    }
 
     c.appendChild(box);
 
@@ -1508,7 +1549,7 @@ function ensureFrameLoaded(id){
   tip.classList.remove('hide');
   tip.classList.add('show');
   clearTimeout(box._slowT);
-  box._slowT=setTimeout(()=>{ if(!tip.classList.contains('hide')) tip.classList.add('slow'); },8000);
+  box._slowT=setTimeout(()=>{ if(!tip.classList.contains('hide')) tip.classList.add('slow'); },3000);
 }
 
 
