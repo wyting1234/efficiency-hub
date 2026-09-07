@@ -251,6 +251,13 @@
             gap: 10px;
         }
         .course-item:hover { background: var(--primary-bg); }
+        .course-empty {
+            padding: 14px 12px; margin: 6px 0; border-radius: var(--radius-sm);
+            border: 1px dashed var(--primary-light, #C9B79B); background: var(--primary-bg, #F7F3EA);
+            color: var(--primary-dark, #6E5B43); font-size: 13px; font-weight: 600; cursor: pointer; line-height: 1.6;
+        }
+        .course-empty span { font-size: 11.5px; font-weight: 400; color: var(--text-secondary, #888); }
+        .course-empty:hover { background: #EFE8DC; }
         .course-item.active {
             background: var(--primary-bg);
             border-left: 3px solid var(--primary);
@@ -459,6 +466,13 @@
             font-size: 13px; font-weight: 600;
         }
         .kp-add:hover { background: #EFE8DC; }
+        .mini-add-btn {
+            margin-left: 8px; padding: 2px 8px; font-size: 11.5px; font-weight: 600;
+            border-radius: 10px; border: 1px solid var(--primary-light, #C9B79B);
+            background: var(--primary-bg, #F5F0E7); color: var(--primary-dark, #6E5B43);
+            cursor: pointer; vertical-align: middle;
+        }
+        .mini-add-btn:hover { background: #EFE8DC; }
         .kp-hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; line-height: 1.6; }
         .kp-hint code {
             background: var(--primary-bg); color: var(--primary-dark);
@@ -1239,6 +1253,14 @@
             gap: 8px;
             margin-bottom: 10px;
         }
+        .goal-scope {
+            display: inline-flex; align-items: center; gap: 6px; align-self: center;
+            font-size: 12.5px; color: var(--text-secondary, #777);
+        }
+        .goal-scope select {
+            padding: 6px 8px; border: 1.5px solid var(--border, #DDD5C7); border-radius: 8px;
+            background: #fff; color: var(--text, #333); font-size: 12.5px;
+        }
         .goal-btn {
             padding: 8px 14px;
             border: 1.5px solid var(--border);
@@ -1879,10 +1901,15 @@
                 <form id="recordForm" autocomplete="off">
                     <div class="form-row">
                         <div class="field">
-                            <label>课程 <span class="required">*</span></label>
+                            <label><span data-lv="course">课程</span> <span class="required">*</span>
+                                <button type="button" class="mini-add-btn" id="addCourseBtn">➕ 新增<span data-lv="course">课程</span></button>
+                            </label>
                             <select id="fCourse" required>
                                 <!-- 由 renderCourseOptions() 按当前项目动态填充 -->
                             </select>
+                            <span class="kp-hint" id="courseEmptyHint" style="display:none;color:#A32D2D;font-weight:600;">
+                                当前项目还没有<span data-lv="course">课程</span>，点上方「➕ 新增」直接建，或到「目标管理」用模板导入批量建立。
+                            </span>
                         </div>
                         <div class="field">
                             <label>日期 <span class="required">*</span></label>
@@ -2136,13 +2163,24 @@
                     <p class="goal-tip">
                         系统已内置<strong><span data-lv="chapter">章节</span> / <span data-lv="section">节</span>的名称与建议学时</strong>，但
                         <strong>学习目标、重点难点、掌握程度</strong>属于个性化内容，默认填充为「待补充」，需要你填写后导入才能自动识别并在学习指南中展示。<br>
-                        点击下方「导出模板」得到一份表格（含现有内容与科目结构），在 Excel / WPS 中填好后用「导入文件」一次性写入即可。模板中<strong>缺失的科目、<span data-lv="chapter">章</span>、<span data-lv="section">节</span>会自动创建</strong>，因此也可用来为新考试项目搭建结构。
+                        点击下方「导出模板」得到一份表格（含现有内容与科目结构），在 Excel / WPS 中填好后用「导入文件」一次性写入即可。
+                        模板中<strong>缺失的科目、<span data-lv="chapter">章</span>、<span data-lv="section">节</span>会自动创建</strong>，
+                        因此<strong>任何项目（含后续新增的考试 / 自学项目）都能用这套「导出 → 填写 → 导入」来搭结构</strong>。<br>
+                        导出范围默认<strong>全部项目（所有科目）</strong>：一次拿到所有项目的科目；导入时按 <code>项目</code> 列写入对应项目，项目不存在会自动新建。
+                        项目还没有科目时也能导出<strong>空白模板</strong>（只有表头），填好科目 / 章 / 节后导入即可建立结构。
                     </p>
                     <div class="goal-actions">
+                        <span class="goal-scope">导出范围
+                            <select id="goalExportScope">
+                                <option value="all">全部项目（所有科目）</option>
+                                <option value="current">仅当前项目</option>
+                            </select>
+                        </span>
                         <button type="button" class="goal-btn primary" id="exportXlsxBtn">📥 导出模板（Excel）</button>
                         <button type="button" class="goal-btn" id="exportCsvBtn">📄 导出模板（CSV）</button>
                         <button type="button" class="goal-btn" id="exportCurrentXlsxBtn">📊 导出当前项目进度</button>
                         <button type="button" class="goal-btn accent" id="importGoalBtn">📤 导入文件</button>
+                        <button type="button" class="goal-btn" id="addCourseBtn2">➕ 新增<span data-lv="course">科目</span></button>
                         <input type="file" id="goalFileInput" accept=".xlsx,.xls,.csv,.txt" style="display:none;" />
                     </div>
                     <div class="goal-result" id="goalResult"></div>
@@ -3292,6 +3330,13 @@
         function renderCourseList() {
             const container = document.getElementById('courseList');
             let html = '';
+            if (!COURSES.length) {
+                container.innerHTML = '<div class="course-empty" id="courseListAdd">' +
+                    '当前项目还没有' + L('course') + '<br><span>点此新增，或到「目标管理」导入模板批量建立</span></div>';
+                const el = document.getElementById('courseListAdd');
+                if (el) el.addEventListener('click', () => openCourseDialog());
+                return;
+            }
             COURSES.forEach(course => {
                 const hours = getCourseHours(course);
                 const suggested = getCourseTotalSuggestedHours(course);
@@ -3451,6 +3496,9 @@
             const courseSelect = document.getElementById('fCourse');
             courseSelect.value = state.currentCourse;
             updateChapterSelect(state.currentCourse);
+
+            const addCourseBtn = document.getElementById('addCourseBtn');
+            if (addCourseBtn) addCourseBtn.addEventListener('click', () => openCourseDialog());
 
             courseSelect.addEventListener('change', () => {
                 const course = courseSelect.value;
@@ -4241,12 +4289,24 @@
             if (!sel) return;
             const current = sel.value;
             sel.innerHTML = '';
+            if (!COURSES.length) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = '— 暂无' + L('course') + '，请先新增 —';
+                sel.appendChild(opt);
+                sel.value = '';
+                const hint = document.getElementById('courseEmptyHint');
+                if (hint) hint.style.display = 'block';
+                return;
+            }
             COURSES.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c;
                 opt.textContent = c;
                 sel.appendChild(opt);
             });
+            const hint = document.getElementById('courseEmptyHint');
+            if (hint) hint.style.display = 'none';
             if (current && COURSES.includes(current)) sel.value = current;
         }
 
@@ -4427,6 +4487,10 @@
                 renderProjectSelect();
                 close();
                 switchProject(target.id);
+                // 新项目若还没有科目，直接引导新增，避免「建完项目却无法记录学习」
+                if (!(target.courses && target.courses.length)) {
+                    setTimeout(function () { try { openCourseDialog(); } catch (e) {} }, 250);
+                }
             };
         }
 
@@ -4464,16 +4528,116 @@
             renderGoalSummary();
         }
 
+        // ---------- 章节大纲解析（新增科目时用：缩进 → 章 / 节） ----------
+        function parseChapterOutline(text) {
+            const items = [];
+            String(text || '').split(/\r?\n/).forEach(function (l) {
+                const m = l.match(/^(\s*)(\S.*)$/);
+                if (!m) return;
+                const ind = m[1].replace(/\t/g, '    ').length;
+                const name = m[2].trim().replace(/^[-*•·]\s*/, '');
+                if (name) items.push({ ind: ind, name: name });
+            });
+            if (!items.length) return null;
+            const levels = Array.from(new Set(items.map(function (i) { return i.ind; })))
+                .sort(function (a, b) { return a - b; }).slice(0, 2);
+            const chapterNames = {}, sectionNames = {};
+            let ch = 0;
+            items.forEach(function (it) {
+                let tier = levels.indexOf(it.ind);
+                if (tier < 0) tier = 1;
+                if (tier === 0) { ch++; chapterNames[ch] = it.name; sectionNames[ch] = []; }
+                else if (ch) { sectionNames[ch].push(it.name); }
+            });
+            if (!ch) return null;
+            return { chapterNames: chapterNames, sectionNames: sectionNames, maxChapter: ch };
+        }
+
+        // ---------- 复制内置结构（自定义前先落地，避免污染代码常量） ----------
+        function dettachBuiltinStructure(p) {
+            if (!p.builtin || p.customStructure) return;
+            const cn = {}, sn = {};
+            Object.keys(p.chapterNames || {}).forEach(function (k) { cn[k] = Object.assign({}, p.chapterNames[k]); });
+            Object.keys(p.sectionNames || {}).forEach(function (k) {
+                sn[k] = {};
+                Object.keys(p.sectionNames[k] || {}).forEach(function (c) {
+                    sn[k][c] = (p.sectionNames[k][c] || []).slice();
+                });
+            });
+            p.chapterNames = cn;
+            p.sectionNames = sn;
+            p.customStructure = true;
+        }
+
+        // ---------- 新增科目（当前项目内） ----------
+        function openCourseDialog() {
+            const proj = getCurrentProject();
+            let box = document.getElementById('courseDialog');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'courseDialog';
+                document.body.appendChild(box);
+            }
+            box.className = 'proj-mask';
+            const cL = L('course'), chL = L('chapter'), sL = L('section');
+            box.innerHTML =
+                '<div class="proj-dialog">' +
+                '<h3>新增' + cL + '（项目：' + (proj.name || '') + '）</h3>' +
+                '<div class="pf"><label>' + cL + '名称</label><input id="cdName" type="text" placeholder="如：四级 Python / 会计"></div>' +
+                '<div class="pf"><label>' + chL + ' / ' + sL + '大纲（可留空，边学边填）</label>' +
+                '<textarea id="cdOutline" rows="7" placeholder="程序基本结构&#10;  顺序结构&#10;  分支结构&#10;数据分析&#10;  Series&#10;  DataFrame"></textarea>' +
+                '<div class="pf-hint">一行一条，缩进表示层级：不缩进 = ' + chL + '，缩进一次 = ' + sL + '。留空则先建一个空' + chL + '，之后可在「目标管理」用模板补齐。</div></div>' +
+                '<div class="pf-actions">' +
+                '<button id="cdCancel" class="pd-btn">取消</button>' +
+                '<button id="cdSave" class="pd-btn primary">保存并开始记录</button>' +
+                '</div></div>';
+            const close = function () { if (box && box.parentNode) box.parentNode.removeChild(box); };
+            box.querySelector('#cdCancel').onclick = close;
+            box.onclick = function (e) { if (e.target === box) close(); };
+            box.querySelector('#cdSave').onclick = function () {
+                const name = (box.querySelector('#cdName').value || '').trim();
+                if (!name) { alert('请填写' + cL + '名称'); return; }
+                const outline = parseChapterOutline(box.querySelector('#cdOutline').value);
+                const p = getCurrentProject();
+                if (!p.courses) p.courses = [];
+                if (!p.courses.includes(name)) p.courses.push(name);
+                dettachBuiltinStructure(p);
+                p.chapterNames = p.chapterNames || {};
+                p.sectionNames = p.sectionNames || {};
+                if (outline) {
+                    p.chapterNames[name] = outline.chapterNames;
+                    p.sectionNames[name] = outline.sectionNames;
+                } else if (!p.chapterNames[name] || Object.keys(p.chapterNames[name]).length === 0) {
+                    p.chapterNames[name] = { 1: '' };
+                    p.sectionNames[name] = { 1: [] };
+                }
+                saveProjects();
+                close();
+                state.currentCourse = name;
+                applyProject(currentProjectId);
+                renderAll();
+                renderGoalSummary();
+                const sel = document.getElementById('fCourse');
+                if (sel) sel.value = name;
+                updateChapterSelect(name);
+                if (typeof renderMemoryView === 'function') { try { renderMemoryView(); } catch (e) {} }
+            };
+            setTimeout(function () { const el = box.querySelector('#cdName'); if (el) el.focus(); }, 30);
+        }
+
         // ============================================================
         //  科目目标：模板导出 / 导入
         // ============================================================
         const GOAL_HEADERS = ['项目', '科目', '章', '章名称', '节', '节名称', '建议学时(h)', '学习目标', '重点难点', '掌握程度'];
 
-        function getGoalRows() {
-            const proj = getCurrentProject();
+        function getGoalRows(scope) {
+            const list = (scope === 'all') ? projects : [getCurrentProject()];
             const rows = [];
+            list.forEach(proj => {
+            if (!proj) return;
+            const gData = (proj.id === currentProjectId) ? GUIDE_DATA : buildGuideData(proj);
             (proj.courses || []).forEach(course => {
-                const cData = GUIDE_DATA[course];
+                const cData = gData[course];
                 const maxCh = cData ? (cData.maxChapter || 0) : 0;
                 if (maxCh === 0) {
                     // 结构为空的项目：生成骨架行，方便用户直接填写
@@ -4482,18 +4646,22 @@
                     }
                     return;
                 }
+                const chNameOf = function (c, ch) {
+                    const cn = (proj.chapterNames && proj.chapterNames[c]) ? proj.chapterNames[c][ch] : '';
+                    return cn || '';
+                };
                 for (let ch = 1; ch <= maxCh; ch++) {
                     const chData = cData.chapters[ch];
                     if (!chData) continue;
                     const secs = Object.keys(chData.sections || {}).map(Number).sort((a, b) => a - b);
                     if (secs.length === 0) {
-                        rows.push([proj.name, course, ch, getChapterName(course, ch), 1, '', 1.5, '待补充', '待补充', '掌握']);
+                        rows.push([proj.name, course, ch, chNameOf(course, ch), 1, '', 1.5, '待补充', '待补充', '掌握']);
                         continue;
                     }
                     secs.forEach(sec => {
                         const sd = chData.sections[sec] || {};
                         rows.push([
-                            proj.name, course, ch, getChapterName(course, ch), sec,
+                            proj.name, course, ch, chNameOf(course, ch), sec,
                             sd.name || '',
                             parseFloat(sd.duration) || 0,
                             sd.objective || '待补充',
@@ -4502,6 +4670,7 @@
                         ]);
                     });
                 }
+            });
             });
             return rows;
         }
@@ -4576,20 +4745,22 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
-        function exportGoalTemplate(format) {
-            const rows = getGoalRows();
-            if (rows.length === 0) {
-                alert('当前项目没有可导出的科目。请先新增科目。');
-                return;
-            }
+        function exportGoalTemplate(format, scope) {
+            const sc = (scope === 'all') ? 'all' : 'current';
+            const rows = getGoalRows(sc);
             const proj = getCurrentProject();
-            const safeName = proj.name.replace(/[\\/:*?"<>|]/g, '_');
+            const safeName = ((sc === 'all') ? '全部项目' : (proj.name || '项目')).replace(/[\\/:*?"<>|]/g, '_');
+            // 还没有科目时导出「空白模板」：仅表头 + 一行带项目名的空行，填好科目 / 章 / 节后导入即可建立结构
+            const isBlank = rows.length === 0;
             const data = [GOAL_HEADERS].concat(rows);
+            if (isBlank) data.push([(sc === 'all' ? '' : (proj.name || '')), '', '', '', '', '', '', '', '', '']);
             const stamp = new Date().toISOString().slice(0, 10);
+            const projSet = new Set(), courseSet = new Set();
+            rows.forEach(r => { if (r[0]) projSet.add(r[0]); if (r[1]) courseSet.add(r[1]); });
             if (format === 'xlsx' || format === 'current') {
                 if (typeof XLSX === 'undefined') {
                     alert('Excel 组件未加载（可能是网络问题），已改为导出 CSV 格式，Excel / WPS 同样可以打开编辑。');
-                    exportGoalTemplate('csv');
+                    exportGoalTemplate('csv', sc);
                     return;
                 }
                 const ws = XLSX.utils.aoa_to_sheet(data);
@@ -4602,6 +4773,13 @@
             } else {
                 const csv = toCSV(data);
                 downloadBlob('\uFEFF' + csv, `${safeName}_科目目标模板_${stamp}.csv`, 'text/csv;charset=utf-8;');
+            }
+            if (isBlank) {
+                showGoalResult('📄 已导出<strong>空白模板</strong>（只有表头）：在表格里按列填写「项目 / 科目 / 章 / 章名称 / 节 / 节名称 …」，' +
+                    '保存后用「导入文件」即可一次性建立科目与章节结构——<strong>任何项目、任何新增科目都适用</strong>。', false);
+            } else {
+                showGoalResult(`📥 已导出模板：<strong>${rows.length}</strong> 节，覆盖 <strong>${projSet.size}</strong> 个项目、` +
+                    `<strong>${courseSet.size}</strong> 个科目。填写后用「导入文件」写回；科目 / 章 / 节缺失会自动创建。`, false);
             }
         }
 
@@ -4667,6 +4845,7 @@
             }
 
             const touched = new Set();
+            const newCourses = [];
             let count = 0;
             const defaultProj = getCurrentProject();
 
@@ -4687,14 +4866,21 @@
                         found = {
                             id: 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
                             name: projName, builtin: false, courses: [],
-                            chapterNames: {}, sectionNames: {}, targetOverrides: {}, customStructure: true
+                            chapterNames: {}, sectionNames: {}, targetOverrides: {}, customStructure: true,
+                            // 新建项目沿用当前项目的层级叫法与复习节奏，避免导入后文案跑偏
+                            projectType: defaultProj.projectType || 'exam',
+                            levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, defaultProj.levelLabels || {}),
+                            reviewIntervals: (defaultProj.reviewIntervals || DEFAULT_REVIEW_INTERVALS).slice()
                         };
                         projects.push(found);
                     }
                     target = found;
                 }
 
-                if (!target.courses.includes(course)) target.courses.push(course);
+                if (!target.courses.includes(course)) {
+                    target.courses.push(course);
+                    newCourses.push((target === defaultProj ? '' : target.name + ' / ') + course);
+                }
                 target.targetOverrides = target.targetOverrides || {};
                 const key = `${course}|${ch}|${sec}`;
                 target.targetOverrides[key] = {
@@ -4707,19 +4893,14 @@
                 // 章名称：覆盖内置章名
                 const chName = get(iChName);
                 if (chName) {
-                    target.customStructure = true;
+                    dettachBuiltinStructure(target);
                     target.chapterNames = target.chapterNames || {};
                     if (typeof target.chapterNames !== 'object' || !target.chapterNames) target.chapterNames = {};
                     if (!target.chapterNames[course]) target.chapterNames[course] = {};
                     target.chapterNames[course][ch] = chName;
-                    // 内置项目的 chapterNames 来自代码常量，需复制后再改，避免污染默认值
-                    if (target.builtin) {
-                        const copied = {};
-                        Object.keys(target.chapterNames).forEach(k => {
-                            copied[k] = Object.assign({}, target.chapterNames[k]);
-                        });
-                        target.chapterNames = copied;
-                    }
+                    target.sectionNames = target.sectionNames || {};
+                    if (!target.sectionNames[course]) target.sectionNames[course] = {};
+                    if (!target.sectionNames[course][ch]) target.sectionNames[course][ch] = [];
                 }
                 touched.add(target.id);
                 count++;
@@ -4740,7 +4921,9 @@
             saveProjects();
             applyProject(currentProjectId);
             renderProjectSelect();
-            return { count: count, projects: touched.size };
+            const touchedNames = [];
+            projects.forEach(p => { if (touched.has(p.id)) touchedNames.push(p.name); });
+            return { count: count, projects: touched.size, newCourses: newCourses, touchedNames: touchedNames };
         }
 
         function handleGoalFile(file) {
@@ -4764,8 +4947,16 @@
                     saveData();
                     renderAll();
                     renderGoalSummary();
-                    showGoalResult(`✅ 导入成功：共写入 <strong>${res.count}</strong> 节的目标内容，涉及 <strong>${res.projects}</strong> 个项目。` +
-                        `缺失的科目 / 章 / 节已自动创建，学习指南与建议学时已同步更新。`, false);
+                    let msg = `✅ 导入成功：共写入 <strong>${res.count}</strong> 节的目标内容，涉及 <strong>${res.projects}</strong> 个项目` +
+                        `（${(res.touchedNames || []).join('、')}）。缺失的科目 / 章 / 节已自动创建，学习指南与建议学时已同步更新。`;
+                    if (res.newCourses && res.newCourses.length) {
+                        const show = res.newCourses.slice(0, 8).join('、') + (res.newCourses.length > 8 ? ' 等' : '');
+                        msg += `<br>🆕 新建科目：${show}`;
+                    }
+                    if (res.projects > 1 || (res.touchedNames || []).indexOf(getCurrentProject().name) === -1) {
+                        msg += `<br>💡 若要在「记录学习」中使用这些科目，请到顶部项目下拉里切换到对应项目。`;
+                    }
+                    showGoalResult(msg, false);
                 } catch (err) {
                     showGoalResult('❌ 导入失败：' + (err && err.message ? err.message : err), true);
                 }
@@ -4775,9 +4966,13 @@
         }
 
         function initGoalPanel() {
-            document.getElementById('exportXlsxBtn').addEventListener('click', () => exportGoalTemplate('xlsx'));
-            document.getElementById('exportCsvBtn').addEventListener('click', () => exportGoalTemplate('csv'));
-            document.getElementById('exportCurrentXlsxBtn').addEventListener('click', () => exportGoalTemplate('current'));
+            const scopeSel = document.getElementById('goalExportScope');
+            const scope = () => (scopeSel ? scopeSel.value : 'all');
+            document.getElementById('exportXlsxBtn').addEventListener('click', () => exportGoalTemplate('xlsx', scope()));
+            document.getElementById('exportCsvBtn').addEventListener('click', () => exportGoalTemplate('csv', scope()));
+            document.getElementById('exportCurrentXlsxBtn').addEventListener('click', () => exportGoalTemplate('current', 'current'));
+            const addBtn2 = document.getElementById('addCourseBtn2');
+            if (addBtn2) addBtn2.addEventListener('click', () => openCourseDialog());
             const input = document.getElementById('goalFileInput');
             document.getElementById('importGoalBtn').addEventListener('click', () => input.click());
             input.addEventListener('change', () => {
