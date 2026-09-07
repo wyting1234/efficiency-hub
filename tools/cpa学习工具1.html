@@ -4424,6 +4424,9 @@
                 '<div class="pf"><label>三级名称</label><input id="pdL3" type="text" placeholder="节"></div>' +
                 '</div>' +
                 '<div class="pf"><label>考试 / 目标日期（可留空）</label><input id="pdExam" type="date"></div>' +
+                '<div class="pf"><label>' + (ll.course || '科目') + '清单（一行一个，可留空）</label>' +
+                '<textarea id="pdSubjects" rows="4" placeholder="会计&#10;审计&#10;财务成本管理"></textarea>' +
+                '<div class="pf-hint">一行一个' + (ll.course || '科目') + '，可直接从表格 / 文档粘贴；已存在的会自动跳过。留空则保留现有' + (ll.course || '科目') + '。</div></div>' +
                 '<div class="pf"><label>复习间隔（天，逗号分隔）</label><input id="pdIv" type="text" placeholder="1,2,4,7,15">' +
                 '<div class="pf-hint">考试型建议 1,2,4,7,15；技能型建议 1,3,7,14,30</div></div>' +
                 '<div class="pf"><label>大纲结构（可留空，边学边填）</label>' +
@@ -4440,6 +4443,7 @@
             box.querySelector('#pdL2').value = ll.chapter;
             box.querySelector('#pdL3').value = ll.section;
             box.querySelector('#pdExam').value = src.examDate || '';
+            box.querySelector('#pdSubjects').value = (src.courses || []).join('\n');
             box.querySelector('#pdIv').value = (src.reviewIntervals && src.reviewIntervals.length) ? src.reviewIntervals.join(',') : DEFAULT_REVIEW_INTERVALS.join(',');
 
             const close = function () { if (box && box.parentNode) box.parentNode.removeChild(box); };
@@ -4469,6 +4473,7 @@
                     .map(function (s) { return parseInt(s, 10); })
                     .filter(function (n) { return !isNaN(n) && n > 0; });
                 const outline = parseOutline(box.querySelector('#pdOutline').value);
+                const subjectLines = String(box.querySelector('#pdSubjects').value || '').split(/\r?\n/);
 
                 let target = editing;
                 if (!target) {
@@ -4486,11 +4491,15 @@
                 target.examDate = box.querySelector('#pdExam').value || '';
                 target.reviewIntervals = iv.length ? iv : DEFAULT_REVIEW_INTERVALS.slice();
                 if (outline && outline.courses.length) {
-                    target.courses = outline.courses;
+                    dettachBuiltinStructure(target);
+                    target.courses = outline.courses.slice();
                     target.chapterNames = outline.chapterNames;
                     target.sectionNames = outline.sectionNames;
-                    target.customStructure = true;
+                    // 大纲里没写章节的一级，兜底补「第1章 / 第1节」
+                    (outline.courses || []).forEach(function (c) { ensureCourseStructure(target, c); });
                 }
+                // 科目清单里额外的（大纲没覆盖到的）一并写入，自动去重 + 补结构
+                addCoursesToProject(target, subjectLines);
                 saveProjects();
                 renderProjectSelect();
                 close();
@@ -4585,6 +4594,33 @@
             return { chapterNames: chapterNames, sectionNames: sectionNames, maxChapter: ch };
         }
 
+        // ---------- 科目落地：无结构时自动补「第1章 / 第1节」 ----------
+        function ensureCourseStructure(p, course) {
+            // 内置项目的 chapterNames 指向代码常量，写入前先落地一份副本
+            if (p.builtin && !p.customStructure) dettachBuiltinStructure(p);
+            p.chapterNames = p.chapterNames || {};
+            p.sectionNames = p.sectionNames || {};
+            if (!p.chapterNames[course] || Object.keys(p.chapterNames[course]).length === 0) {
+                p.chapterNames[course] = { 1: '' };
+                p.sectionNames[course] = { 1: [''] };
+            }
+        }
+
+        // 批量写入科目（自动去重 + 补结构），返回新增的科目名
+        function addCoursesToProject(p, names) {
+            if (!Array.isArray(p.courses)) p.courses = [];
+            const added = [];
+            (names || []).forEach(function (n) {
+                const name = String(n || '').trim();
+                if (!name) return;
+                if (p.courses.indexOf(name) >= 0) return;
+                p.courses.push(name);
+                added.push(name);
+            });
+            added.forEach(function (c) { ensureCourseStructure(p, c); });
+            return added;
+        }
+
         // ---------- 复制内置结构（自定义前先落地，避免污染代码常量） ----------
         function dettachBuiltinStructure(p) {
             if (!p.builtin || p.customStructure) return;
@@ -4615,7 +4651,10 @@
             box.innerHTML =
                 '<div class="proj-dialog">' +
                 '<h3>新增' + cL + '（项目：' + (proj.name || '') + '）</h3>' +
-                '<div class="pf"><label>' + cL + '名称</label><input id="cdName" type="text" placeholder="如：四级 Python / 会计"></div>' +
+                '<div class="pf"><label>' + cL + '名称（一行一个，可一次粘贴多个）</label>' +
+                '<textarea id="cdName" rows="4" placeholder="会计&#10;审计&#10;财务成本管理"></textarea>' +
+                '<div class="pf-hint">一次可建多个：每行一个' + cL + '，可直接粘贴；同名会自动跳过。' +
+                '填多个时下面的章 / ' + sL + '大纲不会自动归属，建完请逐个用旁边「➕ 新增' + chL + '」补齐。</div></div>' +
                 '<div class="pf"><label>' + chL + ' / ' + sL + '大纲（可留空，边学边填）</label>' +
                 '<textarea id="cdOutline" rows="7" placeholder="程序基本结构&#10;  顺序结构&#10;  分支结构&#10;数据分析&#10;  Series&#10;  DataFrame"></textarea>' +
                 '<div class="pf-hint">一行一条，缩进表示层级：不缩进 = ' + chL + '，缩进一次 = ' + sL + '。留空则先建一个空' + chL + '，之后可在「目标管理」用模板补齐。</div></div>' +
@@ -4627,25 +4666,26 @@
             box.querySelector('#cdCancel').onclick = close;
             box.onclick = function (e) { if (e.target === box) close(); };
             box.querySelector('#cdSave').onclick = function () {
-                const name = (box.querySelector('#cdName').value || '').trim();
-                if (!name) { alert('请填写' + cL + '名称'); return; }
+                const lines = String(box.querySelector('#cdName').value || '')
+                    .split(/\r?\n/).map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s; });
+                if (!lines.length) { alert('请填写' + cL + '名称'); return; }
                 const outline = parseChapterOutline(box.querySelector('#cdOutline').value);
                 const p = getCurrentProject();
-                if (!p.courses) p.courses = [];
-                if (!p.courses.includes(name)) p.courses.push(name);
                 dettachBuiltinStructure(p);
-                p.chapterNames = p.chapterNames || {};
-                p.sectionNames = p.sectionNames || {};
+                const added = addCoursesToProject(p, lines);
                 if (outline) {
-                    p.chapterNames[name] = outline.chapterNames;
-                    p.sectionNames[name] = outline.sectionNames;
-                } else if (!p.chapterNames[name] || Object.keys(p.chapterNames[name]).length === 0) {
-                    p.chapterNames[name] = { 1: '' };
-                    p.sectionNames[name] = { 1: [''] };
+                    if (added.length === 1) {
+                        p.chapterNames[added[0]] = outline.chapterNames;
+                        p.sectionNames[added[0]] = outline.sectionNames;
+                    } else if (lines.length > 1) {
+                        alert('一次填了多个' + cL + '，章 / ' + sL + '大纲无法自动归属，已为每个' + cL + '先建好第 1 ' + chL + '；' +
+                            '请选中某个' + cL + '后再用「➕ 新增' + chL + '」逐个补结构。');
+                    }
                 }
-                saveProjects();
+                if (!added.length) { alert('这些' + cL + '当前项目里已经有了，未重复添加。'); close(); return; }
                 close();
-                afterStructureChange(name);
+                afterStructureChange(added[added.length - 1]);
             };
             setTimeout(function () { const el = box.querySelector('#cdName'); if (el) el.focus(); }, 30);
         }
@@ -4995,6 +5035,7 @@
 
                 if (!target.courses.includes(course)) {
                     target.courses.push(course);
+                    ensureCourseStructure(target, course);
                     newCourses.push((target === defaultProj ? '' : target.name + ' / ') + course);
                 }
                 target.targetOverrides = target.targetOverrides || {};
