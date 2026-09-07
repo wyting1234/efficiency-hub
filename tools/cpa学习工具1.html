@@ -1932,14 +1932,9 @@
                     </div>
                     <div class="form-row full">
                         <div class="field">
-                            <label>📌 知识点 <span style="font-weight:400;color:var(--text-secondary);">(序号 + 知识点，一行一条)</span></label>
-                            <div class="kp-list" id="kpList"></div>
-                            <button type="button" class="kp-add" id="addKpBtn">➕ 添加知识点</button>
-                            <span class="kp-hint" id="kpBaseHint" style="display:block;margin:6px 0 2px;font-weight:600;color:var(--primary,#8A7358);">本节暂无已保存知识点，本次从第 1 个开始编号</span>
-                            <span class="kp-hint">
-                                序号自动生成，回车可快速新增下一条；支持整段粘贴，按换行 / <code>；</code> / <code>、</code> 自动拆条并重新编号。<br>
-                                粘贴内容自带序号（如 <code>1. 存货的初始计量</code>、<code>2 固定资产折旧</code>）会被自动识别，不会重复编号。
-                            </span>
+                            <label>📌 知识点层级 <span style="font-weight:400;color:var(--text-secondary);">（一级 → 二级 → 三级 → 四级，按预置结构逐级选，可只选到某一层）</span></label>
+                            <div class="kp-cascade" id="kpCascade"></div>
+                            <span class="kp-hint" id="kpBaseHint" style="display:block;margin:6px 0 2px;font-weight:600;color:var(--primary,#8A7358);"></span>
                         </div>
                     </div>
                     <div class="form-row full">
@@ -2189,8 +2184,8 @@
                     </div>
                     <div class="goal-result" id="goalResult"></div>
                     <div class="goal-colhint">
-                        模板列：<code>项目</code> · <code>科目</code> · <code data-lv="chapter">章</code> · <code><span data-lv="chapter">章</span>名称</code> · <code data-lv="section">节</code> · <code><span data-lv="section">节</span>名称</code> · <code>建议学时(h)</code> · <code>学习目标</code> · <code>重点难点</code> · <code>掌握程度</code>
-                        <br>其中 <code>项目</code> 列可留空（默认导入到当前项目）；<code><span data-lv="chapter">章</span>名称</code> 填写后会覆盖系统内置<span data-lv="chapter">章</span>名。
+                        模板列（7 级标准）：<code>项目</code> · <code>科目</code> · <code data-lv="chapter">章</code> · <code><span data-lv="chapter">章</span>名称</code> · <code data-lv="section">节</code> · <code><span data-lv="section">节</span>名称</code> · <code>一级</code> · <code>二级</code> · <code>三级</code> · <code>四级</code> · <code>建议学时(h)</code> · <code>学习目标</code> · <code>重点难点</code> · <code>掌握程度</code>
+                        <br>其中 <code>项目</code> 列填了值 → 导入到该指定项目（结构从该列后面的<code>科目</code>开始建）；<code>项目</code> 列留空 → 导入到当前项目。<code><span data-lv="chapter">章</span>名称</code> 填写后会覆盖系统内置<span data-lv="chapter">章</span>名；<code>一级~四级</code> 一行填一个知识点末级路径，同一<span data-lv="section">节</span>可有多行（每行一个末级知识点），导入时自动拼回该<span data-lv="section">节</span>的知识点树。
                     </div>
                 </div>
             </div>
@@ -2699,8 +2694,8 @@
         const PROJECTS_KEY = 'cpa_study_projects_v1';
         const CURRENT_PROJECT_KEY = 'cpa_study_current_project_v1';
 
-        // 默认层级名称：所有项目通用兜底
-        const DEFAULT_LEVEL_LABELS = { course: '科目', chapter: '章', section: '节' };
+        // 默认层级名称：所有项目统一为 7 级标准（项目 → 科目 → 章 → 节 → 一级 → 二级 → 三级 → 四级）
+        const DEFAULT_LEVEL_LABELS = { course: '科目', chapter: '章', section: '节', l1: '一级', l2: '二级', l3: '三级', l4: '四级' };
         const DEFAULT_REVIEW_INTERVALS = [1, 2, 4, 7, 15];
 
         const DEFAULT_PROJECTS = [{
@@ -2712,7 +2707,7 @@
             chapterNames: CHAPTER_NAMES,
             sectionNames: SECTION_NAMES,
             targetOverrides: {},
-            levelLabels: { course: '科目', chapter: '章', section: '节' },
+            levelLabels: { course: '科目', chapter: '章', section: '节', l1: '一级', l2: '二级', l3: '三级', l4: '四级' },
             examDate: '',
             reviewIntervals: DEFAULT_REVIEW_INTERVALS.slice()
         }, {
@@ -2724,7 +2719,7 @@
             chapterNames: {},
             sectionNames: {},
             targetOverrides: {},
-            levelLabels: { course: '科目', chapter: '章', section: '节' },
+            levelLabels: { course: '科目', chapter: '章', section: '节', l1: '一级', l2: '二级', l3: '三级', l4: '四级' },
             examDate: '',
             reviewIntervals: DEFAULT_REVIEW_INTERVALS.slice()
         }];
@@ -2770,6 +2765,8 @@
                         chapterNames: {},
                         sectionNames: {},
                         targetOverrides: sp.targetOverrides || {},
+                        kpTree: sp.kpTree || (base ? (base.kpTree || {}) : {}),
+                        defaultPlanHours: (typeof sp.defaultPlanHours === 'number' && sp.defaultPlanHours > 0) ? sp.defaultPlanHours : 0,
                         customStructure: !!sp.customStructure,
                         projectType: sp.projectType || (base ? base.projectType : 'exam'),
                         levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, sp.levelLabels || (base ? base.levelLabels : {})),
@@ -2793,7 +2790,7 @@
                             id: dp.id, name: dp.name, builtin: true,
                             courses: dp.courses.slice(),
                             chapterNames: dp.chapterNames, sectionNames: dp.sectionNames,
-                            targetOverrides: {}, customStructure: false,
+                            targetOverrides: {}, kpTree: dp.kpTree || {}, defaultPlanHours: dp.defaultPlanHours || 0, customStructure: false,
                             projectType: dp.projectType || 'exam',
                             levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, dp.levelLabels),
                             examDate: dp.examDate || '',
@@ -2806,7 +2803,7 @@
                     id: dp.id, name: dp.name, builtin: true,
                     courses: dp.courses.slice(),
                     chapterNames: dp.chapterNames, sectionNames: dp.sectionNames,
-                    targetOverrides: {}, customStructure: false,
+                    targetOverrides: {}, kpTree: dp.kpTree || {}, defaultPlanHours: dp.defaultPlanHours || 0, customStructure: false,
                     projectType: dp.projectType || 'exam',
                     levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, dp.levelLabels),
                     examDate: dp.examDate || '',
@@ -2824,6 +2821,8 @@
                     const o = {
                         id: p.id, name: p.name, builtin: !!p.builtin,
                         courses: p.courses, targetOverrides: p.targetOverrides || {},
+                        kpTree: p.kpTree || {},
+                        defaultPlanHours: (typeof p.defaultPlanHours === 'number' && p.defaultPlanHours > 0) ? p.defaultPlanHours : 0,
                         projectType: p.projectType || 'exam',
                         levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, p.levelLabels),
                         examDate: p.examDate || '',
@@ -2861,16 +2860,21 @@
                 for (let ch = 1; ch <= maxCh; ch++) {
                     const secList = s[ch] || [];
                     g[course].chapters[ch] = { sections: {} };
+                    const defPlan = (typeof project.defaultPlanHours === 'number' && project.defaultPlanHours > 0) ? project.defaultPlanHours : 0;
                     const baseHours = secList.length * 1.5;
                     const totalHours = Math.round((baseHours * 1.2) * 10) / 10;
+                    const kpOf = (project.kpTree && project.kpTree[course] && project.kpTree[course][ch]) ? project.kpTree[course][ch] : {};
                     secList.forEach((name, idx) => {
                         const secNum = idx + 1;
+                        const kpArr = (kpOf && kpOf[secNum]) ? kpOf[secNum] : [];
+                        const dur = defPlan > 0 ? defPlan.toFixed(1) + 'h' : (secList.length ? (totalHours / secList.length).toFixed(1) + 'h' : '0h');
                         g[course].chapters[ch].sections[secNum] = {
                             name: name,
-                            duration: secList.length ? (totalHours / secList.length).toFixed(1) + 'h' : '0h',
+                            duration: dur,
                             objective: "待补充",
                             keypoints: "待补充",
                             mastery: "掌握",
+                            kp: kpArr,
                             chapterTotalHours: totalHours
                         };
                     });
@@ -2900,6 +2904,7 @@
                     objective: val.objective !== undefined && val.objective !== '' ? val.objective : (prev.objective || '待补充'),
                     keypoints: val.keypoints !== undefined && val.keypoints !== '' ? val.keypoints : (prev.keypoints || '待补充'),
                     mastery: val.mastery !== undefined && val.mastery !== '' ? val.mastery : (prev.mastery || '掌握'),
+                    kp: (prev.kp && prev.kp.length) ? prev.kp : ((project.kpTree && project.kpTree[course] && project.kpTree[course][ch] && project.kpTree[course][ch][sec]) ? project.kpTree[course][ch][sec] : []),
                     chapterTotalHours: prev.chapterTotalHours || 0
                 };
                 // 重算该章建议总时长
@@ -3757,118 +3762,117 @@
             return getSectionKpBase(courseEl.value, parseInt(chEl.value), parseInt(secEl.value), state.editingId);
         }
 
-        // 刷新「本节已有 N 个知识点」提示
+        // ---------- 知识点层级（一级 → 二级 → 三级 → 四级） ----------
+        // 取当前所选「科目-章-节」的知识点树（来自 GUIDE_DATA 的 section.kp）
+        function getKpTreeForSection(course, chapter, section) {
+            const c = GUIDE_DATA[course];
+            if (!c) return [];
+            const ch = c.chapters[chapter];
+            if (!ch) return [];
+            const sec = ch.sections[section];
+            if (!sec) return [];
+            return Array.isArray(sec.kp) ? sec.kp : [];
+        }
+        // 根据已选路径 path（前 level 级名称）返回第 level 级（0=一级）的可选项
+        function kpChildrenAt(tree, level, path) {
+            let nodes = tree || [];
+            for (let i = 0; i < level; i++) {
+                const node = nodes.find(function (n) { return n.name === path[i]; });
+                if (!node) return [];
+                nodes = node.children || [];
+            }
+            return nodes;
+        }
+        function countKpLeaves(tree) {
+            let n = 0;
+            (function walk(ns) { (ns || []).forEach(function (x) { if (!x.children || !x.children.length) n++; else walk(x.children); }); })(tree);
+            return n;
+        }
+        function kpOption(name) {
+            const o = document.createElement('option');
+            o.value = name; o.textContent = name;
+            return o;
+        }
+        // 切换章/节后重建 4 级联动下拉
+        function updateKpSelects(course, chapter, section) {
+            const wrap = document.getElementById('kpCascade');
+            if (!wrap) return;
+            wrap.innerHTML =
+                '<div class="field"><label>' + L('l1') + ' <span class="kp-opt">(选填)</span></label><select id="fL1"><option value="">— 不指定 —</option></select></div>' +
+                '<div class="field"><label>' + L('l2') + ' <span class="kp-opt">(选填)</span></label><select id="fL2"><option value="">— 不指定 —</option></select></div>' +
+                '<div class="field"><label>' + L('l3') + ' <span class="kp-opt">(选填)</span></label><select id="fL3"><option value="">— 不指定 —</option></select></div>' +
+                '<div class="field"><label>' + L('l4') + ' <span class="kp-opt">(选填)</span></label><select id="fL4"><option value="">— 不指定 —</option></select></div>';
+            const fL1 = document.getElementById('fL1'), fL2 = document.getElementById('fL2'),
+                  fL3 = document.getElementById('fL3'), fL4 = document.getElementById('fL4');
+            const tree = getKpTreeForSection(course, chapter, section);
+            const fill = function (sel, nodes) {
+                const prev = sel.value;
+                sel.innerHTML = '<option value="">— 不指定 —</option>';
+                (nodes || []).forEach(function (n) { sel.appendChild(kpOption(n.name)); });
+                // 重建选项后，若原先已选的值仍在可选范围内则保留（避免联动把自己清空）
+                if (prev && Array.from(sel.options).some(function (o) { return o.value === prev; })) sel.value = prev;
+            };
+            fill(fL1, tree);
+            const cascade = function () {
+                fill(fL2, kpChildrenAt(tree, 1, [fL1.value]));
+                fill(fL3, kpChildrenAt(tree, 2, [fL1.value, fL2.value]));
+                fill(fL4, kpChildrenAt(tree, 3, [fL1.value, fL2.value, fL3.value]));
+                if (!fL1.value) { fL2.value = ''; fL3.value = ''; fL4.value = ''; }
+                else if (!fL2.value) { fL3.value = ''; fL4.value = ''; }
+                else if (!fL3.value) { fL4.value = ''; }
+            };
+            fL1.onchange = cascade; fL2.onchange = cascade; fL3.onchange = cascade; fL4.onchange = cascade;
+            const guide = getGuide(course, chapter, section);
+            const hint = document.getElementById('kpBaseHint');
+            if (hint) {
+                const _sl = L('section');
+                const plan = (guide && guide.duration) ? guide.duration : '—';
+                const cnt = countKpLeaves(tree);
+                hint.textContent = `本${_sl}计划学时 ${plan}` + (cnt ? `，已预置 ${cnt} 个知识点（末级）` : '，暂无预置知识点（可直接保存本节）');
+            }
+        }
+        function bindKpSelects() {}
+
+        // 刷新「本节」提示（兼容旧调用点 applyLevelLabels / renumberKpRows）
         function updateKpBaseHint() {
-            const el = document.getElementById('kpBaseHint');
-            if (!el) return;
-            const base = currentKpBase();
-            const _sl = L('section');
-            el.textContent = base > 0
-                ? `本${_sl}已保存 ${base} 个知识点，本次新增从第 ${base + 1} 个开始编号`
-                : `本${_sl}暂无已保存知识点，本次从第 1 个开始编号`;
+            const c = document.getElementById('fCourse'), ch = document.getElementById('fChapter'), s = document.getElementById('fSection');
+            if (c && ch && s) updateKpSelects(c.value, parseInt(ch.value), parseInt(s.value));
         }
 
-        // 只负责渲染自身，不调用任何其他 render 函数（保持调用链单向）
+        // 编辑回填：把已存的知识点路径 [一级,二级,三级,四级] 填回下拉
         function renderKnowledgePoints(list) {
-            const box = document.getElementById('kpList');
-            if (!box) return;
-            const base = currentKpBase();
-            const arr = (Array.isArray(list) && list.length) ? list : [{ text: '' }];
-            box.innerHTML = arr.map((k, i) => kpRowHTML(base + i + 1, (k && k.text) || (typeof k === 'string' ? k : ''))).join('');
-            updateKpBaseHint();
+            const arr = (Array.isArray(list) && list.length) ? list : [];
+            const path = arr.map(function (k) { return (k && k.text) || (typeof k === 'string' ? k : ''); }).filter(Boolean);
+            ['fL1', 'fL2', 'fL3', 'fL4'].forEach(function (id, i) {
+                const el = document.getElementById(id);
+                if (el && path[i]) el.value = path[i];
+            });
         }
 
         function renumberKpRows() {
-            const box = document.getElementById('kpList');
-            if (!box) return;
-            const base = currentKpBase();
-            box.querySelectorAll('.kp-row').forEach((r, i) => {
-                const no = r.querySelector('.kp-no');
-                if (no) no.textContent = base + i + 1;
-            });
-            updateKpBaseHint();
+            const c = document.getElementById('fCourse'), ch = document.getElementById('fChapter'), s = document.getElementById('fSection');
+            if (c && ch && s) updateKpSelects(c.value, parseInt(ch.value), parseInt(s.value));
         }
 
-        function addKpRow(text) {
-            const box = document.getElementById('kpList');
-            if (!box) return;
-            const row = document.createElement('div');
-            row.className = 'kp-row';
-            row.innerHTML = '<span class="kp-no"></span>' +
-                '<input type="text" class="kp-input" placeholder="输入知识点，如：存货的初始计量" />' +
-                '<button type="button" class="kp-del" title="删除该条">✕</button>';
-            box.appendChild(row);
-            if (text) row.querySelector('.kp-input').value = text;
-            renumberKpRows();
-            const inp = row.querySelector('.kp-input');
-            if (inp) inp.focus();
-        }
+        function addKpRow(text) {}
+        function bindKpList() {}
 
-        // 事件委托，只绑定一次，避免重复监听
-        function bindKpList() {
-            const box = document.getElementById('kpList');
-            const addBtn = document.getElementById('addKpBtn');
-            if (!box || box.dataset.bound === '1') return;
-            box.dataset.bound = '1';
-
-            box.addEventListener('click', (e) => {
-                const del = e.target.closest ? e.target.closest('.kp-del') : null;
-                if (!del) return;
-                const rows = box.querySelectorAll('.kp-row');
-                if (rows.length <= 1) {
-                    const only = del.closest('.kp-row').querySelector('.kp-input');
-                    if (only) { only.value = ''; only.focus(); }
-                } else {
-                    del.closest('.kp-row').remove();
-                    renumberKpRows();
-                }
-            });
-
-            box.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('kp-input')) {
-                    e.preventDefault();
-                    addKpRow('');
-                }
-            });
-
-            box.addEventListener('paste', (e) => {
-                const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
-                if (!/[\n\r\uff1b;\u3001]/.test(txt)) return;   // 单行粘贴走默认行为
-                e.preventDefault();
-                const parts = txt.split(/[\n\r\uff1b;\u3001]+/).map(s => s.trim()).filter(Boolean);
-                if (!parts.length) return;
-                const rows = Array.prototype.slice.call(box.querySelectorAll('.kp-row'));
-                const cur = e.target.closest ? e.target.closest('.kp-row') : null;
-                const idx = cur ? rows.indexOf(cur) : rows.length - 1;
-                const before = rows.slice(0, idx).map(r => r.querySelector('.kp-input').value.trim());
-                const after = rows.slice(idx + 1).map(r => r.querySelector('.kp-input').value.trim());
-                const cleaned = parts.map(stripKpNo).filter(Boolean);
-                const merged = before.concat(cleaned, after).map(t => ({ text: t }));
-                renderKnowledgePoints(merged);
-                const inputs = box.querySelectorAll('.kp-input');
-                const focusIdx = Math.min(before.length + cleaned.length - 1, inputs.length - 1);
-                if (inputs[focusIdx]) inputs[focusIdx].focus();
-            });
-
-            if (addBtn) addBtn.addEventListener('click', () => addKpRow(''));
-        }
-
-        // 从 DOM 收集知识点，自动重排序号
+        // 从 4 级下拉收集知识点路径，作为 knowledgePoints 数组（保持 {text} 结构，卡片 chips 照常展示）
         function getKnowledgePoints() {
-            const box = document.getElementById('kpList');
-            if (!box) return [];
             const out = [];
-            const base = currentKpBase();
-            box.querySelectorAll('.kp-row').forEach((r) => {
-                const inp = r.querySelector('.kp-input');
-                const t = stripKpNo((inp && inp.value) || '');
-                if (t) out.push({ no: base + out.length + 1, text: t });
+            ['fL1', 'fL2', 'fL3', 'fL4'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el && el.value) out.push({ text: el.value });
             });
             return out;
         }
 
         function resetKnowledgePoints() {
-            renderKnowledgePoints([{ text: '' }]);
+            // 直接清空 4 级联动下拉，避免上一条记录的已选知识点残留到下一条
+            ['fL1', 'fL2', 'fL3', 'fL4'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
             const cb = document.getElementById('fAddToMemory');
             if (cb) {
                 cb.checked = true;
@@ -4361,6 +4365,15 @@
         }
 
         // ---------- 大纲文本解析：缩进层级 → 三层结构 ----------
+        // 把一条知识点路径 [一级,二级,三级,四级]（非空部分）挂到节的 kpTree 数组上，逐级去重合并
+        function addKpPath(arr, path) {
+            let cur = arr;
+            path.forEach(function (name) {
+                let node = cur.find(function (n) { return n.name === name; });
+                if (!node) { node = { name: name, children: [] }; cur.push(node); }
+                cur = node.children;
+            });
+        }
         function parseOutline(text) {
             const items = [];
             String(text || '').split(/\r?\n/).forEach(l => {
@@ -4371,27 +4384,37 @@
                 if (name) items.push({ ind: ind, name: name });
             });
             if (!items.length) return null;
-            const levels = Array.from(new Set(items.map(i => i.ind))).sort(function (a, b) { return a - b; }).slice(0, 3);
-            const courses = [], chapterNames = {}, sectionNames = {};
-            let cur = null, curCh = 0;
+            // 7 个缩进层级：0 科目 / 1 章 / 2 节 / 3 一级 / 4 二级 / 5 三级 / 6 四级
+            const levels = Array.from(new Set(items.map(i => i.ind))).sort(function (a, b) { return a - b; }).slice(0, 7);
+            const courses = [], chapterNames = {}, sectionNames = {}, kpTree = {};
+            let cur = null, curCh = 0, curSec = 0;
+            const last = [null, null, null, null, null, null, null];
             items.forEach(function (it) {
                 let tier = levels.indexOf(it.ind);
-                if (tier < 0) tier = 2;
+                if (tier < 0) tier = 6;
+                last[tier] = it.name;
+                for (let k = tier + 1; k < 7; k++) last[k] = null;
                 if (tier === 0) {
                     cur = it.name;
                     courses.push(cur);
-                    chapterNames[cur] = {};
-                    sectionNames[cur] = {};
-                    curCh = 0;
+                    chapterNames[cur] = {}; sectionNames[cur] = {}; kpTree[cur] = {};
+                    curCh = 0; curSec = 0;
                 } else if (tier === 1 && cur) {
                     curCh++;
                     chapterNames[cur][curCh] = it.name;
                     sectionNames[cur][curCh] = [];
-                } else if (cur && curCh) {
+                    kpTree[cur][curCh] = {};
+                    curSec = 0;
+                } else if (tier === 2 && cur && curCh) {
+                    curSec++;
                     sectionNames[cur][curCh].push(it.name);
+                    kpTree[cur][curCh][curSec] = [];
+                } else if (cur && curCh && curSec && tier >= 3) {
+                    const path = last.slice(3, tier + 1).filter(Boolean);
+                    if (path.length) addKpPath(kpTree[cur][curCh][curSec], path);
                 }
             });
-            return { courses: courses, chapterNames: chapterNames, sectionNames: sectionNames };
+            return { courses: courses, chapterNames: chapterNames, sectionNames: sectionNames, kpTree: kpTree };
         }
 
         // ---------- 项目配置弹窗（新增 / 编辑） ----------
@@ -4418,20 +4441,17 @@
                 '<div class="pf"><label>类型</label><select id="pdType">' +
                 '<option value="exam">考试型（有考期，显示倒计时）</option>' +
                 '<option value="skill">技能型（无固定考期）</option></select></div>' +
-                '<div class="pf-row">' +
-                '<div class="pf"><label>一级名称</label><input id="pdL1" type="text" placeholder="科目"></div>' +
-                '<div class="pf"><label>二级名称</label><input id="pdL2" type="text" placeholder="章"></div>' +
-                '<div class="pf"><label>三级名称</label><input id="pdL3" type="text" placeholder="节"></div>' +
-                '</div>' +
+                '<div class="pf-hint" style="background:#f6f1e8;border:1px dashed #d8c9ad;padding:8px 10px;border-radius:8px;line-height:1.7;">层级固定为 7 级：<b>项目 → 科目 → 章 → 节 → 一级 → 二级 → 三级 → 四级</b>。下方「大纲结构」一次性填好整棵结构；计划学时在此或「目标管理」模板里提前规划。</div>' +
+                '<div class="pf"><label>默认每节计划学时 (h，可留空)</label><input id="pdPlan" type="number" min="0" step="0.5" placeholder="如 2.5（留空则按知识点数自动估算）"></div>' +
                 '<div class="pf"><label>考试 / 目标日期（可留空）</label><input id="pdExam" type="date"></div>' +
                 '<div class="pf"><label>' + (ll.course || '科目') + '清单（一行一个，可留空）</label>' +
                 '<textarea id="pdSubjects" rows="4" placeholder="会计&#10;审计&#10;财务成本管理"></textarea>' +
                 '<div class="pf-hint">一行一个' + (ll.course || '科目') + '，可直接从表格 / 文档粘贴；已存在的会自动跳过。留空则保留现有' + (ll.course || '科目') + '。</div></div>' +
                 '<div class="pf"><label>复习间隔（天，逗号分隔）</label><input id="pdIv" type="text" placeholder="1,2,4,7,15">' +
                 '<div class="pf-hint">考试型建议 1,2,4,7,15；技能型建议 1,3,7,14,30</div></div>' +
-                '<div class="pf"><label>大纲结构（可留空，边学边填）</label>' +
-                '<textarea id="pdOutline" rows="6" placeholder="四级 Python&#10;  程序基本结构&#10;    顺序结构&#10;    分支结构"></textarea>' +
-                '<div class="pf-hint">一行一条，缩进表示层级：不缩进=一级，缩进一次=二级，再缩进=三级。留空则保留现有结构。</div></div>' +
+                '<div class="pf"><label>大纲结构（建议一次性填好整棵 7 级结构）</label>' +
+                '<textarea id="pdOutline" rows="8" placeholder="财管&#10;  第一章 存货&#10;    第1节 存货的确认&#10;      存货的初始计量&#10;        外购存货成本&#10;        加工成本&#10;      存货的期末计量&#10;        成本与可变现净值孰低"></textarea>' +
+                '<div class="pf-hint">缩进表示层级：不缩进=科目，缩进1=章，缩进2=节，缩进3=一级，缩进4=二级，缩进5=三级，缩进6=四级。留空则保留现有结构（之后可在「目标管理」用模板补齐）。</div></div>' +
                 '<div class="pf-actions">' +
                 (isEdit ? '<button id="pdDel" class="pd-btn danger">删除项目</button>' : '') +
                 '<button id="pdCancel" class="pd-btn">取消</button>' +
@@ -4439,10 +4459,8 @@
                 '</div></div>';
             box.querySelector('#pdName').value = src.name || '';
             box.querySelector('#pdType').value = src.projectType || 'exam';
-            box.querySelector('#pdL1').value = ll.course;
-            box.querySelector('#pdL2').value = ll.chapter;
-            box.querySelector('#pdL3').value = ll.section;
             box.querySelector('#pdExam').value = src.examDate || '';
+            box.querySelector('#pdPlan').value = (src.defaultPlanHours && src.defaultPlanHours > 0) ? src.defaultPlanHours : '';
             box.querySelector('#pdSubjects').value = (src.courses || []).join('\n');
             box.querySelector('#pdIv').value = (src.reviewIntervals && src.reviewIntervals.length) ? src.reviewIntervals.join(',') : DEFAULT_REVIEW_INTERVALS.join(',');
 
@@ -4464,11 +4482,7 @@
             box.querySelector('#pdSave').onclick = function () {
                 const name = (box.querySelector('#pdName').value || '').trim();
                 if (!name) { alert('请填写项目名称'); return; }
-                const lv = {
-                    course: (box.querySelector('#pdL1').value || '').trim() || DEFAULT_LEVEL_LABELS.course,
-                    chapter: (box.querySelector('#pdL2').value || '').trim() || DEFAULT_LEVEL_LABELS.chapter,
-                    section: (box.querySelector('#pdL3').value || '').trim() || DEFAULT_LEVEL_LABELS.section
-                };
+                const lv = { course: DEFAULT_LEVEL_LABELS.course, chapter: DEFAULT_LEVEL_LABELS.chapter, section: DEFAULT_LEVEL_LABELS.section, l1: DEFAULT_LEVEL_LABELS.l1, l2: DEFAULT_LEVEL_LABELS.l2, l3: DEFAULT_LEVEL_LABELS.l3, l4: DEFAULT_LEVEL_LABELS.l4 };
                 const iv = (box.querySelector('#pdIv').value || '').split(/[,，、\s]+/)
                     .map(function (s) { return parseInt(s, 10); })
                     .filter(function (n) { return !isNaN(n) && n > 0; });
@@ -4480,7 +4494,7 @@
                     target = {
                         id: 'p_' + Date.now().toString(36),
                         builtin: false,
-                        courses: [], chapterNames: {}, sectionNames: {},
+                        courses: [], chapterNames: {}, sectionNames: {}, kpTree: {}, defaultPlanHours: 0,
                         targetOverrides: {}, customStructure: true
                     };
                     projects.push(target);
@@ -4490,11 +4504,13 @@
                 target.levelLabels = lv;
                 target.examDate = box.querySelector('#pdExam').value || '';
                 target.reviewIntervals = iv.length ? iv : DEFAULT_REVIEW_INTERVALS.slice();
+                target.defaultPlanHours = (function () { const v = parseFloat(box.querySelector('#pdPlan').value); return (!isNaN(v) && v > 0) ? v : 0; })();
                 if (outline && outline.courses.length) {
                     dettachBuiltinStructure(target);
                     target.courses = outline.courses.slice();
                     target.chapterNames = outline.chapterNames;
                     target.sectionNames = outline.sectionNames;
+                    target.kpTree = outline.kpTree || {};
                     // 大纲里没写章节的一级，兜底补「第1章 / 第1节」
                     (outline.courses || []).forEach(function (c) { ensureCourseStructure(target, c); });
                 }
@@ -4784,7 +4800,17 @@
         // ============================================================
         //  科目目标：模板导出 / 导入
         // ============================================================
-        const GOAL_HEADERS = ['项目', '科目', '章', '章名称', '节', '节名称', '建议学时(h)', '学习目标', '重点难点', '掌握程度'];
+        // 7 级标准表头：项目 → 科目 → 章 → 节 → 一级 → 二级 → 三级 → 四级（后 4 列为知识点层级）
+        const GOAL_HEADERS = ['项目', '科目', '章', '章名称', '节', '节名称', '一级', '二级', '三级', '四级', '建议学时(h)', '学习目标', '重点难点', '掌握程度'];
+
+        // 把知识点树拍平成「末级路径」数组（每条约 1~4 级）
+        function flattenKpLeaves(tree, prefix, out) {
+            (tree || []).forEach(function (node) {
+                const p = prefix.concat([node.name]);
+                if (node.children && node.children.length) flattenKpLeaves(node.children, p, out);
+                else out.push(p);
+            });
+        }
 
         function getGoalRows(scope) {
             const list = (scope === 'all') ? projects : [getCurrentProject()];
@@ -4798,7 +4824,7 @@
                 if (maxCh === 0) {
                     // 结构为空的项目：生成骨架行，方便用户直接填写
                     for (let s = 1; s <= 3; s++) {
-                        rows.push([proj.name, course, 1, '', s, '', 1.5, '待补充', '待补充', '掌握']);
+                        rows.push([proj.name, course, 1, '', s, '', '', '', '', '', 1.5, '待补充', '待补充', '掌握']);
                     }
                     return;
                 }
@@ -4811,19 +4837,37 @@
                     if (!chData) continue;
                     const secs = Object.keys(chData.sections || {}).map(Number).sort((a, b) => a - b);
                     if (secs.length === 0) {
-                        rows.push([proj.name, course, ch, chNameOf(course, ch), 1, '', 1.5, '待补充', '待补充', '掌握']);
+                        rows.push([proj.name, course, ch, chNameOf(course, ch), 1, '', '', '', '', '', 1.5, '待补充', '待补充', '掌握']);
                         continue;
                     }
                     secs.forEach(sec => {
                         const sd = chData.sections[sec] || {};
-                        rows.push([
-                            proj.name, course, ch, chNameOf(course, ch), sec,
-                            sd.name || '',
-                            parseFloat(sd.duration) || 0,
-                            sd.objective || '待补充',
-                            sd.keypoints || '待补充',
-                            sd.mastery || '掌握'
-                        ]);
+                        const leaves = [];
+                        flattenKpLeaves(sd.kp || [], [], leaves);
+                        if (leaves.length === 0) {
+                            // 该节暂无预置知识点：仍导出一行（一级~四级 留空），便于直接维护本节目标
+                            rows.push([
+                                proj.name, course, ch, chNameOf(course, ch), sec,
+                                sd.name || '', '', '', '', '',
+                                parseFloat(sd.duration) || 0,
+                                sd.objective || '待补充',
+                                sd.keypoints || '待补充',
+                                sd.mastery || '掌握'
+                            ]);
+                        } else {
+                            // 同一节按末级知识点分行：每行承载完整的一级~四级路径
+                            leaves.forEach(function (leaf) {
+                                rows.push([
+                                    proj.name, course, ch, chNameOf(course, ch), sec,
+                                    sd.name || '',
+                                    leaf[0] || '', leaf[1] || '', leaf[2] || '', leaf[3] || '',
+                                    parseFloat(sd.duration) || 0,
+                                    sd.objective || '待补充',
+                                    sd.keypoints || '待补充',
+                                    sd.mastery || '掌握'
+                                ]);
+                            });
+                        }
                     });
                 }
             });
@@ -4909,7 +4953,7 @@
             // 还没有科目时导出「空白模板」：仅表头 + 一行带项目名的空行，填好科目 / 章 / 节后导入即可建立结构
             const isBlank = rows.length === 0;
             const data = [GOAL_HEADERS].concat(rows);
-            if (isBlank) data.push([(sc === 'all' ? '' : (proj.name || '')), '', '', '', '', '', '', '', '', '']);
+            if (isBlank) data.push([(sc === 'all' ? '' : (proj.name || '')), '', '', '', '', '', '', '', '', '', '', '', '', '']);
             const stamp = new Date().toISOString().slice(0, 10);
             const projSet = new Set(), courseSet = new Set();
             rows.forEach(r => { if (r[0]) projSet.add(r[0]); if (r[1]) courseSet.add(r[1]); });
@@ -4920,8 +4964,8 @@
                     return;
                 }
                 const ws = XLSX.utils.aoa_to_sheet(data);
-                ws['!cols'] = [{ wch: 16 }, { wch: 16 }, { wch: 6 }, { wch: 22 }, { wch: 6 }, { wch: 26 }, { wch: 12 },
-                    { wch: 40 }, { wch: 40 }, { wch: 12 }
+                ws['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 6 }, { wch: 22 }, { wch: 6 }, { wch: 26 },
+                    { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 12 }, { wch: 30 }, { wch: 30 }, { wch: 10 }
                 ];
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, '科目目标');
@@ -4996,6 +5040,7 @@
             const iProj = col('项目'), iCourse = col('科目'), iCh = col('章'), iChName = col('章名称');
             const iSec = col('节'), iSecName = col('节名称'), iDur = col('建议学时(h)');
             const iObj = col('学习目标'), iKey = col('重点难点'), iMas = col('掌握程度');
+            const iL1 = col('一级'), iL2 = col('二级'), iL3 = col('三级'), iL4 = col('四级');
             if (iCourse === -1 || iCh === -1 || iSec === -1) {
                 throw new Error('表头缺少必需列：科目 / 章 / 节。');
             }
@@ -5061,6 +5106,15 @@
                 }
                 touched.add(target.id);
                 count++;
+                // 知识点树：一级~四级 拼回该节的知识点结构（一行一个末级路径，多行同节自动合并去重）
+                const kpPath = [get(iL1), get(iL2), get(iL3), get(iL4)].filter(Boolean);
+                if (kpPath.length) {
+                    target.kpTree = target.kpTree || {};
+                    if (!target.kpTree[course]) target.kpTree[course] = {};
+                    if (!target.kpTree[course][ch]) target.kpTree[course][ch] = {};
+                    if (!target.kpTree[course][ch][sec]) target.kpTree[course][ch][sec] = [];
+                    addKpPath(target.kpTree[course][ch][sec], kpPath);
+                }
             }
 
             if (count === 0) {
