@@ -1864,6 +1864,7 @@
                             <label>📌 知识点 <span style="font-weight:400;color:var(--text-secondary);">(序号 + 知识点，一行一条)</span></label>
                             <div class="kp-list" id="kpList"></div>
                             <button type="button" class="kp-add" id="addKpBtn">➕ 添加知识点</button>
+                            <span class="kp-hint" id="kpBaseHint" style="display:block;margin:6px 0 2px;font-weight:600;color:var(--primary,#8A7358);">本节暂无已保存知识点，本次从第 1 个开始编号</span>
                             <span class="kp-hint">
                                 序号自动生成，回车可快速新增下一条；支持整段粘贴，按换行 / <code>；</code> / <code>、</code> 自动拆条并重新编号。<br>
                                 粘贴内容自带序号（如 <code>1. 存货的初始计量</code>、<code>2 固定资产折旧</code>）会被自动识别，不会重复编号。
@@ -2049,11 +2050,9 @@
                 </div>
                 <div id="memBody"></div>
                 <div class="mem-legend" id="memLegend">
-                    <span class="lg-item"><i class="lg-block" style="background:#EDEFE3;"></i>&lt;1h</span>
-                    <span class="lg-item"><i class="lg-block" style="background:#C6D2AB;"></i>1–2h</span>
-                    <span class="lg-item"><i class="lg-block" style="background:#77805C;"></i>2–4h</span>
-                    <span class="lg-item"><i class="lg-block" style="background:#5C6647;"></i>&gt;4h</span>
+                    <span class="lg-item"><i class="lg-block" style="background:#EDEFE3;"></i>格子深浅 = 当日学习时长</span>
                     <span class="lg-sep"></span>
+                    <span class="lg-item">🔁 = 当日待复习知识点个数</span>
                     <span class="lg-item">🧠 = 当日所学当前记忆保持率</span>
                 </div>
             </div>
@@ -3250,6 +3249,8 @@
             if (sections.includes(currentVal)) sectionSelect.value = currentVal;
             else sectionSelect.value = sections.length > 0 ? sections[0] : 1;
             updateGuide(course, parseInt(document.getElementById('fChapter').value), parseInt(sectionSelect.value));
+            // 切换章/节后，知识点序号从本节已有数量继续
+            if (typeof renumberKpRows === 'function') renumberKpRows();
         }
 
         // ---------- 更新学习指南 ----------
@@ -3311,6 +3312,7 @@
                 const course = document.getElementById('fCourse').value;
                 const chapter = parseInt(document.getElementById('fChapter').value);
                 updateSectionSelect(course, chapter);
+                if (typeof renumberKpRows === 'function') renumberKpRows();
             });
 
             document.getElementById('fSection').addEventListener('change', () => {
@@ -3318,6 +3320,11 @@
                 const chapter = parseInt(document.getElementById('fChapter').value);
                 const section = parseInt(document.getElementById('fSection').value);
                 updateGuide(course, chapter, section);
+                if (typeof renumberKpRows === 'function') renumberKpRows();
+            });
+
+            document.getElementById('fCourse').addEventListener('change', () => {
+                if (typeof renumberKpRows === 'function') renumberKpRows();
             });
 
             // 星星
@@ -3518,21 +3525,57 @@
                 '</div>';
         }
 
+        // ---------- 本节已保存知识点数（新序号从这里继续） ----------
+        function getSectionKpBase(course, chapter, section, excludeId) {
+            let n = 0;
+            (state.records || []).forEach(r => {
+                if (excludeId && r.id === excludeId) return;
+                if (r.course !== course) return;
+                if (Number(r.chapter) !== Number(chapter)) return;
+                if (Number(r.section) !== Number(section)) return;
+                n += (r.knowledgePoints || []).filter(k => k && String(k.text || '').trim()).length;
+            });
+            return n;
+        }
+
+        // 当前表单所选「科目-章-节」已有的知识点数量
+        function currentKpBase() {
+            const courseEl = document.getElementById('fCourse');
+            const chEl = document.getElementById('fChapter');
+            const secEl = document.getElementById('fSection');
+            if (!courseEl || !chEl || !secEl) return 0;
+            return getSectionKpBase(courseEl.value, parseInt(chEl.value), parseInt(secEl.value), state.editingId);
+        }
+
+        // 刷新「本节已有 N 个知识点」提示
+        function updateKpBaseHint() {
+            const el = document.getElementById('kpBaseHint');
+            if (!el) return;
+            const base = currentKpBase();
+            el.textContent = base > 0
+                ? `本节已保存 ${base} 个知识点，本次新增从第 ${base + 1} 个开始编号`
+                : '本节暂无已保存知识点，本次从第 1 个开始编号';
+        }
+
         // 只负责渲染自身，不调用任何其他 render 函数（保持调用链单向）
         function renderKnowledgePoints(list) {
             const box = document.getElementById('kpList');
             if (!box) return;
+            const base = currentKpBase();
             const arr = (Array.isArray(list) && list.length) ? list : [{ text: '' }];
-            box.innerHTML = arr.map((k, i) => kpRowHTML(i + 1, (k && k.text) || (typeof k === 'string' ? k : ''))).join('');
+            box.innerHTML = arr.map((k, i) => kpRowHTML(base + i + 1, (k && k.text) || (typeof k === 'string' ? k : ''))).join('');
+            updateKpBaseHint();
         }
 
         function renumberKpRows() {
             const box = document.getElementById('kpList');
             if (!box) return;
+            const base = currentKpBase();
             box.querySelectorAll('.kp-row').forEach((r, i) => {
                 const no = r.querySelector('.kp-no');
-                if (no) no.textContent = i + 1;
+                if (no) no.textContent = base + i + 1;
             });
+            updateKpBaseHint();
         }
 
         function addKpRow(text) {
@@ -3604,10 +3647,11 @@
             const box = document.getElementById('kpList');
             if (!box) return [];
             const out = [];
+            const base = currentKpBase();
             box.querySelectorAll('.kp-row').forEach((r) => {
                 const inp = r.querySelector('.kp-input');
                 const t = stripKpNo((inp && inp.value) || '');
-                if (t) out.push({ no: out.length + 1, text: t });
+                if (t) out.push({ no: base + out.length + 1, text: t });
             });
             return out;
         }
@@ -4610,9 +4654,31 @@
             if (memSelected) renderMemDetail(memSelected);
         }
 
+        // ---- 每日「待复习知识点个数」（未完成、未删除的复习任务对应知识点数之和）----
+        function getPlannedReviewKpByDate() {
+            const map = {};
+            const doneKeys = new Set((state.reviewDone || []).map(x => x.recordId + '#' + x.round));
+            const rvOv = state.reviewOverrides || {};
+            const rvDel = state.reviewDeleted || {};
+            (state.records || []).forEach(r => {
+                if (r.addToMemory === false) return;
+                const kpCount = (r.knowledgePoints || []).filter(k => k && String(k.text || '').trim()).length;
+                if (!kpCount) return;
+                REVIEW_INTERVALS.forEach((iv, i) => {
+                    const round = i + 1;
+                    const key = r.id + '#' + round;
+                    if (rvDel[key] || doneKeys.has(key)) return;
+                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
+                    map[sched] = (map[sched] || 0) + kpCount;
+                });
+            });
+            return map;
+        }
+
         // ---- 月视图：6×7 网格 ----
         function renderMonthBody(anchor, todayStr, byDate, body) {
             const [yy, mm] = anchor.split('-').map(Number);
+            const plannedKp = getPlannedReviewKpByDate();
             const first = new Date(yy, mm - 1, 1);
             const firstDow = (first.getDay() + 6) % 7;          // 周一为第 1 列
             const lastDayN = new Date(yy, mm, 0).getDate();
@@ -4629,9 +4695,17 @@
                 const isToday = ds === todayStr;
                 const isSel = ds === memSelected;
                 const recs = byDate[ds] || [];
-                if (c.off || recs.length === 0) {
+                const revKp = plannedKp[ds] || 0;
+                if (c.off || (recs.length === 0 && revKp === 0)) {
                     return `<div class="cd ${c.off ? 'off' : ''} ${isToday ? 'today' : ''}" data-date="${c.off ? '' : ds}">
                         <div class="num">${c.d}</div>
+                    </div>`;
+                }
+                if (recs.length === 0) {
+                    // 当天没有学习记录，但有复习任务
+                    return `<div class="cd ${isToday ? 'today' : ''} ${isSel ? 'sel' : ''}" data-date="${ds}" style="background:#EDEFE3;">
+                        <div class="num">${c.d}</div>
+                        <div class="hrs">🔁 待复习 ${revKp}</div>
                     </div>`;
                 }
                 const hours = recs.reduce((a, r) => a + (r.durationHours || 0), 0);
@@ -4640,7 +4714,7 @@
                 const dark = hours >= 4;
                 return `<div class="cd ${isToday ? 'today' : ''} ${isSel ? 'sel' : ''}" data-date="${ds}" style="background:${bg};">
                     <div class="num" style="${dark ? 'color:#FAF7F1;' : ''}">${c.d}</div>
-                    <div class="hrs" style="${dark ? 'color:#FAF7F1;background:rgba(255,255,255,0.25);' : ''}">${hours.toFixed(1)}h</div>
+                    <div class="hrs" style="${dark ? 'color:#FAF7F1;background:rgba(255,255,255,0.25);' : ''}">${revKp > 0 ? '🔁 待复习 ' + revKp : ''}</div>
                     <div class="ret" style="background:${retentionColor(ret)};">🧠${ret}%</div>
                 </div>`;
             }).join('');
@@ -4679,12 +4753,21 @@
 
         let rvEditingKey = null;
 
+        // 复习条目标题：科目-第X章，第Y节-内容
+        function rvTitleText(r) {
+            const kps = (r.knowledgePoints || []).map(k => String((k && k.text) || '').trim()).filter(Boolean);
+            let content = kps.join('、');
+            if (content.length > 34) content = content.slice(0, 34) + '…';
+            const sec = (r.section === undefined || r.section === null || r.section === '') ? '' : '，第' + r.section + '节';
+            return kpEsc(r.course || '') + '-第' + (r.chapter || '-') + '章' + sec + (content ? '-' + kpEsc(content) : '');
+        }
+
         function rvItemHTML(it, isDone, todayStr) {
             const r = it.record;
             if (rvEditingKey === it.key && !isDone) {
                 return '<div class="rv-item editing" data-key="' + it.key + '">' +
                     '<div class="rv-main">' +
-                        '<div class="rv-title">' + r.course + ' · 第' + r.chapter + '章 · ' + ROUND_NAMES[it.round - 1] + '</div>' +
+                        '<div class="rv-title">' + rvTitleText(r) + ' · ' + ROUND_NAMES[it.round - 1] + '</div>' +
                         '<div class="rv-edit-row">' +
                             '<label>复习日期 <input type="date" class="rv-edit-date" value="' + it.sched + '"></label>' +
                             '<button class="rv-btn rv-b-save">保存</button>' +
@@ -4709,7 +4792,7 @@
             return '<div class="rv-item ' + cls + '" data-key="' + it.key + '">' +
                 '<div class="rv-check">' + (isDone ? '✓' : '') + '</div>' +
                 '<div class="rv-main">' +
-                    '<div class="rv-title">' + r.course + ' · 第' + r.chapter + '章 · ' + ROUND_NAMES[it.round - 1] + '</div>' +
+                    '<div class="rv-title">' + rvTitleText(r) + ' · ' + ROUND_NAMES[it.round - 1] + '</div>' +
                     ((r.knowledgePoints && r.knowledgePoints.length) ? '<div class="rv-kp">' + kpChipsHTML(r.knowledgePoints, 3) + '</div>' : '') +
                     '<div class="rv-meta">学习于 ' + r.date + ' ｜ ⏱ ' + r.durationHours + 'h ｜ ' + status + '</div>' +
                 '</div>' +
