@@ -750,7 +750,7 @@
       <div class="side-btn" id="toggleTheme"><span id="themeIco">🌙</span><span id="themeTxt">夜间模式</span></div>
 
 
-      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.07b</span></div>
+      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.07c</span></div>
 
 
     </div>
@@ -2146,6 +2146,17 @@ function saveModuleManager(){
 
 
 function init(){
+  // 版本迁移：升级到新版本时重置模块显示/排序配置，避免旧数据隐藏新增模块
+  try {
+    var HUB_PATCH = 'v2026.09.07c';
+    if (localStorage.getItem('hub_patch') !== HUB_PATCH) {
+      localStorage.removeItem('hub_module_hidden');
+      localStorage.removeItem('hub_nav_order');
+      localStorage.setItem('hub_patch', HUB_PATCH);
+      console.warn('[修复] 版本升级，已重置模块显示配置');
+    }
+  } catch(e) {}
+
   // 自动修复：如果模块隐藏配置异常（非数组 / 隐藏过多 / 导致0模块），清除隐藏配置
   try {
     const rawHidden = localStorage.getItem('hub_module_hidden');
