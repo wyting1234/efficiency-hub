@@ -1139,7 +1139,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260907e';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260907f';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -1421,6 +1421,8 @@ function buildCards(){
 
 
     card.addEventListener('click',()=>openModule('tool',m.id));
+    // v47 优化：指针按下即预加载 iframe（比 click 早 100~300ms，切换工具更跟手）
+    card.addEventListener('pointerdown',()=>{ try{ ensureFrameLoaded(m.id); }catch(e){} },{passive:true});
 
 
     wrap.appendChild(card);
@@ -2412,6 +2414,39 @@ function init(){
 
 init();
 
+
+/* ============== v47 切换提速：点击预判 + 空闲预取 ============== */
+
+// 1) 侧栏导航项：指针按下即预加载对应工具 iframe（幂等，已加载会直接跳过）
+document.addEventListener('pointerdown', e => {
+  const nav = e.target && e.target.closest ? e.target.closest('.nav-item[data-id]') : null;
+  if (nav && nav.dataset.id) { try { ensureFrameLoaded(nav.dataset.id); } catch (_) {} }
+}, { passive: true });
+
+// 2) 空闲预取：提前把工具页拉进 HTTP 缓存，首次切换省去整页下载等待。
+//    与 ensureFrameLoaded 使用完全相同的 normFile URL（含 ?v=），保证命中同一份缓存；
+//    逐个错峰请求避免与首屏抢带宽；省流模式 / 2G、3G 弱网自动跳过。
+(function initToolPrefetch(){
+  function kick(){
+    try {
+      const c = navigator.connection || {};
+      if (c.saveData) return;
+      if (/^(slow-2g|2g|3g)$/.test(c.effectiveType || '')) return;
+    } catch (_) {}
+    let urls;
+    try { urls = getModules().map(m => normFile(m.file)); } catch (_) { return; }
+    let i = 0;
+    const next = () => {
+      if (i >= urls.length) return;
+      const u = urls[i++];
+      try { fetch(u, { credentials: 'same-origin', cache: 'default', priority: 'low' }).catch(()=>{}); } catch (_) {}
+      setTimeout(next, 400);
+    };
+    next();
+  }
+  if ('requestIdleCallback' in window) requestIdleCallback(kick, { timeout: 6000 });
+  else setTimeout(kick, 3000);
+})();
 
 </script>
 

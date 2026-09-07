@@ -1810,8 +1810,8 @@
         .ap-note{font-size:12px;color:var(--text-secondary);line-height:1.6}
         input[type=color]{width:36px;height:30px;padding:2px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);cursor:pointer}
     </style>
-    <!-- SheetJS：用于科目目标模板的 Excel 导入导出（加载失败时自动降级为 CSV） -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS 改为按需加载（v47 优化）：~900KB 的库不再阻塞首屏/切换加载，
+         仅在首次导出/导入 Excel 时动态拉取；失败自动降级 CSV（见 ensureXLSX） -->
 </head>
 <body>
 
@@ -5152,7 +5152,24 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
-        function exportGoalTemplate(format, scope) {
+        /* v47 优化：SheetJS 按需加载器 —— 首次导出/导入 Excel 时才拉取 ~900KB 的
+           xlsx.full.min.js（此前是 <head> 同步脚本，每次打开工具都阻塞加载）；
+           Promise 缓存保证并发只加载一次，失败时由调用方降级 CSV */
+        let _xlsxLoading = null;
+        function ensureXLSX() {
+            if (typeof XLSX !== 'undefined') return Promise.resolve();
+            if (_xlsxLoading) return _xlsxLoading;
+            _xlsxLoading = new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                s.onload = () => resolve();
+                s.onerror = () => { _xlsxLoading = null; reject(new Error('xlsx load failed')); };
+                document.head.appendChild(s);
+            });
+            return _xlsxLoading;
+        }
+
+        async function exportGoalTemplate(format, scope) {
             const sc = (scope === 'all') ? 'all' : 'current';
             const rows = getGoalRows(sc);
             const proj = getCurrentProject();
@@ -5166,9 +5183,11 @@
             rows.forEach(r => { if (r[0]) projSet.add(r[0]); if (r[1]) courseSet.add(r[1]); });
             if (format === 'xlsx' || format === 'current') {
                 if (typeof XLSX === 'undefined') {
-                    alert('Excel 组件未加载（可能是网络问题），已改为导出 CSV 格式，Excel / WPS 同样可以打开编辑。');
-                    exportGoalTemplate('csv', sc);
-                    return;
+                    try { await ensureXLSX(); } catch (_) {
+                        alert('Excel 组件加载失败（可能是网络问题），已改为导出 CSV 格式，Excel / WPS 同样可以打开编辑。');
+                        exportGoalTemplate('csv', sc);
+                        return;
+                    }
                 }
                 const ws = XLSX.utils.aoa_to_sheet(data);
                 ws['!cols'] = [{ wch: 16 }, { wch: 14 }, { wch: 6 }, { wch: 22 }, { wch: 6 }, { wch: 26 },
@@ -5346,7 +5365,7 @@
 
         function handleGoalFile(file) {
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
                     const name = (file.name || '').toLowerCase();
                     let rows = null;
@@ -5354,8 +5373,10 @@
                         rows = parseCSV(String(e.target.result || ''));
                     } else {
                         if (typeof XLSX === 'undefined') {
-                            showGoalResult('Excel 组件未加载，无法读取 .xlsx 文件。请改用「导出模板（CSV）」得到 CSV 文件，填写后以 CSV 导入。', true);
-                            return;
+                            try { await ensureXLSX(); } catch (_) {
+                                showGoalResult('Excel 组件加载失败，无法读取 .xlsx 文件。请改用「导出模板（CSV）」得到 CSV 文件，填写后以 CSV 导入。', true);
+                                return;
+                            }
                         }
                         const wb = XLSX.read(e.target.result, { type: 'array' });
                         const ws = wb.Sheets[wb.SheetNames[0]];
