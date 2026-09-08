@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.2.0';
+    var VERSION = '1.3.0';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var IDB_NAME = 'efficiency_hub_backup';
@@ -453,6 +453,17 @@
         'font-size:12px;line-height:1;flex:0 0 auto;padding:0}',
         '.bh-nav-exp:hover{background:#4f46e5;color:#fff}',
         'html[data-theme="dark"] .bh-nav-exp{background:#1e293b;color:#818cf8}',
+        '.bh-side-stat{padding:2px 12px 9px;margin:0 0 2px;cursor:pointer}',
+        '.bh-side-stat .bh-ss-row{display:flex;gap:8px;font-size:10px;color:var(--side-text,#94a3b8);line-height:1.35}',
+        '.bh-side-stat .bh-ss-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+        '.bh-side-stat .bh-ss-row b{display:block;font-size:12px;font-weight:700;color:#fff}',
+        '.bh-side-stat .bh-ss-bar{height:4px;border-radius:999px;background:rgba(255,255,255,.13);',
+        'margin-top:7px;overflow:hidden}',
+        '.bh-side-stat .bh-ss-bar i{display:block;height:100%;border-radius:999px;width:2%;',
+        'background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width .35s ease}',
+        '.bh-side-stat .bh-ss-bar.warn i{background:linear-gradient(90deg,#f59e0b,#f97316)}',
+        '.bh-side-stat .bh-ss-bar.danger i{background:linear-gradient(90deg,#ef4444,#dc2626)}',
+        '.bh-side-stat:hover .bh-ss-row{color:#fff}',
         '.bh-float{position:fixed;right:16px;bottom:16px;z-index:999996;display:flex;align-items:center;gap:6px;',
         'background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:999px;padding:8px 14px;font-size:13px;',
         'cursor:pointer;box-shadow:0 4px 14px rgba(15,23,42,.12);font-family:inherit;transition:.15s}',
@@ -764,6 +775,7 @@
     function refresh() {
         if (!panelBuilt) return;
         renderStats(); renderMods(); renderSnaps(); renderCloud();
+        renderSideStat(); updateBadge();
     }
 
     function open(scopeModuleId) {
@@ -887,7 +899,43 @@
             if (!list) return;
             list.insertBefore(item, list.firstChild);
         }
+        // 容量图表常驻侧边栏：紧跟「数据备份」条目，点它也能打开备份中心
+        var stat = document.createElement('div');
+        stat.className = 'bh-side-stat';
+        stat.id = 'bhSideStat';
+        stat.title = '数据体检：点此打开数据备份中心';
+        stat.innerHTML = '<div class="bh-ss-row">' +
+            '<span><b id="bhSsSize">—</b>已用空间</span>' +
+            '<span><b id="bhSsKeys">—</b>数据键数</span>' +
+            '<span><b id="bhSsMods">—</b>有数据模块</span>' +
+            '</div><div class="bh-ss-bar" id="bhSsBar"><i></i></div>';
+        stat.addEventListener('click', function () { open(); });
+        if (item.nextSibling) item.parentNode.insertBefore(stat, item.nextSibling);
+        else item.parentNode.appendChild(stat);
         updateBadge();
+        renderSideStat();
+    }
+
+    // 侧边栏常驻容量图表
+    function renderSideStat() {
+        var box = document.getElementById('bhSideStat');
+        if (!box) return;
+        var s = scan();
+        var used = s.groups.filter(function (g) { return g.keys.length > 0; }).length;
+        var pct = Math.min(100, s.total / QUOTA * 100);
+        var setTxt = function (id, v) { var n = document.getElementById(id); if (n) n.textContent = v; };
+        setTxt('bhSsSize', fmtBytes(s.total));
+        setTxt('bhSsKeys', s.keyCount);
+        setTxt('bhSsMods', used);
+        var bar = document.getElementById('bhSsBar');
+        if (bar) {
+            bar.className = 'bh-ss-bar' + (pct > 92 ? ' danger' : (pct > 80 ? ' warn' : ''));
+            var i = bar.querySelector('i');
+            if (i) i.style.width = Math.max(2, pct) + '%';
+            bar.title = '已用 ' + fmtBytes(s.total) + ' / 约 5MB（' + pct.toFixed(1) + '%）';
+        }
+        box.title = '数据体检：已用 ' + fmtBytes(s.total) + '，' + s.keyCount + ' 个键，' +
+            used + ' 个模块有数据。点此打开数据备份中心';
     }
     function updateBadge() {
         var b = document.getElementById('bhNavBadge');
@@ -973,6 +1021,10 @@
             var boot = function () {
                 watchSidebar();
                 maybeAutoSnapshot();
+                // 侧边栏容量图表：数据随时会被工具页改动，定时同步 + 跨标签页事件
+                renderSideStat();
+                setInterval(renderSideStat, 10000);
+                window.addEventListener('storage', function () { renderSideStat(); updateBadge(); });
                 // 宽屏下侧边栏默认收起，补一个常驻悬浮入口保证随时可达
                 addFloat('', '数据备份');
                 var fb = document.getElementById('bhFloat');
