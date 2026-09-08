@@ -403,6 +403,10 @@
       await writeGist({ version: 1, data: localData, updatedAt: Date.now() });
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
+      // 记到侧边栏：最近同步时间 + 这次同步了哪些项目
+      if (window.BackupHub && window.BackupHub.markSync) {
+        try { window.BackupHub.markSync('up', Object.keys(localData)); } catch (e) {}
+      }
       updateStatus('已上传 ' + fmtTime(lastSyncTime));
       closeTopModal();
       notifyOK('已上传到云端',
@@ -437,6 +441,10 @@
       if (typeof buildCards === 'function') buildCards();
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
+      // 记到侧边栏：最近同步时间 + 这次同步了哪些项目
+      if (window.BackupHub && window.BackupHub.markSync) {
+        try { window.BackupHub.markSync('down', Object.keys(remote.data)); } catch (e) {}
+      }
       updateStatus('已下载 ' + fmtTime(lastSyncTime));
       closeTopModal();
       notifyOK('已从云端同步到本机',
