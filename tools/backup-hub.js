@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.6.0';
+    var VERSION = '1.6.1';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
@@ -586,7 +586,8 @@
         'font-size:12px;line-height:1;flex:0 0 auto;padding:0}',
         '.bh-nav-exp:hover{background:#4f46e5;color:#fff}',
         'html[data-theme="dark"] .bh-nav-exp{background:#1e293b;color:#818cf8}',
-        '.bh-side-stat{padding:2px 12px 9px;margin:0 0 2px;cursor:pointer}',
+        '#syncStatusBtn{flex-wrap:wrap;row-gap:4px}',
+        '.bh-side-stat{flex:1 1 100%;min-width:0;padding-top:6px;margin:0;cursor:pointer;border-top:1px solid rgba(255,255,255,.10)}',
         '.bh-side-stat .bh-ss-row{display:flex;gap:8px;font-size:10px;color:var(--side-text,#94a3b8);line-height:1.35}',
         '.bh-side-stat .bh-ss-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
         '.bh-side-stat .bh-ss-row b{display:block;font-size:12px;font-weight:700;color:#fff}',
@@ -1119,12 +1120,22 @@
     }
 
     function sidebarEntry() {
-        if (document.getElementById('bhSideStat')) { renderSideStat(); return; }
+        var existed = document.getElementById('bhSideStat');
+        if (existed) {
+            // 云端同步按钮若重建过，状态条要跟着搬回按钮内部
+            var btn0 = document.getElementById('syncStatusBtn');
+            if (btn0 && !btn0.contains(existed)) btn0.appendChild(existed);
+            renderSideStat();
+            return;
+        }
         var host = document.querySelector('.side-foot');
         if (!host) { setTimeout(sidebarEntry, 600); return; }
         // 数据备份的导航项已合并进云端同步，残留的旧节点清掉
         var legacy = document.getElementById(SIDEBAR_ID);
         if (legacy) legacy.remove();
+
+        var anchor = document.getElementById('syncStatusBtn');
+        if (!anchor) { setTimeout(sidebarEntry, 500); return; } // 等「云端同步」按钮就绪
 
         var stat = document.createElement('div');
         stat.className = 'bh-side-stat';
@@ -1135,15 +1146,12 @@
               '<div class="bh-ss-line" id="bhSsSy"></div>' +
               '<div class="bh-ss-line pend" id="bhSsPd"></div>' +
             '</div>';
-        stat.addEventListener('click', openCloudOrHub);
-        // 紧跟「云端同步」按钮，视觉上属于同一个入口
-        var anchor = document.getElementById('syncStatusBtn');
-        if (anchor && anchor.parentNode === host) {
-            if (anchor.nextSibling) host.insertBefore(stat, anchor.nextSibling);
-            else host.appendChild(stat);
-        } else {
-            host.insertBefore(stat, host.firstChild);
-        }
+        stat.addEventListener('click', function (e) {
+            e.stopPropagation(); // 行内点击不触发外层按钮的双重打开
+            openCloudOrHub();
+        });
+        // 放进「云端同步」按钮内部：同一张卡片，状态行显示在标题下方
+        anchor.appendChild(stat);
         renderSideStat();
     }
 
