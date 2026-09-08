@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.3.2';
+    var VERSION = '1.4.0';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var IDB_NAME = 'efficiency_hub_backup';
@@ -473,6 +473,26 @@
         '.bh-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:34px;background:#0f172a;color:#fff;',
         'padding:9px 18px;border-radius:999px;font-size:13px;z-index:999999;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}',
         '.bh-toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}',
+        // 成功提醒卡：备份 / 同步成功后的明确反馈，带详情与自动消失进度条
+        '.bh-notify{position:fixed;top:16px;right:16px;z-index:2147483000;width:min(340px,calc(100vw - 32px));',
+        'background:#fff;border:1px solid #e2e8f0;border-left:4px solid #10b981;border-radius:12px;',
+        'box-shadow:0 10px 30px rgba(15,23,42,.16);padding:12px 13px;display:flex;gap:10px;align-items:flex-start;',
+        'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;',
+        'opacity:0;transform:translateX(20px);transition:opacity .22s,transform .22s;pointer-events:none}',
+        '.bh-notify.show{opacity:1;transform:translateX(0);pointer-events:auto}',
+        '.bh-notify.warn{border-left-color:#f59e0b}',
+        '.bh-notify .bh-ni{font-size:20px;line-height:1.25;flex:0 0 auto}',
+        '.bh-notify .bh-nb{flex:1;min-width:0}',
+        '.bh-notify .bh-nt{font-size:14px;font-weight:700;color:#0f172a}',
+        '.bh-notify .bh-nd{font-size:12.5px;color:#64748b;margin-top:3px;line-height:1.55;word-break:break-word;white-space:pre-line}',
+        '.bh-notify .bh-nx{border:none;background:none;color:#94a3b8;cursor:pointer;font-size:17px;line-height:1;padding:0 2px;flex:0 0 auto}',
+        '.bh-notify .bh-nx:hover{color:#475569}',
+        '.bh-notify .bh-np{position:absolute;left:0;bottom:0;height:2px;background:#10b981;opacity:.5;border-radius:0 0 0 10px}',
+        '.bh-notify.warn .bh-np{background:#f59e0b}',
+        // 备份面板打开时（右侧 560px 抽屉），提醒卡要避让，否则会盖住面板右上角的关闭按钮
+        '.bh-notify.atbot{top:auto;bottom:16px;left:50%;right:auto;width:min(340px,calc(100vw - 32px));transform:translateX(-50%) translateY(12px)}',
+        '.bh-notify.atbot.show{transform:translateX(-50%) translateY(0)}',
+        '@media(max-width:520px){.bh-notify{top:10px;right:10px;left:10px;width:auto}}',
         'html[data-theme="dark"] .bh-panel{background:#111a2e;color:#e5e9f2;border-left:1px solid #1f2c47}',
         'html[data-theme="dark"] .bh-head{border-color:#1f2c47}',
         'html[data-theme="dark"] .bh-stat,html[data-theme="dark"] .bh-empty{background:#0f1a30;border-color:#1f2c47}',
@@ -505,6 +525,59 @@
         clearTimeout(t._tm);
         t._tm = setTimeout(function () { t.classList.remove('show'); }, 2200);
     }
+
+    /* ============ 成功提醒卡（备份 / 同步等重点操作） ============ */
+    // toast 一闪而过、且不带数据量，用户常常不确定到底成没成功。
+    // 重点操作统一走这里：图标 + 标题 + 详情 + 自动消失进度条。
+    function notify(o) {
+        o = o || {};
+        var box = document.getElementById('bh-notify');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'bh-notify';
+            box.className = 'bh-notify';
+            document.body.appendChild(box);
+        }
+        var ms = o.ms || 4200;
+        // 面板打开时避让：宽屏挪到抽屉左侧，窄屏改到底部居中
+        var panelOpen = panelBuilt && el.panel && el.panel.classList.contains('show');
+        if (panelOpen && window.innerWidth > 620) {
+            box.className = 'bh-notify' + (o.type === 'warn' ? ' warn' : '');
+            box.style.right = (Math.min(560, window.innerWidth) + 24) + 'px';
+        } else {
+            box.className = 'bh-notify' + (o.type === 'warn' ? ' warn' : '') + (panelOpen ? ' atbot' : '');
+            box.style.right = '';
+        }
+        box.innerHTML =
+            '<span class="bh-ni">' + esc(o.icon || '✅') + '</span>' +
+            '<div class="bh-nb">' +
+              '<div class="bh-nt">' + esc(o.title || '操作成功') + '</div>' +
+              (o.detail ? '<div class="bh-nd">' + esc(o.detail) + '</div>' : '') +
+            '</div>' +
+            '<button class="bh-nx" title="关闭">×</button>' +
+            '<div class="bh-np"></div>';
+        var bar = box.querySelector('.bh-np');
+        box.querySelector('.bh-nx').onclick = function () { hide(); };
+        box.onclick = function (e) { if (e.target === box) hide(); };
+
+        function hide() {
+            box.classList.remove('show');
+            clearTimeout(box._tm);
+        }
+        box._hide = hide;
+        requestAnimationFrame(function () {
+            box.classList.add('show');
+            if (bar) { bar.style.transition = 'none'; bar.style.width = '100%'; }
+            requestAnimationFrame(function () {
+                if (bar) { bar.style.transition = 'width ' + ms + 'ms linear'; bar.style.width = '0%'; }
+            });
+        });
+        clearTimeout(box._tm);
+        box._tm = setTimeout(hide, ms);
+    }
+
+    // 便于其它模块（云端同步）复用同一套提醒
+    function bhNotify(icon, title, detail) { notify({ icon: icon, title: title, detail: detail }); }
 
     function buildPanel() {
         if (panelBuilt) return;
@@ -575,7 +648,9 @@
         });
         root.querySelector('#bhSnap').addEventListener('click', function () {
             createSnapshot('手动快照').then(function () {
-                renderSnaps(); toast('快照已保存');
+                renderSnaps();
+                var s = scan();
+                notify({ icon: '📌', title: '快照已保存', detail: '已保存 ' + s.keyCount + ' 个数据键（' + fmtBytes(s.total) + '），需要时可一键回滚。' });
             });
         });
         root.querySelector('#bhSelAll').addEventListener('click', function () {
@@ -588,7 +663,9 @@
         root.querySelector('#bhExpSel').addEventListener('click', function () {
             var ids = selIds();
             if (!ids.length) return toast('请先选择模块');
-            exportNow(ids); toast('已导出 ' + ids.length + ' 个模块（文件存本机，不会自动同步）');
+            exportNow(ids);
+            notify({ icon: '📦', title: '已导出 ' + ids.length + ' 个模块',
+                     detail: '备份文件已存到本机，不会自动同步到手机 / 其他电脑。' });
         });
         root.querySelector('#bhClrSel').addEventListener('click', function () {
             var ids = selIds();
@@ -596,7 +673,8 @@
             if (!confirm('确定清除所选 ' + ids.length + ' 个模块的数据？此操作不可恢复，建议先创建快照。')) return;
             createSnapshot('清除前自动快照').then(function () {
                 var n = clearModules(ids);
-                refresh(); toast('已清除 ' + n + ' 项数据（已自动快照）');
+                refresh();
+                notify({ icon: '🧹', title: '已清除 ' + n + ' 项数据', detail: '清除前已自动存了一份快照，误删可在下方「本地快照」里回滚。' });
             });
         });
         panelBuilt = true;
@@ -618,7 +696,10 @@
                 try { r = applyBackup(obj, mode); }
                 catch (err2) { return toast('导入失败：' + err2.message); }
                 refresh();
-                toast('导入完成：写入 ' + r.written + ' 项' + (r.skipped ? '，跳过 ' + r.skipped + ' 项' : ''));
+                notify({ icon: '📥', title: (mode === 'replace' ? '已覆盖恢复 ' : '已合并恢复 ') + r.written + ' 项数据',
+                         detail: (r.skipped ? '跳过 ' + r.skipped + ' 项。' : '') +
+                                 (mode === 'replace' ? '已用备份文件覆盖原有数据。' : '已合并到现有数据，原有内容保留。') +
+                                 '导入前已自动存了一份快照。' });
             });
         };
         reader.readAsText(file);
@@ -761,7 +842,8 @@
                             if (!confirm('恢复到 ' + fmtTime(sn.ts) + ' 的快照？当前数据将被覆盖（会先自动快照当前状态）。')) return;
                             createSnapshot('恢复前自动快照').then(function () {
                                 applyBackup(sn.payload, 'replace');
-                                refresh(); toast('已恢复到该快照');
+                                refresh();
+                                notify({ icon: '⏪', title: '已恢复到该快照', detail: '数据已回滚到 ' + fmtTime(sn.ts) + ' 的状态。' });
                             });
                         } else if (act === 'down') {
                             download('效率中心快照-' + stamp() + '.json', JSON.stringify(sn.payload, null, 2));
@@ -840,34 +922,46 @@
     }
 
     function exportThenAskCloud() {
-        exportNow(null);
+        var payload = exportNow(null);
+        var n = 0;
+        if (payload) {
+            (payload.modules || []).forEach(function (m) { n += Object.keys(m.data || {}).length; });
+            n += Object.keys(payload.unmatched || {}).length;
+        }
+        if (!n) n = scan().keyCount;
+        var saved = function (extra) {
+            notify({ icon: '💾', title: '备份已保存（' + n + ' 项数据）',
+                     detail: '文件已下载到本机' + (extra ? '。' + extra : '。') });
+        };
         var cs = cloudApi();
         if (!cs) {
-            toast('备份已下载到本机。跨设备同步请回到效率中心首页操作。');
+            saved('跨设备同步请回到效率中心首页操作');
             return;
         }
         if (!cloudReady()) {
             var goCfg = window.confirm(
-                '备份文件已保存到本机。\n\n' +
+                '备份文件已保存到本机（' + n + ' 项数据）。\n\n' +
                 '但当前还没连接云端，所以手机 / 其他电脑看不到这份备份。\n\n' +
                 '点「确定」去连接云端并上传；\n点「取消」就只留在这台设备。');
             if (goCfg) {
                 close();
                 Promise.resolve(cs.upload()).catch(function () {}).then(function () { refresh(); });
             } else {
-                toast('备份已存本机（未上传云端）');
+                notify({ type: 'warn', icon: '💾', title: '备份已存本机（' + n + ' 项数据）',
+                         detail: n + ' 项数据已保存到本机，但未上传云端，手机 / 其他电脑看不到。' });
             }
             return;
         }
         var go = window.confirm(
-            '备份文件已保存到本机。\n\n' +
+            '备份文件已保存到本机（' + n + ' 项数据）。\n\n' +
             '要同时把这份数据上传到云端吗？\n' +
             '上传后，在手机 / 其他电脑点「云端 → 本机」就能同步过去。');
         if (go) {
             close();
             Promise.resolve(cs.upload()).catch(function () {}).then(function () { refresh(); });
         } else {
-            toast('备份已存本机（未上传云端）');
+            notify({ type: 'warn', icon: '💾', title: '备份已存本机（' + n + ' 项数据）',
+                     detail: n + ' 项数据已保存到本机，未上传云端。' });
         }
     }
 
@@ -1017,6 +1111,7 @@
         open: open,
         close: close,
         toast: toast,
+        notify: notify,
         // 导航页调用
         initHub: function (opts) {
             opts = opts || {};

@@ -67,6 +67,21 @@
     return showConfirm('提示', message).then(() => {});
   }
 
+  // 成功 / 失败提醒：优先用备份中心的提醒卡（更醒目、带数据量和下一步指引），
+  // 没有备份中心时退回站点 toast / alert。
+  function notifyOK(title, detail) {
+    if (window.BackupHub && typeof window.BackupHub.notify === 'function') {
+      try { window.BackupHub.notify({ icon: '☁️', title: title, detail: detail }); return; } catch (e) {}
+    }
+    if (typeof toast === 'function') toast('✅ ' + title);
+  }
+  function notifyFail(title, detail) {
+    if (window.BackupHub && typeof window.BackupHub.notify === 'function') {
+      try { window.BackupHub.notify({ type: 'warn', icon: '⚠️', title: title, detail: detail, ms: 6500 }); return; } catch (e) {}
+    }
+    alert(title + '\n' + detail);
+  }
+
   // ============ 侧边栏入口 ============
   function createSyncUI() {
     const sideFoot = document.querySelector('.side-foot');
@@ -390,10 +405,13 @@
       localStorage.setItem('sync_last_sync', lastSyncTime);
       updateStatus('已上传 ' + fmtTime(lastSyncTime));
       closeTopModal();
-      if (typeof toast === 'function') toast('✅ 上传云盘成功！');
+      notifyOK('已上传到云端',
+        `本机的 ${Object.keys(localData).length} 项数据已存到云端。\n` +
+        '在手机 / 其他电脑点「云端 → 本机」就能同步过去。');
     } catch (e) {
       console.warn('[GitHub] 上传失败:', e.message);
-      alert('上传失败：' + e.message);
+      notifyFail('上传云端失败',
+        (e && e.message ? e.message : String(e)) + '\n请检查网络或 Token 是否有效（可点「重新配置 Token」）。');
       updateStatus('上传失败');
     }
   }
@@ -421,10 +439,13 @@
       localStorage.setItem('sync_last_sync', lastSyncTime);
       updateStatus('已下载 ' + fmtTime(lastSyncTime));
       closeTopModal();
-      if (typeof toast === 'function') toast('✅ 下载覆盖本地成功！');
+      notifyOK('已从云端同步到本机',
+        `云端的 ${Object.keys(remote.data).length} 项数据已写入本机。\n` +
+        '当前打开的工具页已自动刷新，看到的是最新数据。');
     } catch (e) {
       console.warn('[GitHub] 下载失败:', e.message);
-      alert('下载失败：' + e.message);
+      notifyFail('从云端下载失败',
+        (e && e.message ? e.message : String(e)) + '\n请检查网络或 Token 是否有效。本机数据未改动。');
       updateStatus('下载失败');
     }
   }
