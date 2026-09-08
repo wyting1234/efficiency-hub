@@ -30,9 +30,29 @@
 
   // 不纳入同步的键（只排除同步相关的技术键，用户设置类全部同步）
   const EXCLUDE_KEYS = new Set([
-    'github_token', 'github_gist_id', 'sync_last_sync',
+    'github_token', 'github_gist_id', 'sync_last_sync', 'github_cloud_state',
     'hub_lastModule'   // 上次打开的工具，不强制同步
   ]);
+
+  // ============ 背景图片不同步 ============
+  // 背景图是 base64 大图（动辄几百 KB～几 MB），同步又慢又容易撑爆 Gist（1MB 截断）。
+  // 两类排除：① 已知背景键名前缀；② 值本身就是 data:image 的键（通用兜底）。
+  const EXCLUDE_PREFIXES = [
+    'chaomuji_web_v27_bg',        // 朝暮计·页面背景（含 data:image 大图）
+    'chaomuji_web_v27_cardbg',    // 朝暮计·卡片背景
+    'chaomuji_web_v27_hcardbg',   // 朝暮计·习惯卡背景
+    'zmv_bg_'                     // 朝暮计·背景质量等设置
+  ];
+  const BIG_IMAGE_MIN = 30 * 1024;   // 超过 30KB 的内嵌图片才视为背景资源
+
+  function isExcludedKey(key, value) {
+    if (EXCLUDE_KEYS.has(key)) return true;
+    for (let i = 0; i < EXCLUDE_PREFIXES.length; i++) {
+      if (key.indexOf(EXCLUDE_PREFIXES[i]) === 0) return true;
+    }
+    if (value && value.length > BIG_IMAGE_MIN && value.slice(0, 11) === 'data:image/') return true;
+    return false;
+  }
 
   // ============ 工具：弹窗 ============
   function closeTopModal() {
@@ -259,7 +279,7 @@
   // Gist 对超过 1MB 的文件会返回 truncated:true 且 content 被截断，
   // 此时必须改拉 raw_url 才能拿到完整内容（否则会误判成"云端没数据"）。
   async function readGist() {
-    if (!GIST_ID) return null;
+    if (!cachedGistId()) await findOrCreateGist();
     try {
       const data = await apiCall('GET', '/gists/' + GIST_ID);
       const file = data.files && data.files[GIST_FILENAME];
@@ -270,26 +290,63 @@
         if (raw.ok) content = await raw.text();
       }
       if (!content) return null;
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+      // 记下云端是否有数据：上传前可免一次全量读取
+      setCachedCloudHasData(!!(parsed && parsed.data && Object.keys(parsed.data).length > 0));
+      return parsed;
     } catch (e) {
+      if (isNotFound(e)) clearGistCache();   // 缓存的 Gist 已被删，下次重新搜索
       console.warn('[GitHub] 读取失败:', e.message);
       return null;
     }
   }
 
   async function writeGist(content) {
+    const body = JSON.stringify(content);   // 紧凑 JSON：体积比格式化小 ~25%，上传更快
     if (!GIST_ID) {
       const data = await apiCall('POST', '/gists', {
         description: GIST_DESC, public: false,
-        files: { [GIST_FILENAME]: { content: JSON.stringify(content, null, 2) } }
+        files: { [GIST_FILENAME]: { content: body } }
       });
       GIST_ID = data.id;
       localStorage.setItem('github_gist_id', GIST_ID);
     } else {
       await apiCall('PATCH', '/gists/' + GIST_ID, {
-        files: { [GIST_FILENAME]: { content: JSON.stringify(content, null, 2) } }
+        files: { [GIST_FILENAME]: { content: body } }
       });
     }
+  }
+
+  // ============ 速度优化：Gist 直连缓存 ============
+  // 旧流程每次同步都要「列出全部 Gists → 读 Gist → 写 Gist」三个串行请求，
+  // 其中列出全部 Gists（含每份的内容预览）最慢。
+  // GIST_ID 本来就存在 localStorage，直接复用：只有没缓存或请求 404 时才搜索一次。
+  function cachedGistId() {
+    if (GIST_ID) return GIST_ID;
+    try { GIST_ID = localStorage.getItem('github_gist_id') || ''; } catch (e) {}
+    return GIST_ID || '';
+  }
+
+  function clearGistCache() {
+    GIST_ID = '';
+    try { localStorage.removeItem('github_gist_id'); } catch (e) {}
+  }
+
+  function isNotFound(e) {
+    return /404|Not Found/i.test(e && e.message ? e.message : String(e));
+  }
+
+  // 云端是否有数据的本地缓存（10 分钟有效）：上传前免一次全量读取
+  function getCachedCloudHasData() {
+    try {
+      const raw = JSON.parse(localStorage.getItem('github_cloud_state') || 'null');
+      if (raw && typeof raw.has === 'boolean' && Date.now() - raw.ts < 10 * 60 * 1000) return raw.has;
+    } catch (e) {}
+    return null;   // 不知道 → 需要联网确认
+  }
+
+  function setCachedCloudHasData(has) {
+    try { localStorage.setItem('github_cloud_state', JSON.stringify({ has: !!has, ts: Date.now() })); } catch (e) {}
   }
 
   // 判断 gist 里是否真有数据。
@@ -325,7 +382,9 @@
 
   // 关键修复：每次都重新搜索账号下我们用的那个 Gist（同名文件），
   // 优先选「有数据」的那份，让手机和电脑一定连到同一份数据。
+  // v3 提速：有缓存 ID 时直接直连，不再每次都拉全列表；缓存失效由 404 兜底恢复。
   async function findOrCreateGist() {
+    if (cachedGistId()) return GIST_ID;
     try {
       const chosen = await findGist();
       if (chosen) {
@@ -348,9 +407,20 @@
   }
 
   // 供备份中心展示云端状态：只读探测，不创建、不修改云端
+  // 提速：有缓存 Gist ID 时直连读取，跳过「拉全列表」
   async function peekCloud() {
     if (!GITHUB_TOKEN) return { connected: false, reason: '未配置 Token' };
     try {
+      if (cachedGistId()) {
+        const remote = await readGist();
+        const data = (remote && remote.data) || {};
+        return {
+          connected: true,
+          cloudCount: Object.keys(data).length,
+          updatedAt: (remote && remote.updatedAt) || 0,
+          gistId: GIST_ID
+        };
+      }
       const g = await findGist();
       if (!g) return { connected: true, cloudCount: 0, updatedAt: 0, gistId: '' };
       GIST_ID = g.id;
@@ -373,9 +443,9 @@
     const data = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (EXCLUDE_KEYS.has(key)) continue;
       const value = localStorage.getItem(key);
       if (value === null) continue;
+      if (isExcludedKey(key, value)) continue;   // 背景图 / 内部键不同步
       data[key] = { value, timestamp: Date.now() };
     }
     return data;
@@ -385,7 +455,7 @@
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (!EXCLUDE_KEYS.has(key)) keys.push(key);
+      if (!isExcludedKey(key, localStorage.getItem(key))) keys.push(key);
     }
     return keys;
   }
@@ -398,8 +468,8 @@
     // 再写入云端数据
     const timestamps = {};
     for (const key in sdata) {
-      if (EXCLUDE_KEYS.has(key)) continue;
       const entry = sdata[key];
+      if (isExcludedKey(key, entry && entry.value)) continue;
       if (!entry || typeof entry.value !== 'string') continue;
       localStorage.setItem(key, entry.value);
       if (entry.timestamp) timestamps[key] = entry.timestamp;
@@ -420,16 +490,29 @@
   async function doUpload() {
     if (!isConnected) { showConfigModal(); return; }
     try {
-      await findOrCreateGist();   // 始终对准同一份 Gist
-      const remote = await readGist();
-      const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
+      // 提速：Gist ID 有缓存就直连；云端是否有数据优先用本地缓存，
+      // 都没有才联网读一次（旧版是「拉全列表 + 读全文」两个慢请求）
+      if (!cachedGistId()) await findOrCreateGist();
+      let cloudHas = getCachedCloudHasData();
+      if (cloudHas === null) {
+        const remote = await readGist();
+        cloudHas = !!(remote && remote.data && Object.keys(remote.data).length > 0);
+      }
       if (cloudHas) {
         const ok = await showConfirm('上传将覆盖云端',
           '云端已经存有数据。\n点「确定覆盖」会用【本机数据】替换云端。\n\n想保留云端就点「取消」，改去点「下载」。');
         if (!ok) { updateStatus('已取消上传'); return; }
       }
       const localData = collectLocalData();
-      await writeGist({ version: 1, data: localData, updatedAt: Date.now() });
+      try {
+        await writeGist({ version: 1, data: localData, updatedAt: Date.now() });
+      } catch (e) {
+        if (!isNotFound(e)) throw e;
+        clearGistCache();                 // 缓存的 Gist 已被删：重建后重试一次
+        await findOrCreateGist();
+        await writeGist({ version: 1, data: localData, updatedAt: Date.now() });
+      }
+      setCachedCloudHasData(true);
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
       // 记到侧边栏：最近同步时间 + 这次同步了哪些项目
@@ -452,7 +535,8 @@
   async function doDownload() {
     if (!isConnected) { showConfigModal(); return; }
     try {
-      await findOrCreateGist();   // 始终对准同一份 Gist
+      // 提速：Gist ID 有缓存就直连读，不再先拉一遍全列表
+      if (!cachedGistId()) await findOrCreateGist();
       const remote = await readGist();
       const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
       if (!cloudHas) {
@@ -490,6 +574,13 @@
   // ============ 初始化 ============
   async function initSync() {
     if (!GITHUB_TOKEN) { showConfigModal(); return; }
+    // 提速：有缓存的 Gist ID 就立即显示「已连接」，启动不再发网络请求。
+    // 首次真正同步时才会联网；若 Gist 已被删，404 兜底会自动重建，不影响使用。
+    if (cachedGistId()) {
+      isConnected = true;
+      updateStatus('已连接');
+      return;
+    }
     try {
       await findOrCreateGist();   // 关键：两端复用同一 Gist
       isConnected = true;
