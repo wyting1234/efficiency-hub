@@ -9,9 +9,10 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.4.0';
+    var VERSION = '1.5.0';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
+    var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
     var IDB_NAME = 'efficiency_hub_backup';
     var IDB_STORE = 'snapshots';
     var MAX_SNAPSHOTS = 5;
@@ -119,6 +120,23 @@
         metaDirty = false;
         try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {}
     }
+    // 关页 / 切后台前把时间埋点落盘，否则"备份后又有改动"会漏判
+    try {
+        window.addEventListener('beforeunload', flushMeta);
+        window.addEventListener('pagehide', flushMeta);
+    } catch (e) {}
+
+    // 数据一改动就顺带刷新侧边栏（节流，避免频繁 scan）
+    var sideTimer = null;
+    function scheduleSideRefresh() {
+        if (sideTimer) return;
+        sideTimer = setTimeout(function () {
+            sideTimer = null;
+            if (!document.getElementById('bhSideStat')) return;
+            try { renderSideStat(); updateBadge(); } catch (e) {}
+        }, 2500);
+    }
+
     var _setItem = null;
     try {
         _setItem = localStorage.setItem;
@@ -127,6 +145,7 @@
             try {
                 if (!isInternalKey(k)) { meta[k] = Date.now(); metaDirty = true; }
                 if (!metaTimer) metaTimer = setTimeout(flushMeta, 2000);
+                scheduleSideRefresh();
             } catch (e) {}
             return r;
         };
@@ -179,6 +198,89 @@
         var total = 0;
         list.forEach(function (g) { total += g.bytes; });
         return { groups: list, total: total, keyCount: keys.length };
+    }
+
+    /* ============ 最近备份 / 同步记录（供侧边栏展示） ============ */
+    // 只记录"什么时候做了什么、涉及哪些模块"，不存数据本身，因此体积可忽略。
+    function getAct() {
+        try { return JSON.parse(localStorage.getItem(ACT_KEY) || '{}') || {}; } catch (e) { return {}; }
+    }
+    // 单个键归属到哪个模块（与 scan() 的归类规则保持一致）
+    function moduleOfKey(k) {
+        for (var i = 0; i < MANIFEST.length; i++) {
+            var m = MANIFEST[i];
+            if (m.exclude && m.exclude.indexOf(k) >= 0) continue;
+            if (m.keys && m.keys.indexOf(k) >= 0) return m;
+            if (m.prefixes) {
+                for (var p = 0; p < m.prefixes.length; p++) {
+                    if (k.indexOf(m.prefixes[p]) === 0) return m;
+                }
+            }
+        }
+        return { id: '_other', name: '未归类', icon: '🗃️' };
+    }
+    // 把一组键汇总成「模块 → 项数」，按项数降序，取前 4
+    function summarizeKeys(keys) {
+        var map = {}, order = [];
+        (keys || []).forEach(function (k) {
+            if (!k || isInternalKey(k) || isIgnoredKey(k)) return;
+            var m = moduleOfKey(k);
+            if (!map[m.id]) { map[m.id] = { id: m.id, name: m.name, icon: m.icon, n: 0 }; order.push(m.id); }
+            map[m.id].n++;
+        });
+        var arr = order.map(function (id) { return map[id]; });
+        arr.sort(function (a, b) { return b.n - a.n; });
+        return arr.slice(0, 4);
+    }
+    function summarizePayload(payload) {
+        var items = [];
+        (payload && payload.modules ? payload.modules : []).forEach(function (m) {
+            if (!m) return;
+            var n = Object.keys(m.data || {}).length;
+            if (n > 0) items.push({ id: m.id, name: m.name, icon: m.icon || '🗂️', n: n });
+        });
+        var un = Object.keys((payload && payload.unmatched) || {}).length;
+        if (un) items.push({ id: '_other', name: '未归类', icon: '🗃️', n: un });
+        items.sort(function (a, b) { return b.n - a.n; });
+        return items.slice(0, 4);
+    }
+    // type: 'backup'（本地导出 / 快照 / 恢复） | 'sync'（云端上传 / 下载）
+    function recordAct(type, info) {
+        try {
+            var act = getAct();
+            act[type] = {
+                ts: Date.now(),
+                kind: info.kind || '',
+                count: info.count || 0,
+                items: (info.items || []).slice(0, 4)
+            };
+            localStorage.setItem(ACT_KEY, JSON.stringify(act));
+        } catch (e) {}
+        try { renderSideStat(); } catch (e) {}
+    }
+    // 其它标签页 / iframe 写入的时间埋点在内存里看不到，展示前先合并一次
+    function refreshMeta() {
+        try {
+            var disk = JSON.parse(localStorage.getItem(META_KEY) || '{}') || {};
+            for (var k in disk) {
+                if (!Object.prototype.hasOwnProperty.call(disk, k)) continue;
+                if ((disk[k] || 0) > (meta[k] || 0)) meta[k] = disk[k];
+            }
+        } catch (e) {}
+    }
+    // 自上次本地备份之后又发生过改动的键（按模块汇总）
+    function pendingChanges() {
+        var act = getAct();
+        var since = (act.backup && act.backup.ts) || 0;
+        var keys = [];
+        try {
+            for (var k in meta) {
+                if (!Object.prototype.hasOwnProperty.call(meta, k)) continue;
+                if (isInternalKey(k) || isIgnoredKey(k)) continue;
+                if ((meta[k] || 0) > since) keys.push(k);
+            }
+        } catch (e) {}
+        return { n: keys.length, items: summarizeKeys(keys), since: since };
     }
 
     /* ============ 快照存储（IndexedDB，降级 localStorage） ============ */
@@ -243,6 +345,13 @@
             bytes: bytesOf(JSON.stringify(payload)),
             payload: payload
         };
+        try {
+            recordAct('backup', {
+                kind: /自动/.test(note || '') ? '每日自动快照' : '本地快照',
+                count: countPayload(payload),
+                items: summarizePayload(payload)
+            });
+        } catch (e) {}
         function trim(arr) {
             arr.sort(function (a, b) { return b.ts - a.ts; });
             return arr.slice(0, MAX_SNAPSHOTS);
@@ -359,6 +468,13 @@
             }
             try { localStorage.setItem(k, pairs[k]); written++; } catch (e) {}
         });
+        try {
+            recordAct('backup', {
+                kind: mode === 'merge' ? '合并恢复数据' : '恢复数据',
+                count: written,
+                items: summarizeKeys(Object.keys(pairs))
+            });
+        } catch (e) {}
         return { written: written, skipped: skipped, total: Object.keys(pairs).length };
     }
 
@@ -382,10 +498,25 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     }
 
+    function countPayload(payload) {
+        var n = 0;
+        (payload && payload.modules ? payload.modules : []).forEach(function (m) {
+            n += Object.keys((m && m.data) || {}).length;
+        });
+        return n + Object.keys((payload && payload.unmatched) || {}).length;
+    }
+
     function exportNow(ids) {
         var payload = collect(ids && ids.length ? ids : null);
         var tag = (ids && ids.length) ? ('部分-' + ids.length + '个模块') : '全部';
         download('效率中心备份-' + tag + '-' + stamp() + '.json', JSON.stringify(payload, null, 2));
+        try {
+            recordAct('backup', {
+                kind: (ids && ids.length) ? '导出部分模块' : '导出全部备份',
+                count: countPayload(payload),
+                items: summarizePayload(payload)
+            });
+        } catch (e) {}
         return payload;
     }
 
@@ -466,6 +597,18 @@
         '.bh-side-stat .bh-ss-bar.warn i{background:linear-gradient(90deg,#f59e0b,#f97316)}',
         '.bh-side-stat .bh-ss-bar.danger i{background:linear-gradient(90deg,#ef4444,#dc2626)}',
         '.bh-side-stat:hover .bh-ss-row{color:#fff}',
+        // 最近备份 / 最近同步：日期 + 更新项目，一眼看出数据有没有存住
+        '.bh-side-stat .bh-ss-act{margin-top:7px;border-top:1px solid rgba(255,255,255,.10);padding-top:6px}',
+        '.bh-side-stat .bh-ss-line{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:baseline;',
+        'font-size:10px;line-height:1.4;color:var(--side-text,#94a3b8);margin-top:4px;border-radius:6px}',
+        '.bh-side-stat .bh-ss-line:hover{color:#fff;background:rgba(255,255,255,.06)}',
+        '.bh-side-stat .bh-ss-line .lb{font-weight:600;color:#e2e8f0;flex:0 0 auto}',
+        '.bh-side-stat .bh-ss-line .lt{opacity:.8;flex:0 0 auto}',
+        '.bh-side-stat .bh-ss-line .lt.none{color:#fbbf24;opacity:1}',
+        '.bh-side-stat .bh-ss-line .li{flex:1 1 100%;opacity:.7;overflow:hidden;',
+        'text-overflow:ellipsis;white-space:nowrap}',
+        '.bh-side-stat .bh-ss-line.pend .lb{color:#fbbf24}',
+        '.bh-side-stat .bh-ss-line.pend:hover .lb{color:#f59e0b}',
         '.bh-float{position:fixed;right:16px;bottom:16px;z-index:999996;display:flex;align-items:center;gap:6px;',
         'background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:999px;padding:8px 14px;font-size:13px;',
         'cursor:pointer;box-shadow:0 4px 14px rgba(15,23,42,.12);font-family:inherit;transition:.15s}',
@@ -1004,8 +1147,30 @@
             '<span><b id="bhSsSize">—</b>已用空间</span>' +
             '<span><b id="bhSsKeys">—</b>数据键数</span>' +
             '<span><b id="bhSsMods">—</b>有数据模块</span>' +
-            '</div><div class="bh-ss-bar" id="bhSsBar"><i></i></div>';
+            '</div><div class="bh-ss-bar" id="bhSsBar"><i></i></div>' +
+            '<div class="bh-ss-act">' +
+              '<div class="bh-ss-line" id="bhSsBk" data-act="backup"></div>' +
+              '<div class="bh-ss-line" id="bhSsSy" data-act="sync"></div>' +
+              '<div class="bh-ss-line pend" id="bhSsPd" data-act="pending"></div>' +
+            '</div>';
         stat.addEventListener('click', function () { open(); });
+        // 点「最近备份 / 最近同步 / 有改动」各行：直接跳到对应动作，不兜圈子
+        var actBox = stat.querySelector('.bh-ss-act');
+        if (actBox) actBox.addEventListener('click', function (e) {
+            var line = e.target.closest ? e.target.closest('.bh-ss-line') : null;
+            if (!line) return;
+            e.stopPropagation();
+            var a = line.dataset.act;
+            if (a === 'pending') { exportThenAskCloud(); return; }
+            if (a === 'sync') {
+                var cs = cloudApi();
+                if (!cs) { open(); return; }
+                close();
+                Promise.resolve(cs.upload()).catch(function () {}).then(function () { refresh(); });
+                return;
+            }
+            open();   // backup → 打开备份中心
+        });
         if (item.nextSibling) item.parentNode.insertBefore(stat, item.nextSibling);
         else item.parentNode.appendChild(stat);
         updateBadge();
@@ -1016,6 +1181,7 @@
     function renderSideStat() {
         var box = document.getElementById('bhSideStat');
         if (!box) return;
+        refreshMeta();
         var s = scan();
         var used = s.groups.filter(function (g) { return g.keys.length > 0; }).length;
         var pct = Math.min(100, s.total / QUOTA * 100);
@@ -1032,6 +1198,86 @@
         }
         box.title = '数据体检：已用 ' + fmtBytes(s.total) + '，' + s.keyCount + ' 个键，' +
             used + ' 个模块有数据。点此打开数据备份中心';
+        renderActLines();
+    }
+
+    // 相对时间：今天 / 昨天 / 具体日期，越近越好读
+    function relTime(ts) {
+        if (!ts) return '';
+        var d = new Date(ts), now = new Date();
+        var diff = now - ts;
+        if (diff < 60000) return '刚刚';
+        if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+        var sameDay = d.toDateString() === now.toDateString();
+        var y = new Date(now.getTime() - 86400000);
+        var hh = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+        if (sameDay) return '今天 ' + hh;
+        if (d.toDateString() === y.toDateString()) return '昨天 ' + hh;
+        return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hh;
+    }
+    function itemsText(rec) {
+        if (!rec) return '';
+        var parts = (rec.items || []).map(function (it) {
+            return (it.icon || '🗂️') + ' ' + it.name + ' ' + it.n;
+        });
+        var sum = 0;
+        (rec.items || []).forEach(function (it) { sum += it.n; });
+        var rest = (rec.count || 0) - sum;
+        if (rest > 0) parts.push('等 ' + (rec.count || 0) + ' 项');
+        return parts.join(' · ');
+    }
+
+    // 侧边栏：最近一次备份 / 同步的时间与更新项目
+    function renderActLines() {
+        var act = getAct();
+        var bk = act.backup, sy = act.sync;
+        // 兼容旧记录：之前同步过但没留明细，用时间戳 + 当前数据补一条
+        if (!sy || !sy.ts) {
+            var lastTs = 0;
+            try { lastTs = parseInt(localStorage.getItem('sync_last_sync') || '0', 10); } catch (e) {}
+            if (lastTs) {
+                var s0 = scan();
+                sy = {
+                    ts: lastTs, kind: '云端同步', count: s0.keyCount,
+                    items: s0.groups.filter(function (g) { return g.keys.length > 0; })
+                        .map(function (g) { return { id: g.def.id, name: g.def.name, icon: g.def.icon, n: g.keys.length }; })
+                        .sort(function (a, b) { return b.n - a.n; }).slice(0, 4)
+                };
+            }
+        }
+        var setLine = function (id, rec, icon, label, emptyTxt) {
+            var n = document.getElementById(id);
+            if (!n) return;
+            if (!rec || !rec.ts) {
+                n.innerHTML = '<span class="lb">' + icon + ' ' + label + '</span>' +
+                              '<span class="lt none">' + emptyTxt + '</span>';
+                n.title = emptyTxt;
+                return;
+            }
+            var txt = itemsText(rec);
+            n.innerHTML = '<span class="lb">' + icon + ' ' + label + '</span>' +
+                          '<span class="lt">' + relTime(rec.ts) + (rec.kind ? ' · ' + esc(rec.kind) : '') + '</span>' +
+                          (txt ? '<span class="li">' + esc(txt) + '</span>' : '');
+            n.title = label + '：' + fmtTime(rec.ts) +
+                      (rec.count ? '，共 ' + rec.count + ' 项数据' : '') +
+                      (txt ? '\n' + txt : '');
+        };
+        setLine('bhSsBk', bk, '💾', '备份', '尚未备份 · 点此立即备份');
+        setLine('bhSsSy', sy, '☁️', '同步', '尚未同步 · 点此上传云端');
+        // 备份后又改了什么 —— 这是最容易漏掉的一环
+        var pd = document.getElementById('bhSsPd');
+        if (pd) {
+            var p = pendingChanges();
+            if (!p.n) { pd.style.display = 'none'; return; }
+            pd.style.display = '';
+            var t = p.items.map(function (it) { return (it.icon || '🗂️') + ' ' + it.name + ' ' + it.n; }).join(' · ');
+            pd.innerHTML = '<span class="lb">⚠️ ' + (p.since ? '备份后有改动' : '尚未备份') + '</span>' +
+                           '<span class="lt">' + p.n + ' 项</span>' +
+                           (t ? '<span class="li">' + esc(t) + '</span>' : '');
+            pd.title = p.since
+                ? (fmtTime(p.since) + ' 备份之后，有 ' + p.n + ' 项数据又改动过' + (t ? '：' + t : '') + '。点此立即备份')
+                : ('本机已有 ' + p.n + ' 项数据，但还没备份过。点此立即备份');
+        }
     }
     function updateBadge() {
         var b = document.getElementById('bhNavBadge');
@@ -1112,6 +1358,16 @@
         close: close,
         toast: toast,
         notify: notify,
+        // 供 sync-github.js 调用：记录一次云端同步的时间与项目
+        markSync: function (dir, keys) {
+            var ks = keys || [];
+            recordAct('sync', {
+                kind: dir === 'down' ? '云端 → 本机' : '本机 → 云端',
+                count: ks.length,
+                items: summarizeKeys(ks)
+            });
+        },
+        getActivity: function () { return { act: getAct(), pending: pendingChanges() }; },
         // 导航页调用
         initHub: function (opts) {
             opts = opts || {};
