@@ -8625,6 +8625,21 @@
         const wasIn = !!fTimer.inFocus;
         const nowIn = inf ? inf.classList.contains('on') : false;
         fTimer.mode = (document.querySelector('#fTMode span.on') || {}).dataset?.v || fTimer.mode;
+        /* v48 修复：勾「添加至专注任务」但计时模块还是「不计时」时，
+           自动补默认番茄钟（25min × 1），否则专注列表会因 mode==='none' 把它过滤掉，
+           用户勾了却"没有添加成功" */
+        if (nowIn && (!fTimer.mode || fTimer.mode === 'none')) {
+            Object.assign(fTimer, { mode: 'pomodoro', dur: 25, num: 1, short: 5, long: 15, interval: 4, auto: true });
+            try {
+                document.querySelectorAll('#fTMode span').forEach(s => s.classList.toggle('on', s.dataset.v === 'pomodoro'));
+                const p = document.getElementById('fTPomo'), c = document.getElementById('fTCount');
+                if (p) p.style.display = 'block';
+                if (c) c.style.display = 'none';
+                const _sv = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+                _sv('fTDur', 25); _sv('fTNum', 1); _sv('fTShort', 5); _sv('fTLong', 15); _sv('fTInt', 4);
+            } catch (e) {}
+            try { showToast('已按默认番茄钟（25分钟）加入专注任务'); } catch (e) {}
+        }
         fTimer.dur = fTimer.mode === 'countdown' ? num('fTMin', 25) : num('fTDur', 25);
         fTimer.num = num('fTNum', 4); fTimer.short = num('fTShort', 5);
         fTimer.long = num('fTLong', 15); fTimer.interval = num('fTInt', 4);
@@ -8670,6 +8685,19 @@
         const nowIn = inf ? inf.classList.contains('on') : false;
         const on = document.querySelector('#hTMode span.on');
         hTimer.mode = on ? on.dataset.v : hTimer.mode;
+        /* v48 修复：同任务表单 —— 勾「添加至专注任务」但计时模块为「不计时」时补默认番茄钟 */
+        if (nowIn && (!hTimer.mode || hTimer.mode === 'none')) {
+            Object.assign(hTimer, { mode: 'pomodoro', dur: 25, num: 1, short: 5, long: 15, interval: 4, auto: true });
+            try {
+                document.querySelectorAll('#hTMode span').forEach(s => s.classList.toggle('on', s.dataset.v === 'pomodoro'));
+                const p = document.getElementById('hTPomo'), c = document.getElementById('hTCount');
+                if (p) p.style.display = 'block';
+                if (c) c.style.display = 'none';
+                const _sv = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+                _sv('hTDur', 25); _sv('hTNum', 1); _sv('hTShort', 5); _sv('hTLong', 15); _sv('hTInt', 4);
+            } catch (e) {}
+            try { showToast('已按默认番茄钟（25分钟）加入专注任务'); } catch (e) {}
+        }
         hTimer.dur = hTimer.mode === 'countdown' ? num('hTMin', 25) : num('hTDur', 25);
         hTimer.num = num('hTNum', 4); hTimer.short = num('hTShort', 5);
         hTimer.long = num('hTLong', 15); hTimer.interval = num('hTInt', 4);
@@ -13146,16 +13174,18 @@
         renderImpList();
     }
     function impSelectAll(mode) {
+        /* v48 修复：只在当前页签上改选择，不再重建整张选择表 ——
+           此前 newSel 只含当前页签，其他页签已勾的项会被悄悄清掉，
+           底部「已选 N 项」却按全量计数，导入结果与所选对不上 */
         const items = impItems(impTab);
-        const newSel = {};
         items.forEach(it => {
             const cur = !!impSelected[it.scope];
             const want = (mode === true) ? true
                        : (mode === false) ? !cur
                        : false;
-            if (want) newSel[it.scope] = true;
+            if (want) impSelected[it.scope] = true;
+            else delete impSelected[it.scope];
         });
-        impSelected = newSel;
         renderImpList();
     }
     function confirmImportFocus() {
