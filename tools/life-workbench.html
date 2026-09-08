@@ -1813,5 +1813,10 @@ document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeModal
 window.addEventListener('storage',function(e){ if(e.key===KEY&&e.newValue){ try{ state=normalize(JSON.parse(e.newValue)); render(); }catch(err){} } });
 
 </script>
+
+
+<!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
+<script src="backup-hub.js"></script>
+<script>BackupHub.mount({id:'life',name:'生活工作台'});</script>
 </body>
 </html>
