@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.6.1';
+    var VERSION = '1.6.2';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
@@ -586,30 +586,7 @@
         'font-size:12px;line-height:1;flex:0 0 auto;padding:0}',
         '.bh-nav-exp:hover{background:#4f46e5;color:#fff}',
         'html[data-theme="dark"] .bh-nav-exp{background:#1e293b;color:#818cf8}',
-        '#syncStatusBtn{flex-wrap:wrap;row-gap:4px}',
-        '.bh-side-stat{flex:1 1 100%;min-width:0;padding-top:6px;margin:0;cursor:pointer;border-top:1px solid rgba(255,255,255,.10)}',
-        '.bh-side-stat .bh-ss-row{display:flex;gap:8px;font-size:10px;color:var(--side-text,#94a3b8);line-height:1.35}',
-        '.bh-side-stat .bh-ss-row span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-        '.bh-side-stat .bh-ss-row b{display:block;font-size:12px;font-weight:700;color:#fff}',
-        '.bh-side-stat .bh-ss-bar{height:4px;border-radius:999px;background:rgba(255,255,255,.13);',
-        'margin-top:7px;overflow:hidden}',
-        '.bh-side-stat .bh-ss-bar i{display:block;height:100%;border-radius:999px;width:2%;',
-        'background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width .35s ease}',
-        '.bh-side-stat .bh-ss-bar.warn i{background:linear-gradient(90deg,#f59e0b,#f97316)}',
-        '.bh-side-stat .bh-ss-bar.danger i{background:linear-gradient(90deg,#ef4444,#dc2626)}',
-        '.bh-side-stat:hover .bh-ss-row{color:#fff}',
-        // 最近备份 / 最近同步：日期 + 更新项目，一眼看出数据有没有存住
-        '.bh-side-stat .bh-ss-act{margin-top:2px;padding-top:2px}',
-        '.bh-side-stat .bh-ss-line{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:baseline;',
-        'font-size:10px;line-height:1.4;color:var(--side-text,#94a3b8);margin-top:4px;border-radius:6px}',
-        '.bh-side-stat .bh-ss-line:hover{color:#fff;background:rgba(255,255,255,.06)}',
-        '.bh-side-stat .bh-ss-line .lb{font-weight:600;color:#e2e8f0;flex:0 0 auto}',
-        '.bh-side-stat .bh-ss-line .lt{opacity:.8;flex:0 0 auto}',
-        '.bh-side-stat .bh-ss-line .lt.none{color:#fbbf24;opacity:1}',
-        '.bh-side-stat .bh-ss-line .li{flex:1 1 100%;opacity:.7;overflow:hidden;',
-        'text-overflow:ellipsis;white-space:nowrap}',
-        '.bh-side-stat .bh-ss-line.pend .lb{color:#fbbf24}',
-        '.bh-side-stat .bh-ss-line.pend:hover .lb{color:#f59e0b}',
+        // v1.6.2：侧边栏状态条已移除（备份/同步状态只在云端同步面板内展示）
         '.bh-float{position:fixed;right:16px;bottom:16px;z-index:999996;display:flex;align-items:center;gap:6px;',
         'background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:999px;padding:8px 14px;font-size:13px;',
         'cursor:pointer;box-shadow:0 4px 14px rgba(15,23,42,.12);font-family:inherit;transition:.15s}',
@@ -1120,39 +1097,12 @@
     }
 
     function sidebarEntry() {
-        var existed = document.getElementById('bhSideStat');
-        if (existed) {
-            // 云端同步按钮若重建过，状态条要跟着搬回按钮内部
-            var btn0 = document.getElementById('syncStatusBtn');
-            if (btn0 && !btn0.contains(existed)) btn0.appendChild(existed);
-            renderSideStat();
-            return;
-        }
-        var host = document.querySelector('.side-foot');
-        if (!host) { setTimeout(sidebarEntry, 600); return; }
-        // 数据备份的导航项已合并进云端同步，残留的旧节点清掉
+        // v1.6.2：侧边栏只保留「云端同步」一个入口，备份状态不再常驻侧边栏，
+        // 只在点开云端同步面板时展示（activityHTML）。这里只负责清掉历史残留节点。
         var legacy = document.getElementById(SIDEBAR_ID);
         if (legacy) legacy.remove();
-
-        var anchor = document.getElementById('syncStatusBtn');
-        if (!anchor) { setTimeout(sidebarEntry, 500); return; } // 等「云端同步」按钮就绪
-
-        var stat = document.createElement('div');
-        stat.className = 'bh-side-stat';
-        stat.id = 'bhSideStat';
-        stat.title = '备份 / 同步状态：点此打开云端同步';
-        stat.innerHTML = '<div class="bh-ss-act">' +
-              '<div class="bh-ss-line" id="bhSsBk"></div>' +
-              '<div class="bh-ss-line" id="bhSsSy"></div>' +
-              '<div class="bh-ss-line pend" id="bhSsPd"></div>' +
-            '</div>';
-        stat.addEventListener('click', function (e) {
-            e.stopPropagation(); // 行内点击不触发外层按钮的双重打开
-            openCloudOrHub();
-        });
-        // 放进「云端同步」按钮内部：同一张卡片，状态行显示在标题下方
-        anchor.appendChild(stat);
-        renderSideStat();
+        var legacyStat = document.getElementById('bhSideStat');
+        if (legacyStat) legacyStat.remove();
     }
 
     // 侧边栏常驻容量图表
@@ -1279,14 +1229,8 @@
         b.title = '已用 ' + fmtBytes(s.total) + ' / 约 5MB';
     }
     function watchSidebar() {
+        // v1.6.2：侧边栏不再注入任何备份节点，只清理历史残留，无需监听重建
         sidebarEntry();
-        if (!window.MutationObserver) return;
-        var host = document.querySelector('.side-foot') || document.getElementById('navList');
-        if (!host) return;
-        // 只在状态条被移除时才重建：状态条就在 host 内，若每次变动都重渲染会自触发死循环
-        new MutationObserver(function () {
-            if (!document.getElementById('bhSideStat')) sidebarEntry();
-        }).observe(host, { childList: true, subtree: true });
     }
 
     /* ============ 工具页入口 ============ */
@@ -1397,10 +1341,8 @@
             var boot = function () {
                 watchSidebar();
                 maybeAutoSnapshot();
-                // 侧边栏容量图表：数据随时会被工具页改动，定时同步 + 跨标签页事件
-                renderSideStat();
-                setInterval(renderSideStat, 10000);
-                window.addEventListener('storage', function () { renderSideStat(); updateBadge(); });
+                // v1.6.2：侧边栏无常驻状态条，备份/同步状态只在云端同步面板内展示
+                window.addEventListener('storage', function () { updateBadge(); });
                 // 导航页不再加右下角悬浮按钮：侧边栏已有常驻入口 + 容量卡，悬浮按钮重复碍事
                 // （工具页独立打开时没有侧边栏，仍由 mount() 提供悬浮入口）
                 var legacy = document.getElementById('bhFloat');
