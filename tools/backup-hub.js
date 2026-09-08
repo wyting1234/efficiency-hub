@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.5.0';
+    var VERSION = '1.6.0';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
