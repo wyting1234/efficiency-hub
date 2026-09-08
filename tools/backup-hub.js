@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.3.0';
+    var VERSION = '1.3.1';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var IDB_NAME = 'efficiency_hub_backup';
@@ -1025,10 +1025,10 @@
                 renderSideStat();
                 setInterval(renderSideStat, 10000);
                 window.addEventListener('storage', function () { renderSideStat(); updateBadge(); });
-                // 宽屏下侧边栏默认收起，补一个常驻悬浮入口保证随时可达
-                addFloat('', '数据备份');
-                var fb = document.getElementById('bhFloat');
-                if (fb) fb.onclick = function () { open(); };
+                // 导航页不再加右下角悬浮按钮：侧边栏已有常驻入口 + 容量卡，悬浮按钮重复碍事
+                // （工具页独立打开时没有侧边栏，仍由 mount() 提供悬浮入口）
+                var legacy = document.getElementById('bhFloat');
+                if (legacy) legacy.remove();
             };
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', boot);
