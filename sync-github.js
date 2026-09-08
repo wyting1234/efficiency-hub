@@ -120,6 +120,14 @@
   }
 
   // ============ 同步主面板 ============
+  // 备份状态与操作已合并进来：侧边栏只保留「云端同步」一个入口
+  function backupStateHTML() {
+    if (window.BackupHub && typeof window.BackupHub.activityHTML === 'function') {
+      try { return window.BackupHub.activityHTML(); } catch (e) {}
+    }
+    return '<div style="font-size:13px;color:#888">备份模块未加载</div>';
+  }
+
   function openSyncPanel() {
     closeTopModal();
     const mask = document.createElement('div');
@@ -145,6 +153,15 @@
         <button id="syncDownload" style="flex:1;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:15px;cursor:pointer">⬇️ 从云端下载</button>
       </div>
 
+      <div id="syncBackupBox" style="border-top:1px solid #eee;padding-top:12px;margin-bottom:14px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px">💾 数据备份</div>
+        <div id="syncBackupState" style="background:#f6f8fa;border-radius:8px;padding:10px 12px;margin-bottom:10px">${backupStateHTML()}</div>
+        <div style="display:flex;gap:8px">
+          <button id="syncBkExport" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:13px">导出备份到本机</button>
+          <button id="syncBkCenter" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:13px">备份中心</button>
+        </div>
+      </div>
+
       <div style="display:flex;justify-content:space-between;align-items:center">
         <button id="syncReconfig" style="background:none;border:none;color:#888;font-size:13px;cursor:pointer;text-decoration:underline">重新配置 Token</button>
         <button id="syncClose" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">关闭</button>
@@ -157,6 +174,18 @@
     modal.querySelector('#syncReconfig').onclick = () => { mask.remove(); showConfigModal(); };
     modal.querySelector('#syncUpload').onclick = () => { mask.remove(); doUpload(); };
     modal.querySelector('#syncDownload').onclick = () => { mask.remove(); doDownload(); };
+    // 备份动作：导出走 BackupHub（导出后会询问是否顺带上传云端），备份中心是完整功能面板
+    modal.querySelector('#syncBkExport').onclick = () => {
+      mask.remove();
+      if (window.BackupHub && window.BackupHub.exportThenAskCloud) {
+        try { window.BackupHub.exportThenAskCloud(); return; } catch (e) {}
+      }
+      if (window.BackupHub) { try { window.BackupHub.exportNow(null); } catch (e) {} }
+    };
+    modal.querySelector('#syncBkCenter').onclick = () => {
+      mask.remove();
+      if (window.BackupHub && window.BackupHub.open) { try { window.BackupHub.open(); } catch (e) {} }
+    };
   }
 
   // ============ 配置弹窗 ============
@@ -488,6 +517,7 @@
   window.CloudSync = {
     upload: doUpload,
     download: doDownload,
+    openPanel: openSyncPanel,
     isConnected: () => isConnected,
     peek: peekCloud,                                   // 只读探测云端数据量
     getStatus: () => ({ connected: isConnected, lastSync: lastSyncTime })

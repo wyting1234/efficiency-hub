@@ -598,7 +598,7 @@
         '.bh-side-stat .bh-ss-bar.danger i{background:linear-gradient(90deg,#ef4444,#dc2626)}',
         '.bh-side-stat:hover .bh-ss-row{color:#fff}',
         // 最近备份 / 最近同步：日期 + 更新项目，一眼看出数据有没有存住
-        '.bh-side-stat .bh-ss-act{margin-top:7px;border-top:1px solid rgba(255,255,255,.10);padding-top:6px}',
+        '.bh-side-stat .bh-ss-act{margin-top:2px;padding-top:2px}',
         '.bh-side-stat .bh-ss-line{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:baseline;',
         'font-size:10px;line-height:1.4;color:var(--side-text,#94a3b8);margin-top:4px;border-radius:6px}',
         '.bh-side-stat .bh-ss-line:hover{color:#fff;background:rgba(255,255,255,.06)}',
@@ -1108,72 +1108,42 @@
         }
     }
 
+    // 侧边栏只保留「云端同步」一个入口，备份状态挂在这个入口下面，
+    // 不再单独占一条「数据备份」导航项。
+    function openCloudOrHub() {
+        var cs = cloudApi();
+        if (cs && typeof cs.openPanel === 'function') { try { cs.openPanel(); return; } catch (e) {} }
+        var btn = document.getElementById('syncStatusBtn');
+        if (btn) { try { btn.click(); return; } catch (e) {} }
+        open();   // 兜底：直接开备份中心
+    }
+
     function sidebarEntry() {
-        if (document.getElementById(SIDEBAR_ID)) return;
-        var item = document.createElement('div');
-        item.className = 'nav-item';
-        item.id = SIDEBAR_ID;
-        item.dataset.target = 'backup';
-        item.title = '集中备份 / 恢复 / 快照 / 数据体检';
-        item.innerHTML = '<span class="ico">💾</span><span>数据备份</span>' +
-                         '<span class="badge empty" id="bhNavBadge"></span>' +
-                         '<button class="bh-nav-exp" id="bhNavExport" title="一键导出备份到本机">⬇</button>';
-        item.addEventListener('click', function () {
-            document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
-            item.classList.add('active');
-            open();
-        });
-        // 侧边栏直接导出：不打开面板，导出后询问是否上传云端
-        var expBtn = item.querySelector('#bhNavExport');
-        if (expBtn) expBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            exportThenAskCloud();
-        });
-        // 置于「仪表盘」正下方：不受工具列表折叠 / buildNav 重建影响，始终可见
-        var dash = document.querySelector('.nav-item[data-target="dashboard"]');
-        if (dash && dash.parentNode) dash.parentNode.insertBefore(item, dash.nextSibling);
-        else {
-            var list = document.getElementById('navList');
-            if (!list) return;
-            list.insertBefore(item, list.firstChild);
-        }
-        // 容量图表常驻侧边栏：紧跟「数据备份」条目，点它也能打开备份中心
+        if (document.getElementById('bhSideStat')) { renderSideStat(); return; }
+        var host = document.querySelector('.side-foot');
+        if (!host) { setTimeout(sidebarEntry, 600); return; }
+        // 数据备份的导航项已合并进云端同步，残留的旧节点清掉
+        var legacy = document.getElementById(SIDEBAR_ID);
+        if (legacy) legacy.remove();
+
         var stat = document.createElement('div');
         stat.className = 'bh-side-stat';
         stat.id = 'bhSideStat';
-        stat.title = '数据体检：点此打开数据备份中心';
-        stat.innerHTML = '<div class="bh-ss-row">' +
-            '<span><b id="bhSsSize">—</b>已用空间</span>' +
-            '<span><b id="bhSsKeys">—</b>数据键数</span>' +
-            '<span><b id="bhSsMods">—</b>有数据模块</span>' +
-            '</div><div class="bh-ss-bar" id="bhSsBar"><i></i></div>' +
-            '<div class="bh-ss-act">' +
-              '<div class="bh-ss-line" id="bhSsBk" data-act="backup"></div>' +
-              '<div class="bh-ss-line" id="bhSsSy" data-act="sync"></div>' +
-              '<div class="bh-ss-line pend" id="bhSsPd" data-act="pending"></div>' +
+        stat.title = '备份 / 同步状态：点此打开云端同步';
+        stat.innerHTML = '<div class="bh-ss-act">' +
+              '<div class="bh-ss-line" id="bhSsBk"></div>' +
+              '<div class="bh-ss-line" id="bhSsSy"></div>' +
+              '<div class="bh-ss-line pend" id="bhSsPd"></div>' +
             '</div>';
-        stat.addEventListener('click', function () { open(); });
-        // 点「最近备份 / 最近同步 / 有改动」各行：直接跳到对应动作，不兜圈子
-        var actBox = stat.querySelector('.bh-ss-act');
-        if (actBox) actBox.addEventListener('click', function (e) {
-            var line = e.target.closest ? e.target.closest('.bh-ss-line') : null;
-            if (!line) return;
-            e.stopPropagation();
-            var a = line.dataset.act;
-            if (a === 'pending') { exportThenAskCloud(); return; }
-            if (a === 'sync') {
-                var cs = cloudApi();
-                if (!cs) { open(); return; }
-                close();
-                Promise.resolve(cs.upload()).catch(function () {}).then(function () { refresh(); });
-                return;
-            }
-            open();   // backup → 打开备份中心
-        });
-        if (item.nextSibling) item.parentNode.insertBefore(stat, item.nextSibling);
-        else item.parentNode.appendChild(stat);
-        updateBadge();
+        stat.addEventListener('click', openCloudOrHub);
+        // 紧跟「云端同步」按钮，视觉上属于同一个入口
+        var anchor = document.getElementById('syncStatusBtn');
+        if (anchor && anchor.parentNode === host) {
+            if (anchor.nextSibling) host.insertBefore(stat, anchor.nextSibling);
+            else host.appendChild(stat);
+        } else {
+            host.insertBefore(stat, host.firstChild);
+        }
         renderSideStat();
     }
 
@@ -1196,8 +1166,8 @@
             if (i) i.style.width = Math.max(2, pct) + '%';
             bar.title = '已用 ' + fmtBytes(s.total) + ' / 约 5MB（' + pct.toFixed(1) + '%）';
         }
-        box.title = '数据体检：已用 ' + fmtBytes(s.total) + '，' + s.keyCount + ' 个键，' +
-            used + ' 个模块有数据。点此打开数据备份中心';
+        box.title = '已用 ' + fmtBytes(s.total) + '，' + s.keyCount + ' 个数据键，' +
+            used + ' 个模块有数据。点此打开云端同步（含备份 / 恢复 / 快照）';
         renderActLines();
     }
 
@@ -1227,8 +1197,10 @@
         return parts.join(' · ');
     }
 
-    // 侧边栏：最近一次备份 / 同步的时间与更新项目
-    function renderActLines() {
+    // 备份 / 同步状态模型：侧边栏与云端同步面板共用
+    function actModel() {
+        refreshMeta();
+        var s = scan();
         var act = getAct();
         var bk = act.backup, sy = act.sync;
         // 兼容旧记录：之前同步过但没留明细，用时间戳 + 当前数据补一条
@@ -1236,16 +1208,26 @@
             var lastTs = 0;
             try { lastTs = parseInt(localStorage.getItem('sync_last_sync') || '0', 10); } catch (e) {}
             if (lastTs) {
-                var s0 = scan();
                 sy = {
-                    ts: lastTs, kind: '云端同步', count: s0.keyCount,
-                    items: s0.groups.filter(function (g) { return g.keys.length > 0; })
+                    ts: lastTs, kind: '云端同步', count: s.keyCount,
+                    items: s.groups.filter(function (g) { return g.keys.length > 0; })
                         .map(function (g) { return { id: g.def.id, name: g.def.name, icon: g.def.icon, n: g.keys.length }; })
                         .sort(function (a, b) { return b.n - a.n; }).slice(0, 4)
                 };
             }
         }
-        var setLine = function (id, rec, icon, label, emptyTxt) {
+        return {
+            backup: bk, sync: sy, pending: pendingChanges(),
+            size: s.total, keys: s.keyCount,
+            mods: s.groups.filter(function (g) { return g.keys.length > 0; }).length
+        };
+    }
+
+    // 侧边栏：最近一次备份 / 同步的时间与更新项目
+    function renderActLines() {
+        var m = actModel();
+        var bk = m.backup, sy = m.sync;
+        var setLine = function (id, rec, icon, label, emptyTxt, extra) {
             var n = document.getElementById(id);
             if (!n) return;
             if (!rec || !rec.ts) {
@@ -1257,17 +1239,18 @@
             var txt = itemsText(rec);
             n.innerHTML = '<span class="lb">' + icon + ' ' + label + '</span>' +
                           '<span class="lt">' + relTime(rec.ts) + (rec.kind ? ' · ' + esc(rec.kind) : '') + '</span>' +
-                          (txt ? '<span class="li">' + esc(txt) + '</span>' : '');
+                          ((txt || extra) ? '<span class="li">' + esc(txt) + (extra ? (txt ? ' · ' : '') + esc(extra) : '') + '</span>' : '');
             n.title = label + '：' + fmtTime(rec.ts) +
                       (rec.count ? '，共 ' + rec.count + ' 项数据' : '') +
                       (txt ? '\n' + txt : '');
         };
-        setLine('bhSsBk', bk, '💾', '备份', '尚未备份 · 点此立即备份');
+        setLine('bhSsBk', bk, '💾', '备份', '尚未备份 · 点此立即备份',
+                m.keys + ' 项 / ' + fmtBytes(m.size));
         setLine('bhSsSy', sy, '☁️', '同步', '尚未同步 · 点此上传云端');
         // 备份后又改了什么 —— 这是最容易漏掉的一环
         var pd = document.getElementById('bhSsPd');
         if (pd) {
-            var p = pendingChanges();
+            var p = m.pending;
             if (!p.n) { pd.style.display = 'none'; return; }
             pd.style.display = '';
             var t = p.items.map(function (it) { return (it.icon || '🗂️') + ' ' + it.name + ' ' + it.n; }).join(' · ');
@@ -1290,11 +1273,12 @@
     function watchSidebar() {
         sidebarEntry();
         if (!window.MutationObserver) return;
-        var dash = document.querySelector('.nav-item[data-target="dashboard"]');
-        var host = (dash && dash.parentNode) || document.getElementById('navList');
+        var host = document.querySelector('.side-foot') || document.getElementById('navList');
         if (!host) return;
-        // 工具列表被折叠/重建后仍保证入口存在
-        new MutationObserver(function () { sidebarEntry(); }).observe(host, { childList: true, subtree: true });
+        // 只在状态条被移除时才重建：状态条就在 host 内，若每次变动都重渲染会自触发死循环
+        new MutationObserver(function () {
+            if (!document.getElementById('bhSideStat')) sidebarEntry();
+        }).observe(host, { childList: true, subtree: true });
     }
 
     /* ============ 工具页入口 ============ */
@@ -1351,6 +1335,7 @@
         collect: collect,
         applyBackup: applyBackup,
         exportNow: exportNow,
+        exportThenAskCloud: exportThenAskCloud,
         createSnapshot: createSnapshot,
         listSnapshots: listSnapshots,
         deleteSnapshot: deleteSnapshot,
@@ -1368,6 +1353,36 @@
             });
         },
         getActivity: function () { return { act: getAct(), pending: pendingChanges() }; },
+        // 供云端同步面板内嵌：备份 / 同步的时间与更新项目
+        activityHTML: function () {
+            var m = actModel();
+            var row = function (icon, label, rec, emptyTxt) {
+                if (!rec || !rec.ts) {
+                    return '<div style="margin-bottom:6px;font-size:13px;color:#444">' +
+                           icon + ' <b>' + label + '</b> <span style="color:#b45309">' + emptyTxt + '</span></div>';
+                }
+                var txt = itemsText(rec);
+                return '<div style="margin-bottom:6px;font-size:13px;color:#444">' + icon +
+                       ' <b>' + label + '</b> <span style="color:#666">' + relTime(rec.ts) +
+                       (rec.kind ? ' · ' + esc(rec.kind) : '') + '</span>' +
+                       (txt ? '<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+                              esc(txt) + '</div>' : '') + '</div>';
+            };
+            var html = row('💾', '本机备份', m.backup, '尚未备份') +
+                       row('☁️', '云端同步', m.sync, '尚未同步');
+            if (m.pending.n) {
+                var t = m.pending.items.map(function (it) {
+                    return (it.icon || '') + ' ' + it.name + ' ' + it.n;
+                }).join(' · ');
+                html += '<div style="font-size:13px;color:#b45309">⚠️ ' +
+                        (m.pending.since ? '备份后有改动' : '尚未备份') + ' <b>' + m.pending.n + '</b> 项' +
+                        (t ? '<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+                             esc(t) + '</div>' : '') + '</div>';
+            }
+            html += '<div style="margin-top:6px;font-size:12px;color:#888">已用 ' + fmtBytes(m.size) +
+                    ' · ' + m.keys + ' 个数据键 · ' + m.mods + ' 个模块有数据</div>';
+            return html;
+        },
         // 导航页调用
         initHub: function (opts) {
             opts = opts || {};
