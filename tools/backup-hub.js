@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.1.0';
+    var VERSION = '1.2.0';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var IDB_NAME = 'efficiency_hub_backup';
@@ -448,6 +448,11 @@
         '.bh-snap .bh-st{font-size:12px;font-weight:600}',
         '.bh-snap .bh-ss{font-size:11px;color:#94a3b8}',
         '.bh-empty{font-size:12px;color:#94a3b8;padding:10px;text-align:center;background:#f8fafc;border-radius:10px}',
+        '.bh-nav-exp{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;',
+        'margin-left:6px;border:none;border-radius:6px;background:#eef2ff;color:#4f46e5;cursor:pointer;',
+        'font-size:12px;line-height:1;flex:0 0 auto;padding:0}',
+        '.bh-nav-exp:hover{background:#4f46e5;color:#fff}',
+        'html[data-theme="dark"] .bh-nav-exp{background:#1e293b;color:#818cf8}',
         '.bh-float{position:fixed;right:16px;bottom:16px;z-index:999996;display:flex;align-items:center;gap:6px;',
         'background:#fff;color:#334155;border:1px solid #e2e8f0;border-radius:999px;padding:8px 14px;font-size:13px;',
         'cursor:pointer;box-shadow:0 4px 14px rgba(15,23,42,.12);font-family:inherit;transition:.15s}',
@@ -515,7 +520,7 @@
                   '<div class="bh-opts"><label><input type="radio" name="bhMode" value="merge" checked> 合并（保留现有）</label>' +
                   '<label><input type="radio" name="bhMode" value="replace"> 覆盖（以备份为准）</label></div>' +
                   '<input type="file" id="bhFile" accept="application/json,.json" style="display:none">' +
-                  '<div class="bh-note" style="margin-top:9px">⚠️ 导出的备份文件<b>只存在这台设备</b>，不会自动出现在手机 / 另一台电脑上。跨设备请用下方「跨设备同步」。</div>' +
+                  '<div class="bh-note" style="margin-top:9px">⚠️ 导出的备份文件<b>只存在这台设备</b>。点导出后会问你要不要<b>顺带上传云端</b>，跨设备同步请用下方「跨设备同步」。</div>' +
                 '</div>' +
                 '<div class="bh-sec"><p class="bh-sec-t">☁️ 跨设备同步（手机 ⇄ 电脑）</p>' +
                   '<div class="bh-cloud" id="bhCloud"></div>' +
@@ -548,10 +553,7 @@
 
         el.mask.addEventListener('click', close);
         root.querySelector('#bhClose').addEventListener('click', close);
-        root.querySelector('#bhExpAll').addEventListener('click', function () {
-            exportNow(null);
-            toast('备份文件已下载到本机（不会自动同步到手机/其他电脑）');
-        });
+        root.querySelector('#bhExpAll').addEventListener('click', exportThenAskCloud);
         root.querySelector('#bhImp').addEventListener('click', function () { el.file.click(); });
         el.file.addEventListener('change', function (e) {
             var f = e.target.files && e.target.files[0];
@@ -806,6 +808,55 @@
 
     /* ============ 侧边栏入口（导航页） ============ */
     var SIDEBAR_ID = 'bh-nav-item';
+    /* ============ 导出备份 → 询问是否同时上传云端 ============ */
+    // 只导出文件到本机是不够的：很多人误以为"备份成功"就等于手机/别的电脑能看到了。
+    // 所以导出后主动问一次要不要顺带上传云端，把两件事串成一条路径。
+    function cloudReady() {
+        var cs = cloudApi();
+        if (!cs) return null;
+        var connected = false;
+        try { connected = !!(cs.isConnected && cs.isConnected()); } catch (e) {}
+        if (!connected) {
+            // 已配过 Token 就算可用（initSync 是异步的，状态可能还没回来）
+            var token = '';
+            try { token = localStorage.getItem('github_token') || ''; } catch (e) {}
+            if (token) connected = true;
+        }
+        return connected ? cs : null;
+    }
+
+    function exportThenAskCloud() {
+        exportNow(null);
+        var cs = cloudApi();
+        if (!cs) {
+            toast('备份已下载到本机。跨设备同步请回到效率中心首页操作。');
+            return;
+        }
+        if (!cloudReady()) {
+            var goCfg = window.confirm(
+                '备份文件已保存到本机。\n\n' +
+                '但当前还没连接云端，所以手机 / 其他电脑看不到这份备份。\n\n' +
+                '点「确定」去连接云端并上传；\n点「取消」就只留在这台设备。');
+            if (goCfg) {
+                close();
+                Promise.resolve(cs.upload()).catch(function () {}).then(function () { refresh(); });
+            } else {
+                toast('备份已存本机（未上传云端）');
+            }
+            return;
+        }
+        var go = window.confirm(
+            '备份文件已保存到本机。\n\n' +
+            '要同时把这份数据上传到云端吗？\n' +
+            '上传后，在手机 / 其他电脑点「云端 → 本机」就能同步过去。');
+        if (go) {
+            close();
+            Promise.resolve(cs.upload()).catch(function () {}).then(function () { refresh(); });
+        } else {
+            toast('备份已存本机（未上传云端）');
+        }
+    }
+
     function sidebarEntry() {
         if (document.getElementById(SIDEBAR_ID)) return;
         var item = document.createElement('div');
@@ -814,11 +865,19 @@
         item.dataset.target = 'backup';
         item.title = '集中备份 / 恢复 / 快照 / 数据体检';
         item.innerHTML = '<span class="ico">💾</span><span>数据备份</span>' +
-                         '<span class="badge empty" id="bhNavBadge"></span>';
+                         '<span class="badge empty" id="bhNavBadge"></span>' +
+                         '<button class="bh-nav-exp" id="bhNavExport" title="一键导出备份到本机">⬇</button>';
         item.addEventListener('click', function () {
             document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
             item.classList.add('active');
             open();
+        });
+        // 侧边栏直接导出：不打开面板，导出后询问是否上传云端
+        var expBtn = item.querySelector('#bhNavExport');
+        if (expBtn) expBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            exportThenAskCloud();
         });
         // 置于「仪表盘」正下方：不受工具列表折叠 / buildNav 重建影响，始终可见
         var dash = document.querySelector('.nav-item[data-target="dashboard"]');
