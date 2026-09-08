@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.3.1';
+    var VERSION = '1.3.2';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var IDB_NAME = 'efficiency_hub_backup';
@@ -392,12 +392,14 @@
     /* ============ UI ============ */
     var STYLE_ID = 'bh-style', ROOT_ID = 'bh-root';
     var CSS = [
-        '.bh-mask{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:999997;opacity:0;transition:opacity .2s}',
-        '.bh-mask.show{opacity:1}',
+        // 关键：关闭时必须置 pointer-events:none，否则这层透明遮罩(z-index 999997)会持续拦截整页点击，
+        // 导致云端同步的「确定覆盖」确认框等低层级弹窗全部点不动。
+        '.bh-mask{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:999997;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s,visibility .2s}',
+        '.bh-mask.show{opacity:1;visibility:visible;pointer-events:auto}',
         '.bh-panel{position:fixed;top:0;right:0;height:100%;width:min(560px,100%);background:#fff;color:#1e2533;',
         'z-index:999998;box-shadow:-8px 0 32px rgba(15,23,42,.18);transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);',
-        'display:flex;flex-direction:column;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}',
-        '.bh-panel.show{transform:translateX(0)}',
+        'display:flex;flex-direction:column;pointer-events:none;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}',
+        '.bh-panel.show{transform:translateX(0);pointer-events:auto}',
         '.bh-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #e6e8ef;flex:0 0 auto}',
         '.bh-head h3{margin:0;font-size:16px;font-weight:700;flex:1}',
         '.bh-head .bh-ver{font-size:11px;color:#94a3b8;font-weight:500;margin-left:6px}',
