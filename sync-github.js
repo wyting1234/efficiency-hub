@@ -212,13 +212,21 @@
     return resp.json();
   }
 
+  // Gist 对超过 1MB 的文件会返回 truncated:true 且 content 被截断，
+  // 此时必须改拉 raw_url 才能拿到完整内容（否则会误判成"云端没数据"）。
   async function readGist() {
     if (!GIST_ID) return null;
     try {
       const data = await apiCall('GET', '/gists/' + GIST_ID);
       const file = data.files && data.files[GIST_FILENAME];
-      if (!file || !file.content) return null;
-      return JSON.parse(file.content);
+      if (!file) return null;
+      let content = file.content || '';
+      if (file.truncated && file.raw_url) {
+        const raw = await fetch(file.raw_url, { cache: 'no-store' });
+        if (raw.ok) content = await raw.text();
+      }
+      if (!content) return null;
+      return JSON.parse(content);
     } catch (e) {
       console.warn('[GitHub] 读取失败:', e.message);
       return null;
@@ -240,25 +248,42 @@
     }
   }
 
+  // 判断 gist 里是否真有数据。
+  // 列表接口的 content 可能被截断（truncated），所以同时用 size 兜底：
+  // 空骨架 {"version":1,"data":{},"updatedAt":...} 只有 60~80 字节。
+  function gistHasData(file) {
+    if (!file) return false;
+    const size = typeof file.size === 'number' ? file.size : 0;
+    const content = file.content || '';
+    if (file.truncated) return size > 200;   // 截断时只能靠体积判断
+    if (!content) return false;
+    try {
+      const j = JSON.parse(content);
+      return !!(j && j.data && Object.keys(j.data).length > 0);
+    } catch (e) {
+      return size > 200;
+    }
+  }
+
+  // 只查找，不创建（无副作用，供状态展示用）
+  async function findGist() {
+    const list = await apiCall('GET', '/gists?per_page=100');
+    let best = null;         // 最近更新的
+    let bestWithData = null; // 有数据的里最近更新的
+    for (const g of list) {
+      if (!g.files || !g.files[GIST_FILENAME]) continue;
+      const hasData = gistHasData(g.files[GIST_FILENAME]);
+      if (!best || new Date(g.updated_at) > new Date(best.updated_at)) best = g;
+      if (hasData && (!bestWithData || new Date(g.updated_at) > new Date(bestWithData.updated_at))) bestWithData = g;
+    }
+    return bestWithData || best;
+  }
+
   // 关键修复：每次都重新搜索账号下我们用的那个 Gist（同名文件），
   // 优先选「有数据」的那份，让手机和电脑一定连到同一份数据。
   async function findOrCreateGist() {
     try {
-      const list = await apiCall('GET', '/gists?per_page=100');
-      let best = null;        // 最近更新的
-      let bestWithData = null; // 有数据的里最近更新的
-      for (const g of list) {
-        if (!g.files || !g.files[GIST_FILENAME]) continue;
-        const content = g.files[GIST_FILENAME].content;
-        let hasData = false;
-        try {
-          const j = JSON.parse(content);
-          if (j && j.data && Object.keys(j.data).length > 0) hasData = true;
-        } catch (e) {}
-        if (!best || new Date(g.updated_at) > new Date(best.updated_at)) best = g;
-        if (hasData && (!bestWithData || new Date(g.updated_at) > new Date(bestWithData.updated_at))) bestWithData = g;
-      }
-      const chosen = bestWithData || best;
+      const chosen = await findGist();
       if (chosen) {
         GIST_ID = chosen.id;
         localStorage.setItem('github_gist_id', GIST_ID);
@@ -276,6 +301,27 @@
     GIST_ID = data.id;
     localStorage.setItem('github_gist_id', GIST_ID);
     return GIST_ID;
+  }
+
+  // 供备份中心展示云端状态：只读探测，不创建、不修改云端
+  async function peekCloud() {
+    if (!GITHUB_TOKEN) return { connected: false, reason: '未配置 Token' };
+    try {
+      const g = await findGist();
+      if (!g) return { connected: true, cloudCount: 0, updatedAt: 0, gistId: '' };
+      GIST_ID = g.id;
+      localStorage.setItem('github_gist_id', GIST_ID);
+      const remote = await readGist();
+      const data = (remote && remote.data) || {};
+      return {
+        connected: true,
+        cloudCount: Object.keys(data).length,
+        updatedAt: (remote && remote.updatedAt) || 0,
+        gistId: g.id
+      };
+    } catch (e) {
+      return { connected: false, reason: e.message || '读取失败' };
+    }
   }
 
   // ============ 数据收集 / 应用 ============
@@ -410,5 +456,11 @@
     init();
   }
 
-  window.CloudSync = { upload: doUpload, download: doDownload, isConnected: () => isConnected };
+  window.CloudSync = {
+    upload: doUpload,
+    download: doDownload,
+    isConnected: () => isConnected,
+    peek: peekCloud,                                   // 只读探测云端数据量
+    getStatus: () => ({ connected: isConnected, lastSync: lastSyncTime })
+  };
 })();

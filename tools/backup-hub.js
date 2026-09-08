@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.0.0';
+    var VERSION = '1.1.0';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var IDB_NAME = 'efficiency_hub_backup';
@@ -405,6 +405,19 @@
         '.bh-x:hover{background:#e2e8f0}',
         '.bh-body{flex:1;overflow-y:auto;padding:14px 18px 30px}',
         '.bh-sec{margin-bottom:18px}',
+        '.bh-cloud{background:#f8fafc;border:1px solid #e6e8ef;border-radius:12px;padding:12px 13px}',
+        '.bh-cloud .bh-cs{font-size:13px;line-height:1.6;color:#334155;margin-bottom:10px}',
+        '.bh-cloud .bh-cs b{color:#0f172a}',
+        '.bh-cloud .bh-cw{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:9px;',
+        'padding:9px 11px;font-size:12px;line-height:1.65;margin-bottom:10px}',
+        '.bh-cloud .bh-ca{display:flex;gap:8px}',
+        '.bh-cloud .bh-ca button{flex:1;padding:10px;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600}',
+        '.bh-cloud .bh-up{background:#08bd74;color:#fff}',
+        '.bh-cloud .bh-dl{background:#3b82f6;color:#fff}',
+        '.bh-cloud .bh-cfg{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}',
+        'html[data-theme="dark"] .bh-cloud{background:#0f172a;border-color:#1f2c47}',
+        'html[data-theme="dark"] .bh-cloud .bh-cs{color:#cbd5e1}',
+        'html[data-theme="dark"] .bh-cloud .bh-cs b{color:#f1f5f9}',
         '.bh-sec-t{font-size:12px;font-weight:700;color:#64748b;letter-spacing:.5px;margin:0 0 8px;display:flex;align-items:center;gap:6px}',
         '.bh-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}',
         '.bh-stat{background:#f8fafc;border:1px solid #e6e8ef;border-radius:10px;padding:9px 10px}',
@@ -502,6 +515,10 @@
                   '<div class="bh-opts"><label><input type="radio" name="bhMode" value="merge" checked> 合并（保留现有）</label>' +
                   '<label><input type="radio" name="bhMode" value="replace"> 覆盖（以备份为准）</label></div>' +
                   '<input type="file" id="bhFile" accept="application/json,.json" style="display:none">' +
+                  '<div class="bh-note" style="margin-top:9px">⚠️ 导出的备份文件<b>只存在这台设备</b>，不会自动出现在手机 / 另一台电脑上。跨设备请用下方「跨设备同步」。</div>' +
+                '</div>' +
+                '<div class="bh-sec"><p class="bh-sec-t">☁️ 跨设备同步（手机 ⇄ 电脑）</p>' +
+                  '<div class="bh-cloud" id="bhCloud"></div>' +
                 '</div>' +
                 '<div class="bh-sec"><p class="bh-sec-t">🧩 按模块备份</p>' +
                   '<div class="bh-acts" style="margin-bottom:8px">' +
@@ -527,11 +544,13 @@
         el.mods = root.querySelector('#bhMods');
         el.snaps = root.querySelector('#bhSnaps');
         el.file = root.querySelector('#bhFile');
+        el.cloud = root.querySelector('#bhCloud');
 
         el.mask.addEventListener('click', close);
         root.querySelector('#bhClose').addEventListener('click', close);
         root.querySelector('#bhExpAll').addEventListener('click', function () {
-            exportNow(null); toast('已导出全部数据备份');
+            exportNow(null);
+            toast('备份文件已下载到本机（不会自动同步到手机/其他电脑）');
         });
         root.querySelector('#bhImp').addEventListener('click', function () { el.file.click(); });
         el.file.addEventListener('change', function (e) {
@@ -554,7 +573,7 @@
         root.querySelector('#bhExpSel').addEventListener('click', function () {
             var ids = selIds();
             if (!ids.length) return toast('请先选择模块');
-            exportNow(ids); toast('已导出 ' + ids.length + ' 个模块');
+            exportNow(ids); toast('已导出 ' + ids.length + ' 个模块（文件存本机，不会自动同步）');
         });
         root.querySelector('#bhClrSel').addEventListener('click', function () {
             var ids = selIds();
@@ -630,6 +649,76 @@
         });
     }
 
+    /* ============ 跨设备同步（复用 sync-github.js 的 CloudSync） ============ */
+    // 云端模块只在导航页加载；工具页在 iframe 里时需透过 parent 访问
+    function cloudApi() {
+        try {
+            if (window.CloudSync) return window.CloudSync;
+            if (window.parent && window.parent !== window && window.parent.CloudSync) return window.parent.CloudSync;
+        } catch (e) {}
+        return null;
+    }
+
+    function renderCloud() {
+        var box = el.cloud;
+        if (!box) return;
+        var cs = cloudApi();
+        if (!cs) {
+            box.innerHTML = '<div class="bh-cs">跨设备同步由<b>导航页</b>提供。请回到效率中心首页再打开这里，' +
+                '即可把数据上传到云端、并在另一台设备下载下来。</div>';
+            return;
+        }
+        var last = '';
+        try { last = localStorage.getItem('sync_last_sync') || ''; } catch (e) {}
+
+        box.innerHTML =
+            '<div class="bh-cs" id="bhCloudState">正在读取云端状态…</div>' +
+            '<div class="bh-ca" style="margin-top:10px">' +
+              '<button class="bh-up" id="bhCloudUp">⬆️ 本机 → 云端</button>' +
+              '<button class="bh-dl" id="bhCloudDown">⬇️ 云端 → 本机</button>' +
+            '</div>';
+        var state = box.querySelector('#bhCloudState');
+        var setTxt = function (t) { if (state) state.innerHTML = t; };
+
+        var hint = '想让手机和电脑一致：<b>先在有数据的那台点「本机 → 云端」</b>，' +
+                   '再到另一台点「云端 → 本机」。';
+
+        if (typeof cs.peek === 'function') {
+            Promise.resolve(cs.peek()).then(function (r) {
+                if (!r || !r.connected) {
+                    setTxt('尚未连接云端（' + esc((r && r.reason) || '未配置 Token') + '）。<br>' + hint);
+                    return;
+                }
+                var cnt = r.cloudCount || 0;
+                if (cnt) {
+                    setTxt('☁️ 云端已有 <b>' + cnt + '</b> 项数据' +
+                        (r.updatedAt ? '，更新于 <b>' + fmtTime(r.updatedAt) + '</b>' : '') + '。<br>' +
+                        '本机 <b>' + scan().keyCount + '</b> 个数据键' +
+                        (last ? '，上次同步 ' + fmtTime(last) : '') + '。<br>' + hint);
+                } else {
+                    setTxt('☁️ 云端<b>还没有数据</b>。<br>请先点「本机 → 云端」把这台设备的数据传上去，' +
+                        '再到另一台设备点「云端 → 本机」。');
+                }
+            }).catch(function (e) {
+                setTxt('云端状态读取失败：' + esc((e && e.message) || e) + '。请检查网络或 Token 是否有效。');
+            });
+        } else {
+            setTxt('云端同步模块版本较旧，请在导航页使用完整功能。');
+        }
+
+        var up = box.querySelector('#bhCloudUp');
+        var down = box.querySelector('#bhCloudDown');
+        // 先关掉备份面板：云端弹窗 z-index 较低，否则会被本面板盖住
+        if (up) up.addEventListener('click', function () {
+            close();
+            Promise.resolve(cs.upload()).catch(function () {}).then(function () { refresh(); });
+        });
+        if (down) down.addEventListener('click', function () {
+            close();
+            Promise.resolve(cs.download()).catch(function () {}).then(function () { refresh(); });
+        });
+    }
+
     function renderSnaps() {
         el.snaps.innerHTML = '<div class="bh-empty">加载中…</div>';
         listSnapshots().then(function (arr) {
@@ -672,7 +761,7 @@
 
     function refresh() {
         if (!panelBuilt) return;
-        renderStats(); renderMods(); renderSnaps();
+        renderStats(); renderMods(); renderSnaps(); renderCloud();
     }
 
     function open(scopeModuleId) {
