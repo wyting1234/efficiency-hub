@@ -87,6 +87,88 @@
     return showConfirm('提示', message).then(() => {});
   }
 
+  // 三选一弹窗：合并 / 覆盖 / 取消（v4 新增，返回 'merge' | 'overwrite' | 'cancel'）
+  function showChoice(title, message, mergeText, overwriteText) {
+    return new Promise((resolve) => {
+      const mask = document.createElement('div');
+      mask.className = 'sync-mask';
+      mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:white;border-radius:12px;padding:22px;max-width:460px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
+      modal.innerHTML = `
+        <h3 style="margin:0 0 10px;font-size:18px">${title}</h3>
+        <p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;white-space:pre-wrap">${message}</p>
+        <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+          <button class="sync-cancel" style="padding:9px 18px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">取消</button>
+          <button class="sync-ok" style="padding:9px 18px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">${overwriteText || '覆盖'}</button>
+          <button class="sync-merge" style="padding:9px 18px;border:none;border-radius:6px;background:#08bd74;color:white;cursor:pointer;font-size:14px;font-weight:600">${mergeText || '合并'}</button>
+        </div>`;
+      mask.appendChild(modal);
+      document.body.appendChild(mask);
+      mask.addEventListener('click', (e) => { if (e.target === mask) { mask.remove(); resolve('cancel'); } });
+      modal.querySelector('.sync-cancel').onclick = () => { mask.remove(); resolve('cancel'); };
+      modal.querySelector('.sync-ok').onclick = () => { mask.remove(); resolve('overwrite'); };
+      modal.querySelector('.sync-merge').onclick = () => { mask.remove(); resolve('merge'); };
+    });
+  }
+
+  // ============ 合并（v4 新增）============
+  // 本机每个键的最后写入时间：BackupHub 自 v1.5.0 起在全站记录 __hub_meta_v1__
+  function localKeyTs() {
+    try { return JSON.parse(localStorage.getItem('__hub_meta_v1__') || '{}') || {}; } catch (e) { return {}; }
+  }
+
+  // 合并下载：两边并集；同键两边都有时保留「较新」的一份（时间未知时保留本机）
+  function mergeCloudToLocal(serverData) {
+    const sdata = (serverData && serverData.data) || {};
+    const meta = localKeyTs();
+    let timestamps = {};
+    try { timestamps = JSON.parse(localStorage.getItem('sync_timestamps') || '{}') || {}; } catch (e) {}
+    let added = 0, updated = 0, kept = 0;
+    for (const key in sdata) {
+      const entry = sdata[key];
+      if (!entry || typeof entry.value !== 'string') continue;
+      if (isExcludedKey(key, entry.value)) continue;
+      const cur = localStorage.getItem(key);
+      if (cur === null) {                                    // 本机没有 → 云端补进来
+        localStorage.setItem(key, entry.value);
+        if (entry.timestamp) timestamps[key] = entry.timestamp;
+        added++;
+        continue;
+      }
+      const lts = meta[key] || 0, cts = entry.timestamp || 0;
+      if (cts > lts) {                                       // 云端较新 → 覆盖这一键
+        localStorage.setItem(key, entry.value);
+        if (entry.timestamp) timestamps[key] = entry.timestamp;
+        updated++;
+      } else kept++;                                         // 本机较新 / 时间未知 → 保留本机
+    }
+    localStorage.setItem('sync_timestamps', JSON.stringify(timestamps));
+    return { added, updated, kept };
+  }
+
+  // 合并上传：以云端数据为本底，逐键与本机「较新」者合并，返回合并后的云端数据集
+  function buildMergedUpload(serverData) {
+    const sdata = (serverData && serverData.data) || {};
+    const meta = localKeyTs();
+    const merged = {};
+    for (const key in sdata) {
+      const entry = sdata[key];
+      if (!entry || typeof entry.value !== 'string') continue;
+      if (isExcludedKey(key, entry.value)) continue;
+      merged[key] = { value: entry.value, timestamp: entry.timestamp || 0 };
+    }
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      const value = localStorage.getItem(key);
+      if (value === null || isExcludedKey(key, value)) continue;
+      const lts = meta[key] || Date.now();                   // 无写入记录的键视为刚写过（本机为准）
+      const cts = (merged[key] && merged[key].timestamp) || 0;
+      if (!merged[key] || lts >= cts) merged[key] = { value: value, timestamp: lts };
+    }
+    return merged;
+  }
+
   // 成功 / 失败提醒：优先用备份中心的提醒卡（更醒目、带数据量和下一步指引），
   // 没有备份中心时退回站点 toast / alert。
   function notifyOK(title, detail) {
@@ -498,12 +580,23 @@
         const remote = await readGist();
         cloudHas = !!(remote && remote.data && Object.keys(remote.data).length > 0);
       }
+      let mode = 'overwrite';
       if (cloudHas) {
-        const ok = await showConfirm('上传将覆盖云端',
-          '云端已经存有数据。\n点「确定覆盖」会用【本机数据】替换云端。\n\n想保留云端就点「取消」，改去点「下载」。');
-        if (!ok) { updateStatus('已取消上传'); return; }
+        const choice = await showChoice('上传到云端',
+          '云端已经存有数据。\n「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖云端」用【本机数据】整体替换云端。',
+          '合并到云端', '覆盖云端');
+        if (choice === 'cancel') { updateStatus('已取消上传'); return; }
+        mode = choice;
       }
-      const localData = collectLocalData();
+      let localData;
+      if (mode === 'merge') {
+        // 合并：以云端为本底，逐键取较新（需要读到云端内容；缓存里没有就联网读一次）
+        let remote = await readGist();
+        if (!remote || !remote.data) remote = { data: {} };
+        localData = buildMergedUpload(remote);
+      } else {
+        localData = collectLocalData();
+      }
       try {
         await writeGist({ version: 1, data: localData, updatedAt: Date.now() });
       } catch (e) {
@@ -521,9 +614,11 @@
       }
       updateStatus('已上传 ' + fmtTime(lastSyncTime));
       closeTopModal();
-      notifyOK('已上传到云端',
-        `本机的 ${Object.keys(localData).length} 项数据已存到云端。\n` +
-        '在手机 / 其他电脑点「云端 → 本机」就能同步过去。');
+      notifyOK(mode === 'merge' ? '已合并上传到云端' : '已上传到云端',
+        mode === 'merge'
+          ? `两边数据已按「较新保留」合并，共 ${Object.keys(localData).length} 项存到云端，没有丢失任何一边的内容。`
+          : `本机的 ${Object.keys(localData).length} 项数据已存到云端。\n` +
+            '在手机 / 其他电脑点「云端 → 本机」就能同步过去。');
     } catch (e) {
       console.warn('[GitHub] 上传失败:', e.message);
       notifyFail('上传云端失败',
@@ -544,12 +639,20 @@
         return;
       }
       const localHas = getLocalKeys().length > 0;
+      let mode = 'overwrite';
       if (localHas) {
-        const ok = await showConfirm('下载将覆盖本机',
-          '本机已经存有数据。\n点「确定覆盖」会用【云端数据】替换本机。\n\n想保留本机就点「取消」。');
-        if (!ok) { updateStatus('已取消下载'); return; }
+        const choice = await showChoice('下载到本机',
+          '本机已经存有数据。\n「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖本机」用【云端数据】整体替换本机。',
+          '合并到本机', '覆盖本机');
+        if (choice === 'cancel') { updateStatus('已取消下载'); return; }
+        mode = choice;
       }
-      applyCloudToLocal(remote);
+      let mergeStats = null;
+      if (mode === 'merge') {
+        mergeStats = mergeCloudToLocal(remote);
+      } else {
+        applyCloudToLocal(remote);
+      }
       reloadActiveIframe();
       if (typeof buildCards === 'function') buildCards();
       lastSyncTime = String(Date.now());
@@ -560,9 +663,12 @@
       }
       updateStatus('已下载 ' + fmtTime(lastSyncTime));
       closeTopModal();
-      notifyOK('已从云端同步到本机',
-        `云端的 ${Object.keys(remote.data).length} 项数据已写入本机。\n` +
-        '当前打开的工具页已自动刷新，看到的是最新数据。');
+      notifyOK(mode === 'merge' ? '已合并云端数据到本机' : '已从云端同步到本机',
+        mode === 'merge'
+          ? `合并完成：新增 ${mergeStats.added} 项，更新 ${mergeStats.updated} 项（云端较新），保留本机 ${mergeStats.kept} 项。\n` +
+            '当前打开的工具页已自动刷新，看到的是合并后的最新数据。'
+          : `云端的 ${Object.keys(remote.data).length} 项数据已写入本机。\n` +
+            '当前打开的工具页已自动刷新，看到的是最新数据。');
     } catch (e) {
       console.warn('[GitHub] 下载失败:', e.message);
       notifyFail('从云端下载失败',
@@ -609,6 +715,7 @@
     upload: doUpload,
     download: doDownload,
     openPanel: openSyncPanel,
+    reconnect: initSync,                                // 配置 / 换 Token 后重新连接
     isConnected: () => isConnected,
     peek: peekCloud,                                   // 只读探测云端数据量
     getStatus: () => ({ connected: isConnected, lastSync: lastSyncTime })

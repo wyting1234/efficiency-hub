@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.6.2';
+    var VERSION = '1.7.0';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
@@ -936,6 +936,33 @@
         });
     }
 
+    /* v1.7.0：快照恢复三选一（覆盖 / 合并 / 取消），替代单选 confirm */
+    function askRestoreMode(ts) {
+        return new Promise(function (resolve) {
+            var mask = document.createElement('div');
+            mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.45);z-index:2147483000;display:flex;align-items:center;justify-content:center';
+            var box = document.createElement('div');
+            box.style.cssText = 'background:#fff;border-radius:14px;padding:22px;max-width:440px;width:88%;box-shadow:0 8px 32px rgba(0,0,0,.22);font-family:inherit';
+            box.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;color:#1e293b">恢复到 ' + fmtTime(ts) + ' 的快照？</h3>' +
+                '<p style="margin:0 0 16px;font-size:13px;color:#64748b;line-height:1.7">恢复前会先自动快照当前状态，随时可再恢复回来。<br>' +
+                '<b>合并恢复</b>：只补齐本机缺失的数据，已有内容一律不动；<br><b>覆盖恢复</b>：用快照替换本机全部数据。</p>' +
+                '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">' +
+                '<button data-v="cancel" style="padding:9px 18px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">取消</button>' +
+                '<button data-v="merge" style="padding:9px 18px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:13px">合并恢复</button>' +
+                '<button data-v="replace" style="padding:9px 18px;border:none;border-radius:8px;background:#4f46e5;color:#fff;cursor:pointer;font-size:13px;font-weight:600">覆盖恢复</button></div>';
+            mask.appendChild(box);
+            document.body.appendChild(mask);
+            mask.addEventListener('click', function (e) { if (e.target === mask) { mask.remove(); resolve(null); } });
+            Array.prototype.forEach.call(box.querySelectorAll('button'), function (b) {
+                b.addEventListener('click', function () {
+                    var v = b.dataset.v;
+                    mask.remove();
+                    resolve(v === 'cancel' ? null : v);
+                });
+            });
+        });
+    }
+
     function renderSnaps() {
         el.snaps.innerHTML = '<div class="bh-empty">加载中…</div>';
         listSnapshots().then(function (arr) {
@@ -960,11 +987,16 @@
                         var sn = arr2.filter(function (x) { return x.id === id; })[0];
                         if (!sn) return toast('快照不存在');
                         if (act === 'restore') {
-                            if (!confirm('恢复到 ' + fmtTime(sn.ts) + ' 的快照？当前数据将被覆盖（会先自动快照当前状态）。')) return;
-                            createSnapshot('恢复前自动快照').then(function () {
-                                applyBackup(sn.payload, 'replace');
-                                refresh();
-                                notify({ icon: '⏪', title: '已恢复到该快照', detail: '数据已回滚到 ' + fmtTime(sn.ts) + ' 的状态。' });
+                            askRestoreMode(sn.ts).then(function (mode) {
+                                if (!mode) return;
+                                createSnapshot('恢复前自动快照').then(function () {
+                                    var r = applyBackup(sn.payload, mode);
+                                    refresh();
+                                    notify({ icon: '⏪', title: (mode === 'merge' ? '已合并恢复到该快照' : '已恢复到该快照'),
+                                             detail: (mode === 'merge'
+                                                 ? '已补齐本机缺失的 ' + r.written + ' 项（已有内容未动），可随时再覆盖恢复。'
+                                                 : '数据已回滚到 ' + fmtTime(sn.ts) + ' 的状态。') });
+                                });
                             });
                         } else if (act === 'down') {
                             download('效率中心快照-' + stamp() + '.json', JSON.stringify(sn.payload, null, 2));
@@ -1291,6 +1323,7 @@
         createSnapshot: createSnapshot,
         listSnapshots: listSnapshots,
         deleteSnapshot: deleteSnapshot,
+        askRestoreMode: askRestoreMode,   // v1.7.0：快照恢复三选一弹窗
         open: open,
         close: close,
         toast: toast,
