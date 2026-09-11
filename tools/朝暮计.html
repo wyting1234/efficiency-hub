@@ -19860,6 +19860,12 @@
 
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
 <script src="backup-hub.js"></script>
-<script>BackupHub.mount({id:'chaomu',name:'朝暮计'});</script>
+<script>
+/* v47：防御 —— backup-hub.js 缺失时（例如镜像站未同步该资源）不要抛错，
+   应用内置的「数据备份 / 恢复」面板仍然可用 */
+if (window.BackupHub && typeof BackupHub.mount === 'function') {
+    BackupHub.mount({id:'chaomu',name:'朝暮计'});
+}
+</script>
 </body>
 </html>
