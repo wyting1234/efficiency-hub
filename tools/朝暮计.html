@@ -873,6 +873,7 @@
         .qmeta .chip.recur { background: #f0f8f5; color: #16a085; }
         .qmeta .chip.tag { background: #f3f0fd; color: var(--main); }
         .qmeta .chip.foc { background: #fff7e8; color: #b7791f; font-variant-numeric: tabular-nums; }
+        .qmeta .chip.doneat { background: #ecf7f0; color: #1d9e75; }
         .qmeta .chip.overdue { background: #fdeee1; color: #e67e22; font-weight: 500; }
         .qmeta .chip.hit { background: #ece9fd; color: var(--main); font-style: normal; }
         .qmeta .chip .hl { background: #ffe9a8; color: inherit; padding: 0 1px; border-radius: 2px; }
@@ -5717,8 +5718,9 @@
         const d = today();
         const dt = new Date(d);
         if (filter === 'all') return true;
-        /* v46：已完成清单 = 完成满 ARCHIVE_DAYS 天的任务（含母子任务整体） */
-        if (filter === 'archived') return isArchivedDone(t);
+        /* v46：已完成清单 = 完成满 ARCHIVE_DAYS 天的任务（含母子任务整体）
+           v47：开启「完成后立即归档」时，刚勾完的任务即刻进入已完成清单 */
+        if (filter === 'archived') return isArchivedOut(t);
         if (filter === 'nodate') return t.mode === 'none';
         const ds = taskDates(t);
         if (!ds.length) return false;
@@ -5834,6 +5836,20 @@
     }
     /* 完成满 N 天 → 从常规清单与视图里隐去，只出现在「已完成清单」 */
     function isArchivedDone(t) { return isEffectivelyDone(t) && archDays(t) >= ARCHIVE_DAYS; }
+
+    /* ============================================================
+       v47：完成后「立即」从清单 / 四象限隐去，转入「已完成清单」
+       —— 需求：清单任务勾完就从界面消失，不再留在原地（原来要等满 3 天）。
+       —— 可在「视图设置 → 完成后立即归档」关闭，退回 v46 的「满 3 天再归档」。
+       —— 只作用于清单 / 待办 / 分类 / 四象限；日 / 周 / 甘特等视图仍用
+          isArchivedDone（3 天规则），保证当天还能看见自己完成了什么。
+       ============================================================ */
+    function archiveImmediateOn() { return viewSettings().archiveImmediate !== false; }
+    /* 是否已「出列」：既不在常规清单里，又能在「已完成清单」里找到 */
+    function isArchivedOut(t) {
+        if (!isEffectivelyDone(t)) return false;
+        return archDays(t) >= ARCHIVE_DAYS || archiveImmediateOn();
+    }
 
     /* ===== v46：母任务 + 子任务的整段时间线（取最小开始、最大结束） =====
        只有母任务有时间 → 结果就是母任务本身；子任务在母任务之外另有时间 → 自动向两侧撑开。 */
@@ -5968,11 +5984,12 @@
         // 搜索时全局查找（忽略当前周期筛选），否则按周期筛选
         if (searchQuery.trim()) {
             parseSearchQuery(searchQuery);
-            ts = S.tasks.filter(t => matchSearch(t) && (filter === 'archived' || !isArchivedDone(t)));
+            ts = S.tasks.filter(t => matchSearch(t) && (filter === 'archived' || !isArchivedOut(t)));
         } else {
             searchParsed = null;
-            /* v46：完成满 3 天的任务不再出现在常规清单里，只在「已完成清单」中可见 */
-            ts = S.tasks.filter(filter === 'archived' ? isArchivedDone : (t => !isArchivedDone(t))).filter(matchFilter);
+            /* v47：勾完即出列 —— 常规清单里不再留已完成任务，它们只在「已完成清单」中可见
+               （关闭「完成后立即归档」则退回 v46 的「满 3 天」规则） */
+            ts = S.tasks.filter(filter === 'archived' ? isArchivedOut : (t => !isArchivedOut(t))).filter(matchFilter);
         }
         if (sortBy === 'time-asc') ts.sort((a, b) => nextTaskDate(a).localeCompare(nextTaskDate(b)));
         else if (sortBy === 'time-desc') ts.sort((a, b) => nextTaskDate(b).localeCompare(nextTaskDate(a)));
@@ -5980,6 +5997,11 @@
         else if (sortBy === 'created-desc') ts.sort((a, b) => (b.id || '').localeCompare(a.id || ''));
         else if (sortBy === 'priority') ts.sort((a, b) => (a.priority || 4) - (b.priority || 4) || ((b.pinned ? 1 : 0) - (
             a.pinned ? 1 : 0)));
+        /* v47：已完成清单按「完成时间」倒序 —— 刚勾完的排最前，符合直觉 */
+        if (filter === 'archived') {
+            const key = t => String((t.doneAt || '') || doneDayOf(t) || '');
+            ts.sort((a, b) => key(b).localeCompare(key(a)));
+        }
         return ts;
     }
 
@@ -6112,10 +6134,12 @@
             const dropdown = `<div class="filter-dropdown" id="filterDropdownHeader">${filterHtml}</div>`;
             if (listView === 'quadrant') {
                 const filterLabel = getFilterLabel();
-                const todoCount = S.tasks.filter(isPending).length;
+                /* v47：从「已完成清单」进来时按归档口径计数与命名（仍保留四象限布局） */
+                const isArch = filter === 'archived';
+                const cnt = isArch ? S.tasks.filter(isArchivedOut).length : S.tasks.filter(isPending).length;
                 titleEl.innerHTML = `
                 <span class="title-text" style="display:flex;align-items:center;gap:6px;justify-content:center;width:100%;">
-                    <span>四象限 ${filterLabel}·${todoCount}待办</span>
+                    <span>${isArch ? '✅ 已完成清单·' + cnt + ' 项' : '四象限 ' + filterLabel + '·' + cnt + '待办'}</span>
                     <span class="filter-toggle" onclick="toggleFilter()">周期 <span class="arrow ${filter!=='all'?'open':''}">▾</span></span>
                     <span class="qfont-ctl" onclick="event.stopPropagation()"><span onclick="quadFontStep(-1)" title="缩小四象限字体">A−</span><span onclick="quadFontStep(1)" title="放大四象限字体">A+</span></span>
                 </span>
@@ -6329,6 +6353,13 @@
             <div class="s-item" onclick="openDoneStyle()">
                 已打卡任务样式
                 <span class="arrow">›</span>
+            </div>
+            <div class="s-item">
+                完成后立即归档
+                <span class="sw ${v.archiveImmediate !== false?'on':''}" id="vwarchiveImmediate" style="margin-left:auto" onclick="toggleViewBool('archiveImmediate')"></span>
+            </div>
+            <div class="s-item" style="padding-top:0">
+                <span style="font-size:10.5px;color:#a8a5ba;line-height:1.5">开：勾完即从清单 / 四象限移入「已完成清单」<br>关：沿用「完成满 3 天再归档」</span>
             </div>
             <div class="s-item">
                 显示已打卡清单
@@ -6665,6 +6696,25 @@
             document.body.appendChild(el);
             requestAnimationFrame(() => { el.style.opacity = '1'; });
             setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 1400);
+        } catch (e) {}
+    }
+
+    /* ===== v47：带「撤销」的提示条 =====
+       勾完的任务会立刻从清单里消失，给一次反悔的机会（4.5 秒内点「撤销」即可复原）。 */
+    function toastUndo(msg, undo) {
+        try {
+            const el = document.createElement('div');
+            el.style.cssText = 'position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:rgba(32,30,52,.94);color:#fff;padding:9px 14px;border-radius:20px;font-size:12px;z-index:9999;display:flex;align-items:center;gap:12px;box-shadow:0 10px 26px rgba(20,20,50,.3);max-width:88vw';
+            const sp = document.createElement('span');
+            sp.textContent = msg;
+            const bt = document.createElement('b');
+            bt.textContent = '撤销';
+            bt.style.cssText = 'color:#b9a8ff;cursor:pointer;font-weight:600;flex:none';
+            bt.onclick = () => { try { undo(); } catch (e) {} try { el.remove(); } catch (e) {} };
+            el.appendChild(sp); el.appendChild(bt);
+            document.body.appendChild(el);
+            setTimeout(() => { el.style.transition = 'opacity .3s'; el.style.opacity = '0';
+                setTimeout(() => { try { el.remove(); } catch (e) {} }, 320); }, 4500);
         } catch (e) {}
     }
 
@@ -7106,29 +7156,33 @@
 
     function updateSidebarCounts() {
         const all = S.tasks;
-        const todo = all.filter(isPending);
-        const overdue = all.filter(t => taskState(t) === 'overdue');
+        /* v47：侧栏「清单列表 / 分类列表」计数与清单页实际可见条数保持一致
+           —— 已出列（勾完即归档）的任务不再计入，改计入「已完成清单」 */
+        let live = all;
+        try { live = all.filter(t => !isArchivedOut(t)); } catch (e) { live = all; }
+        const todo = live.filter(isPending);
+        const overdue = live.filter(t => taskState(t) === 'overdue');
         const elAll = document.getElementById('sAllCount');
-        if (elAll) elAll.textContent = all.length;
+        if (elAll) elAll.textContent = live.length;
         const elTodo = document.getElementById('sTodoCount');
         if (elTodo) elTodo.textContent = todo.length;
         const elCat = document.getElementById('sCatCount');
-        if (elCat) elCat.textContent = all.length;
+        if (elCat) elCat.textContent = live.length;
         const oc = document.getElementById('sOverdueCount');
         if (oc) oc.textContent = overdue.length;
         const oc2 = document.getElementById('sOverdueCount2');
         if (oc2) oc2.textContent = overdue.length;
-        /* v46：已完成清单计数（完成满 3 天的，已入档） */
+        /* v46：已完成清单计数（完成满 3 天的入档）；v47：开启立即归档后，刚勾完的也计入 */
         const ac = document.getElementById('sArchivedCount');
         if (ac) {
             let n = 0;
-            try { n = all.filter(isArchivedDone).length; } catch (e) { n = 0; }
+            try { n = all.filter(isArchivedOut).length; } catch (e) { n = 0; }
             ac.textContent = n;
         }
         const ac2 = document.getElementById('sArchivedCount2');
         if (ac2) {
             let n = 0;
-            try { n = all.filter(isArchivedDone).length; } catch (e) { n = 0; }
+            try { n = all.filter(isArchivedOut).length; } catch (e) { n = 0; }
             ac2.textContent = n;
         }
 
@@ -7211,6 +7265,8 @@
         if (!v.doneStyle) v.doneStyle = 'strike';
         if (v.showDoneList === undefined) v.showDoneList = true;
         if (v.showDoneHabit === undefined) v.showDoneHabit = true;
+        /* v47：完成后立即从清单 / 四象限出列，转入「已完成清单」（默认开启） */
+        if (v.archiveImmediate === undefined) v.archiveImmediate = true;
         // v24：日 / 周视图时间轴起始小时（默认 7 点，⋯ 菜单可调 0~23）
         if (v.dayStartHour === undefined) v.dayStartHour = 7;
         {
@@ -8007,7 +8063,8 @@
         let items = [];
 
         if (view === 'all') {
-            title = searchQuery.trim() ? '🔍 搜索结果' : '📋 所有清单';
+            title = searchQuery.trim() ? '🔍 搜索结果'
+                : (filter === 'archived' ? '✅ 已完成清单' : '📋 所有清单');
             items = ts;
         } else if (view === 'todo') {
             title = '✅ 待办事项';
@@ -8083,6 +8140,11 @@
         // 详细模式补充展示：逾期 + 完成时间 + 标签 + 搜索命中（chip 单行排列）
         if (!isCompact) {
             if (od > 0) meta.push(`<span class="chip overdue">逾期${od}天</span>`);
+            /* v47：已完成清单里补一条「完成于 …」 */
+            if (filter === 'archived' && t.doneAt) {
+                const _dt = String(t.doneAt);
+                meta.push(`<span class="chip doneat">✅ 完成于 ${esc(_dt.length > 10 ? _dt.slice(5) : _dt)}</span>`);
+            }
             const dl = dateLabel(t);
             if (dl) meta.push(`<span class="chip date">🕐 ${esc(dl)}</span>`);
             /* v42：累计专注时长徽标（含子任务时长一并计入标题行） */
@@ -8178,6 +8240,7 @@
     function toggleTask(id, d) {
         const t = S.tasks.find(x => x.id === id);
         if (!t) return;
+        const _wasOut = isArchivedOut(t);          // v47：勾选前是否已出列
         if (isRecur(t)) {
             // 重复任务：只切换当天的这一实例
             t.doneDates = t.doneDates || [];
@@ -8202,6 +8265,10 @@
             }
         }
         save();
+        /* v47：刚勾完就出列 → 提示 + 可撤销（避免误触后找不到任务） */
+        if (!_wasOut && isArchivedOut(t)) {
+            toastUndo('已完成，移入「已完成清单」', () => toggleTask(id, d));
+        }
         render();
     }
         try { rescheduleAllReminders(); } catch (e) {}
@@ -8211,6 +8278,7 @@
         if (!t) return;
         const s = t.subs.find(x => x.id === sid);
         if (!s) return;
+        const _wasOut = isArchivedOut(t);          // v47：父任务勾选前是否已出列
         s.done = !s.done;
         /* v46：子任务完成时间 */
         if (s.done) stampDone(s); else { try { s.doneAt = ''; } catch (e) {} }
@@ -8228,6 +8296,10 @@
             if (allDone && !wasDone) { stampDone(t); stopTimersOfTask(t); }
         }
         save();
+        /* v47：子任务全勾完 → 整个任务出列，同样给一次撤销机会 */
+        if (!_wasOut && isArchivedOut(t)) {
+            toastUndo('任务已全部完成，移入「已完成清单」', () => toggleSub(tid, sid));
+        }
         render();
     }
         try { rescheduleAllReminders(); } catch (e) {}
@@ -11596,7 +11668,7 @@
     /* v8: 专注页分组折叠 + 详情侧栏 */
     const FCD_COLORS = ['#f7f7fc','#fff7e6','#e8f5e9','#e3f2fd','#fce4ec','#f3e5f5','#f5f5f5','#fffbe6'];
     /* v13: 肉眼可见的版本号 —— 用于判断浏览器是否还在用旧缓存 */
-    const APP_VER = 'v45';
+    const APP_VER = 'v47';
     let focusDetailOpen = false,
         focusDetailPct = +((S.settings && S.settings.focusDetailPct) || 32),
         focusDetailColor = (S.settings && S.settings.focusDetailColor) || '#f7f7fc',
