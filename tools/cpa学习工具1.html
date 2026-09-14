@@ -5085,7 +5085,7 @@
                 '<div class="pf"><label>考试 / 目标日期（可留空）</label><input id="pdExam" type="date"></div>' +
                 '<div class="pf"><label>' + (ll.course || '科目') + '清单（一行一个，可留空）</label>' +
                 '<textarea id="pdSubjects" rows="4" placeholder="会计&#10;审计&#10;财务成本管理"></textarea>' +
-                '<div class="pf-hint">一行一个' + (ll.course || '科目') + '，可直接从表格 / 文档粘贴；已存在的会自动跳过。留空则保留现有' + (ll.course || '科目') + '。</div></div>' +
+                '<div class="pf-hint"><b>保存后以本框为准</b>：框里留什么就存什么，删掉的行会移除该' + (ll.course || '科目') + '（学习记录不会删，重新加回同名即可恢复）；改写一行等于改名，想让记录跟着走请写「旧名=>新名」。留空 = 不动现有' + (ll.course || '科目') + '。若下方填了「大纲结构」，大纲里出现的' + (ll.course || '科目') + '会一并保留。</div></div>' +
                 '<div class="pf"><label>复习间隔（天，逗号分隔）</label><input id="pdIv" type="text" placeholder="1,2,4,7,15">' +
                 '<div class="pf-hint">考试型建议 1,2,4,7,15；技能型建议 1,3,7,14,30</div></div>' +
                 '<div class="pf"><label>大纲结构（建议一次性填好整棵 7 级结构）</label>' +
@@ -5126,7 +5126,7 @@
                     .map(function (s) { return parseInt(s, 10); })
                     .filter(function (n) { return !isNaN(n) && n > 0; });
                 const outline = parseOutline(box.querySelector('#pdOutline').value);
-                const subjectLines = String(box.querySelector('#pdSubjects').value || '').split(/\r?\n/);
+                const subjectEdits = parseSubjectList(String(box.querySelector('#pdSubjects').value || '').split(/\r?\n/));
 
                 let target = editing;
                 if (!target) {
@@ -5153,12 +5153,32 @@
                     // 大纲里没写章节的一级，兜底补「第1章 / 第1节」
                     (outline.courses || []).forEach(function (c) { ensureCourseStructure(target, c); });
                 }
-                // 科目清单里额外的（大纲没覆盖到的）一并写入，自动去重 + 补结构
-                addCoursesToProject(target, subjectLines);
+                // 科目清单 = 权威列表：改名 → 删除 → 新增 → 保序（大纲里出现的科目强制保留）
+                const subjRes = applySubjectList(target, subjectEdits, (outline && outline.courses) ? outline.courses : []);
+                // 被移除科目的学习记录不删（防误删），先把条数统计出来提示用户怎么找回
+                const orphanRecs = [];
+                if (subjRes.removed.length) {
+                    const stored = readProjectRecords(target.id);
+                    subjRes.removed.forEach(function (n) {
+                        const c = stored.filter(function (r) { return r && r.course === n; }).length;
+                        if (c > 0) orphanRecs.push(n + '（' + c + ' 条记录）');
+                    });
+                }
                 saveProjects();
+                const movedRecs = migrateCourseRecords(target.id, subjRes.recordsToMove);
                 renderProjectSelect();
                 close();
                 switchProject(target.id);
+                if (subjRes.added.length || subjRes.removed.length || subjRes.renamed.length) {
+                    const bits = [];
+                    if (subjRes.added.length) bits.push('新增 ' + subjRes.added.length + ' 个');
+                    if (subjRes.renamed.length) bits.push('改名 ' + subjRes.renamed.length + ' 个');
+                    if (subjRes.removed.length) bits.push('移除 ' + subjRes.removed.length + ' 个');
+                    let tip = '✅ ' + L('course') + '清单已保存：' + bits.join('，');
+                    if (movedRecs) tip += '（已迁移 ' + movedRecs + ' 条学习记录）';
+                    if (orphanRecs.length) tip += '；' + orphanRecs.join('、') + ' 的记录已保留，想跟随新名请写「旧名=>新名」';
+                    showToast(tip);
+                }
                 // 新项目若还没有科目，直接引导新增，避免「建完项目却无法记录学习」
                 if (!(target.courses && target.courses.length)) {
                     setTimeout(function () { try { openCourseDialog(); } catch (e) {} }, 250);
@@ -5259,6 +5279,147 @@
                 p.chapterNames[course] = { 1: '' };
                 p.sectionNames[course] = { 1: [''] };
             }
+        }
+
+        // ---------- 科目清单编辑：新增 / 删除 / 改名 ----------
+        // 支持写法：
+        //   会计                    普通科目（不存在则新增，已存在则保留）
+        //   财管=>财务管理          改名：结构键 + 学习记录一起迁到新名
+        // 返回 { list: [顺去重后的科目名], rename: { 旧名: 新名 } }
+        function parseSubjectList(lines) {
+            const list = [], rename = {};
+            (lines || []).forEach(function (raw) {
+                let name = String(raw == null ? '' : raw).trim();
+                if (!name) return;
+                name = name.replace(/^[-*•·]\s*/, '').trim();   // 去掉粘表格时带的行首符号
+                if (!name) return;
+                const m = name.match(/^(.*?)\s*(?:=>|->|→)\s*(.+)$/);
+                if (m && m[1].trim() && m[2].trim()) {
+                    const from = m[1].trim(), to = m[2].trim();
+                    rename[from] = to;
+                    name = to;
+                }
+                if (list.indexOf(name) < 0) list.push(name);
+            });
+            return { list: list, rename: rename };
+        }
+
+        // 摘掉一个科目：清 courses + 按科目名做键的结构，不动学习记录
+        function removeCourseFromProject(p, name) {
+            // 内置项目的结构指向代码常量，写入前先落地副本，避免污染常量
+            dettachBuiltinStructure(p);
+            if (!Array.isArray(p.courses)) p.courses = [];
+            p.courses = p.courses.filter(function (x) { return x !== name; });
+            ['chapterNames', 'sectionNames', 'kpTree', 'planHours', 'targetOverrides'].forEach(function (k) {
+                if (p[k] && typeof p[k] === 'object' && Object.prototype.hasOwnProperty.call(p[k], name)) delete p[k][name];
+            });
+        }
+
+        // 改名：科目名与所有按科目名做键的结构一起迁移
+        function renameCourseInProject(p, oldName, newName) {
+            if (oldName === newName) return;
+            dettachBuiltinStructure(p);
+            if (!Array.isArray(p.courses)) p.courses = [];
+            const i = p.courses.indexOf(oldName);
+            if (i >= 0) p.courses[i] = newName;
+            ['chapterNames', 'sectionNames', 'kpTree', 'planHours', 'targetOverrides'].forEach(function (k) {
+                if (p[k] && typeof p[k] === 'object' && Object.prototype.hasOwnProperty.call(p[k], oldName)) {
+                    if (!Object.prototype.hasOwnProperty.call(p[k], newName)) p[k][newName] = p[k][oldName];
+                    delete p[k][oldName];
+                }
+            });
+        }
+
+        // 以「科目清单」为准落库：改名 → 删除 → 新增 → 保序
+        // outlineCourses：本次填了「大纲结构」时，大纲里的科目强制保留（不被清单删掉）
+        function applySubjectList(p, edits, outlineCourses) {
+            const result = { added: [], removed: [], renamed: [], recordsToMove: {} };
+            const desired = [];
+            ((edits && edits.list) || []).forEach(function (n) { if (n && desired.indexOf(n) < 0) desired.push(n); });
+            (outlineCourses || []).forEach(function (n) {
+                const name = String(n || '').trim();
+                if (name && desired.indexOf(name) < 0) desired.push(name);
+            });
+            if (!desired.length) return result;   // 留空 = 保留现有科目，什么都不动
+            if (!Array.isArray(p.courses)) p.courses = [];
+
+            // 1) 改名（先改，后面的增删都按新名字判断）
+            Object.keys((edits && edits.rename) || {}).forEach(function (oldName) {
+                const newName = edits.rename[oldName];
+                if (!newName || oldName === newName) return;
+                if (p.courses.indexOf(oldName) < 0) return;
+                renameCourseInProject(p, oldName, newName);
+                result.renamed.push(oldName + ' → ' + newName);
+                result.recordsToMove[oldName] = newName;
+            });
+
+            // 2) 删除：清单里没有的现有科目
+            p.courses.slice().forEach(function (name) {
+                if (desired.indexOf(name) >= 0) return;
+                removeCourseFromProject(p, name);
+                result.removed.push(name);
+            });
+
+            // 3) 新增：清单里有、项目里没有的
+            desired.forEach(function (name) {
+                if (p.courses.indexOf(name) >= 0) return;
+                p.courses.push(name);
+                result.added.push(name);
+            });
+
+            // 4) 保序：按清单顺序排，大纲补进来的排在后面
+            const ordered = desired.filter(function (n) { return p.courses.indexOf(n) >= 0; });
+            p.courses.forEach(function (n) { if (ordered.indexOf(n) < 0) ordered.push(n); });
+            p.courses = ordered;
+
+            // 5) 新增的科目补默认结构
+            result.added.forEach(function (c) { ensureCourseStructure(p, c); });
+            return result;
+        }
+
+        // 读取指定项目已落盘的学习记录（正在编辑的项目未必是当前项目）
+        function readProjectRecords(pid) {
+            try {
+                let raw = localStorage.getItem('cpa_learning_data_v3_' + pid);
+                if (!raw && pid === 'cpa') raw = localStorage.getItem('cpa_learning_data_v3');
+                if (!raw) return (pid === currentProjectId) ? (state.records || []) : [];
+                const data = JSON.parse(raw);
+                return Array.isArray(data.records) ? data.records : [];
+            } catch (e) {
+                return (pid === currentProjectId) ? (state.records || []) : [];
+            }
+        }
+
+        // 改名后把该项目学习记录里的 course 字段迁到新名，返回迁移条数
+        function migrateCourseRecords(pid, map) {
+            const keys = Object.keys(map || {});
+            if (!keys.length) return 0;
+            const key = 'cpa_learning_data_v3_' + pid;
+            let raw = null;
+            try { raw = localStorage.getItem(key); } catch (e) {}
+            if (!raw && pid === 'cpa') { try { raw = localStorage.getItem('cpa_learning_data_v3'); } catch (e) {} }
+            if (!raw) {
+                // 没有落盘副本（数据只在内存里）→ 就地改内存并保存
+                let n0 = 0;
+                if (pid === currentProjectId) {
+                    (state.records || []).forEach(function (r) { if (r && map[r.course]) { r.course = map[r.course]; n0++; } });
+                    if (n0) saveData();
+                }
+                return n0;
+            }
+            let data = null;
+            try { data = JSON.parse(raw); } catch (e) { return 0; }
+            let n = 0;
+            (data.records || []).forEach(function (r) { if (r && map[r.course]) { r.course = map[r.course]; n++; } });
+            if (!n) return 0;
+            try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) { return 0; }
+            if (pid === currentProjectId) {
+                state.records = data.records || [];
+                if (typeof renderAll === 'function') renderAll();
+                try { renderGoalSummary(); } catch (e) {}
+                try { if (typeof renderMemoryView === 'function') renderMemoryView(); } catch (e) {}
+            }
+            return n;
         }
 
         // 批量写入科目（自动去重 + 补结构），返回新增的科目名
