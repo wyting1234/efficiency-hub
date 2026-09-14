@@ -2019,6 +2019,38 @@
             .lv-add-sec{height:34px;}
         }
     </style>
+    <style>
+        /* 🔎 结构自检弹窗 */
+        .sd-dialog{max-width:680px;}
+        .sd-list{max-height:min(44vh,400px);overflow:auto;border:1px solid #E3D9C8;border-radius:10px;background:#FDFBF6;padding:6px 10px;margin:8px 0 4px;-webkit-overflow-scrolling:touch;}
+        .sd-row{padding:8px 0;border-bottom:1px dashed #E7DFD0;}
+        .sd-row:last-child{border-bottom:none;}
+        .sd-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+        .sd-ico{flex:0 0 auto;font-size:13px;}
+        .sd-course{font-size:13.5px;color:#3A3026;}
+        .sd-msg{font-size:11.5px;color:#8A7A62;margin-left:auto;}
+        .sd-row.warn .sd-msg{color:#A8741A;font-weight:600;}
+        .sd-row.bad .sd-msg{color:#B4453A;font-weight:600;}
+        .sd-meta{font-size:11.5px;color:#8C8071;margin-top:3px;line-height:1.65;}
+        .sd-meta b{color:#5C5040;}
+        .sd-empty{font-size:13px;color:#888;padding:14px 0;text-align:center;}
+        .sd-fix{margin:8px 0 2px;padding:9px 11px;background:#F6F1E8;border-radius:9px;}
+        .sd-fix-t{font-size:11.5px;color:#7C6E59;line-height:1.75;}
+        .sd-fix-t code{background:#fff;padding:1px 4px;border-radius:4px;font-size:11px;}
+        .sd-ta{width:100%;box-sizing:border-box;margin-top:6px;padding:8px 10px;border:1px solid #DFD5C4;border-radius:8px;background:#fff;font-size:12.5px;font-family:inherit;line-height:1.65;color:#3A3026;resize:vertical;}
+        .sd-ta:focus{outline:none;border-color:#8A7358;box-shadow:0 0 0 3px rgba(138,115,88,.12);}
+        .sd-fix-row{display:flex;gap:8px;margin-top:7px;}
+        .sd-sel{flex:1 1 auto;min-width:0;height:34px;padding:0 8px;border:1px solid #DFD5C4;border-radius:8px;font-size:12.5px;background:#fff;color:#3A3026;}
+        .clt-btns{flex-wrap:wrap;justify-content:flex-end;}
+        @media (max-width:768px){
+            .sd-dialog{max-width:100%;}
+            .sd-fix-row{flex-wrap:wrap;}
+            .sd-fix-row .pd-btn{width:100%;}
+            .sd-ta{font-size:12px;}
+            .sd-list{max-height:40vh;}
+            .sd-msg{margin-left:0;flex-basis:100%;}
+        }
+    </style>
 </head>
 <body>
 
@@ -2065,6 +2097,7 @@
         <div class="course-list-title">
             <span class="clt-text">📚 课程进度（已学 / 建议）</span>
             <span class="clt-btns">
+                <button type="button" class="prog-mode-btn" id="progDiagBtn" title="检查各科目的章 / 节结构是否完整，可一键补齐或粘贴大纲重建">🔎 自检</button>
                 <button type="button" class="prog-mode-btn" id="progHoursBtn" title="编辑各科目计划学时（进度分母）">✎ 学时</button>
                 <button type="button" class="prog-mode-btn" id="progModeBtn" title="切换学习进度的显示方式">⏱ 时长模式</button>
             </span>
@@ -3583,8 +3616,21 @@
         }
 
         function getMaxChapter(course) {
+            // 章号取「章标题记录」与「节结构」的并集。
+            // 旧实现只读 GUIDE_DATA.maxChapter（源自 sectionNames），
+            // 一旦节结构被抹成 {1:['']}，即使 chapterNames 里还留着 N 章标题，
+            // 章选择框也只显示第1章 —— 标题明明在库里却渲染不出来。
+            let m = 0;
             const courseData = GUIDE_DATA[course];
-            return courseData ? courseData.maxChapter : 0;
+            if (courseData && courseData.maxChapter > 0) m = courseData.maxChapter;
+            const cn = (ACTIVE_CHAPTER_NAMES && ACTIVE_CHAPTER_NAMES[course]) ? ACTIVE_CHAPTER_NAMES[course] : null;
+            if (cn) {
+                Object.keys(cn).forEach(function (k) {
+                    const n = parseInt(k, 10);
+                    if (!isNaN(n) && n > m) m = n;
+                });
+            }
+            return m;
         }
 
         function getSectionsForChapter(course, chapter) {
@@ -3735,6 +3781,222 @@
                 hb._bound = true;
                 hb.addEventListener('click', function () { openHoursEditor(); });
             }
+            const db = document.getElementById('progDiagBtn');
+            if (db && !db._bound) {
+                db._bound = true;
+                db.addEventListener('click', function () { openStructDiag(); });
+            }
+        }
+
+        // ---------- 🔎 结构自检：章 / 节结构完整性诊断 + 一键补齐 ----------
+        // 说明：这里读的是「用户浏览器里真实存着的数据」，不是代码里的模板。
+        // chapterNames 决定章标题能不能显示，sectionNames 决定章数 / 节数能不能显示，
+        // 两者不同源 —— 诊断面板就是把这两个数摆到一起看。
+        function structDiagScan() {
+            const proj = getCurrentProject() || {};
+            const rows = [];
+            const numKeys = function (o) {
+                return Object.keys(o || {}).map(Number)
+                    .filter(function (n) { return !isNaN(n) && n > 0; })
+                    .sort(function (a, b) { return a - b; });
+            };
+            const txt = function (v) { return String(v == null ? '' : v).trim(); };
+            (COURSES || []).forEach(function (co) {
+                const cm = (proj.chapterNames && proj.chapterNames[co]) || {};
+                const sm = (proj.sectionNames && proj.sectionNames[co]) || {};
+                const chNos = numKeys(cm), secNos = numKeys(sm);
+                let secTotal = 0, secNamed = 0;
+                secNos.forEach(function (n) {
+                    const arr = Array.isArray(sm[n]) ? sm[n] : [];
+                    secTotal += arr.length;
+                    arr.forEach(function (v) { if (txt(v)) secNamed++; });
+                });
+                const namedCh = chNos.filter(function (n) { return txt(cm[n]); }).length;
+                const missing = chNos.filter(function (n) { return secNos.indexOf(n) < 0; });
+                let st = 'ok', msg = '结构完整';
+                if (!chNos.length && !secNos.length) {
+                    st = 'bad'; msg = '结构为空，需要重新粘贴大纲';
+                } else if (namedCh === 0 && secNamed === 0 && secTotal <= 1) {
+                    st = 'bad'; msg = '只有占位「第1章 / 第1节」，标题全缺 —— 需要重新粘贴大纲';
+                } else if (namedCh === 0 && !secNos.length) {
+                    st = 'bad'; msg = '章标题全缺且没有节结构，需要重新粘贴大纲';
+                } else if (missing.length) {
+                    st = 'warn'; msg = missing.length + ' 个章缺节结构（可一键补齐）';
+                } else if (namedCh < chNos.length) {
+                    st = 'warn'; msg = (chNos.length - namedCh) + ' 个章还没有标题';
+                } else if (secNamed < secTotal) {
+                    st = 'warn'; msg = (secTotal - secNamed) + ' 个节还没有标题';
+                }
+                rows.push({
+                    course: co, chCount: chNos.length, secCount: secNos.length,
+                    namedCh: namedCh, secTotal: secTotal, secNamed: secNamed,
+                    missing: missing, st: st, msg: msg
+                });
+            });
+            return rows;
+        }
+
+        // 补齐：chapterNames 里有章号、sectionNames 里没有 → 给该章建空节结构
+        // （不删任何数据，只补章号，让章标题能显示出来）
+        function structDiagFix(rows) {
+            const p = getCurrentProject();
+            if (!p) return 0;
+            let n = 0;
+            rows.forEach(function (r) {
+                if (!r.missing.length) return;
+                dettachBuiltinStructure(p);
+                p.sectionNames = p.sectionNames || {};
+                p.sectionNames[r.course] = p.sectionNames[r.course] || {};
+                r.missing.forEach(function (ch) {
+                    if (!Array.isArray(p.sectionNames[r.course][ch])) {
+                        p.sectionNames[r.course][ch] = [];
+                        n++;
+                    }
+                });
+            });
+            if (n) {
+                try { saveProjects(); } catch (e) {}
+                applyProject(currentProjectId);
+                renderAll();
+                try { renderGoalSummary(); } catch (e) {}
+                try { updateChapterSelect(state.currentCourse); } catch (e) {}
+                try { if (window.ScOnHostCourse) window.ScOnHostCourse(state.currentCourse); } catch (e) {}
+                try { if (typeof updateGlobalStats === 'function') updateGlobalStats(); } catch (e) {}
+            }
+            return n;
+        }
+
+        function openStructDiag() {
+            const oldBox = document.getElementById('structDiagDialog');
+            if (oldBox && oldBox.parentNode) oldBox.parentNode.removeChild(oldBox);
+            const p = getCurrentProject();
+            const cL = L('course'), chL = L('chapter'), sL = L('section');
+            const esc = function (v) {
+                return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+                });
+            };
+
+            const bodyHTML = function () {
+                const rows = structDiagScan();
+                if (!rows.length) return '<div class="sd-empty">当前项目还没有' + cL + '，先在下面加一个。</div>';
+                return rows.map(function (r) {
+                    const icon = r.st === 'ok' ? '✅' : (r.st === 'warn' ? '⚠️' : '⛔');
+                    return '<div class="sd-row ' + r.st + '">' +
+                        '<div class="sd-top"><span class="sd-ico">' + icon + '</span>' +
+                        '<b class="sd-course">' + esc(r.course) + '</b>' +
+                        '<span class="sd-msg">' + esc(r.msg) + '</span></div>' +
+                        '<div class="sd-meta">' + chL + '标题记录 <b>' + r.chCount + '</b> 个（有名字 ' + r.namedCh + '） ｜ ' +
+                        sL + '结构 <b>' + r.secCount + '</b> ' + chL + ' / ' + r.secTotal + ' ' + sL + '（有名字 ' + r.secNamed + '）' +
+                        (r.missing.length ? ' ｜ 缺节结构：第 ' + r.missing.slice(0, 12).join('、') + (r.missing.length > 12 ? ' …' : '') + ' ' + chL : '') +
+                        '</div></div>';
+                }).join('');
+            };
+
+            const box = document.createElement('div');
+            box.className = 'plan-mask';
+            box.id = 'structDiagDialog';
+            box.innerHTML = '<div class="plan-dialog sd-dialog">' +
+                '<h3>🔎 结构自检</h3>' +
+                '<div class="pd-hint">这里读的是<b>你本机浏览器里存着的真实数据</b>，不是代码里的模板。' +
+                '『' + chL + '标题记录』决定标题能不能显示，『' + sL + '结构』决定能显示几个' + chL + '；' +
+                '两个数对不上，' + chL + '标题就显示不出来。' +
+                (p && p.builtin ? '<br>当前项目：内置模板' + (p.customStructure ? '（结构已被改动过）' : '（结构未改动）') + '。' : '') +
+                '</div>' +
+                '<div class="sd-list" id="sdList">' + bodyHTML() + '</div>' +
+                '<div class="sd-fix">' +
+                '<div class="sd-fix-t"><b>结构真的丢了？</b>把大纲粘到下面，选好' + cL + '再点应用即可重建（<b>不要写' + cL + '名那一行</b>）。每行一个' + chL + '用顶格，' + sL + '行缩进两格；行首的「第N' + chL + ' / 第N' + sL + '」会自动去掉，不用手删。</div>' +
+                '<textarea id="sdOutline" class="sd-ta" rows="4" placeholder="' +
+                esc('第1章 基础语法\n  第1节 变量与类型\n  第2节 运算符\n第2章 流程控制\n  第1节 分支与循环') + '"></textarea>' +
+                '<div class="sd-fix-row">' +
+                '<select id="sdTarget" class="sd-sel">' + (COURSES || []).map(function (c) {
+                    return '<option value="' + esc(c) + '"' + (c === state.currentCourse ? ' selected' : '') + '>' + esc(c) + '</option>';
+                }).join('') + '</select>' +
+                '<button class="pd-btn" id="sdApply">✅ 应用大纲到该' + cL + '</button>' +
+                '</div></div>' +
+                '<div class="pd-actions">' +
+                '<button class="pd-btn" id="sdFix">🔧 补齐缺失' + chL + '</button>' +
+                '<button class="pd-btn" id="sdCopy">📋 复制诊断</button>' +
+                '<button class="pd-btn primary" id="sdClose">关闭</button>' +
+                '</div></div>';
+            document.body.appendChild(box);
+
+            const close = function () { if (box.parentNode) box.parentNode.removeChild(box); };
+            const refresh = function () {
+                const list = box.querySelector('#sdList');
+                if (list) list.innerHTML = bodyHTML();
+            };
+            const diagText = function () {
+                const head = '【' + chL + '/' + sL + '结构自检】项目=' + ((p && p.name) || '') +
+                    ' 走查时间=' + new Date().toLocaleString();
+                const lines = structDiagScan().map(function (r) {
+                    return r.course + '：' + chL + '标题记录 ' + r.chCount + '（有名 ' + r.namedCh + '）｜' +
+                        sL + '结构 ' + r.secCount + chL + '/' + r.secTotal + sL + '（有名 ' + r.secNamed + '）→ ' + r.msg;
+                });
+                return head + '\n' + lines.join('\n');
+            };
+
+            box.querySelector('#sdClose').onclick = close;
+            box.onclick = function (e) { if (e.target === box) close(); };
+
+            box.querySelector('#sdFix').onclick = function () {
+                const n = structDiagFix(structDiagScan());
+                refresh();
+                showToast(n ? ('🔧 已补上 ' + n + ' 个' + chL + '的节结构，' + chL + '选择框已刷新')
+                            : ('没有可自动补齐的' + chL + '。若提示『需要重新粘贴大纲』，请用下面的文本框重建。'));
+            };
+
+            box.querySelector('#sdCopy').onclick = function () {
+                const t = diagText();
+                const done = function () { showToast('📋 诊断信息已复制，可直接发给我'); };
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(t).then(done, function () {
+                            const ta = box.querySelector('#sdOutline');
+                            if (ta) { ta.value = t; ta.select(); }
+                            showToast('已填入下方文本框，请手动复制');
+                        });
+                    } else {
+                        const ta = box.querySelector('#sdOutline');
+                        if (ta) { ta.value = t; ta.select(); }
+                        showToast('已填入下方文本框，请手动复制');
+                    }
+                } catch (e) {
+                    const ta = box.querySelector('#sdOutline');
+                    if (ta) { ta.value = t; ta.select(); }
+                }
+            };
+
+            box.querySelector('#sdApply').onclick = function () {
+                const target = box.querySelector('#sdTarget').value;
+                const raw = box.querySelector('#sdOutline').value;
+                if (!target) { alert('请先选择要重建的' + cL + '。'); return; }
+                const outline = parseChapterOutline(raw);
+                if (!outline || !outline.chapterNames || !Object.keys(outline.chapterNames).length) {
+                    alert('没解析出' + chL + '结构。请确认每行一个' + chL + '（形如「第1章 基础语法」）顶格写，' +
+                        sL + '行缩进两格（形如「第1节 变量与类型」），并且不要写' + cL + '名那一行。');
+                    return;
+                }
+                if (!confirm('把解析出的 ' + outline.maxChapter + ' 个' + chL + '结构写入「' + target + '」？\n' +
+                    '（会替换该' + cL + '现有的' + chL + ' / ' + sL + '结构，其他' + cL + '不受影响）')) return;
+                const p2 = getCurrentProject();
+                dettachBuiltinStructure(p2);
+                p2.chapterNames = p2.chapterNames || {};
+                p2.sectionNames = p2.sectionNames || {};
+                p2.chapterNames[target] = outline.chapterNames;
+                p2.sectionNames[target] = outline.sectionNames;
+                try { saveProjects(); } catch (e) {}
+                applyProject(currentProjectId);
+                renderAll();
+                try { renderGoalSummary(); } catch (e) {}
+                try { updateChapterSelect(target); } catch (e) {}
+                try { if (window.ScOnHostCourse) window.ScOnHostCourse(target); } catch (e) {}
+                try { if (typeof updateGlobalStats === 'function') updateGlobalStats(); } catch (e) {}
+                refresh();
+                showToast('✅ 已重建「' + target + '」：' + outline.maxChapter + ' 个' + chL + '、' +
+                    Object.keys(outline.sectionNames).reduce(function (a, k) { return a + outline.sectionNames[k].length; }, 0) +
+                    ' 个' + sL + '；' + chL + ' / ' + sL + '选择框与自检页已同步');
+            };
         }
 
         // ---------- 编辑学时：课程进度的分母（全科目一处改完） ----------
@@ -4064,7 +4326,8 @@
                 const chName = getChapterName(course, i);
                 const totalH = getChapterTotalHours(course, i);
                 const _cl = L('chapter');
-                opt.textContent = chName ? `第${i}${_cl} ${chName} (${totalH.toFixed(1)}h)` : `第${i}${_cl} (${totalH.toFixed(1)}h)`;
+                const _hTxt = totalH > 0 ? ` (${totalH.toFixed(1)}h)` : '';
+                opt.textContent = chName ? `第${i}${_cl} ${chName}${_hTxt}` : `第${i}${_cl}${_hTxt}`;
                 chapterSelect.appendChild(opt);
             }
             if (currentVal <= maxCh && currentVal >= 1) chapterSelect.value = currentVal;
@@ -5573,6 +5836,10 @@
             items.forEach(function (it) {
                 let tier = levels.indexOf(it.ind);
                 if (tier < 0) tier = 6;
+                // 只有章 / 节两层剥掉行首编号（UI 会自己拼「第N章 / 第N节」），
+                // 否则粘「第一章 总论」会显示成「第1章 第一章 总论」。
+                // 科目名与知识点名保留原文 —— 知识点常自带「1.1 / 一、」这类编号，剥了反而错。
+                if (tier === 1 || tier === 2) it.name = stripOutlineNo(it.name);
                 last[tier] = it.name;
                 for (let k = tier + 1; k < 7; k++) last[k] = null;
                 if (tier === 0) {
@@ -5795,13 +6062,30 @@
         }
 
         // ---------- 章节大纲解析（新增科目时用：缩进 → 章 / 节） ----------
+        // 剥掉大纲行首的层级编号：「第1章 基础语法」→「基础语法」。
+        // 两个粘贴入口（新增科目 parseChapterOutline / 编辑项目 parseOutline）共用本函数；
+        // 手动添加路径（openLevelDialog / openLevelTitlesDialog）不调用它，标题原样保留。
+        // UI 自己会拼「第N章 / 第N节」，不剥就会显示成「第1章 第1章 基础语法」。
+        // 若一行只有编号（如「第1章」），保留原文，避免标题变空导致整章被跳过。
+        function stripOutlineNo(v) {
+            let t = String(v == null ? '' : v).trim();
+            const cut = function (re) {
+                const r = t.replace(re, '').trim();
+                if (r.length && r !== t) t = r;
+            };
+            cut(/^第\s*[0-9一二三四五六七八九十百零]+\s*[章节讲课部单元篇]\s*[.、:：\-]?\s*/);
+            cut(/^[0-9]+\s*[、:：]\s*/);
+            cut(/^[0-9]+[.．]\s+/);
+            return t;
+        }
+
         function parseChapterOutline(text) {
             const items = [];
             String(text || '').split(/\r?\n/).forEach(function (l) {
                 const m = l.match(/^(\s*)(\S.*)$/);
                 if (!m) return;
                 const ind = m[1].replace(/\t/g, '    ').length;
-                const name = m[2].trim().replace(/^[-*•·]\s*/, '');
+                const name = stripOutlineNo(m[2].trim().replace(/^[-*•·]\s*/, ''));
                 if (name) items.push({ ind: ind, name: name });
             });
             if (!items.length) return null;
