@@ -133,13 +133,250 @@
     try { return JSON.parse(localStorage.getItem('__hub_meta_v1__') || '{}') || {}; } catch (e) { return {}; }
   }
 
+  /* ============ 领域级合并（v5 新增）============
+     只做「整键取较新」是不够的：两台设备各加一条记录、各写一个番茄钟，
+     后同步的那台会把先同步的那台的改动整键覆盖掉。列表丢条目、计数被冲小，
+     而且不会有任何报错 —— 这才是最伤的一类数据事故。
+
+     按数据的「形状」分四类处理：
+       ① 列表型 [ {id,...}, ... ]  → 按 id 并集；同一条两边都有时按字段取「信息更全的」
+       ② 集合型 [ "a", "b" ]       → 取并集
+       ③ 累计型 "5"（纯数字计数）  → 取较大值（计数只增不减，取 max 不会丢）
+       ④ 其它                      → 整键取较新
+     合并只在「两边都有且都合法」时介入；形状对不上就退回整键取较新，绝不猜。 */
+
+  // 元素主键：优先 id，其次 key / name / date，最后用内容指纹兜底（保证同一元素两次计算得到同一个键）
+  function itemIdOf(el) {
+    if (el == null) return null;
+    if (typeof el !== 'object') return String(el);
+    const cand = el.id != null ? 'id:' + el.id
+      : el.key != null ? 'key:' + el.key
+      : el.name != null ? 'name:' + el.name
+      : el.date != null ? 'date:' + el.date
+      : null;
+    if (cand) return cand;
+    try { return 'fp:' + JSON.stringify(el); } catch (e) { return null; }
+  }
+
+  // 元素「信息量」：字段数 + 非空字段数。用于同一条记录两边都改过时判断谁更完整。
+  function richnessOf(el) {
+    if (el == null || typeof el !== 'object') return 0;
+    let n = 0;
+    for (const k in el) {
+      n++;
+      const v = el[k];
+      if (v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && !v.length)) n++;
+    }
+    return n;
+  }
+
+  // 列表合并：按 id 并集。同一条两边都有 → 以「本机」为底（本机是用户此刻正在看的），
+  // 把本机没有的字段从云端补回来。冲突字段保留本机，非冲突字段两边都不丢。
+  // 注意别用「字段数多的那份」当底：云端可能多了个备注字段，就把它过期的标题顶掉。
+  function mergeList(localArr, cloudArr) {
+    const out = [], idx = new Map();
+    // 第一遍：本机全部进场，建立 id → 下标
+    for (const el of localArr) {
+      const id = itemIdOf(el);
+      if (id == null) continue;
+      if (!idx.has(id)) { idx.set(id, out.length); out.push(el); }
+    }
+    // 第二遍：云端条目逐个融合进来
+    for (const el of cloudArr) {
+      const id = itemIdOf(el);
+      if (id == null) continue;
+      const at = idx.get(id);
+      if (at === undefined) {                       // 云端独有 → 直接补进来
+        idx.set(id, out.length);
+        out.push(el);
+        continue;
+      }
+      const prev = out[at];                         // 本机版
+      if (prev && typeof prev === 'object' && el && typeof el === 'object') {
+        // 本机为底；本机缺失的字段用云端补。冲突字段保留本机（本机是用户此刻在改的）。
+        const fused = Object.assign({}, prev);
+        for (const k in el) {
+          const v = fused[k];
+          if (v === undefined || v === null || v === '') fused[k] = el[k];
+        }
+        out[at] = fused;
+      }
+      // 非对象元素：保留本机（同 id 视为同一条，本机为准）
+    }
+    return out;
+  }
+
+  // 集合并集：保持原顺序，去掉重复
+  function mergeSet(localArr, cloudArr) {
+    const out = [], seen = new Set();
+    for (const el of localArr.concat(cloudArr)) {
+      const k = JSON.stringify(el);
+      if (seen.has(k)) continue;
+      seen.add(k); out.push(el);
+    }
+    return out;
+  }
+
+  // 累计型：纯数字计数取 max。返回 null 表示「不是纯数字，别按累计处理」。
+  function asCount(text) {
+    if (text == null) return null;
+    const t = String(text).trim();
+    if (t === '' || !/^-?\d+(\.\d+)?$/.test(t)) return null;
+    const n = Number(t);
+    return isFinite(n) ? n : null;
+  }
+
+  /* ---- 统计表：对象内逐字段取 max（借自 toll2 第 3 层）----
+     形如 { "2026-09-14": { seconds: 1200, questions: 30 }, ... } 的「日期 → 统计」表。
+     两台设备各记各的，整键取较新会把先记的那台的时长冲小；
+     逐字段取 max 才对 —— 时长、题量这类计数只增不减。 */
+  function isPlainObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
+
+  function maxFields(a, b) {
+    const out = Object.assign({}, a);
+    for (const k in b) {
+      const av = out[k], bv = b[k];
+      const an = typeof av === 'number' ? av : asCount(av);
+      const bn = typeof bv === 'number' ? bv : asCount(bv);
+      if (an != null && bn != null) out[k] = bn > an ? bn : an;
+      else if (av === undefined || av === null || av === '') out[k] = bv;
+    }
+    return out;
+  }
+
+  function looksLikeStatTable(obj) {
+    if (!isPlainObj(obj)) return false;
+    const keys = Object.keys(obj);
+    if (!keys.length) return false;
+    let checked = 0;
+    for (const k of keys) {
+      if (checked >= 3) break;
+      const v = obj[k];
+      if (!isPlainObj(v)) return false;
+      const inner = Object.keys(v);
+      if (!inner.length) return false;
+      let hasNum = false;
+      for (const ik of inner) {
+        if (typeof v[ik] === 'number' || asCount(v[ik]) != null) { hasNum = true; break; }
+      }
+      if (!hasNum) return false;
+      checked++;
+    }
+    return checked > 0;
+  }
+
+  function mergeStatTable(a, b) {
+    if (!looksLikeStatTable(a) || !looksLikeStatTable(b)) return null;
+    const out = {};
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    for (const d of keys) {
+      const av = a[d], bv = b[d];
+      if (av === undefined) { out[d] = bv; continue; }
+      if (bv === undefined) { out[d] = av; continue; }
+      out[d] = isPlainObj(av) && isPlainObj(bv) ? maxFields(av, bv) : av;
+    }
+    return out;
+  }
+
+  // 统计表型键（值是「日期 → 统计对象」）
+  const STAT_TABLE_KEYS = new Set([
+    'cpaStudyLog', 'cpa_study_log', 'cpaStat', 'cpa_stat',
+    'studyLog', 'studyStat', 'timeStat', 'time_stat'
+  ]);
+
+  // 列表型数据键（值本身是数组）
+  const LIST_KEYS = new Set([
+    'timeRecords', 'timeTodos', 'timeTimerHistory', 'timeCategoriesV2',
+    'organizer_items_v2', 'organizer_categories_v2', 'organizer_locations_v2',
+    'cpaStudyLog', 'cpaReviewQueue', 'cpaMistakes',
+    'studyRecords', 'studyPaths', 'studySources',
+    'chaomuji_todos', 'chaomuji_records', 'chaomuji_custom_cats'
+  ]);
+  // 集合型数据键（字符串数组，取并集）
+  const SET_KEYS = new Set([
+    'chaomuji_habit_list', 'chaomuji_cats', 'studyTags'
+  ]);
+  // 累计型数据键（纯数字，取较大值）。前缀匹配，故存基础名。
+  const ACC_PREFIXES = [
+    'pomo_count',            // 番茄钟计数
+    'chaomuji_pomo_count',
+    'study_minutes',         // 学习时长（分钟累计）
+    'chaomuji_focus_min'     // 专注分钟累计
+  ];
+
+  function baseNameOf(key) {
+    // 去掉日期后缀，便于前缀匹配：pomo_count_2026-09-14 → pomo_count
+    const m = String(key).match(/^(.*?)_(\d{4}-\d{2}-\d{2})$/);
+    return m ? m[1] : key;
+  }
+  function isAccKey(key) {
+    const b = baseNameOf(key);
+    for (const p of ACC_PREFIXES) {
+      if (b === p || b.indexOf(p + '_') === 0) return true;
+    }
+    return false;
+  }
+
+  // 单键合并：返回 { value, how }。how 仅用于日志统计。
+  function mergeKeyValue(key, localText, cloudText) {
+    if (localText == null) return { value: cloudText, how: 'fill' };
+    if (cloudText == null) return { value: localText, how: 'keep' };
+    if (localText === cloudText) return { value: localText, how: 'same' };
+
+    // ③ 累计型：取较大值（放在最前，避免纯数字被下面当普通键处理）
+    if (isAccKey(key)) {
+      const ln = asCount(localText), cn = asCount(cloudText);
+      if (ln != null && cn != null) {
+        if (cn > ln) return { value: String(cn), how: 'acc-cloud' };
+        if (ln > cn) return { value: String(ln), how: 'acc-local' };
+        return { value: String(ln), how: 'same' };
+      }
+    }
+
+    // ③ 统计表：值形如 { "日期": { 数字字段... } } → 逐字段取 max
+    if (STAT_TABLE_KEYS.has(key) || STAT_TABLE_KEYS.has(baseNameOf(key))) {
+      let ta = null, tb = null;
+      try { ta = JSON.parse(localText); } catch (e) { ta = null; }
+      try { tb = JSON.parse(cloudText); } catch (e) { tb = null; }
+      const table = mergeStatTable(ta, tb);
+      if (table) {
+        const tv = JSON.stringify(table);
+        return { value: tv === localText ? localText : tv, how: tv === localText ? 'same' : 'merge-stat' };
+      }
+    }
+
+    // ①② 列表型 / 集合型：先试解析成数组
+    let la = null, ca = null;
+    try { la = JSON.parse(localText); } catch (e) { la = null; }
+    try { ca = JSON.parse(cloudText); } catch (e) { ca = null; }
+    if (Array.isArray(la) && Array.isArray(ca)) {
+      const wantSet = SET_KEYS.has(key) || SET_KEYS.has(baseNameOf(key));
+      const wantList = LIST_KEYS.has(key) || LIST_KEYS.has(baseNameOf(key));
+      // 列表型：元素是对象且有主键 → 按 id 并集
+      const looksList = wantList || (wantSet === false && la.length && ca.length && typeof la[0] === 'object');
+      if (looksList) {
+        const merged = mergeList(la, ca);
+        if (merged.length > Math.max(la.length, ca.length) || JSON.stringify(merged) !== JSON.stringify(la)) {
+          return { value: JSON.stringify(merged), how: 'merge-list' };
+        }
+        return { value: localText, how: 'keep' };
+      }
+      if (wantSet) {
+        const merged = mergeSet(la, ca);
+        if (JSON.stringify(merged) === JSON.stringify(la)) return { value: localText, how: 'keep' };
+        return { value: JSON.stringify(merged), how: 'merge-set' };
+      }
+    }
+    return null;   // 交给调用方按「整键取较新」处理
+  }
+
   // 合并下载：两边并集；同键两边都有时保留「较新」的一份（时间未知时保留本机）
   function mergeCloudToLocal(serverData) {
     const sdata = (serverData && serverData.data) || {};
     const meta = localKeyTs();
     let timestamps = {};
     try { timestamps = JSON.parse(localStorage.getItem('sync_timestamps') || '{}') || {}; } catch (e) {}
-    let added = 0, updated = 0, kept = 0;
+    let added = 0, updated = 0, kept = 0, mergedCount = 0;
     for (const key in sdata) {
       const entry = sdata[key];
       if (!entry || typeof entry.value !== 'string') continue;
@@ -151,6 +388,17 @@
         added++;
         continue;
       }
+      // 先试领域级合并：两边都有、形状可合并时，合并结果无论新旧都比「整键取一份」更全。
+      // 列表要合并成并集，所以不能因为「云端时间更新」就把本机独有的条目丢掉。
+      const m = mergeKeyValue(key, cur, entry.value);
+      if (m && (m.how === 'merge-list' || m.how === 'merge-set' || m.how === 'merge-stat')) {
+        if (m.value !== cur) {
+          localStorage.setItem(key, m.value);
+          if (entry.timestamp) timestamps[key] = entry.timestamp;
+          mergedCount++;
+        } else kept++;
+        continue;
+      }
       const lts = meta[key] || 0, cts = entry.timestamp || 0;
       if (cts > lts) {                                       // 云端较新 → 覆盖这一键
         localStorage.setItem(key, entry.value);
@@ -159,7 +407,7 @@
       } else kept++;                                         // 本机较新 / 时间未知 → 保留本机
     }
     localStorage.setItem('sync_timestamps', JSON.stringify(timestamps));
-    return { added, updated, kept };
+    return { added, updated, kept, merged: mergedCount };
   }
 
   // 合并上传：以云端数据为本底，逐键与本机「较新」者合并，返回合并后的云端数据集
@@ -179,6 +427,15 @@
       if (value === null || isExcludedKey(key, value)) continue;
       const lts = meta[key] || Date.now();                   // 无写入记录的键视为刚写过（本机为准）
       const cts = (merged[key] && merged[key].timestamp) || 0;
+      // 领域级合并优先：本机与云端都有这一键时，先试合并，只有合并不了才比时间。
+      // 否则「本机后改」的列表会把云端独有的条目整键抹掉。
+      if (merged[key]) {
+        const m = mergeKeyValue(key, value, merged[key].value);
+        if (m && (m.how === 'merge-list' || m.how === 'merge-set' || m.how === 'merge-stat')) {
+          merged[key] = { value: m.value, timestamp: Math.max(lts, cts) };
+          continue;
+        }
+      }
       if (!merged[key] || lts >= cts) merged[key] = { value: value, timestamp: lts };
     }
     return merged;
