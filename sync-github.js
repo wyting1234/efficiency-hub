@@ -80,7 +80,7 @@
     return new Promise((resolve) => {
       const mask = document.createElement('div');
       mask.className = 'sync-mask';
-      mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
+      mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;box-sizing:border-box;';
       const modal = document.createElement('div');
       modal.style.cssText = 'background:white;border-radius:12px;padding:22px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
       modal.innerHTML = `
@@ -107,7 +107,7 @@
     return new Promise((resolve) => {
       const mask = document.createElement('div');
       mask.className = 'sync-mask';
-      mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
+      mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;box-sizing:border-box;';
       const modal = document.createElement('div');
       modal.style.cssText = 'background:white;border-radius:12px;padding:22px;max-width:460px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
       modal.innerHTML = `
@@ -360,14 +360,38 @@
     const backend = activeBackend();
     const mask = document.createElement('div');
     mask.className = 'sync-mask';
-    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
+    // ⚠️ 关键：align-items 用 flex-start 而不是 center，并给 mask 加 overflowY:auto。
+    //
+    // 为什么必须这样：
+    // 面板内容会随状态增长（进度区、失败详情、备份状态都能撑高它）。一旦总高
+    // 超过视口，`align-items:center` 会让面板**上下同时溢出**，而 flex 居中溢出
+    // 的那部分是**无法滚动到**的（scrollHeight === clientHeight，滚动条不出现）。
+    // 实测：内容 1056px / 视口 800px 时，面板 top = -128px，底部的「关闭」按钮
+    // 被推到 866~904px，用户既看不到也点不到 —— 表现就是「同步完没有关闭按钮」。
+    // 改用 flex-start + overflowY:auto 后，内容超高时从顶部开始排列，整体可滚动。
+    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;box-sizing:border-box;';
     const modal = document.createElement('div');
-    modal.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:460px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
+    modal.style.cssText = 'background:white;border-radius:12px;padding:0 24px 24px;max-width:460px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.2);margin:auto 0;flex:0 0 auto;box-sizing:border-box;position:relative;';
     const connState = backend && backend.isConnected() ? '✅ 已连接' : '⚙️ 未配置';
     const lastTxt = lastSyncTime ? ('上次操作：' + fmtTime(lastSyncTime)) : '还没有同步过';
+    // 顶部固定标题栏（含右上角关闭）：
+    // 面板内容会随进度区 / 失败详情 / 备份状态不断变高，在 800px 高的屏幕上很容易
+    // 超过视口。底部那个「关闭」按钮就会被推到屏幕外，用户找不到退出方式（实测
+    // 内容 1056px 时关闭按钮落在 1010px 处，完全不可见）。
+    // 把关闭放到 sticky 顶栏，无论面板多高都能点到；同时给底部保留一个关闭按钮，
+    // 面板不高时用起来更顺手。
     modal.innerHTML = `
-      <h2 style="margin:0 0 6px;font-size:20px">🔄 云端同步</h2>
-      <p style="margin:0 0 14px;color:#666;font-size:13px"><span id="bdLabel">${backend ? backend.name : '未选择'}</span> ｜ ${connState} ｜ ${lastTxt}</p>
+      <div style="position:sticky;top:0;z-index:2;background:white;padding:20px 0 10px;margin:0 -4px;border-bottom:1px solid #f0f0f0">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <h2 style="margin:0 0 4px;font-size:20px">🔄 云端同步</h2>
+            <p style="margin:0;color:#666;font-size:13px"><span id="bdLabel">${backend ? backend.name : '未选择'}</span> ｜ ${connState} ｜ ${lastTxt}</p>
+          </div>
+          <button id="syncCloseTop" type="button" aria-label="关闭"
+                  style="flex:0 0 auto;width:32px;height:32px;border:1px solid #e5e7eb;border-radius:8px;background:white;cursor:pointer;font-size:18px;line-height:1;color:#666">×</button>
+        </div>
+      </div>
+      <div style="padding-top:14px">
 
       <div id="bdBox" style="background:#f6f8fa;border-radius:8px;padding:10px 12px;margin-bottom:14px">
         <div style="font-size:12px;color:#666;margin-bottom:8px">存到哪儿（可随时切换，数据格式通用）：</div>
@@ -411,10 +435,17 @@
       <div style="display:flex;justify-content:space-between;align-items:center">
         <button id="syncReconfig" style="background:none;border:none;color:#888;font-size:13px;cursor:pointer;text-decoration:underline">配置 / 更换账号</button>
         <button id="syncClose" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">关闭</button>
+      </div>
       </div>`;
     mask.appendChild(modal);
     document.body.appendChild(mask);
     mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
+    // Esc 关闭：面板很高时用户未必想找按钮，键盘退出是最省事的路径
+    const onEsc = (e) => { if (e.key === 'Escape') { mask.remove(); document.removeEventListener('keydown', onEsc); } };
+    document.addEventListener('keydown', onEsc);
+    // 面板被移除后（无论何种方式）清掉监听，避免残留
+    const origRemove = mask.remove.bind(mask);
+    mask.remove = function () { document.removeEventListener('keydown', onEsc); origRemove(); };
 
     // 统一取面板内控件：任何一个按钮缺失都不该让整个面板崩掉
     // （曾因漏写 #syncDataMgr 的按钮 HTML，querySelector 返回 null 直接抛 TypeError）
@@ -451,6 +482,9 @@
     }
 
     q('#syncClose').onclick = () => mask.remove();
+    // 顶栏那个关闭按钮：面板内容再高也始终可见，这是主要的退出路径
+    const closeTop = modal.querySelector('#syncCloseTop');
+    if (closeTop) closeTop.onclick = () => mask.remove();
     q('#syncReconfig').onclick = () => {
       mask.remove();
       if (backend) backend.reconfigure(); else showConfigModal();
@@ -499,7 +533,7 @@
     closeTopModal();
     const mask = document.createElement('div');
     mask.className = 'sync-mask';
-    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
+    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;box-sizing:border-box;';
     const modal = document.createElement('div');
     modal.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
     modal.innerHTML = `
@@ -826,7 +860,7 @@
     closeTopModal();
     const mask = document.createElement('div');
     mask.className = 'sync-mask';
-    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
+    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;box-sizing:border-box;';
     const modal = document.createElement('div');
     modal.style.cssText = 'background:white;border-radius:12px;padding:22px;max-width:520px;width:92%;max-height:82vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);';
     modal.innerHTML = '<h2 style="margin:0 0 10px;font-size:19px">🩺 云端体检</h2>' +

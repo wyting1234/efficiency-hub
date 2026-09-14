@@ -9,10 +9,11 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.7.0';
+    var VERSION = '1.8.0';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
+    var FP_KEY = '__hub_bkfp_v1__';             // 上次备份的内容指纹（判断「备份后是否有改动」）
     var IDB_NAME = 'efficiency_hub_backup';
     var IDB_STORE = 'snapshots';
     var MAX_SNAPSHOTS = 5;
@@ -245,17 +246,32 @@
         return items.slice(0, 4);
     }
     // type: 'backup'（本地导出 / 快照 / 恢复） | 'sync'（云端上传 / 下载）
+    // info.ts：可选。数据收集耗时较长时，调用方应传入「开始收集那一刻」的时间戳，
+    //          否则记录里的时间会晚于数据本身，导致 pendingChanges 误判为「备份后有改动」。
     function recordAct(type, info) {
         try {
             var act = getAct();
             act[type] = {
-                ts: Date.now(),
+                ts: info.ts || Date.now(),
                 kind: info.kind || '',
                 count: info.count || 0,
                 items: (info.items || []).slice(0, 4)
             };
             localStorage.setItem(ACT_KEY, JSON.stringify(act));
         } catch (e) {}
+        // 值指纹存到独立 key。
+        // ⚠️ 曾经把它塞进 act[type].fp 并「只放内存」——那是错的：getAct() 每次都从
+        //    localStorage 重新解析，内存里的临时对象函数一返回就丢了，下一轮读回来的
+        //    act 根本没有 fp，指纹比对永远不生效，只能悄悄退回时间戳判断。
+        //    所以指纹必须落盘。用独立的 key 是为了不把 ACT_KEY 撑大，也方便清理。
+        if (info && info.fp) {
+            try {
+                localStorage.setItem(FP_KEY, JSON.stringify({ ts: info.ts || Date.now(), fp: info.fp }));
+            } catch (e) {
+                // 指纹太大写不下（极端情况）：清掉它，退回时间戳判断，不能影响备份本身
+                try { localStorage.removeItem(FP_KEY); } catch (e2) {}
+            }
+        }
         try { renderSideStat(); } catch (e) {}
     }
     // 其它标签页 / iframe 写入的时间埋点在内存里看不到，展示前先合并一次
@@ -269,18 +285,75 @@
         } catch (e) {}
     }
     // 自上次本地备份之后又发生过改动的键（按模块汇总）
+    //
+    // ⚠️ 为什么不能只看时间戳：
+    // 备份动作本身要花时间（collect 序列化全部数据，用户现场 4.9MB 时可达数秒）。
+    // 在这段时间里写进来的数据，其埋点时间戳必然晚于「备份封存时刻」，于是刚备份完
+    // 就会报出「⚠️ 备份后有改动 N 项」——用户看到的就是「明明刚备份，却提示没备份」。
+    // 时间戳在这里是错的判据：它无法区分「备份之后改的」和「备份进行中改的」。
+    //
+    // 正确判据是**内容**：备份时记下每个键的值指纹（见 snapshotFingerprint），
+    // 比较时逐个比对当前值与指纹。指纹不同 = 这份备份确实已经不代表当前数据。
+    // 这样无论写入发生在备份前、备份中还是备份后，判断都准确。
     function pendingChanges() {
         var act = getAct();
         var since = (act.backup && act.backup.ts) || 0;
+        var fp = null;
+        try {
+            var rec = JSON.parse(localStorage.getItem(FP_KEY) || 'null');
+            // 指纹必须与最近一次备份对得上，否则是过期数据，宁可用时间戳兜底
+            if (rec && rec.fp && rec.ts === since) fp = rec.fp;
+        } catch (e) { fp = null; }
         var keys = [];
         try {
             for (var k in meta) {
                 if (!Object.prototype.hasOwnProperty.call(meta, k)) continue;
                 if (isInternalKey(k) || isIgnoredKey(k)) continue;
-                if ((meta[k] || 0) > since) keys.push(k);
+                // 有指纹：以「值是否变化」为准。
+                // 为什么这比时间戳准：备份过程本身要花时间，期间被重写但内容没变的键
+                // （业务代码无脑重写很常见）时间戳会晚于锚点，用时间戳就会误报
+                // 「备份后有改动」；比对内容则不会。
+                if (fp) {
+                    if (valueFingerprint(k) !== fp[k]) keys.push(k);
+                } else if ((meta[k] || 0) > since) {
+                    keys.push(k);
+                }
             }
         } catch (e) {}
         return { n: keys.length, items: summarizeKeys(keys), since: since };
+    }
+
+    // 单个键的值指纹：长度 + 头尾片段，够区分内容变化又几乎不占体积。
+    // 只存指纹不存原值，是为了不把备份记录（会写到 localStorage）撑大。
+    function valueFingerprint(k) {
+        try {
+            var v = localStorage.getItem(k);
+            if (v == null) return 'null';
+            var n = v.length;
+            if (n <= 64) return n + ':' + v;
+            return n + ':' + v.slice(0, 32) + '~' + v.slice(-32);
+        } catch (e) { return 'err'; }
+    }
+    // 给一批键生成指纹表（备份封存时调用）
+    function fingerprintKeys(keys) {
+        var out = {};
+        (keys || []).forEach(function (k) {
+            if (!k || isInternalKey(k) || isIgnoredKey(k)) return;
+            out[k] = valueFingerprint(k);
+        });
+        return out;
+    }
+    // 当前需要考虑的全部业务键（排除内部键与统计 SDK 的键）
+    function objectKeys(obj) {
+        var out = [];
+        try {
+            for (var k in obj) {
+                if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+                if (isInternalKey(k) || isIgnoredKey(k)) continue;
+                out.push(k);
+            }
+        } catch (e) {}
+        return out;
     }
 
     /* ============ 快照存储（IndexedDB，降级 localStorage） ============ */
@@ -337,19 +410,42 @@
     }
 
     function createSnapshot(note) {
+        // ⚠️ 时间锚点为什么取在 collect 之后、而不是之前：
+        //
+        // 用户看到的是「备份完成后，还有多少东西没被备份进去」。所以这个锚点必须是
+        // **备份真正完成并落盘的那一刻** —— collect(null) 要把全部数据序列化一遍
+        //（用户现场 4.9MB / 103 键，低配设备上要几百毫秒到几秒），在这期间发生的
+        // 写入已经来不及进这份快照了，但它们也不该让用户看到「刚备份完就欠 99 项」。
+        //
+        // 之前这个锚点用的是备份**开始**时间，于是备份过程中产生的写入，
+        // 其 meta 时间戳落在锚点之后 → pendingChanges 报出来 → 侧边栏显示
+        // 「⚠️ 备份后有改动 99 项」，而用户明明刚点完备份。
+        // 锚点后移到 collect 结束（即快照定稿）时刻，语义就和用户的理解一致了：
+        // 凡是「在这份快照封存之后」发生的改动才算待备份。
         var payload = collect(null);
+        var sealedAt = Date.now();
         var snap = {
             id: 'snap_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-            ts: Date.now(),
+            ts: sealedAt,
             note: note || '手动快照',
             bytes: bytesOf(JSON.stringify(payload)),
             payload: payload
         };
         try {
+            // 指纹在 collect 之后立刻取：它代表「这份快照实际封存了什么内容」。
+            // 备份过程中写入的键，其指纹与快照里的值不同 → 会被正确识别为「有改动」；
+            // 而备份过程中没有变化的键，即使时间戳晚了也不会误报。
+            var fpKeys = [];
+            (payload.modules || []).forEach(function (m) {
+                Object.keys(m.data || {}).forEach(function (k) { fpKeys.push(k); });
+            });
+            Object.keys(payload.unmatched || {}).forEach(function (k) { fpKeys.push(k); });
             recordAct('backup', {
                 kind: /自动/.test(note || '') ? '每日自动快照' : '本地快照',
                 count: countPayload(payload),
-                items: summarizePayload(payload)
+                items: summarizePayload(payload),
+                ts: sealedAt,               // 与快照封存时刻严格一致
+                fp: fingerprintKeys(fpKeys) // 值指纹：判断「是否有改动」的准确依据
             });
         } catch (e) {}
         function trim(arr) {
@@ -472,7 +568,9 @@
             recordAct('backup', {
                 kind: mode === 'merge' ? '合并恢复数据' : '恢复数据',
                 count: written,
-                items: summarizeKeys(Object.keys(pairs))
+                items: summarizeKeys(Object.keys(pairs)),
+                ts: Date.now(),                     // 恢复完成后才封存
+                fp: fingerprintKeys(Object.keys(pairs))
             });
         } catch (e) {}
         return { written: written, skipped: skipped, total: Object.keys(pairs).length };
@@ -514,7 +612,16 @@
             recordAct('backup', {
                 kind: (ids && ids.length) ? '导出部分模块' : '导出全部备份',
                 count: countPayload(payload),
-                items: summarizePayload(payload)
+                items: summarizePayload(payload),
+                ts: Date.now(),                     // 导出完成后才封存
+                fp: fingerprintKeys((function () {
+                    var ks = [];
+                    (payload.modules || []).forEach(function (m) {
+                        Object.keys(m.data || {}).forEach(function (k) { ks.push(k); });
+                    });
+                    Object.keys(payload.unmatched || {}).forEach(function (k) { ks.push(k); });
+                    return ks;
+                })())
             });
         } catch (e) {}
         return payload;
@@ -1336,6 +1443,20 @@
                 count: ks.length,
                 items: summarizeKeys(ks)
             });
+            // 同步也顺带更新一次备份校验基准。
+            //
+            // 为什么：同步（尤其是「云端 → 本机」的合并）会把远端数据逐个写回
+            // localStorage，这会刷新这些键的写入时间埋点。若基准还停留在上一次
+            // 「本机备份」，界面就会显示「⚠️ 备份后有改动 99 项」——可这些数据
+            // 云端有、本机也有，用户完全没丢东西，提示纯属噪音。
+            // 同步成功意味着「这份数据在云端有一份」，等价于已备份，所以刷新基准。
+            if (dir === 'down') {
+                try {
+                    var act0 = getAct();
+                    var ts0 = (act0.backup && act0.backup.ts) || 0;
+                    localStorage.setItem(FP_KEY, JSON.stringify({ ts: ts0, fp: fingerprintKeys(objectKeys(meta)) }));
+                } catch (e) {}
+            }
         },
         getActivity: function () { return { act: getAct(), pending: pendingChanges() }; },
         // 供云端同步面板内嵌：备份 / 同步的时间与更新项目

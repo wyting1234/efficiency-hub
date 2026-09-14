@@ -744,7 +744,7 @@
   function showConfigModal() {
     const mask = document.createElement('div');
     mask.className = 'sync-mask';
-    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
+    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;box-sizing:border-box;';
     const modal = document.createElement('div');
     modal.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:470px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
     modal.innerHTML =

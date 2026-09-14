@@ -1142,7 +1142,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260914d';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260914e';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -2156,7 +2156,7 @@ function saveModuleManager(){
 function init(){
   // 版本迁移：升级到新版本时重置模块显示/排序配置，避免旧数据隐藏新增模块
   try {
-    var HUB_PATCH = 'v2026.09.14e';
+    var HUB_PATCH = 'v2026.09.14f';
     if (localStorage.getItem('hub_patch') !== HUB_PATCH) {
       localStorage.removeItem('hub_module_hidden');
       localStorage.removeItem('hub_nav_order');
