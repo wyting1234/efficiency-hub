@@ -1816,6 +1816,22 @@
         .rec-export{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
         .rec-exp-btn{padding:8px 14px;border:1px solid var(--border,#E2D9C8);border-radius:9px;background:#fff;cursor:pointer;font-size:13px;color:var(--text,#333);transition:background .15s;}
         .rec-exp-btn:hover{background:#F6F1E7;}
+        /* ===== 全局轻提示 =====
+           ⚠️ 必须脱离文档流：body 是 display:flex，toast 若是 static 会成为 flex 子项，
+           把 #mainContent 挤窄并在右侧留一条透明空带（真机实测 main 1545px -> 811px）。 */
+        .app-toast{
+            position:fixed;top:18px;right:18px;z-index:9999;
+            max-width:min(520px,calc(100vw - 36px));
+            background:var(--card-bg,#FAF7F1);color:var(--text,#3F3A33);
+            border:1px solid var(--border,#E5DCCD);border-left:3px solid var(--primary,#8A7358);
+            border-radius:10px;padding:10px 14px;
+            font-size:13.5px;line-height:1.65;text-align:left;
+            box-shadow:0 10px 28px rgba(0,0,0,.14);
+            opacity:0;transform:translateY(-8px);
+            transition:opacity .22s ease,transform .22s ease;
+            pointer-events:none;
+        }
+        .app-toast.show{opacity:1;transform:translateY(0);}
         #printArea{display:none;}
         @media print{
             body>*:not(#printArea){display:none!important;}
@@ -4256,6 +4272,11 @@
                 t = document.createElement('div');
                 t.id = 'appToast';
                 t.className = 'app-toast';
+                // 内联兜底：即使 .app-toast 样式丢失，也不会作为 body(flex) 的子项挤窄主区
+                t.style.position = 'fixed';
+                t.style.top = '18px';
+                t.style.right = '18px';
+                t.style.zIndex = '9999';
                 document.body.appendChild(t);
             }
             t.textContent = msg;
