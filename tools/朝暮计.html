@@ -2782,25 +2782,7 @@
         .addpick-row .at b { display: block; font-size: 14.5px; color: #23273a; font-weight: 600; }
         .addpick-row .at small { display: block; font-size: 11px; color: #9a9aa8; margin-top: 2px; }
         .addpick-row .arw { color: #c9c9d4; font-size: 16px; }
-        /* ===== v27：数据备份面板 ===== */
-        .bk-head { padding: 4px 14px 8px; border-bottom: 1px solid #f0f0f5; }
-        .bk-hint { font-size: 11px; color: #9095a6; line-height: 1.6; }
-        .bk-sum { font-size: 11px; color: var(--main); margin-top: 4px; }
-        .bk-list { max-height: 46vh; overflow-y: auto; padding: 4px 0 8px; }
-        .bk-item { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid #f6f6fa; }
-        .bk-item:last-child { border-bottom: none; }
-        .bk-i-l { flex: 1; min-width: 0; }
-        .bk-i-l b { display: block; font-size: 13px; color: #23273a; font-weight: 600; }
-        .bk-i-l small { display: block; font-size: 10.5px; color: #9a9aa8; margin-top: 2px; }
-        .bk-tag { font-size: 9.5px; padding: 1px 5px; border-radius: 4px; margin-left: 5px; font-weight: 400; vertical-align: 1px; }
-        .bk-tag.auto { background: #eef0ff; color: var(--main); }
-        .bk-tag.man { background: #e8f8f0; color: #16a085; }
-        .bk-i-r { display: flex; gap: 6px; flex: none; }
-        .bk-btn { font-size: 11px; padding: 4px 10px; border-radius: 12px; background: #f0f0f6; color: #666; cursor: pointer; }
-        .bk-btn:active { opacity: .7; }
-        .bk-btn.del { color: #e17055; }
-
-        /* ===== 底部导航 ===== */
+                /* ===== 底部导航 ===== */
         nav.tabs {
             flex-shrink: 0;
             height: var(--nav-height);
@@ -4317,26 +4299,6 @@
 </div>
 
 <!--pnid:RcgjxiFF4eKbXrMohxUvs7--><!-- ===== 模态框：任务编辑 ===== -->
-<!--pnid:v27bk01--><!-- ===== v27：数据备份 / 恢复 ===== -->
-<div data-page-node-id="v27bk02" class="modal" id="mBackup">
-    <div data-page-node-id="v27bk03" class="sheet">
-        <h3 data-page-node-id="v27bk04">
-            <span data-page-node-id="v27bk05" onclick="closeM('mBackup')" style="color:#999; font-size:12px; cursor:pointer">返回</span>
-            <span data-page-node-id="v27bk06">数据备份</span>
-            <span data-page-node-id="v27bk07" onclick="doBackupNow()" style="color:var(--main); font-size:12px; cursor:pointer">立即备份</span>
-        </h3>
-        <div data-page-node-id="v27bk08" class="bk-head">
-            <div data-page-node-id="v27bk09" class="bk-hint">自动快照每天保存时生成一份（最多 7 份），手动备份最多 10 份。备份只包含任务 / 习惯 / 专注等业务数据，不含背景图。</div>
-            <div data-page-node-id="v27bk10" class="setrow" style="border:none; margin:0; padding:2px 0">
-                <span data-page-node-id="v27bk11">每日自动快照</span>
-                <div data-page-node-id="v27bk12" class="sw" id="bkAutoSw" onclick="toggleAutoBackup()"></div>
-            </div>
-            <div data-page-node-id="v27bk13" class="bk-sum" id="bkSum">暂无备份</div>
-        </div>
-        <div data-page-node-id="v27bk14" class="bk-list" id="bkList"></div>
-    </div>
-</div>
-
 <!--pnid:v26add01--><!-- ===== v26：添加类型选择（任务 / 习惯 / 目标）===== -->
 <div data-page-node-id="v26add02" class="modal" id="mAddPick" style="align-items:center">
     <div data-page-node-id="v26add03" class="sheet" style="border-radius:18px; max-width:330px; width:86%; padding:16px 14px 8px">
@@ -5216,7 +5178,6 @@
             notify('保存失败：存储空间不足，请清理后重试');
             return;
         }
-        autoBackup();
         _dirty = false;
         updateSaveFab();
         if (!silent) showToast('已保存 ✓');
@@ -5231,139 +5192,7 @@
     });
     const uid = () => Date.now() + '' + Math.floor(Math.random() * 999);
 
-    /* ================= v27：数据备份 / 恢复 =================
-       只备份业务数据 S（背景图体积大且独立存于 BG / CARDBG，不进快照，避免撑爆 localStorage）。
-       自动快照：每天首次保存时生成一份，最多保留 7 份；手动快照最多保留 10 份。 */
-    const BK_KEY = 'chaomuji_backups_v1';
-    const BK_AUTO_MAX = 7, BK_MANUAL_MAX = 10;
-
-    function loadBackups() {
-        try { return JSON.parse(localStorage.getItem(BK_KEY) || '[]') || []; } catch (e) { return []; }
-    }
-    function saveBackups(list) {
-        try { localStorage.setItem(BK_KEY, JSON.stringify(list)); return true; }
-        catch (e) { return false; }
-    }
-    function bkStats() {
-        return {
-            tasks: (S.tasks || []).length,
-            habits: (S.habits || []).length,
-            focus: (S.focus || []).length,
-            bytes: (() => { try { return JSON.stringify(S).length; } catch (e) { return 0; } })()
-        };
-    }
-    /* 生成备份。manual=true 为手动；自动快照同一天只做一份 */
-    function makeBackup(manual, label) {
-        const list = loadBackups();
-        const day = today();
-        if (!manual) {
-            if (list.some(b => b.auto && b.day === day)) return null;      // 今天已有自动快照
-        }
-        const st = bkStats();
-        const item = {
-            id: 'bk' + Date.now() + Math.floor(Math.random() * 99),
-            ts: Date.now(),
-            day,
-            manual: !!manual,
-            label: label || (manual ? '手动备份' : '自动快照'),
-            stats: st,
-            data: JSON.stringify(S)
-        };
-        list.unshift(item);
-        // 裁剪：自动 / 手动分别限量
-        const autos = list.filter(b => b.auto), man = list.filter(b => b.manual);
-        const drop = new Set([...autos.slice(BK_AUTO_MAX), ...man.slice(BK_MANUAL_MAX)].map(b => b.id));
-        let out = list.filter(b => !drop.has(b.id));
-        let ok = saveBackups(out);
-        // 空间不足 → 从最早的自动快照开始丢，直到塞得下
-        while (!ok && out.length > 1) {
-            const idx = [...out].reverse().findIndex(b => b.auto);
-            const kill = idx >= 0 ? out[out.length - 1 - idx] : out[out.length - 1];
-            out = out.filter(b => b.id !== kill.id);
-            ok = saveBackups(out);
-        }
-        if (!ok) { showToast('备份空间不足，已跳过本次快照'); return null; }
-        return item;
-    }
-    /* save() 之后调用：静默做一份当日自动快照 */
-    let _bkWarned = false;
-    function autoBackup() {
-        try {
-            if (S.settings && S.settings.autoBackup === false) return;
-            makeBackup(false);
-        } catch (e) { if (!_bkWarned) { _bkWarned = true; console.warn('autoBackup failed', e); } }
-    }
-    function restoreBackup(id) {
-        const b = loadBackups().find(x => x.id === id);
-        if (!b) return showToast('备份不存在');
-        askConfirm(`恢复到 ${b.label}（${b.day}）？当前数据将被覆盖。`, () => {
-            try {
-                const obj = JSON.parse(b.data);
-                if (!obj || typeof obj !== 'object') throw 0;
-                S = obj;
-                /* v32：手动保存机制下，备份恢复直接落盘（不受脏标记影响） */
-                try { localStorage.setItem(DKEY, JSON.stringify(S)); _dirty = false; } catch (e) {}
-                invalidateDateCache();
-                notify('恢复成功，即将刷新');
-                setTimeout(() => location.reload(), 400);
-            } catch (e) { notify('备份数据损坏，无法恢复'); }
-        });
-    }
-    function delBackup(id) {
-        const out = loadBackups().filter(b => b.id !== id);
-        saveBackups(out);
-        renderBackupList();
-        showToast('已删除该备份');
-    }
-    function bkSize(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : (n / 1024).toFixed(0) + ' KB'; }
-    function bkTime(ts) {
-        const d = new Date(ts);
-        const p = n => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-    }
-    function openBackupM() {
-        closeMenu();
-        closeSidebar();
-        renderBackupList();
-        openM('mBackup');
-    }
-    function renderBackupList() {
-        const el = document.getElementById('bkList');
-        if (!el) return;
-        const list = loadBackups();
-        const sw = document.getElementById('bkAutoSw');
-        if (sw) sw.classList.toggle('on', !(S.settings && S.settings.autoBackup === false));
-        const sum = document.getElementById('bkSum');
-        if (sum) sum.textContent = list.length ? `共 ${list.length} 份 · 最新 ${bkTime(list[0].ts)}` : '暂无备份';
-        if (!list.length) {
-            el.innerHTML = '<div style="padding:22px 6px;color:#aaa;font-size:12px;text-align:center">还没有备份，点上方「立即备份」创建一份</div>';
-            return;
-        }
-        el.innerHTML = list.map(b => `
-            <div class="bk-item">
-                <div class="bk-i-l">
-                    <b>${esc(b.label)}<span class="bk-tag ${b.manual?'man':'auto'}">${b.manual?'手动':'自动'}</span></b>
-                    <small>${bkTime(b.ts)} · 任务 ${b.stats.tasks} · 习惯 ${b.stats.habits} · 专注 ${b.stats.focus} · ${bkSize(b.stats.bytes)}</small>
-                </div>
-                <div class="bk-i-r">
-                    <span class="bk-btn" onclick="restoreBackup('${b.id}')">恢复</span>
-                    <span class="bk-btn del" onclick="delBackup('${b.id}')">删除</span>
-                </div>
-            </div>`).join('');
-    }
-    function doBackupNow() {
-        const b = makeBackup(true, '手动备份');
-        renderBackupList();
-        showToast(b ? '备份已创建' : '备份失败（存储空间不足）');
-    }
-    function toggleAutoBackup() {
-        S.settings = S.settings || {};
-        S.settings.autoBackup = (S.settings.autoBackup === false);
-        save();
-        renderBackupList();
-        showToast(S.settings.autoBackup ? '已开启自动备份' : '已关闭自动备份');
-    }
-    const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` };
+        const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` };
     const fmtDLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const PRIC = [null, 'var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)'];
     const esc = s => String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' } [c]));
@@ -6282,7 +6111,6 @@
             menu.innerHTML = sidebarDefaultHTML();
         }
         // 渲染完后把动态计数 / 开关状态回填
-        insertCloudSyncItem(menu);   // v35: 每个侧边栏统一挂「云端同步」入口
         updateSidebarCounts();
     }
 
@@ -6832,10 +6660,7 @@
             </div>
 
             <div class="s-section">数据</div>
-            <div class="s-item" onclick="closeSidebar();openBackupM()">
-                <span class="s-ico">☁️</span>备份 / 恢复<span class="arrow">›</span>
-            </div>
-            <div class="s-item" onclick="closeSidebar();openReCenter()">
+                        <div class="s-item" onclick="closeSidebar();openReCenter()">
                 <span class="s-ico">🔔</span>提醒中心<span class="arrow">›</span>
             </div>
             <div class="s-item" onclick="closeSidebar();openDiaryPage()">
@@ -7852,11 +7677,7 @@
                 </div>
                 <div class="m-divider"></div>
                 <div class="m-label">数据</div>
-                <div class="m-item" onclick="closeMenu();openBackupM()">
-                    <span class="ico">💾</span> 备份与恢复
-                    <span style="margin-left:auto;color:#c5c5cf;font-size:13px">›</span>
-                </div>
-                <div class="m-item" onclick="closeMenu();exportData()">
+                                <div class="m-item" onclick="closeMenu();exportData()">
                     <span class="ico">📤</span> 导出数据 (JSON)
                     <span style="margin-left:auto;color:#c5c5cf;font-size:13px">›</span>
                 </div>
@@ -15517,14 +15338,13 @@
             </div>
             <div class="card"><b style="font-size:12px">☁️ 数据</b>
                 <div style="display:flex;gap:9px;margin-top:7px;flex-wrap:wrap">
-                    <button class="btn ghost" onclick="openBackupM()">备份与恢复</button>
                     <button class="btn ghost" onclick="exportData()">导出</button>
                     <button class="btn ghost" onclick="document.getElementById('impFile').click()">导入</button>
                     <input type="file" id="impFile" accept=".json" style="display:none" onchange="importData(this)">
                     <button class="btn gray" onclick="askClearAllData()">清空</button>
                 </div>
                 <div style="font-size:11px;color:#9a9aa8;line-height:1.6;margin-top:7px">
-                    备份 = 应用内快照（可一键回滚，含最近 7 天自动快照）；导出 = 完整 JSON 文件（含背景图，可跨设备迁移）。
+                    导出 = 完整 JSON 文件（含背景图，可跨设备迁移）。云端同步与备份已统一到主页侧边栏。
                 </div></div>
             <p style="text-align:center;color:#bbb;font-size:10px;padding:12px 0">朝暮计 v2.7 · 本地存储</p>`;
     }
@@ -19487,7 +19307,6 @@
     startFutureTick();   // 未来倒计时全局秒级刷新 + 到点提醒
     try { rescheduleAllReminders(); _bridgeNativeAskPermission(); } catch (e) {}
     try { scheduleDailyReminders(); } catch (e) {}   // v27：复盘 / 习惯 / 专注目标 每日例行提醒
-    try { makeBackup(false); } catch (e) {}          // v27：启动时补一份当日自动快照
     /* v28：空闲时预热存储配额探测（写大字符串实测，放到空闲做，别卡住首屏） */
     try {
         const warm = () => { try { lsTotalQuota(); } catch (e) {} };
@@ -19495,377 +19314,9 @@
         else setTimeout(warm, 2500);
     } catch (e) {}
 
-    /* ==================== v35: 云端同步（GitHub Gist · 手动上传/下载） ====================
-       与效率中心 sync-github.js 同源同策略：共用同一份 Gist（efficiency-hub-sync.json），
-       同步整个 localStorage（排除技术键），朝暮计数据随上传/下载一起走。
-       相比效率中心版本的差异：
-       - 入口挂每个侧边栏（insertCloudSyncItem），无 .side-foot 依赖
-       - 上传前检查数据体积：Gist API 读取超 ~1MB 会截断，超限先警告
-       - 下载覆盖后 location.reload()（效率中心版只刷 iframe，对独立工具页无效）
-       - 提示统一走页内 showToast/notify（微信 WebView 拦截原生 alert/prompt） */
-    function insertCloudSyncItem(menu) {
-        if (!menu || menu.querySelector('[data-cloud-sync]')) return;
-        const div = document.createElement('div');
-        div.className = 's-item';
-        div.setAttribute('data-cloud-sync', '1');
-        div.onclick = function () {
-            try { closeSidebar(); } catch (e) {}
-            try { window.CloudSync.openPanel(); } catch (e) {}
-        };
-        div.innerHTML = '<span class="s-ico">☁️</span>云端同步<span class="arrow">›</span>';
-        menu.appendChild(div);
-    }
-
-    window.CloudSync = (function () {
-        'use strict';
-        let GITHUB_TOKEN = localStorage.getItem('github_token') || '';
-        let GIST_ID = localStorage.getItem('github_gist_id') || '';
-        const GITHUB_API = 'https://api.github.com';
-        const GIST_FILENAME = 'efficiency-hub-sync.json';
-        const GIST_DESC = '个人效率中心-云端同步';
-        const GIST_SAFE_BYTES = 900 * 1024;   // Gist API 读取超 ~1MB 会截断，留余量
-        const EXCLUDE_KEYS = new Set([
-            'github_token', 'github_gist_id', 'sync_last_sync', 'hub_lastModule'
-        ]);
-        let isConnected = false;
-        let lastSyncTime = localStorage.getItem('sync_last_sync') || '';
-
-        function _toast(msg) {
-            try { if (typeof showToast === 'function') { showToast(msg); return; } } catch (e) {}
-            try { if (typeof notify === 'function') { notify(msg); return; } } catch (e) {}
-            try { alert(msg); } catch (e) {}
-        }
-
-        function closeTopModal() {
-            const m = document.querySelector('.sync-mask');
-            if (m) m.remove();
-        }
-
-        function showConfirm(title, message) {
-            return new Promise((resolve) => {
-                const mask = document.createElement('div');
-                mask.className = 'sync-mask';
-                mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
-                const modal = document.createElement('div');
-                modal.style.cssText = 'background:white;border-radius:12px;padding:22px;max-width:440px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
-                modal.innerHTML = `
-                    <h3 style="margin:0 0 10px;font-size:18px">${title}</h3>
-                    <p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;white-space:pre-wrap">${message}</p>
-                    <div style="display:flex;gap:10px;justify-content:flex-end">
-                        <button class="sync-cancel" style="padding:9px 18px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">取消</button>
-                        <button class="sync-ok" style="padding:9px 18px;border:none;border-radius:6px;background:#08bd74;color:white;cursor:pointer;font-size:14px">确定覆盖</button>
-                    </div>`;
-                mask.appendChild(modal);
-                document.body.appendChild(mask);
-                mask.addEventListener('click', (e) => { if (e.target === mask) { mask.remove(); resolve(false); } });
-                modal.querySelector('.sync-cancel').onclick = () => { mask.remove(); resolve(false); };
-                modal.querySelector('.sync-ok').onclick = () => { mask.remove(); resolve(true); };
-            });
-        }
-
-        function showAlert(message) {
-            return showConfirm('提示', message).then(() => {});
-        }
-
-        function fmtTime(ts) {
-            if (!ts) return '';
-            const d = new Date(Number(ts));
-            return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-        }
-
-        /* ---- 同步主面板 ---- */
-        function openSyncPanel() {
-            closeTopModal();
-            const mask = document.createElement('div');
-            mask.className = 'sync-mask';
-            mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
-            const modal = document.createElement('div');
-            modal.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:460px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
-            const connState = isConnected ? '✅ 已连接' : (GITHUB_TOKEN ? '⚠️ 连接失败' : '⚙️ 未配置');
-            const lastTxt = lastSyncTime ? ('上次操作：' + fmtTime(lastSyncTime)) : '还没有同步过';
-            modal.innerHTML = `
-                <h2 style="margin:0 0 6px;font-size:20px">☁️ 云端同步</h2>
-                <p style="margin:0 0 14px;color:#666;font-size:13px">${connState} ｜ ${lastTxt}</p>
-                <div style="background:#f6f8fa;border-radius:8px;padding:12px;font-size:13px;color:#444;line-height:1.7;margin-bottom:16px">
-                    <b>怎么用：</b><br>
-                    • <b>上传</b>：把这部设备的数据存到云端（覆盖云端）<br>
-                    • <b>下载</b>：把云端的数据拉到这部设备（覆盖本机）<br>
-                    与效率中心<b>共用同一份云端数据</b>：在任一端上传，其它端（含效率中心各工具）都能下载。<br>
-                    想让手机和电脑一致，先在「源头」那端点<b>上传</b>，再到另一端点<b>下载</b>。
-                </div>
-                <div style="display:flex;gap:10px;margin-bottom:14px">
-                    <button id="syncUpload" style="flex:1;padding:12px;border:none;border-radius:8px;background:#08bd74;color:white;font-size:15px;cursor:pointer">⬆️ 上传到云端</button>
-                    <button id="syncDownload" style="flex:1;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:15px;cursor:pointer">⬇️ 从云端下载</button>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                    <button id="syncReconfig" style="background:none;border:none;color:#888;font-size:13px;cursor:pointer;text-decoration:underline">重新配置 Token</button>
-                    <button id="syncClose" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">关闭</button>
-                </div>`;
-            mask.appendChild(modal);
-            document.body.appendChild(mask);
-            mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
-            modal.querySelector('#syncClose').onclick = () => mask.remove();
-            modal.querySelector('#syncReconfig').onclick = () => { mask.remove(); showConfigModal(); };
-            modal.querySelector('#syncUpload').onclick = () => { mask.remove(); doUpload(); };
-            modal.querySelector('#syncDownload').onclick = () => { mask.remove(); doDownload(); };
-        }
-
-        /* ---- 配置弹窗 ---- */
-        function showConfigModal() {
-            closeTopModal();
-            const mask = document.createElement('div');
-            mask.className = 'sync-mask';
-            mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
-            const modal = document.createElement('div');
-            modal.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:460px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
-            modal.innerHTML = `
-                <h2 style="margin:0 0 8px;font-size:20px">☁️ 配置云端同步</h2>
-                <p style="margin:0 0 16px;color:#666;font-size:14px">用 GitHub Gist 存储数据，国内可访问，免费</p>
-                <div style="margin-bottom:14px">
-                    <div style="font-size:13px;color:#333;margin-bottom:6px">第 1 步：获取 Token</div>
-                    <a href="https://github.com/settings/tokens/new?description=efficiency-hub-sync&scopes=gist" target="_blank"
-                       style="display:inline-block;padding:8px 14px;background:#24292e;color:white;border-radius:6px;text-decoration:none;font-size:14px">点击生成 GitHub Token</a>
-                    <div style="font-size:12px;color:#888;margin-top:6px">勾选「gist」权限，点最底部「Generate token」</div>
-                </div>
-                <div style="margin-bottom:16px">
-                    <div style="font-size:13px;color:#333;margin-bottom:6px">第 2 步：粘贴 Token</div>
-                    <input type="text" id="ghToken" placeholder="ghp_xxxxxxxxxxxx" value="${GITHUB_TOKEN}"
-                           style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px">
-                </div>
-                <div style="display:flex;gap:8px;justify-content:flex-end">
-                    <button id="ghCancel" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer">取消</button>
-                    <button id="ghSaveBtn" style="padding:8px 16px;border:none;border-radius:6px;background:#08bd74;color:white;cursor:pointer">保存并连接</button>
-                </div>`;
-            mask.appendChild(modal);
-            document.body.appendChild(mask);
-            mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
-            modal.querySelector('#ghCancel').onclick = () => mask.remove();
-            modal.querySelector('#ghSaveBtn').onclick = async () => {
-                const token = modal.querySelector('#ghToken').value.trim();
-                if (!token) { _toast('请先粘贴 Token'); return; }
-                localStorage.setItem('github_token', token);
-                GITHUB_TOKEN = token;
-                const btn = modal.querySelector('#ghSaveBtn');
-                btn.textContent = '连接中...'; btn.disabled = true;
-                try {
-                    mask.remove();
-                    await initSync(false);
-                    _toast(isConnected ? '✅ 连接成功' : '❌ 连接失败，请检查 Token 是否勾选 gist 权限');
-                } catch (e) {
-                    _toast('连接失败：' + e.message);
-                    btn.textContent = '保存并连接'; btn.disabled = false;
-                }
-            };
-        }
-
-        /* ---- GitHub API ---- */
-        function getAuthHeaders() {
-            return {
-                'Authorization': 'Bearer ' + GITHUB_TOKEN,
-                'Content-Type': 'application/json',
-                'Accept': 'application/vnd.github.v3+json'
-            };
-        }
-
-        async function apiCall(method, path, body) {
-            const opts = { method, headers: getAuthHeaders() };
-            if (body) opts.body = JSON.stringify(body);
-            const resp = await fetch(GITHUB_API + path, opts);
-            if (!resp.ok) {
-                const err = await resp.json().catch(() => ({}));
-                throw new Error(err.message || ('HTTP ' + resp.status));
-            }
-            return resp.json();
-        }
-
-        async function readGist() {
-            if (!GIST_ID) return null;
-            try {
-                const data = await apiCall('GET', '/gists/' + GIST_ID);
-                const file = data.files && data.files[GIST_FILENAME];
-                if (!file || !file.content) return null;
-                return JSON.parse(file.content);
-            } catch (e) {
-                console.warn('[CloudSync] 读取失败:', e.message);
-                return null;
-            }
-        }
-
-        async function writeGist(content) {
-            if (!GIST_ID) {
-                const data = await apiCall('POST', '/gists', {
-                    description: GIST_DESC, public: false,
-                    files: { [GIST_FILENAME]: { content: JSON.stringify(content, null, 2) } }
-                });
-                GIST_ID = data.id;
-                localStorage.setItem('github_gist_id', GIST_ID);
-            } else {
-                await apiCall('PATCH', '/gists/' + GIST_ID, {
-                    files: { [GIST_FILENAME]: { content: JSON.stringify(content, null, 2) } }
-                });
-            }
-        }
-
-        /* 每次都重新搜索账号下同名 Gist，优先「有数据」的那份 —— 两端一定连到同一份数据 */
-        async function findOrCreateGist() {
-            try {
-                const list = await apiCall('GET', '/gists?per_page=100');
-                let best = null, bestWithData = null;
-                for (const g of list) {
-                    if (!g.files || !g.files[GIST_FILENAME]) continue;
-                    const content = g.files[GIST_FILENAME].content;
-                    let hasData = false;
-                    try {
-                        const j = JSON.parse(content);
-                        if (j && j.data && Object.keys(j.data).length > 0) hasData = true;
-                    } catch (e) {}
-                    if (!best || new Date(g.updated_at) > new Date(best.updated_at)) best = g;
-                    if (hasData && (!bestWithData || new Date(g.updated_at) > new Date(bestWithData.updated_at))) bestWithData = g;
-                }
-                const chosen = bestWithData || best;
-                if (chosen) {
-                    GIST_ID = chosen.id;
-                    localStorage.setItem('github_gist_id', GIST_ID);
-                    return GIST_ID;
-                }
-            } catch (e) {
-                console.warn('[CloudSync] 查找 Gist 失败：', e.message);
-                if (GIST_ID) return GIST_ID;
-            }
-            const data = await apiCall('POST', '/gists', {
-                description: GIST_DESC, public: false,
-                files: { [GIST_FILENAME]: { content: JSON.stringify({ version: 1, data: {}, updatedAt: Date.now() }, null, 2) } }
-            });
-            GIST_ID = data.id;
-            localStorage.setItem('github_gist_id', GIST_ID);
-            return GIST_ID;
-        }
-
-        /* ---- 数据收集 / 应用 ---- */
-        function collectLocalData() {
-            const data = {};
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (EXCLUDE_KEYS.has(key)) continue;
-                const value = localStorage.getItem(key);
-                if (value === null) continue;
-                data[key] = { value, timestamp: Date.now() };
-            }
-            return data;
-        }
-
-        function getLocalKeys() {
-            const keys = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (!EXCLUDE_KEYS.has(key)) keys.push(key);
-            }
-            return keys;
-        }
-
-        /* 用云端数据整体覆盖本机（真正的"下载覆盖"） */
-        function applyCloudToLocal(serverData) {
-            const sdata = serverData.data || {};
-            for (const key of getLocalKeys()) localStorage.removeItem(key);
-            const timestamps = {};
-            for (const key in sdata) {
-                if (EXCLUDE_KEYS.has(key)) continue;
-                const entry = sdata[key];
-                if (!entry || typeof entry.value !== 'string') continue;
-                localStorage.setItem(key, entry.value);
-                if (entry.timestamp) timestamps[key] = entry.timestamp;
-            }
-            localStorage.setItem('sync_timestamps', JSON.stringify(timestamps));
-        }
-
-        /* ---- 动作：上传 / 下载 ---- */
-        async function doUpload() {
-            if (!isConnected) { showConfigModal(); return; }
-            try {
-                await findOrCreateGist();
-                const remote = await readGist();
-                const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
-                if (cloudHas) {
-                    const ok = await showConfirm('上传将覆盖云端',
-                        '云端已经存有数据。\n点「确定覆盖」会用【本机数据】替换云端。\n\n想保留云端就点「取消」，改去点「下载」。');
-                    if (!ok) return;
-                }
-                const localData = collectLocalData();
-                const payload = { version: 1, data: localData, updatedAt: Date.now() };
-                /* v35: 体积防护 —— Gist API 读取超 ~1MB 会截断，另一端下载会不完整 */
-                const sizeBytes = JSON.stringify(payload).length;
-                if (sizeBytes > GIST_SAFE_BYTES) {
-                    const ok = await showConfirm('⚠️ 数据体积偏大',
-                        '当前数据约 ' + Math.round(sizeBytes / 1024) + 'KB。\nGist 读取超过 1MB 会被截断，另一台设备「下载」可能不完整。\n保存方式为「原图」时背景图不压缩，数据会明显变大。\n\n仍要继续上传吗？');
-                    if (!ok) return;
-                }
-                await writeGist(payload);
-                lastSyncTime = String(Date.now());
-                localStorage.setItem('sync_last_sync', lastSyncTime);
-                closeTopModal();
-                _toast('✅ 上传云盘成功！');
-            } catch (e) {
-                console.warn('[CloudSync] 上传失败:', e.message);
-                _toast('上传失败：' + e.message);
-            }
-        }
-
-        async function doDownload() {
-            if (!isConnected) { showConfigModal(); return; }
-            try {
-                await findOrCreateGist();
-                const remote = await readGist();
-                const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
-                if (!cloudHas) {
-                    await showAlert('云端还没有数据。\n请先在一部设备上点「上传到云端」，再来这里下载。');
-                    return;
-                }
-                const localHas = getLocalKeys().length > 0;
-                if (localHas) {
-                    const ok = await showConfirm('下载将覆盖本机',
-                        '本机已经存有数据。\n点「确定覆盖」会用【云端数据】替换本机。\n\n想保留本机就点「取消」。');
-                    if (!ok) return;
-                }
-                applyCloudToLocal(remote);
-                lastSyncTime = String(Date.now());
-                localStorage.setItem('sync_last_sync', lastSyncTime);
-                /* v35: 独立工具页必须整页重载，否则页面上的旧数据还在内存里 */
-                location.reload();
-            } catch (e) {
-                console.warn('[CloudSync] 下载失败:', e.message);
-                _toast('下载失败：' + e.message);
-            }
-        }
-
-        /* ---- 初始化 ---- */
-        async function initSync(silent) {
-            if (!GITHUB_TOKEN) { if (!silent) showConfigModal(); return; }
-            try {
-                await findOrCreateGist();
-                isConnected = true;
-            } catch (e) {
-                console.warn('[CloudSync] 初始化失败:', e.message);
-                isConnected = false;
-                if (!silent) showConfigModal();
-            }
-        }
-
-        /* 页面加载后静默尝试连接（有 token 才连，失败不打扰） */
-        setTimeout(function () { try { initSync(true); } catch (e) {} }, 1200);
-
-        return { upload: doUpload, download: doDownload, openPanel: openSyncPanel, isConnected: () => isConnected };
-    })();
-</script>
+    </script>
 
 
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
-<script src="backup-hub.js"></script>
-<script>
-/* v47：防御 —— backup-hub.js 缺失时（例如镜像站未同步该资源）不要抛错，
-   应用内置的「数据备份 / 恢复」面板仍然可用 */
-if (window.BackupHub && typeof BackupHub.mount === 'function') {
-    BackupHub.mount({id:'chaomu',name:'朝暮计'});
-}
-</script>
 </body>
 </html>

@@ -4879,10 +4879,7 @@ function clearAll(){
 function openData(){
   sheet(shHead('Data','数据备份')
     +'<div class="hintline">导出的 CSV 可直接用 Excel 打开、编辑后再导入回来；JSON 是完整快照，用于整机迁移。'
-    +'放到 GitHub Pages 后可用「GitHub 云端同步」跨设备。</div>'
-    +dRow('GitHub 云端同步设置','Token 存本机，快照存 Gist（与效率中心同约定）','openGhCfg()',I.save)
-    +dRow('推送到 GitHub','把当前全部数据写入云端 Gist 快照','ghPush()',I.up)
-    +dRow('从 GitHub 拉取','用云端 Gist 快照覆盖本机数据','ghPull()',I.arrow)
+    +'跨设备同步请用主页侧边栏的「🔄 云端同步」。</div>'
     +'<div class="rule"></div>'
     +dRow('导出 JSON 备份','全部数据快照，换设备时用它','exportJSON()',I.save)
     +dRow('导入 JSON 恢复','从备份文件整体还原',"document.getElementById('jsonFile').click()",I.up)
@@ -4910,72 +4907,6 @@ function dRow(t,d,fn,ic){
   return '<div class="li" style="cursor:pointer" onclick="'+fn+'"><div class="li-l"><div class="li-n">'+esc(t)+'</div>'
     +'<div class="li-s">'+esc(d)+'</div></div>'
     +'<div class="li-r" style="min-width:auto"><span class="ib flat no-spin">'+ic+'</span></div></div>';
-}
-
-/* ================= GitHub Gist 云端同步 =================
-   与效率中心 sync-github.js 同一套约定：数据快照存 GitHub 私密 Gist，
-   Token 只需 gist 权限、只保存在本机浏览器；两端通过「查找同名 Gist」复用同一个云端文件。 */
-let gh=load(K.gh,null)||{token:'',gistId:''};
-let ghMeta=load(K.ghm,null)||{at:''};
-const GH_DESC='备考学习工作台-云端同步', GH_FILE='study-workbench-sync.json';
-function ghOk(){ return !!gh.token; }
-function ghHeaders(){ return {Authorization:'Bearer '+gh.token,Accept:'application/vnd.github+json'}; }
-function ghFind(){
-  return fetch('https://api.github.com/gists?per_page=100',{headers:ghHeaders()})
-    .then(r=>{ if(!r.ok) throw new Error('GitHub '+r.status); return r.json(); })
-    .then(list=>{ const g=(list||[]).find(x=>x.description===GH_DESC); return g?g.id:null; });
-}
-function ghSnap(){
-  return {v:2,exportedAt:new Date().toISOString(),prof:prof,subs:subs,todos:todos,timeLog:timeLog,
-    checks:checks,reviews:reviews,issues:issues,gains:gains,kps:kps,heat:heat,stages:STAGES};
-}
-function openGhCfg(){
-  sheet(shHead('GitHub','云端同步设置')
-    +'<div class="hintline">跨设备同步原理：数据快照存进你的 GitHub 私密 Gist（与效率中心同一套约定）。'
-    +'Token 只需勾选 gist 权限，只存在本机浏览器，不进代码、不进仓库。'
-    +'生成地址：github.com/settings/tokens/new?scopes=gist</div>'
-    +'<div class="fld"><label>Personal Access Token（gist 权限）</label><input id="ghToken" type="password" value="'+esc(gh.token)+'" placeholder="ghp_ 或 github_pat_ 开头"></div>'
-    +'<div class="fld"><label>Gist ID（留空 = 自动查找 / 创建）</label><input id="ghGistId" value="'+esc(gh.gistId||'')+'" placeholder="留空即可"></div>'
-    +(ghMeta.at?'<div class="hintline">上次同步：'+esc(ghMeta.at)+'</div>':'')
-    +shActs('saveGh()',''));
-}
-function saveGh(){
-  gh.token=document.getElementById('ghToken').value.trim();
-  gh.gistId=document.getElementById('ghGistId').value.trim();
-  save(K.gh,gh); closeSheet(); toast('已保存 GitHub 同步设置');
-}
-function ghPush(){
-  if(!ghOk()){ openGhCfg(); toast('先填写 Token'); return; }
-  if(typeof fetch!=='function'){ toast('此环境不支持网络请求'); return; }
-  const files={}; files[GH_FILE]={content:JSON.stringify(ghSnap(),null,2)};
-  const doPut=id=>fetch(id?'https://api.github.com/gists/'+id:'https://api.github.com/gists',{
-      method:id?'PATCH':'POST',headers:ghHeaders(),
-      body:JSON.stringify({description:GH_DESC,files:files,public:false})})
-    .then(r=>r.json().then(j=>({ok:r.ok,j})))
-    .then(o=>{
-      if(!o.ok) throw new Error((o.j&&o.j.message)||'推送失败');
-      gh.gistId=o.j.id; save(K.gh,gh);
-      ghMeta={at:new Date().toLocaleString()}; save(K.ghm,ghMeta);
-      toast('已推送到 GitHub Gist');
-    });
-  (gh.gistId?doPut(gh.gistId):ghFind().then(id=>doPut(id))).catch(e=>toast('推送失败：'+e.message));
-}
-function ghPull(){
-  if(!ghOk()){ openGhCfg(); toast('先填写 Token'); return; }
-  if(typeof fetch!=='function'){ toast('此环境不支持网络请求'); return; }
-  const loadId=id=>fetch('https://api.github.com/gists/'+id,{headers:ghHeaders()})
-    .then(r=>r.json().then(j=>({ok:r.ok,j})))
-    .then(o=>{
-      if(!o.ok) throw new Error((o.j&&o.j.message)||'读取失败');
-      const f=o.j.files&&o.j.files[GH_FILE];
-      if(!f) throw new Error('Gist 里没有快照文件');
-      applySnap(JSON.parse(f.content));
-      ghMeta={at:new Date().toLocaleString()}; save(K.ghm,ghMeta);
-      closeSheet(); toast('已从 Gist 拉取并应用');
-    });
-  (gh.gistId?loadId(gh.gistId)
-    :ghFind().then(id=>{ if(!id) throw new Error('云端还没有快照，请先在任一设备推送一次'); gh.gistId=id; save(K.gh,gh); return loadId(id); }))
-    .catch(e=>toast('拉取失败：'+e.message));
 }
 
 /* ================= 统一刷新入口 =================
@@ -5798,7 +5729,5 @@ kick();
 
 
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
-<script src="backup-hub.js"></script>
-<script>BackupHub.mount({id:'studybk',name:'备考学习工作台'});</script>
 </body>
 </html>

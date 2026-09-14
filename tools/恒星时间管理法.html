@@ -2430,7 +2430,7 @@
         });
 
         // 导入导出记录
-        document.getElementById('btnExport').addEventListener('click', () => {
+        document.getElementById('btnExport')?.addEventListener('click', () => {
             const data = JSON.stringify(records, null, 2);
             const blob = new Blob([data], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -2442,7 +2442,7 @@
             showToast('⬇ 记录已导出', 'success');
         });
 
-        document.getElementById('fileInput').addEventListener('change', (e) => {
+        document.getElementById('fileInput')?.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -2616,7 +2616,7 @@
         });
 
         // 导出标签配置
-        document.getElementById('btnExportTags').addEventListener('click', () => {
+        document.getElementById('btnExportTags')?.addEventListener('click', () => {
             const data = JSON.stringify(tagSystem, null, 2);
             const blob = new Blob([data], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -2629,7 +2629,7 @@
         });
 
         // 导入标签配置
-        document.getElementById('fileInputTags').addEventListener('change', (e) => {
+        document.getElementById('fileInputTags')?.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
@@ -2753,7 +2753,5 @@
 
 
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
-<script src="backup-hub.js"></script>
-<script>BackupHub.mount({id:'star',name:'恒星时间管理法'});</script>
 </body></html>
 

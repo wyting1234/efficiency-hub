@@ -31,7 +31,15 @@
   // 不纳入同步的键（只排除同步相关的技术键，用户设置类全部同步）
   const EXCLUDE_KEYS = new Set([
     'github_token', 'github_gist_id', 'sync_last_sync', 'github_cloud_state',
-    'hub_lastModule'   // 上次打开的工具，不强制同步
+    'hub_lastModule',             // 上次打开的工具，不强制同步
+    // ⚠️ 本地「备份/快照仓」不是业务数据：体积巨大（朝暮计这一项单独就 600KB+），
+    //    把它传上云会让 Gist 直接翻倍，是下载超时/失败的头号元凶。
+    'chaomuji_backups_v1',        // 朝暮计 v27 内置快照仓
+    // 备份中心与同步模块自产的元数据：属于「本机记录」，跨设备没有意义，传上去还会互相覆盖。
+    '__hub_meta_v1__',            // 各键最后写入时间（合并判新旧用，必须本机各自维护）
+    '__hub_last_snap_v1__',       // 每日自动快照标记
+    '__hub_activity_v1__',        // 最近一次备份/同步记录
+    'sync_timestamps'             // 上次同步时云端各键的时间戳
   ]);
 
   // ============ 背景图片不同步 ============
@@ -41,7 +49,10 @@
     'chaomuji_web_v27_bg',        // 朝暮计·页面背景（含 data:image 大图）
     'chaomuji_web_v27_cardbg',    // 朝暮计·卡片背景
     'chaomuji_web_v27_hcardbg',   // 朝暮计·习惯卡背景
-    'zmv_bg_'                     // 朝暮计·背景质量等设置
+    'zmv_bg_',                    // 朝暮计·背景质量等设置
+    '__hub_',                     // 备份中心全部内部键
+    '__tea_sdk_',                 // 页面埋点 SDK 留下的垃圾键
+    '__BEACON_'                   // 腾讯埋点 SDK 的 __BEACON_* 日志/会话键（实测 11 个被误同步）
   ];
   const BIG_IMAGE_MIN = 30 * 1024;   // 超过 30KB 的内嵌图片才视为背景资源
 
@@ -247,12 +258,18 @@
         <b>怎么用：</b><br>
         • <b>上传</b>：把这部设备的数据存到云端（覆盖云端）<br>
         • <b>下载</b>：把云端的数据拉到这部设备（覆盖本机）<br>
-        想让手机和电脑一致，就先在「源头」那端点<b>上传</b>，再到另一端点<b>下载</b>。
+        想让手机和电脑一致，就先在「源头」那端点<b>上传</b>，再到另一端点<b>下载</b>。<br>
+        <span style="color:#7c8aa5">数据上传前会自动 gzip 压缩，体积通常只剩原来的十分之一左右，下载更快。</span>
       </div>
 
-      <div style="display:flex;gap:10px;margin-bottom:14px">
+      <div style="display:flex;gap:10px;margin-bottom:10px">
         <button id="syncUpload" style="flex:1;padding:12px;border:none;border-radius:8px;background:#08bd74;color:white;font-size:15px;cursor:pointer">⬆️ 上传到云端</button>
         <button id="syncDownload" style="flex:1;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:15px;cursor:pointer">⬇️ 从云端下载</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button id="syncHealth" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:13px">🩺 云端体检（下载失败先点这里）</button>
+        <button id="syncDataMgr" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:13px">🗂️ 数据管理（导入 / 导出 / 清空）</button>
       </div>
 
       <div id="syncBackupBox" style="border-top:1px solid #eee;padding-top:12px;margin-bottom:14px">
@@ -272,20 +289,32 @@
     document.body.appendChild(mask);
     mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
 
-    modal.querySelector('#syncClose').onclick = () => mask.remove();
-    modal.querySelector('#syncReconfig').onclick = () => { mask.remove(); showConfigModal(); };
-    modal.querySelector('#syncUpload').onclick = () => { mask.remove(); doUpload(); };
-    modal.querySelector('#syncDownload').onclick = () => { mask.remove(); doDownload(); };
+    // 统一取面板内控件：任何一个按钮缺失都不该让整个面板崩掉
+    // （曾因漏写 #syncDataMgr 的按钮 HTML，querySelector 返回 null 直接抛 TypeError）
+    const noopEl = { set onclick(v) {} };
+    const q = (sel) => modal.querySelector(sel) || noopEl;
+
+    q('#syncClose').onclick = () => mask.remove();
+    q('#syncReconfig').onclick = () => { mask.remove(); showConfigModal(); };
+    q('#syncUpload').onclick = () => { mask.remove(); doUpload(); };
+    q('#syncDownload').onclick = () => { mask.remove(); doDownload(); };
+    q('#syncHealth').onclick = () => { mask.remove(); doHealth(); };
     // 备份动作：导出走 BackupHub（导出后会询问是否顺带上传云端），备份中心是完整功能面板
-    modal.querySelector('#syncBkExport').onclick = () => {
+    q('#syncBkExport').onclick = () => {
       mask.remove();
       if (window.BackupHub && window.BackupHub.exportThenAskCloud) {
         try { window.BackupHub.exportThenAskCloud(); return; } catch (e) {}
       }
       if (window.BackupHub) { try { window.BackupHub.exportNow(null); } catch (e) {} }
     };
-    modal.querySelector('#syncBkCenter').onclick = () => {
+    q('#syncBkCenter').onclick = () => {
       mask.remove();
+      if (window.BackupHub && window.BackupHub.open) { try { window.BackupHub.open(); } catch (e) {} }
+    };
+    // 数据管理（导出 / 导入 / 清空）——顶栏那颗重复按钮已撤掉，入口收在这里
+    q('#syncDataMgr').onclick = () => {
+      mask.remove();
+      if (typeof window.openDataModal === 'function') { try { window.openDataModal(); return; } catch (e) {} }
       if (window.BackupHub && window.BackupHub.open) { try { window.BackupHub.open(); } catch (e) {} }
     };
   }
@@ -358,33 +387,113 @@
     return resp.json();
   }
 
-  // Gist 对超过 1MB 的文件会返回 truncated:true 且 content 被截断，
-  // 此时必须改拉 raw_url 才能拿到完整内容（否则会误判成"云端没数据"）。
-  async function readGist() {
-    if (!cachedGistId()) await findOrCreateGist();
+  // ============ 体积压缩：gzip + base64 ============
+  // 为什么必须压缩：Gist API 每个文件只内联返回 1MB，超过就必须改拉 raw_url（海外 CDN）。
+  // 实测 2MB 数据走 raw_url 要 55 秒，且中途会断流 —— 这就是「下载失败」的主因。
+  // 业务数据是 JSON 文本，gzip 后通常只剩 1/4；即便 base64 再膨胀 33%，仍远小于原体积。
+  const PACK_ENC = 'gzip';
+  function canCompress() {
+    return typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+  }
+  function bufToB64(buf) {
+    const u8 = new Uint8Array(buf);
+    let s = '';
+    const CH = 0x8000;   // 分块，避免 apply 参数过多导致栈溢出
+    for (let i = 0; i < u8.length; i += CH) s += String.fromCharCode.apply(null, u8.subarray(i, i + CH));
+    return btoa(s);
+  }
+  function b64ToBuf(b64) {
+    const bin = atob(b64);
+    const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return u8;
+  }
+  async function packCloud(obj) {
+    const json = JSON.stringify(obj);
+    if (!canCompress()) return { version: 2, enc: 'none', data: json, updatedAt: Date.now() };
     try {
-      const data = await apiCall('GET', '/gists/' + GIST_ID);
-      const file = data.files && data.files[GIST_FILENAME];
-      if (!file) return null;
-      let content = file.content || '';
-      if (file.truncated && file.raw_url) {
-        const raw = await fetch(file.raw_url, { cache: 'no-store' });
-        if (raw.ok) content = await raw.text();
-      }
-      if (!content) return null;
-      const parsed = JSON.parse(content);
-      // 记下云端是否有数据：上传前可免一次全量读取
-      setCachedCloudHasData(!!(parsed && parsed.data && Object.keys(parsed.data).length > 0));
-      return parsed;
+      const cs = new CompressionStream(PACK_ENC);
+      const buf = await new Response(new Blob([json]).stream().pipeThrough(cs)).arrayBuffer();
+      return { version: 2, enc: PACK_ENC, data: bufToB64(buf), updatedAt: Date.now() };
     } catch (e) {
-      if (isNotFound(e)) clearGistCache();   // 缓存的 Gist 已被删，下次重新搜索
-      console.warn('[GitHub] 读取失败:', e.message);
-      return null;
+      return { version: 2, enc: 'none', data: json, updatedAt: Date.now() };
     }
   }
+  // 兼容三种形态：v1 明文 {data:{...}}、v2 enc:'none'、v2 enc:'gzip'
+  async function unpackCloud(parsed) {
+    if (!parsed) return null;
+    if (parsed.enc === PACK_ENC) {
+      if (!canCompress()) throw new Error('本浏览器不支持解压，请改用较新的 Chrome / Edge 打开');
+      const ds = new DecompressionStream(PACK_ENC);
+      const txt = await new Response(new Blob([b64ToBuf(parsed.data)]).stream().pipeThrough(ds)).text();
+      return JSON.parse(txt);
+    }
+    if (parsed.enc === 'none' && typeof parsed.data === 'string') return JSON.parse(parsed.data);
+    return parsed;   // v1：本身就是数据对象
+  }
 
-  async function writeGist(content) {
-    const body = JSON.stringify(content);   // 紧凑 JSON：体积比格式化小 ~25%，上传更快
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  // 带重试的请求：国内访问 api.github.com / gist.githubusercontent.com 偶发断流，
+  // 不重试就会整次同步失败。
+  async function fetchRetry(url, opts, tries, label) {
+    let lastErr = null;
+    const n = tries || 3;
+    for (let i = 0; i < n; i++) {
+      try {
+        const r = await fetch(url, opts);
+        if (r.ok) return r;
+        lastErr = new Error('HTTP ' + r.status);
+        if (r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 429) throw lastErr;
+      } catch (e) { lastErr = e; }
+      if (i < n - 1) await sleep(500 * (i + 1));
+    }
+    throw lastErr || new Error((label || '请求') + '失败');
+  }
+
+  // 读取云端数据。
+  // ⚠️ 语义约定（本轮修复的核心）：真失败必须抛异常，不要静默返回 null。
+  //    旧版把「网络断流」「JSON 解析失败」都吞成 null，界面于是弹出
+  //    「云端还没有数据」—— 把故障说成没数据，非常误导。
+  //    现在：返回 {data:{}} = 云端确实为空；throw = 真失败（带原因）。
+  async function readGist() {
+    if (!cachedGistId()) await findOrCreateGist();
+    let data;
+    try {
+      data = await apiCall('GET', '/gists/' + GIST_ID);
+    } catch (e) {
+      if (isNotFound(e)) { clearGistCache(); throw new Error('云端同步文件不存在（可能已被删除），请重新上传一次'); }
+      throw new Error('读取云端失败：' + (e && e.message ? e.message : e) + '，请检查网络后重试');
+    }
+    const file = data.files && data.files[GIST_FILENAME];
+    if (!file) return { version: 1, data: {}, updatedAt: 0 };
+    let content = file.content || '';
+    if (file.truncated) {
+      // 超过 1MB：API 只给片段，必须改拉 raw_url（海外 CDN，失败高发点，故重试 3 次）
+      content = '';
+      try {
+        const raw = await fetchRetry(file.raw_url, { cache: 'no-store' }, 3, '完整数据下载');
+        content = await raw.text();
+      } catch (e) {
+        throw new Error('云端数据较大（约 ' + Math.round((file.size || 0) / 1024) + 'KB），完整下载失败：' +
+          (e && e.message ? e.message : e) + '。请重试，或换网络较好的时机操作。');
+      }
+    }
+    if (!content) return { version: 1, data: {}, updatedAt: 0 };
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch (e) {
+      throw new Error('云端数据解析失败（下载可能不完整），请重试');
+    }
+    const payload = await unpackCloud(parsed);
+    setCachedCloudHasData(!!(payload && payload.data && Object.keys(payload.data).length > 0));
+    return payload || { version: 1, data: {}, updatedAt: 0 };
+  }
+
+  async function writeGist(payload) {
+    const packed = await packCloud(payload);   // gzip + base64，体积通常降到 1/4
+    const body = JSON.stringify(packed);
     if (!GIST_ID) {
       const data = await apiCall('POST', '/gists', {
         description: GIST_DESC, public: false,
@@ -397,6 +506,7 @@
         files: { [GIST_FILENAME]: { content: body } }
       });
     }
+    return body.length;   // 返回实际写入体积，供界面展示
   }
 
   // ============ 速度优化：Gist 直连缓存 ============
@@ -442,6 +552,7 @@
     if (!content) return false;
     try {
       const j = JSON.parse(content);
+      if (j && j.enc) return size > 200;     // v2 压缩格式：有数据才会带 enc 字段
       return !!(j && j.data && Object.keys(j.data).length > 0);
     } catch (e) {
       return size > 200;
@@ -449,16 +560,23 @@
   }
 
   // 只查找，不创建（无副作用，供状态展示用）
+  // 账号下可能同时存在多份同名文件（历次误建/换设备留下的），这时必须挑「有数据且最新」的那份，
+  // 否则两端会各自连到不同副本，表现为「下载不到别人的数据」。
+  let lastCandidates = [];   // 供体检面板展示
   async function findGist() {
     const list = await apiCall('GET', '/gists?per_page=100');
     let best = null;         // 最近更新的
     let bestWithData = null; // 有数据的里最近更新的
+    lastCandidates = [];
     for (const g of list) {
       if (!g.files || !g.files[GIST_FILENAME]) continue;
-      const hasData = gistHasData(g.files[GIST_FILENAME]);
+      const f = g.files[GIST_FILENAME];
+      const hasData = gistHasData(f);
+      lastCandidates.push({ id: g.id, size: f.size || 0, hasData: hasData, updated: g.updated_at });
       if (!best || new Date(g.updated_at) > new Date(best.updated_at)) best = g;
       if (hasData && (!bestWithData || new Date(g.updated_at) > new Date(bestWithData.updated_at))) bestWithData = g;
     }
+    lastCandidates.sort((a, b) => new Date(b.updated) - new Date(a.updated));
     return bestWithData || best;
   }
 
@@ -518,6 +636,77 @@
     } catch (e) {
       return { connected: false, reason: e.message || '读取失败' };
     }
+  }
+
+  // ============ 云端体检 ============
+  // 直接回答「为什么下载失败」：把体积、项目数、同名副本数一次摊开。
+  // 不下载正文就能看的部分（副本列表）先出，正文明细按需读取、失败不影响前面结果。
+  function fmtKB(n) { return Math.round((n || 0) / 1024) + 'KB'; }
+  async function doHealth() {
+    if (!GITHUB_TOKEN) { showConfigModal(); return; }
+    closeTopModal();
+    const mask = document.createElement('div');
+    mask.className = 'sync-mask';
+    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background:white;border-radius:12px;padding:22px;max-width:520px;width:92%;max-height:82vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);';
+    modal.innerHTML = '<h2 style="margin:0 0 10px;font-size:19px">🩺 云端体检</h2>' +
+      '<div id="hcBody" style="font-size:13px;line-height:1.85;color:#333">正在检查…</div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:16px">' +
+      '<button id="hcClose" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">关闭</button></div>';
+    mask.appendChild(modal);
+    document.body.appendChild(mask);
+    mask.addEventListener('click', (e) => { if (e.target === mask) mask.remove(); });
+    modal.querySelector('#hcClose').onclick = () => mask.remove();
+    const body = modal.querySelector('#hcBody');
+    const L = [];
+    try {
+      if (!cachedGistId()) await findOrCreateGist();
+      const list = await apiCall('GET', '/gists?per_page=100');
+      const mine = (list || []).filter(function (g) { return g.files && g.files[GIST_FILENAME]; });
+      mine.sort(function (a, b) { return new Date(b.updated_at) - new Date(a.updated_at); });
+      L.push('<b>账号下的同名云端文件：' + mine.length + ' 份</b>');
+      mine.forEach(function (g) {
+        const f = g.files[GIST_FILENAME];
+        L.push('&nbsp;&nbsp;· <code>' + g.id.slice(0, 10) + '</code> ' + fmtKB(f.size) + ' · ' + String(g.updated_at).slice(0, 10) +
+          (g.id === GIST_ID ? ' <span style="color:#08bd74">← 当前连接</span>' : ''));
+      });
+      if (mine.length > 1) {
+        L.push('<span style="color:#e67e22">⚠️ 存在 ' + mine.length + ' 份副本。如果两台设备显示的数据对不上，' +
+          '多半是各自连到了不同副本 —— 建议在「有最新数据的那台」点一次上传，其余副本可到 gist.github.com 删除。</span>');
+      }
+      let remote = null;
+      try { remote = await readGist(); } catch (e) {
+        L.push('<span style="color:#d33">读取当前副本失败：' + (e && e.message ? e.message : e) + '</span>');
+      }
+      if (remote && remote.data) {
+        const keys = Object.keys(remote.data);
+        let tot = 0;
+        const rows = [];
+        keys.forEach(function (k) {
+          const v = remote.data[k];
+          const sz = (v && typeof v.value === 'string') ? v.value.length : 0;
+          tot += sz; rows.push([sz, k]);
+        });
+        rows.sort(function (a, b) { return b[0] - a[0]; });
+        L.push('');
+        L.push('<b>当前副本内容</b>：' + keys.length + ' 项，原始值合计约 ' + fmtKB(tot));
+        if (rows.length) {
+          L.push('最占空间的 6 项：');
+          rows.slice(0, 6).forEach(function (r) {
+            L.push('&nbsp;&nbsp;· <code>' + r[1] + '</code> ' + fmtKB(r[0]));
+          });
+        }
+        if (tot > 800 * 1024) {
+          L.push('<span style="color:#e67e22">⚠️ 数据偏大。下载慢、容易失败多由此引起 —— 面板里「上传」会先自动压缩再传。</span>');
+        } else {
+          L.push('<span style="color:#08bd74">✓ 体积正常，下载应当顺畅。</span>');
+        }
+      }
+    } catch (e) {
+      L.push('<span style="color:#d33">检查失败：' + (e && e.message ? e.message : e) + '</span>');
+    }
+    body.innerHTML = L.join('<br>');
   }
 
   // ============ 数据收集 / 应用 ============
@@ -597,14 +786,18 @@
       } else {
         localData = collectLocalData();
       }
+      let bodyLen = 0;
+      const payload = { version: 2, data: localData, updatedAt: Date.now() };
       try {
-        await writeGist({ version: 1, data: localData, updatedAt: Date.now() });
+        bodyLen = await writeGist(payload);
       } catch (e) {
         if (!isNotFound(e)) throw e;
         clearGistCache();                 // 缓存的 Gist 已被删：重建后重试一次
         await findOrCreateGist();
-        await writeGist({ version: 1, data: localData, updatedAt: Date.now() });
+        bodyLen = await writeGist(payload);
       }
+      const kb = Math.round(bodyLen / 1024);
+      const nItem = Object.keys(localData).length;
       setCachedCloudHasData(true);
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
@@ -614,11 +807,16 @@
       }
       updateStatus('已上传 ' + fmtTime(lastSyncTime));
       closeTopModal();
+      // 压缩后仍偏大时给出明确预警：下载会慢，且会走 raw 通道（国内易断）
+      const sizeTip = kb > 1024
+        ? '\n⚠️ 压缩后仍有 ' + kb + 'KB，超过云端单文件 1MB 的直读阈值，另一台设备下载会明显慢一些。'
+        : '';
       notifyOK(mode === 'merge' ? '已合并上传到云端' : '已上传到云端',
-        mode === 'merge'
-          ? `两边数据已按「较新保留」合并，共 ${Object.keys(localData).length} 项存到云端，没有丢失任何一边的内容。`
-          : `本机的 ${Object.keys(localData).length} 项数据已存到云端。\n` +
-            '在手机 / 其他电脑点「云端 → 本机」就能同步过去。');
+        (mode === 'merge'
+          ? `两边数据已按「较新保留」合并，共 ${nItem} 项。`
+          : `本机的 ${nItem} 项数据已存到云端。`) +
+        `\n云端体积约 ${kb}KB（已压缩）。` + sizeTip +
+        '\n在手机 / 其他电脑点「云端 → 本机」就能同步过去。');
     } catch (e) {
       console.warn('[GitHub] 上传失败:', e.message);
       notifyFail('上传云端失败',
@@ -715,6 +913,7 @@
     upload: doUpload,
     download: doDownload,
     openPanel: openSyncPanel,
+    health: doHealth,                                   // 云端体检
     reconnect: initSync,                                // 配置 / 换 Token 后重新连接
     isConnected: () => isConnected,
     peek: peekCloud,                                   // 只读探测云端数据量

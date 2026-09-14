@@ -145,10 +145,10 @@
   .brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px}
 
 
-  .brand #collapseBtn{margin-left:auto;flex:none;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--side-text);font-size:18px;line-height:1;cursor:pointer;display:none;align-items:center;justify-content:center;transition:background .15s}
+  .brand #collapseBtn{margin-left:auto;flex:none;width:28px;height:28px;border-radius:10px;background:transparent;border:none;color:var(--side-text);font-size:16px;line-height:1;cursor:pointer;display:none;align-items:center;justify-content:center;transition:background .15s,color .15s}
 
 
-  .brand #collapseBtn:hover{background:rgba(255,255,255,.14);color:#fff}
+  .brand #collapseBtn:hover{background:rgba(255,255,255,.1);color:#fff}
 
 
   .brand .logo{
@@ -175,10 +175,10 @@
   .nav-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#5b6b86;padding:14px 10px 6px}
 
 
-  #toggleTools{width:22px;height:22px;padding:0;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:var(--side-text);font-size:10px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s ease,background .15s}
+  #toggleTools{width:24px;height:24px;padding:0;border-radius:10px;color:var(--side-text);font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .2s ease,background .15s,color .15s}
 
 
-  #toggleTools:hover{background:rgba(255,255,255,.14);color:#fff}
+  #toggleTools:hover{background:rgba(255,255,255,.1);color:#fff}
 
 
   #toggleTools.collapsed{transform:rotate(180deg)}
@@ -243,10 +243,10 @@
   .side-btn{
 
 
-    display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;
+    display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;cursor:pointer;
 
 
-    font-size:13px;color:var(--side-text);background:rgba(255,255,255,.04);transition:background .15s;
+    font-size:14px;color:var(--side-text);transition:background .15s,color .15s;
 
 
   }
@@ -513,10 +513,10 @@
   /* 模块管理 */
 
 
-  .mini-btn{font-size:11px;color:var(--side-text);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:2px 9px;cursor:pointer;transition:.15s}
+  .mini-btn{font-size:12px;color:var(--side-text);background:transparent;border:none;border-radius:10px;padding:4px 10px;cursor:pointer;transition:background .15s,color .15s}
 
 
-  .mini-btn:hover{background:rgba(255,255,255,.16);color:#fff}
+  .mini-btn:hover{background:rgba(255,255,255,.1);color:#fff}
 
 
   .mod-row{display:flex;align-items:center;gap:11px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px}
@@ -586,6 +586,10 @@
 
 
     .app.collapsed .sidebar{flex-basis:0;width:0;padding-left:0;padding-right:0;overflow:hidden;border:none}
+
+    /* 任意时刻只暴露一个收起/展开控件：展开时用品牌区 ‹，收起时用左缘 ☰ */
+
+    .app:not(.collapsed) .float-tab{opacity:0;pointer-events:none}
 
 
   }
@@ -750,7 +754,7 @@
       <div class="side-btn" id="toggleTheme"><span id="themeIco">🌙</span><span id="themeTxt">夜间模式</span></div>
 
 
-      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.07e</span></div>
+      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.14a</span></div>
 
 
     </div>
@@ -792,7 +796,6 @@
         <button class="tbtn" id="refreshBtn" title="重新加载当前工具">⟳ 刷新</button>
 
 
-        <button class="tbtn primary" id="dataBtn">💾 数据导入/导出</button>
 
 
       </div>
@@ -1897,8 +1900,8 @@ function toggleSidebar(){
 
     var c=app.classList.toggle('collapsed');
 
-
-    try{ localStorage.setItem('hub_sidebar', c?'collapsed':'open'); }catch(e){}
+  try{ localStorage.setItem('hub_sidebar_pref', c?'collapsed':'open'); }catch(e){}
+  var cb=document.getElementById('collapseBtn'); if(cb){ cb.textContent=c?'›':'‹'; cb.title=c?'展开侧边栏':'收起侧边栏'; }
 
 
     var hb=document.getElementById('hamburger'); if(hb) hb.title=c?'展开侧边栏':'收起侧边栏';
@@ -2153,7 +2156,7 @@ function saveModuleManager(){
 function init(){
   // 版本迁移：升级到新版本时重置模块显示/排序配置，避免旧数据隐藏新增模块
   try {
-    var HUB_PATCH = 'v2026.09.07e';
+    var HUB_PATCH = 'v2026.09.14a';
     if (localStorage.getItem('hub_patch') !== HUB_PATCH) {
       localStorage.removeItem('hub_module_hidden');
       localStorage.removeItem('hub_nav_order');
@@ -2211,25 +2214,14 @@ function init(){
 
 
 
-  // 侧边栏默认收起（宽屏最大化内容区）；仅当用户明确设为展开时才展开
-
-
-  try{
-
-
-    if(window.innerWidth>780 && localStorage.getItem('hub_sidebar')!=='open'){
-
-
-      document.querySelector('.app').classList.add('collapsed');
-
-
-      localStorage.setItem('hub_sidebar','collapsed');
-
-
-    }
-
-
-  }catch(e){}
+  // 侧边栏默认展开：只有用户亲手收起来过（hub_sidebar_pref=collapsed）才收起。
+// 旧的 hub_sidebar 键是脚本自己写的（没点过展开就被自动写成 collapsed），
+// 它反映不了用户意图，故弃用；改用只在真实点击时写入的 hub_sidebar_pref。
+try{
+  if(window.innerWidth>780 && localStorage.getItem('hub_sidebar_pref')==='collapsed'){
+    document.querySelector('.app').classList.add('collapsed');
+  }
+}catch(e){}
 
 
 
@@ -2289,10 +2281,8 @@ function init(){
   const modal=$('#dataModal');
 
 
-  // #openData was removed from sidebar; data modal now opens via #dataBtn only
-
-
-  $('#dataBtn').addEventListener('click',()=>{refreshBadges();modal.classList.add('show');});
+  // 数据管理弹窗的入口已统一到侧边栏「云端同步」面板（原来顶栏还有一颗重复按钮，已撤掉）
+  window.openDataModal=()=>{refreshBadges();modal.classList.add('show');};
 
 
   $('#closeData').addEventListener('click',()=>modal.classList.remove('show'));
@@ -2376,19 +2366,15 @@ function init(){
   // 桌面端：从品牌区收起侧栏
 
 
-  $('#collapseBtn').addEventListener('click',function(){
-
-
-    if(window.innerWidth<=780) return;
-
-
-    document.querySelector('.app').classList.add('collapsed');
-
-
-    try{ localStorage.setItem('hub_sidebar','collapsed'); }catch(e){}
-
-
-  });
+  // 收起按钮改为双向切换（原来只能收不能展，要展开得去点左侧悬浮标签）
+$('#collapseBtn').addEventListener('click',function(){
+  if(window.innerWidth<=780) return;
+  var app=document.querySelector('.app');
+  var c=app.classList.toggle('collapsed');
+  this.textContent = c ? '›' : '‹';
+  this.title = c ? '展开侧边栏' : '收起侧边栏';
+  try{ localStorage.setItem('hub_sidebar_pref', c?'collapsed':'open'); }catch(e){}
+});
 
 
 
