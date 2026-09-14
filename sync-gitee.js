@@ -68,8 +68,16 @@
     }
     if (typeof j === 'string') return { kind: 'text', text: j };
     if (typeof j.content === 'string') {
-      // 超过 1MB 时 Gitee 可能不回 content（只给 download_url）
       return { kind: 'file', text: b64ToText(j.content), sha: j.sha, raw: j };
+    }
+    // ⚠️ 大文件（约 >1MB）时 Gitee 的 contents 响应**不含 content 字段**，
+    //    只给 sha + download_url。早先这里直接落到 missing，后果连锁反应非常隐蔽：
+    //      missing → getSha 返回 null → putFiles 判定「文件不存在」→ 走 POST 新建 →
+    //      对已存在的文件必然失败 → 用户看到「文件新建失败」（400）。
+    //    文件越大越容易触发，所以「数据一多就传不上去」。
+    //    只要响应里有 sha，就说明文件确实存在 —— 按存在处理，只是内容需要另拉。
+    if (j.sha) {
+      return { kind: 'file', text: null, sha: j.sha, raw: j, needsDownload: !j.content };
     }
     return { kind: 'missing', raw: j };
   }
@@ -351,12 +359,24 @@
     try {
       const raw = await req('GET', contentsPath(name), { query: { ref: BRANCH }, what: '读取 ' + name });
       const n = normContents(raw);
-      if (n.kind === 'file' || n.kind === 'text') {
+      if (n.kind === 'text') {
         fileCache.set(name, n.text);
+        return n.text;
+      }
+      if (n.kind === 'file') {
         // 同一次响应里 sha 也一起带回来了，顺手存下 —— 否则后面要写这个文件时
         // getSha 还得为 sha 再发一次一模一样的 GET（一次上传能省 1~2 个来回）。
         if (n.sha) shaCache.set(name, n.sha);
-        return n.text;
+        if (n.text !== null && n.text !== undefined) {
+          fileCache.set(name, n.text);
+          return n.text;
+        }
+        // 大文件：响应里没有 content，得另拉一次原文。
+        // 缓存里先放 null 占位是不行的（会被误判成「文件不存在」），所以这里
+        // 只在真正拿到内容后才写缓存，拿不到就返回 null 让上层跳过这个片。
+        const txt = await fetchRaw(n.raw);
+        fileCache.set(name, txt);
+        return txt;
       }
       // bad-branch：分支名不对时 Gitee 回 200 + []（不是 404）。这是「静默失败」的来源。
       // 处理方式：就地重探分支，然后重读一次；而不是把错误抛出去让上层瞎猜。
@@ -379,13 +399,35 @@
     }
   }
 
+  // 拉大文件原文。Gitee 对 >1MB 的文件不返回 content，只给 download_url。
+  // 注意 download_url 走的是 gitee.com 的原始文件通道，同样受 CORS 限制，
+  // 所以失败时要能优雅降级（宁可这个片读不到，也不能把「存在」误判成「不存在」）。
+  async function fetchRaw(info) {
+    const url = info && (info.raw && (info.raw.download_url || info.raw.raw_url));
+    if (!url) return null;
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) { console.warn('[Gitee] 拉取大文件失败 ' + r.status + '：' + url); return null; }
+      return await r.text();
+    } catch (e) {
+      console.warn('[Gitee] 拉取大文件异常:', e && e.message);
+      return null;
+    }
+  }
+
   // 读 sha（写之前必须拿；文件不存在返回 null）
   // ⚠️ 要点：不能用 200 判断成功。分支写错时 Gitee 回 200 + []，
   //    旧代码会拿到 undefined 的 sha → 走 POST 新建 → 对已存在文件必然失败。
   async function getSha(name, retried) {
     // 复用缓存：如果这一轮刚读过这个文件，直接把 sha 记下来，不再发请求。
     // 注意缓存存的是「文本内容」，sha 单独用一张表记，避免又读一遍。
-    if (!retried && shaCache.has(name)) return shaCache.get(name);
+    //
+    // ⚠️ 这里只能复用「非 null」的缓存值。缓存的 null 含义是「我们**曾经**认为它
+    //    不存在」，但那个判断可能是错的（大文件响应缺 content、临时网络抖动、
+    //    分支当时不对…）。把 null 当命中直接返回，就等于把这个错误判断永久固化，
+    //    后面 putFiles 一律走 POST 新建 → 对已存在的文件必然 400「文件新建失败」。
+    //    所以拿到 null 时必须真的去问一次 Gitee，让结论来自这一次请求。
+    if (!retried && shaCache.get(name)) return shaCache.get(name);
     try {
       const raw = await req('GET', contentsPath(name), { query: { ref: BRANCH }, what: '读取 ' + name });
       const n = normContents(raw);
@@ -402,10 +444,12 @@
         }
         throw new Error('分支名不正确，且自动修正失败（请检查令牌是否有该仓库权限）。');
       }
-      shaCache.set(name, null);
+      // 走到这里说明响应里既没有 content 也没有 sha —— 确实不存在。
+      // 不写缓存：这类「不存在」判断可能是由响应异常造成的，缓存下来会误导后续调用
+      //（getShaViaRead 会跳过真的探测）。少省一次请求，换正确性。
       return null;
     } catch (e) {
-      if (/不存在/.test(e.message || '')) { shaCache.set(name, null); return null; }
+      if (/不存在/.test(e.message || '')) return null;
       throw e;
     }
   }
@@ -414,9 +458,13 @@
   // 这样 sha 和内容共用同一次 GET —— 上传流程往往是「先读 meta 判断云端有没有数据，
   // 再取 meta 的 sha 去写」，两次操作其实只需要一个请求。
   async function getShaViaRead(name) {
-    if (shaCache.has(name)) return shaCache.get(name);
+    // ⚠️ 不能用 shaCache.has() 判断「有结果」：文件不存在时我们**故意**缓存 null，
+    //    用它当命中条件会把 null 当成有效 sha 直接返回 → 上层误判文件不存在 →
+    //    POST 新建 → 对已存在文件报 400「文件新建失败」。
+    //    所以这里取到 null 时必须继续走真正的 getSha，而不是提前返回。
+    if (shaCache.get(name)) return shaCache.get(name);
     await readContents(name, true);
-    if (shaCache.has(name)) return shaCache.get(name);
+    if (shaCache.get(name)) return shaCache.get(name);
     return getSha(name);
   }
 
@@ -482,12 +530,20 @@
     //    分片数通常只有 1~5 片，并发不会有压力。
     putFiles: async function (map) {
       const names = Object.keys(map);
+      // meta 是必写的（内核每次都会把它放进 map），它决定了「每片的归属与时间戳」。
+      // 先单独把 meta 的 sha 取到手，能把它从下面的 getShaViaRead 里摘出去 ——
+      // 否则 putFiles 内部又会为 meta 发一次 GET，而它刚刚在 writeShardedWith 里
+      // 才被读过一次，纯属重复往返（实测这一下就多花一个 RTT）。
+      let metaSha = null;
+      if (map[Core.META_FILENAME] !== undefined) {
+        try { metaSha = await getShaViaRead(Core.META_FILENAME); } catch (e) { metaSha = null; }
+      }
       const tasks = names.map(async function (name) {
-        // 最多 3 次：① 正常一次；② sha 过期重取重试；③ 兜底（分支刚被重置等）
+        // 最多 3 次：① 正常一次；② 重新取 sha 重试（远端被别的设备改过）；③ 兜底
         for (let attempt = 0; attempt < 3; attempt++) {
           let sha = null;
           try {
-            sha = await getShaViaRead(name);
+            sha = (name === Core.META_FILENAME && attempt === 0) ? metaSha : await getShaViaRead(name);
           } catch (e) {
             // 分支名错误会被 getSha 重置掉；重来一次会用新探测到的分支
             if (attempt < 2) { await sleep(600); continue; }
@@ -498,8 +554,18 @@
             return name;
           } catch (e) {
             const m = e.message || '';
-            // sha 过期 / 分支不对：都值得重来一次（重来会重新取 sha、重新探分支）
-            if (attempt < 2 && (/已被其它设备改动/.test(m) || /分支名不正确/.test(m) || /不存在/.test(m))) {
+            // 区分两类失败，重试姿势完全不同：
+            //
+            //  A.「已被其它设备改动 / 已存在」——说明我们手里的 sha 是旧的（或漏了）。
+            //     下一次循环必须**绕过缓存**重新问一次 sha，否则 getShaViaRead 会把
+            //     上一轮缓存的旧 sha 再交回来，3 次重试全是同一个错误答案（实测就是
+            //     这样把一次写入放大成 3 个注定失败的请求）。
+            //     做法：把该文件的缓存清掉，让下一轮重新读。
+            //  B. 分支名不正确 —— 下一轮 ensureRepo/healBranch 会自愈，同样先清缓存。
+            if (attempt < 2 && (/已被其它设备改动/.test(m) || /已存在/.test(m) || /分支名不正确/.test(m))) {
+              fileCache.delete(name);
+              shaCache.delete(name);
+              resetRepoProbe();
               await sleep(700 * (attempt + 1));
               continue;
             }
@@ -564,7 +630,11 @@
       }
       let localData;
       if (mode === 'merge') {
-        const remote = await giteeRead();
+        // 合并要读全量远端数据（每片各一个请求）。
+        // 若刚刚为「云端有没有数据」读过 meta，这里直接复用它 ——
+        // 否则 giteeRead 会再把 meta 读一遍（虽然命中缓存不发请求，但代码路径上
+        // 埋了个「缓存一旦失效就多一个 RTT」的隐患）。
+        const remote = await giteeRead(cloudMeta);
         localData = Core.buildMergedUpload(remote || { data: {} });
       } else {
         localData = Core.collectLocalData();
@@ -594,9 +664,12 @@
     }
   }
 
-  async function giteeRead() {
+  // 读全量远端数据。
+  // metaHint：调用方已经拿到 meta 时传进来，避免再读一次（Gitee 每读一个文件
+  // 就是一个 HTTP 请求，一次上传总共也就这几个来回，能省的都要省）。
+  async function giteeRead(metaHint) {
     await ensureRepo();
-    const meta = await readShardedMetaSafe();
+    const meta = metaHint || await readShardedMetaSafe();
     if (meta && meta.shards && Object.keys(meta.shards).length) {
       return await Core.readShardedWith(giteeIO, meta);
     }
