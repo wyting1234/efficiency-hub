@@ -1951,6 +1951,53 @@
 </style>
     <!-- SheetJS 改为按需加载（v47 优化）：~900KB 的库不再阻塞首屏/切换加载，
          仅在首次导出/导入 Excel 时动态拉取；失败自动降级 CSV（见 ensureXLSX） -->
+    <style>
+/* ===== 本批新增：编辑学时 / 复习界面 / 记忆曲线待复习清单 ===== */
+.clt-btns { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* 编辑学时弹窗 */
+.he-dialog { max-width: 560px; }
+.he-list { max-height: 46vh; overflow: auto; margin-bottom: 4px; }
+.he-row { display: grid; grid-template-columns: 1fr 104px; gap: 4px 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--border, #E2D9C8); }
+.he-row .he-name { font-size: 13px; color: var(--text, #3A3128); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.he-row .he-hours { width: 100%; box-sizing: border-box; padding: 6px 9px; border: 1px solid var(--border, #E2D9C8); border-radius: 7px; font-size: 13px; }
+.he-row .he-tip { grid-column: 1 / -1; font-size: 11px; color: var(--text-secondary, #888); }
+.he-row .he-reset { grid-column: 1 / -1; justify-self: start; background: none; border: none; padding: 0; font-size: 11px; color: var(--primary-dark, #6E5B43); text-decoration: underline; cursor: pointer; font-family: inherit; }
+.he-empty { font-size: 13px; color: var(--text-secondary, #888); padding: 14px 0; text-align: center; }
+
+/* 记忆曲线 · 当日待复习知识点 */
+.kp-chip-link { cursor: pointer; border: 1px solid transparent; font-family: inherit; }
+.kp-chip-link:hover { background: var(--primary, #8A7358); color: #FAF7F1; }
+.mem-review { margin: 4px 0 16px; }
+.mem-review h5 { margin: 0 0 9px; font-size: 14px; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mem-review .mr-count { font-size: 11px; font-weight: 700; color: #FAF7F1; background: var(--primary, #8A7358); border-radius: 999px; padding: 1px 9px; }
+.mem-task { border: 1px solid var(--border); border-left: 4px solid var(--primary, #8A7358); border-radius: 10px; padding: 10px 12px; margin-bottom: 9px; cursor: pointer; background: var(--card-bg, #fff); transition: background .12s; }
+.mem-task:hover { background: var(--primary-bg, #F7F3EA); }
+.mem-task.done { opacity: .72; border-left-color: #77805C; }
+.mem-task .mt-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.mem-task .mt-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.mem-task .mt-round { font-size: 11.5px; font-weight: 700; color: var(--primary-dark, #6E5B43); background: var(--primary-bg, #F7F3EA); border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.mem-task .mt-meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 4px; }
+.mem-task .mt-kps { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.mem-task .mt-hint { font-size: 11px; color: var(--text-secondary); margin-top: 7px; }
+
+/* 复习界面（复用番茄钟方法） */
+.rv-dialog { max-width: 620px; max-height: 88vh; overflow: auto; }
+.rv-dialog .rvp-kp { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+.rv-dialog .rvp-pomo { background: var(--primary-bg, #F7F3EA); border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 14px; }
+.rv-dialog .rvp-timer { font-size: 34px; font-weight: 700; letter-spacing: 2px; color: var(--text, #3A3128); font-variant-numeric: tabular-nums; line-height: 1.15; }
+.rv-dialog .rvp-timer.break { color: #77805C; }
+.rv-dialog .rvp-pomo-btns { display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+.rv-dialog .rvp-status { font-size: 11.5px; color: var(--text-secondary, #888); margin-top: 9px; }
+.rv-dialog .pf { margin-bottom: 12px; }
+.rv-dialog .pf label { display: block; font-size: 12.5px; color: var(--text-secondary, #888); margin-bottom: 6px; }
+.rv-dialog .pf-row { display: flex; gap: 10px; }
+.rv-dialog .pf-row .pf { flex: 1; min-width: 0; }
+.rv-dialog input, .rv-dialog select, .rv-dialog textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border, #E2D9C8); border-radius: 8px; font-size: 13px; font-family: inherit; color: var(--text, #3A3128); background: #fff; }
+.rv-dialog textarea { line-height: 1.55; resize: vertical; }
+.rv-dialog textarea[readonly] { background: #F5F1E8; color: #6E6355; }
+@media (max-width: 560px) { .rv-dialog .pf-row { flex-direction: column; gap: 0; } }
+    </style>
 </head>
 <body>
 
@@ -1996,7 +2043,10 @@
 
         <div class="course-list-title">
             <span class="clt-text">📚 课程进度（已学 / 建议）</span>
-            <button type="button" class="prog-mode-btn" id="progModeBtn" title="切换学习进度的显示方式">✎ ⏱ 时长模式</button>
+            <span class="clt-btns">
+                <button type="button" class="prog-mode-btn" id="progHoursBtn" title="编辑各科目计划学时（进度分母）">✎ 学时</button>
+                <button type="button" class="prog-mode-btn" id="progModeBtn" title="切换学习进度的显示方式">⏱ 时长模式</button>
+            </span>
         </div>
         <div class="course-list scrollbar" id="courseList"></div>
         <div class="sidebar-encouragement">
@@ -3171,6 +3221,7 @@
             reviewDone: [],
             reviewOverrides: {},
             reviewDeleted: {},
+            kpReviews: {},   // 复习界面落盘：{ '<记录id>#<轮次>': {date,round,start,end,hours,tomatoes,note,newKp,nextTips} }
             currentCourse: '会计',
             editingId: null,
             filterStar: 'all',
@@ -3223,6 +3274,7 @@
                     state.reviewDone = Array.isArray(data.reviewDone) ? data.reviewDone : [];
                     state.reviewOverrides = (data.reviewOverrides && typeof data.reviewOverrides === 'object') ? data.reviewOverrides : {};
                     state.reviewDeleted = (data.reviewDeleted && typeof data.reviewDeleted === 'object') ? data.reviewDeleted : {};
+                    state.kpReviews = (data.kpReviews && typeof data.kpReviews === 'object') ? data.kpReviews : {};
                     if (data.tomato) {
                         state.tomato.count = data.tomato.count || 0;
                         const _tc = data.tomato.cfg;
@@ -3285,6 +3337,7 @@
                 reviewDone: state.reviewDone || [],
                 reviewOverrides: state.reviewOverrides || {},
                 reviewDeleted: state.reviewDeleted || {},
+                kpReviews: state.kpReviews || {},
                 tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
                 progressMode: (state.progressMode === 'tomato' ? 'tomato' : 'hours')
             };
@@ -3647,7 +3700,7 @@
             const btn = document.getElementById('progModeBtn');
             if (!btn) return;
             const t = (state.progressMode === 'tomato');
-            btn.textContent = t ? '✎ 🍅 番茄模式' : '✎ ⏱ 时长模式';
+            btn.textContent = t ? '🍅 番茄模式' : '⏱ 时长模式';
             btn.title = '学习进度显示方式（只影响这个模块）。当前：' + (t
                 ? ('番茄个数模式 —— 已学 🍅 / 建议 🍅，按专注 ' + getTomatoMinutes() + ' 分钟换算；点击改为时长模式')
                 : '时长模式 —— 已学 h / 建议 h；点击改为番茄个数模式');
@@ -3655,6 +3708,78 @@
                 btn._bound = true;
                 btn.addEventListener('click', function () { toggleProgressMode(); });
             }
+            const hb = document.getElementById('progHoursBtn');
+            if (hb && !hb._bound) {
+                hb._bound = true;
+                hb.addEventListener('click', function () { openHoursEditor(); });
+            }
+        }
+
+        // ---------- 编辑学时：课程进度的分母（全科目一处改完） ----------
+        function openHoursEditor() {
+            const old = document.getElementById('hoursDialog');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            const proj = getCurrentProject();
+            let rows = '';
+            COURSES.forEach(function (co) {
+                const custom = (proj && proj.planHours && proj.planHours[co] !== undefined) ? proj.planHours[co] : '';
+                const plan = getCoursePlanHours(co);
+                const cur = plan.hours > 0 ? (planEsc(plan.text) + '（' + planEsc(PLAN_SRC_LABEL[plan.src] || '') + '）') : '未设置';
+                rows += '<div class="he-row" data-course="' + planEsc(co) + '">' +
+                    '<span class="he-name" title="' + planEsc(co) + '">' + planEsc(co) + '</span>' +
+                    '<input type="number" min="0" step="0.5" class="he-hours" placeholder="自动" value="' + custom + '">' +
+                    '<span class="he-tip">当前分母：' + cur + ' ｜ 折合 ' + (hoursToTomato(plan.hours) || 0) + ' 🍅</span>' +
+                    (custom !== '' ? '<button type="button" class="he-reset">恢复自动</button>' : '') +
+                    '</div>';
+            });
+            const box = document.createElement('div');
+            box.className = 'plan-mask';
+            box.id = 'hoursDialog';
+            box.innerHTML = '<div class="plan-dialog he-dialog">' +
+                '<h3>✎ 编辑学时（课程进度的分母）</h3>' +
+                '<div class="pd-hint">填「计划学时（小时）」，留空 = 恢复自动（优先读科目名里的「计划学时：50课时」，再按系统估算）。<br>保存后课程进度条的 <b>已学 / 建议</b> 分母、番茄个数目标会一起更新。</div>' +
+                '<div class="he-list">' + (rows || '<div class="he-empty">当前项目还没有科目</div>') + '</div>' +
+                '<div class="pd-actions">' +
+                '<button class="pd-btn ghost" id="heCancel">取消</button>' +
+                '<button class="pd-btn primary" id="heSave">保存</button>' +
+                '</div></div>';
+            document.body.appendChild(box);
+            const close = function () { if (box.parentNode) box.parentNode.removeChild(box); };
+            box.querySelector('#heCancel').onclick = close;
+            box.onclick = function (e) { if (e.target === box) close(); };
+            box.querySelectorAll('.he-reset').forEach(function (rb) {
+                rb.addEventListener('click', function () {
+                    const inp = rb.closest('.he-row').querySelector('.he-hours');
+                    inp.value = '';
+                    inp.focus();
+                });
+            });
+            box.querySelector('#heSave').onclick = function () {
+                const p = getCurrentProject();
+                if (!p) { close(); return; }
+                p.planHours = p.planHours || {};
+                let changed = 0;
+                box.querySelectorAll('.he-row').forEach(function (row) {
+                    const co = row.dataset.course;
+                    const raw = (row.querySelector('.he-hours').value || '').trim();
+                    if (raw === '') {
+                        if (p.planHours[co] !== undefined) { delete p.planHours[co]; changed++; }
+                        return;
+                    }
+                    const v = parseFloat(raw);
+                    if (!isFinite(v) || v <= 0) { delete p.planHours[co]; changed++; return; }
+                    if (p.planHours[co] !== v) { p.planHours[co] = v; changed++; }
+                });
+                try { saveProjects(); } catch (e) {}
+                close();
+                renderCourseList();
+                updateGlobalStats();
+                renderCourseHeader();
+                showToast(changed ? ('✎ 已更新 ' + changed + ' 个科目的计划学时，进度分母同步刷新')
+                                  : '没有改动');
+            };
+            const first = box.querySelector('.he-hours');
+            if (first) first.focus();
         }
         function toggleProgressMode() {
             state.progressMode = (state.progressMode === 'tomato') ? 'hours' : 'tomato';
@@ -3853,6 +3978,7 @@
                         renderAll();
                         document.getElementById('fCourse').value = course;
                         updateChapterSelect(course);
+                        try { if (window.ScOnHostCourse) window.ScOnHostCourse(course); } catch (e) {}
                     }
                 });
             });
@@ -6764,12 +6890,360 @@
             renderGoalStatsPanel();   // 统计面板同步刷新
         }
 
+        /* ============================================================
+           记忆曲线 · 当日待复习知识点 & 复习界面
+           - getReviewTasksOnDate(ds)  当天到期（或被改期到当天）的复习任务
+           - 点知识点 → openReviewPanel：复用番茄钟方法记录本次复习
+           - 落盘 state.kpReviews['<记录id>#<轮次>']
+        ============================================================ */
+        function getReviewTasksOnDate(ds) {
+            const doneKeys = new Set((state.reviewDone || []).map(x => x.recordId + '#' + x.round));
+            const rvOv = state.reviewOverrides || {};
+            const rvDel = state.reviewDeleted || {};
+            const tasks = [];
+            (state.records || []).forEach(r => {
+                if (r.addToMemory === false) return;
+                getReviewIntervals().forEach((iv, i) => {
+                    const round = i + 1;
+                    const key = r.id + '#' + round;
+                    if (rvDel[key]) return;
+                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
+                    if (sched !== ds) return;
+                    tasks.push({ record: r, round: round, key: key, sched: sched, done: doneKeys.has(key) });
+                });
+            });
+            tasks.sort((a, b) => a.round - b.round);
+            return tasks;
+        }
+        // 上次复习的概况（「上期学习内容」与进度提示都靠它）
+        function getPrevKpReview(recordId, round) {
+            const m = state.kpReviews || {};
+            let bestKey = null, bestR = 0;
+            Object.keys(m).forEach(k => {
+                const p = k.split('#');
+                if (p[0] !== recordId) return;
+                const r = parseInt(p[1], 10);
+                if (isNaN(r) || r >= round) return;
+                if (r >= bestR) { bestR = r; bestKey = k; }
+            });
+            return bestKey ? m[bestKey] : null;
+        }
+        function getKpReview(recordId, round) {
+            return (state.kpReviews || {})[recordId + '#' + round] || null;
+        }
+        function kpReviewProgress(recordId, round) {
+            const m = state.kpReviews || {};
+            let bestKey = null, bestR = 0;
+            Object.keys(m).forEach(k => {
+                const p = k.split('#');
+                if (p[0] !== recordId) return;
+                const r = parseInt(p[1], 10);
+                if (isNaN(r) || r > round) return;
+                if (r >= bestR) { bestR = r; bestKey = k; }
+            });
+            if (!bestKey) return '';
+            const last = m[bestKey] || {};
+            const bits = [];
+            if (last.round) bits.push('已做' + roundName(last.round));
+            if (last.date) bits.push('上次 ' + last.date);
+            if (last.tomatoes) bits.push('🍅 ' + last.tomatoes);
+            if (last.hours) bits.push('⏱ ' + last.hours + 'h');
+            return bits.join(' · ');
+        }
+        function rvSecName(r) {
+            try {
+                const g = GUIDE_DATA[r.course] && GUIDE_DATA[r.course].chapters[r.chapter] && GUIDE_DATA[r.course].chapters[r.chapter].sections[r.section];
+                return (g && g.name) ? g.name : '';
+            } catch (e) { return ''; }
+        }
+        function rvChName(r) {
+            try {
+                const m = ACTIVE_CHAPTER_NAMES[r.course];
+                return (m && m[r.chapter]) ? m[r.chapter] : '';
+            } catch (e) { return ''; }
+        }
+        function rvShortTitle(r) {
+            const ch = rvChName(r), sec = rvSecName(r);
+            return planEsc(r.course || '') + ' · 第' + r.chapter + L('chapter') + (ch ? ' ' + planEsc(ch) : '') +
+                ' · 第' + r.section + L('section') + (sec ? ' ' + planEsc(sec) : '');
+        }
+        function reviewTasksHTML(ds, tasks) {
+            if (!tasks.length) return '';
+            const doneN = tasks.filter(t => t.done).length;
+            const items = tasks.map(t => {
+                const r = t.record;
+                const kps = (r.knowledgePoints || []).filter(k => k && String(k.text || '').trim());
+                const chips = kps.length
+                    ? kps.map((k, i) => '<button type="button" class="kp-chip kp-chip-link" data-rv="' + planEsc(r.id) + '" data-round="' + t.round + '" data-kp="' + i + '" title="点此进入复习界面">' + kpEsc((k.no ? k.no + '. ' : '') + (k.text || '')) + '</button>').join('')
+                    : '<button type="button" class="kp-chip kp-chip-link" data-rv="' + planEsc(r.id) + '" data-round="' + t.round + '" data-kp="-1" title="点此进入复习界面">（本条记录未登记知识点 · 点此开始复习）</button>';
+                const [yy, mm, dd] = r.date.split('-').map(Number);
+                const wd = '日一二三四五六'[new Date(yy, mm - 1, dd).getDay()];
+                const rvSaved = getKpReview(r.id, t.round);
+                const got = kpReviewProgress(r.id, t.round);
+                const meta = '学习于 ' + r.date + '（周' + wd + '）｜ ⏱ ' + (r.durationHours || 0) + 'h｜' +
+                    (rvSaved ? '<b style="color:#77805C;">本轮已记录' + (rvSaved.tomatoes ? ' 🍅' + rvSaved.tomatoes : '') + (rvSaved.hours ? ' ' + rvSaved.hours + 'h' : '') + '</b>' : (got ? got : '本轮还没记录'));
+                return '<div class="mem-task' + (t.done ? ' done' : '') + '" data-rv="' + planEsc(r.id) + '" data-round="' + t.round + '">' +
+                    '<div class="mt-top">' +
+                        '<div class="mt-title">' + rvShortTitle(r) + '</div>' +
+                        '<span class="mt-round">' + roundName(t.round) + (t.done ? ' ✓' : '') + '</span>' +
+                    '</div>' +
+                    '<div class="mt-meta">' + meta + '</div>' +
+                    '<div class="mt-kps">' + chips + '</div>' +
+                    '<div class="mt-hint">点上面的知识点进入复习：开始/结束时间、时长、番茄个数、第几轮复习会自动带上</div>' +
+                '</div>';
+            }).join('');
+            return '<div class="mem-review">' +
+                '<h5>🔁 当日待复习知识点<span class="mr-count">' + (tasks.length - doneN) + ' 待复习 / ' + doneN + ' 已完成</span></h5>' +
+                items + '</div>';
+        }
+
+        /* ---------- 复习界面（复用番茄钟方法） ---------- */
+        let rvCtx = null;   // { recordId, round, record, timer }
+        function rvPad2(n) { return ('0' + n).slice(-2); }
+        function rvHM2Min(hm) {
+            if (!hm) return null;
+            const m = String(hm).match(/^(\d{1,2}):(\d{2})/);
+            if (!m) return null;
+            return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+        }
+        function rvDiffHours(a, b) {
+            const x = rvHM2Min(a), y = rvHM2Min(b);
+            if (x === null || y === null) return 0;
+            let d = y - x;
+            if (d < 0) d += 24 * 60;          // 跨零点
+            return Math.round((d / 60) * 10) / 10;
+        }
+        function rvTimerStop() {
+            if (rvCtx && rvCtx.timer && rvCtx.timer.id) { clearInterval(rvCtx.timer.id); rvCtx.timer.id = null; }
+        }
+        function rvTimerRender() {
+            if (!rvCtx) return;
+            const t = rvCtx.timer;
+            const el = document.getElementById('rvTimer');
+            const st = document.getElementById('rvStatus');
+            if (el) {
+                const m = Math.floor(Math.max(t.left, 0) / 60), sec = Math.max(t.left, 0) % 60;
+                el.textContent = rvPad2(m) + ':' + rvPad2(sec);
+                if (t.mode === 'break') el.classList.add('break'); else el.classList.remove('break');
+            }
+            if (st) {
+                const base = t.running
+                    ? (t.mode === 'focus' ? '🍅 复习专注中（完成自动填结束时间与时长）' : '☕ 休息中')
+                    : (t.paused ? '⏸ 已暂停' : '未开始 · 专注 ' + getTomatoMinutes() + ' 分钟（在 ⚙ 番茄设置里可改）');
+                st.textContent = base + (t.pomodoros ? ' · 本次已完成 ' + t.pomodoros + ' 个' : '');
+            }
+        }
+        function rvTimerStart() {
+            if (!rvCtx) return;
+            const t = rvCtx.timer;
+            if (t.running) return;
+            const focusMin = getTomatoMinutes();
+            const brkMin = (state.tomato.cfg && state.tomato.cfg.breakMin) || 5;
+            if (t.left <= 0) t.left = (t.mode === 'focus' ? focusMin : brkMin) * 60;
+            if (t.mode === 'focus' && !t.start) {
+                t.start = hmNow();
+                const sEl = document.getElementById('rvStartT');
+                if (sEl && !sEl.value) sEl.value = t.start;
+                showToast('▶ 复习开始（' + t.start + '），已填入开始时间');
+            }
+            t.running = true; t.paused = false;
+            t.id = setInterval(rvTimerTick, 1000);
+            rvTimerRender();
+        }
+        function rvTimerTick() {
+            if (!rvCtx) return;
+            const t = rvCtx.timer;
+            t.left--;
+            rvTimerRender();
+            if (t.left > 0) return;
+            clearInterval(t.id); t.id = null; t.running = false;
+            const cfg = state.tomato.cfg || {};
+            const now = hmNow();
+            if (t.mode === 'focus') {
+                t.pomodoros++;
+                t.end = now;
+                const sEl = document.getElementById('rvStartT');
+                if (sEl && !sEl.value && t.start) sEl.value = t.start;
+                const eEl = document.getElementById('rvEndT'); if (eEl) eEl.value = now;
+                const pEl = document.getElementById('rvPomo'); if (pEl) pEl.value = t.pomodoros;
+                const hEl = document.getElementById('rvHours');
+                if (hEl) { const d = rvDiffHours(t.start || (sEl ? sEl.value : ''), now); if (d > 0) hEl.value = d; }
+                beep();
+                showToast('🍅 复习第 ' + t.pomodoros + ' 个番茄完成（' + now + '），已填入结束时间并算出时长');
+                const isLong = cfg.longEvery > 0 && (t.pomodoros % cfg.longEvery === 0);
+                t.mode = 'break';
+                t.left = (isLong ? (cfg.longBreakMin || 15) : (cfg.breakMin || 5)) * 60;
+                rvTimerRender();
+                if (cfg.autoBreak) rvTimerStart();
+                return;
+            }
+            beep();
+            showToast('☕ 休息结束，继续复习');
+            t.mode = 'focus';
+            t.left = getTomatoMinutes() * 60;
+            rvTimerRender();
+            if (cfg.autoFocus) rvTimerStart();
+        }
+        function rvTimerReset() {
+            if (!rvCtx) return;
+            const t = rvCtx.timer;
+            clearInterval(t.id); t.id = null;
+            t.running = false; t.paused = false;
+            t.mode = 'focus';
+            t.left = getTomatoMinutes() * 60;
+            rvTimerRender();
+        }
+        // 「上期学习内容」：上一轮复习留下的笔记 / 补充；没有就退回本条记录的知识点
+        function rvPrevText(recordId, round) {
+            const prev = getPrevKpReview(recordId, round);
+            if (prev) {
+                const bits = [];
+                if (prev.note) bits.push(prev.note);
+                if (prev.newKp) bits.push('【上一轮补充】' + prev.newKp);
+                if (prev.nextTips) bits.push('【上一轮留给本轮的提示】' + prev.nextTips);
+                if (bits.length) return bits.join('\n');
+            }
+            const rec = (state.records || []).find(r => r.id === recordId);
+            if (rec && (rec.knowledgePoints || []).length) {
+                return (rec.knowledgePoints || []).filter(k => k && String(k.text || '').trim())
+                    .map(k => (k.no ? k.no + '. ' : '') + String(k.text || '')).join('\n');
+            }
+            return '（暂无上期学习内容）';
+        }
+        function openReviewPanel(recordId, round, kpIdx) {
+            const rec = (state.records || []).find(r => r.id === recordId);
+            if (!rec) { showToast('没有找到这条学习记录'); return; }
+            rvTimerStop();
+            const old = document.getElementById('reviewDialog');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            const maxRound = getReviewIntervals().length || 5;
+            const rd = Math.min(Math.max(parseInt(round, 10) || 1, 1), maxRound);
+            const saved = getKpReview(recordId, rd) || {};
+            const kps = (rec.knowledgePoints || []).filter(k => k && String(k.text || '').trim());
+            rvCtx = {
+                recordId: recordId, round: rd, record: rec,
+                timer: {
+                    running: false, paused: false, mode: 'focus',
+                    left: getTomatoMinutes() * 60, id: null,
+                    pomodoros: parseInt(saved.tomatoes, 10) || 0,
+                    start: saved.start || '', end: saved.end || ''
+                }
+            };
+            let opts = '';
+            for (let i = 1; i <= maxRound; i++) {
+                opts += '<option value="' + i + '"' + (i === rd ? ' selected' : '') + '>' + roundName(i) + '</option>';
+            }
+            const kpHtml = kps.length
+                ? '<div class="rvp-kp">' + kps.map((k, i) => '<span class="kp-chip"' + (i === kpIdx ? ' style="background:#8A7358;color:#FAF7F1;"' : '') + '>' + kpEsc((k.no ? k.no + '. ' : '') + (k.text || '')) + '</span>').join('') + '</div>'
+                : '';
+            const box = document.createElement('div');
+            box.className = 'plan-mask';
+            box.id = 'reviewDialog';
+            box.innerHTML = '<div class="plan-dialog rv-dialog">' +
+                '<h3>🔁 复习 · ' + planEsc(rec.course || '') + ' · ' + roundName(rd) + '</h3>' +
+                '<div class="pd-hint">' + rvShortTitle(rec) + '<br>学习于 ' + rec.date + '（⏱ ' + (rec.durationHours || 0) + 'h' +
+                    (kpIdx >= 0 && kps[kpIdx] ? '）<br>本次针对知识点：<b>' + kpEsc((kps[kpIdx].no ? kps[kpIdx].no + '. ' : '') + (kps[kpIdx].text || '')) + '</b>' : '）') +
+                '</div>' +
+                kpHtml +
+                '<div class="rvp-pomo">' +
+                    '<div class="rvp-timer" id="rvTimer">' + rvPad2(getTomatoMinutes()) + ':00</div>' +
+                    '<div class="rvp-pomo-btns">' +
+                        '<button type="button" class="pd-btn primary" id="rvStartBtn">▶ 开始</button>' +
+                        '<button type="button" class="pd-btn" id="rvPauseBtn">⏸ 暂停</button>' +
+                        '<button type="button" class="pd-btn ghost" id="rvResetBtn">⟲ 重置</button>' +
+                    '</div>' +
+                    '<div class="rvp-status" id="rvStatus"></div>' +
+                '</div>' +
+                '<div class="pf-row">' +
+                    '<div class="pf"><label>开始时间</label><input type="time" id="rvStartT" value="' + (saved.start || '') + '"></div>' +
+                    '<div class="pf"><label>结束时间</label><input type="time" id="rvEndT" value="' + (saved.end || '') + '"></div>' +
+                    '<div class="pf"><label>时长（小时）</label><input type="number" step="0.1" min="0" id="rvHours" value="' + (saved.hours || '') + '" placeholder="自动"></div>' +
+                '</div>' +
+                '<div class="pf-row">' +
+                    '<div class="pf"><label>番茄个数</label><input type="number" min="0" id="rvPomo" value="' + (parseInt(saved.tomatoes, 10) || 0) + '"></div>' +
+                    '<div class="pf"><label>第几轮复习</label><select id="rvRound">' + opts + '</select></div>' +
+                '</div>' +
+                '<div class="pf"><label>学习笔记（系统默认带入上期学习内容，不修改）</label>' +
+                    '<textarea id="rvNote" rows="3" readonly>' + kpEsc(rvPrevText(recordId, rd)) + '</textarea>' +
+                    '<div class="pf-hint">这里是上一轮留下的内容，系统自动带入、不需要改；要补充请写在下面。</div></div>' +
+                '<div class="pf"><label>新知识点补充</label>' +
+                    '<textarea id="rvNew" rows="3" placeholder="本轮新学到 / 新发现的知识点，下轮会作为「上期学习内容」带出来">' + kpEsc(saved.newKp || '') + '</textarea></div>' +
+                '<div class="pf"><label>下轮复习注意事项</label>' +
+                    '<textarea id="rvTips" rows="2" placeholder="给下一轮复习的自己留个提示，如：重点复习 XX 的边界条件">' + kpEsc(saved.nextTips || '') + '</textarea></div>' +
+                '<div class="pd-actions">' +
+                    '<button class="pd-btn ghost" id="rvCancelBtn">取消</button>' +
+                    '<button class="pd-btn" id="rvSkipBtn">仅标记已完成</button>' +
+                    '<button class="pd-btn primary" id="rvSaveBtn">保存复习记录</button>' +
+                '</div></div>';
+            document.body.appendChild(box);
+            const close = function () { rvTimerStop(); if (box.parentNode) box.parentNode.removeChild(box); rvCtx = null; };
+            box.querySelector('#rvCancelBtn').onclick = close;
+            box.onclick = function (e) { if (e.target === box) close(); };
+            box.querySelector('#rvStartBtn').onclick = function () { rvTimerStart(); };
+            box.querySelector('#rvPauseBtn').onclick = function () {
+                if (!rvCtx) return;
+                const t = rvCtx.timer;
+                if (!t.running) return;
+                clearInterval(t.id); t.id = null; t.running = false; t.paused = true;
+                rvTimerRender();
+            };
+            box.querySelector('#rvResetBtn').onclick = function () { rvTimerReset(); };
+            box.querySelector('#rvStartT').addEventListener('change', function () {
+                if (rvCtx && !rvCtx.timer.start) rvCtx.timer.start = this.value;
+            });
+            const doSave = function (skip) {
+                const p = box.querySelector('#rvPomo');
+                const hIn = box.querySelector('#rvHours');
+                const sIn = box.querySelector('#rvStartT');
+                const eIn = box.querySelector('#rvEndT');
+                const start = sIn.value || '';
+                const end = eIn.value || '';
+                let hours = parseFloat(hIn.value);
+                if (!isFinite(hours) || hours <= 0) hours = rvDiffHours(start, end);
+                saveKpReview(recordId, {
+                    date: dateToStr(new Date()),
+                    round: parseInt(box.querySelector('#rvRound').value, 10) || rd,
+                    start: start, end: end, hours: hours,
+                    tomatoes: Math.max(0, parseInt(p.value, 10) || 0),
+                    note: box.querySelector('#rvNote').value || '',
+                    newKp: skip ? '' : (box.querySelector('#rvNew').value || ''),
+                    nextTips: skip ? '' : (box.querySelector('#rvTips').value || ''),
+                    skipped: !!skip
+                });
+                close();
+            };
+            box.querySelector('#rvSaveBtn').onclick = function () { doSave(false); };
+            box.querySelector('#rvSkipBtn').onclick = function () { doSave(true); };
+            rvTimerRender();
+        }
+        function saveKpReview(recordId, d) {
+            const todayStr = dateToStr(new Date());
+            state.kpReviews = state.kpReviews || {};
+            state.kpReviews[recordId + '#' + d.round] = d;
+            state.reviewDone = state.reviewDone || [];
+            const i = state.reviewDone.findIndex(x => x.recordId === recordId && x.round === d.round);
+            if (i >= 0) state.reviewDone[i].date = todayStr;
+            else state.reviewDone.push({ recordId: recordId, round: d.round, date: todayStr });
+            try { saveData(); } catch (e) {}
+            try { renderMemoryView(); } catch (e) {}
+            try { renderGoalStatsPanel(); } catch (e) {}
+            try { if (typeof renderBoard === 'function') renderBoard(); } catch (e) {}
+            try { if (typeof updateSeals === 'function') updateSeals(); } catch (e) {}
+            const ivs = getReviewIntervals();
+            const rec = (state.records || []).find(r => r.id === recordId);
+            const nextTip = (d.round < ivs.length && rec)
+                ? ('；' + roundName(d.round + 1) + ' 排在 ' + memAddDays(rec.date, ivs[d.round]))
+                : '；这是最后一轮复习';
+            showToast('🔁 ' + roundName(d.round) + (d.skipped ? ' 已标记完成' : (' 已记录：🍅 ' + d.tomatoes + ' 个 · ' + (d.hours || 0) + 'h')) + nextTip);
+        }
+
         function renderMemDetail(ds) {
             const todayStr = dateToStr(new Date());
             const recs = state.records.filter(r => r.date === ds);
+            const tasks = getReviewTasksOnDate(ds);
             const box = document.getElementById('memDetail');
-            if (recs.length === 0) {
-                box.innerHTML = `<div class="mem-detail-empty">${ds} 当天没有学习记录</div>`;
+            if (recs.length === 0 && tasks.length === 0) {
+                box.innerHTML = `<div class="mem-detail-empty">${ds} 当天没有学习记录，也没有待复习的知识点</div>`;
                 return;
             }
             const [y, m, d] = ds.split('-').map(Number);
@@ -6819,7 +7293,21 @@
                     </svg>
                 </div>`;
             }).join('');
-            box.innerHTML = `<h4>📆 ${m}月${d}日 · 周${week} · ${recs.length} 条学习记录（虚线 = 复习节点）</h4>${items}`;
+            box.innerHTML = `<h4>📆 ${m}月${d}日 · 周${week} · ${recs.length} 条学习记录${tasks.length ? ' · ' + tasks.length + ' 项复习任务' : ''}（虚线 = 复习节点）</h4>`
+                + reviewTasksHTML(ds, tasks) + items;
+            // 点知识点 → 进入复习界面（直接带上这一轮复习）
+            box.querySelectorAll('.kp-chip-link').forEach(el => {
+                el.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    openReviewPanel(el.dataset.rv, parseInt(el.dataset.round, 10) || 1, parseInt(el.dataset.kp, 10));
+                });
+            });
+            // 点整张复习任务卡也能进去
+            box.querySelectorAll('.mem-task').forEach(el => {
+                el.addEventListener('click', function () {
+                    openReviewPanel(el.dataset.rv, parseInt(el.dataset.round, 10) || 1, -1);
+                });
+            });
         }
 
         function initMemoryView() {
@@ -7966,14 +8454,69 @@
       try{ if(typeof state!=="undefined"&&state&&state.currentCourse&&l.indexOf(state.currentCourse)>=0) return state.currentCourse; }catch(e){}
       return l.length?l[0]:"";
     }
-    function scFillChapters(chapSel, course, keepChapter){
-      let maxCh=12;
-      try{ maxCh=getMaxChapter(course)||12; }catch(e){}
-      let html="";
-      for(let i=1;i<=maxCh;i++){
-        let nm=""; try{ nm=getChapterName(course,i)||""; }catch(e){}
-        html+='<option value="'+i+'">第'+i+scChapLabel()+(nm?" "+nm:"")+'</option>';
+    // ---- 真实结构：优先「项目结构(章名/节名)」→ 知识点树 → GUIDE_DATA 估算 → 兜底 1 章 ----
+    function scStructChapters(course){
+      const out=[];
+      try{
+        const cn=(typeof ACTIVE_CHAPTER_NAMES!=="undefined"&&ACTIVE_CHAPTER_NAMES&&ACTIVE_CHAPTER_NAMES[course])?ACTIVE_CHAPTER_NAMES[course]:null;
+        if(cn) Object.keys(cn).map(Number).filter(function(n){return !isNaN(n)&&n>0;})
+          .sort(function(a,b){return a-b;})
+          .forEach(function(n){ out.push({no:n,title:String(cn[n]==null?"":cn[n])}); });
+      }catch(e){}
+      if(!out.length){
+        try{
+          const p=(typeof getCurrentProject==="function")?getCurrentProject():null;
+          const cn2=(p&&p.chapterNames&&p.chapterNames[course])?p.chapterNames[course]:null;
+          if(cn2) Object.keys(cn2).map(Number).filter(function(n){return !isNaN(n)&&n>0;})
+            .sort(function(a,b){return a-b;})
+            .forEach(function(n){ out.push({no:n,title:String(cn2[n]==null?"":cn2[n])}); });
+        }catch(e){}
       }
+      if(!out.length){
+        try{
+          const c=(typeof GUIDE_DATA!=="undefined")?GUIDE_DATA[course]:null;
+          const mx=c?(c.maxChapter||0):0;
+          for(let i=1;i<=mx;i++) out.push({no:i,title:""});
+        }catch(e){}
+      }
+      if(!out.length) out.push({no:1,title:""});
+      return out;
+    }
+    function scStructSections(course,chNo){
+      const ch=parseInt(chNo,10)||1;
+      let names=null;
+      try{
+        const p=(typeof getCurrentProject==="function")?getCurrentProject():null;
+        const sn=(p&&p.sectionNames&&p.sectionNames[course])?p.sectionNames[course]:null;
+        if(sn&&sn[ch]&&sn[ch].length) names=sn[ch].slice();
+      }catch(e){}
+      if(!names||!names.length){
+        try{
+          const secs=(typeof getSectionsForChapter==="function")?(getSectionsForChapter(course,ch)||[]):[];
+          if(secs.length) names=secs.map(function(s){ let nm=""; try{ const g=getGuide(course,ch,s); nm=g&&g.name?g.name:""; }catch(e){} return nm; });
+        }catch(e){}
+      }
+      if(!names||!names.length){
+        try{
+          const p=(typeof getCurrentProject==="function")?getCurrentProject():null;
+          const k=(p&&p.kpTree&&p.kpTree[course]&&p.kpTree[course][ch])?p.kpTree[course][ch]:null;
+          if(k){
+            const ks=Object.keys(k).map(Number).filter(function(n){return !isNaN(n)&&n>0;}).sort(function(a,b){return a-b;});
+            if(ks.length) names=ks.map(function(){return "";});
+          }
+        }catch(e){}
+      }
+      if(!names||!names.length) names=[""];
+      return names.map(function(nm,i){ return {no:i+1,title:String(nm==null?"":nm)}; });
+    }
+    function scFillChapters(chapSel, course, keepChapter){
+      if(!chapSel) return;
+      const list=scStructChapters(course);
+      let html="";
+      list.forEach(function(it){
+        html+='<option value="'+it.no+'">第'+it.no+scChapLabel()+(it.title?" "+esc(it.title):"")+'</option>';
+      });
+      html+='<option value="__addchap__">＋ 新增一'+scChapLabel()+'…</option>';
       chapSel.innerHTML=html;
       const want=(keepChapter!=null&&keepChapter!=="")?String(keepChapter):null;
       if(want){
@@ -7981,29 +8524,30 @@
         if(num&&[...chapSel.options].some(function(o){return o.value===String(num);})) chapSel.value=String(num);
         else{
           const o=document.createElement("option"); o.value=want; o.textContent=want+"（自定义）";
-          chapSel.appendChild(o); chapSel.value=want;
+          chapSel.insertBefore(o, chapSel.lastElementChild); chapSel.value=want;
         }
-      }
+      } else chapSel.value=String(list[0].no);
     }
     function scFillSections(subSel, course, chNum, keepSub){
-      let secs=[];
-      try{ secs=getSectionsForChapter(course, chNum)||[]; }catch(e){}
-      if(!secs.length){ secs=[1,2,3,4,5,6,7,8,9,10,11,12]; }
-      subSel.innerHTML=secs.map(function(s){
-        let nm=""; try{ const g=getGuide(course,chNum,s); nm=g&&g.name?g.name:""; }catch(e){}
-        return '<option value="'+s+'">'+(nm?("第"+s+scSecLabel()+" "+nm):("第"+s+scSecLabel()))+'</option>';
-      }).join("");
+      if(!subSel) return;
+      const list=scStructSections(course,chNum);
+      let html="";
+      list.forEach(function(it){
+        html+='<option value="'+it.no+'">第'+it.no+scSecLabel()+(it.title?" "+esc(it.title):"")+'</option>';
+      });
+      html+='<option value="__addsec__">＋ 新增一'+scSecLabel()+'…</option>';
+      subSel.innerHTML=html;
       const want=keepSub?String(keepSub):null;
       if(want){
         const m=want.match(new RegExp("第\\s*(\\d+)\\s*"+scSecLabel()));
-        const byName=[...subSel.options].find(function(o){return o.textContent.indexOf(want)>=0;});
+        const byName=[...subSel.options].find(function(o){return o.value!=="__addsec__"&&o.textContent.indexOf(want)>=0;});
         if(byName) subSel.value=byName.value;
         else if(m&&[...subSel.options].some(function(o){return o.value===m[1];})) subSel.value=m[1];
         else{
           const o=document.createElement("option"); o.value=want; o.textContent=want+"（自定义）";
-          subSel.appendChild(o); subSel.value=want;
+          subSel.insertBefore(o, subSel.lastElementChild); subSel.value=want;
         }
-      }
+      } else subSel.value=String(list[0].no);
     }
     function scCourseVal(prefix){ return document.getElementById("sc-"+prefix+"Course").value; }
     function scChapterStr(prefix){
@@ -8040,15 +8584,145 @@
         cs.innerHTML=scCourseList().map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join("");
         cs.value=scDefCourse();
         cs.onchange=function(){
+          if(!cs.value) return;
           scFillChapters(hs, cs.value, null);
           if(ss) scFillSections(ss, cs.value, parseInt(hs.value,10)||1, null);
+          scSelPush(pfx);
+          try{ if(typeof state!=="undefined"&&state) state.currentCourse=cs.value; }catch(e){}
+          try{ if(typeof renderCourseList==="function") renderCourseList(); }catch(e){}
+          try{ if(typeof renderCourseHeader==="function") renderCourseHeader(); }catch(e){}
         };
         hs.onchange=function(){
+          if(hs.value==="__addchap__"){ scAddChapter(pfx); return; }
           if(ss) scFillSections(ss, cs.value, parseInt(hs.value,10)||1, null);
+          scSelPush(pfx);
+        };
+        if(ss) ss.onchange=function(){
+          if(ss.value==="__addsec__"){ scAddSection(pfx); return; }
+          scSelPush(pfx);
         };
         scFillChapters(hs, cs.value, null);
         if(ss) scFillSections(ss, cs.value, parseInt(hs.value,10)||1, null);
       });
+    }
+
+    /* ---- 三个自检页（小节自检 / 整章复盘 / 错题）共享同一套 课程·章·节 选择 ---- */
+    let scLastSel=null;
+    function scSetAll(course, chNo, secNo){
+      if(!course) return;
+      ["sec","chap","w"].forEach(function(pfx){
+        const cs=document.getElementById("sc-"+pfx+"Course");
+        const hs=document.getElementById("sc-"+pfx+"ChapterSel");
+        const ss=document.getElementById("sc-"+pfx+"SubSel");
+        if(!cs||!hs) return;
+        if([...cs.options].some(function(o){return o.value===course;})) cs.value=course;
+        scFillChapters(hs, course, chNo);
+        if(ss) scFillSections(ss, course, chNo, secNo);
+      });
+      // 自检页换了科目 → 主页面的「当前科目」与侧栏进度条也跟着走
+      try{
+        if(typeof state!=="undefined"&&state&&state.currentCourse!==course){
+          state.currentCourse=course;
+          if(typeof renderCourseList==="function") renderCourseList();
+          if(typeof renderCourseHeader==="function") renderCourseHeader();
+          const fc=document.getElementById("fCourse");
+          if(fc&&typeof COURSES!=="undefined"&&COURSES.indexOf(course)>=0){ fc.value=course; if(typeof updateChapterSelect==="function") updateChapterSelect(course); }
+        }
+      }catch(e){}
+    }
+    function scCurSel(pfx){
+      const cs=document.getElementById("sc-"+pfx+"Course");
+      const hs=document.getElementById("sc-"+pfx+"ChapterSel");
+      const ss=document.getElementById("sc-"+pfx+"SubSel");
+      if(!cs) return null;
+      const hp=parseInt(hs?hs.value:"1",10), sp=ss?parseInt(ss.value,10):NaN;
+      return { course:cs.value, ch:(isNaN(hp)||hp<1)?1:hp, sec:(isNaN(sp)||sp<1)?1:sp };
+    }
+    // 我在任一自检页改了选择 → 三页一起走
+    function scSelPush(pfx){
+      const cur=scCurSel(pfx);
+      if(!cur||!cur.course) return;
+      scLastSel=cur;
+      scSetAll(cur.course, cur.ch, cur.sec);
+    }
+    // 切到自检页时，把上次的选择（或学习进度正在看的科目）带进来
+    function scSelSyncCurrent(){
+      if(scLastSel&&scLastSel.course){ scSetAll(scLastSel.course, scLastSel.ch, scLastSel.sec); return; }
+      let c=""; try{ c=scDefCourse(); }catch(e){}
+      if(c) scSetAll(c,1,1);
+    }
+    // 学习进度页点了别的科目 → 自检页跟着换
+    window.ScOnHostCourse=function(course){
+      if(!course) return;
+      scLastSel={course:course,ch:1,sec:1};
+      try{
+        const pane=document.getElementById("view-scsec");
+        const pane2=document.getElementById("view-scchap");
+        const vis=(pane&&pane.style.display!=="none")||(pane2&&pane2.style.display!=="none");
+        if(vis) scSetAll(course,1,1);
+      }catch(e){}
+    };
+
+    // 对外接口：主页面 / 控制台 / 回归测试都能直接驱动级联
+    window.ScAPI = {
+      initCascades: function(){ try{ scInitCascades(); }catch(e){} },
+      setAll: function(c,h,s){ scLastSel={course:c,ch:h,sec:s}; scSetAll(c,h,s); },
+      sel: function(pfx){ return scCurSel(pfx); },
+      chapters: function(c){ return scStructChapters(c); },
+      sections: function(c,ch){ return scStructSections(c,ch); },
+      addChapter: function(pfx){ scAddChapter(pfx); },
+      addSection: function(pfx){ scAddSection(pfx); },
+      syncCurrent: function(){ scSelSyncCurrent(); }
+    };
+
+    /* ---- 在自检页里直接给这个科目加章 / 加节（写回项目结构，学习进度页同步可见）---- */
+    function scProjectTouch(){
+      const p=(typeof getCurrentProject==="function")?getCurrentProject():null;
+      if(!p) return null;
+      try{ if(p.builtin&&!p.customStructure&&typeof dettachBuiltinStructure==="function") dettachBuiltinStructure(p); }catch(e){}
+      p.chapterNames=p.chapterNames||{};
+      p.sectionNames=p.sectionNames||{};
+      return p;
+    }
+    function scAfterStruct(course, chNo, secNo, msg){
+      try{ if(typeof afterStructureChange==="function") afterStructureChange(course); }catch(e){}
+      try{ scInitCascades(); }catch(e){}
+      try{ scSetAll(course, chNo, secNo); }catch(e){}
+      try{ updateSeals(); }catch(e){}
+      if(msg) toast(msg);
+    }
+    function scAddChapter(pfx){
+      const cur=scCurSel(pfx);
+      if(!cur||!cur.course){ toast("请先选择课程"); return; }
+      const list=scStructChapters(cur.course);
+      let nextNo=1; list.forEach(function(it){ if(it.no>=nextNo) nextNo=it.no+1; });
+      const nm=prompt("给「"+cur.course+"」新增第 "+nextNo+" "+scChapLabel()+"\n请输入"+scChapLabel()+"标题（可留空）","");
+      if(nm===null){ try{ scSetAll(cur.course,cur.ch,cur.sec); }catch(e){} return; }
+      const p=scProjectTouch(); if(!p) return;
+      p.chapterNames[cur.course]=p.chapterNames[cur.course]||{};
+      p.chapterNames[cur.course][nextNo]=String(nm||"").trim();
+      p.sectionNames[cur.course]=p.sectionNames[cur.course]||{};
+      if(!p.sectionNames[cur.course][nextNo]||!p.sectionNames[cur.course][nextNo].length) p.sectionNames[cur.course][nextNo]=[""];
+      try{ saveProjects(); }catch(e){}
+      scAfterStruct(cur.course, nextNo, 1, "已新增 第"+nextNo+scChapLabel()+(String(nm||"").trim()?" "+String(nm).trim():"")+"；学习进度页同步可见");
+    }
+    function scAddSection(pfx){
+      const cur=scCurSel(pfx);
+      if(!cur||!cur.course){ toast("请先选择课程"); return; }
+      const list=scStructSections(cur.course, cur.ch);
+      let nextNo=1; list.forEach(function(it){ if(it.no>=nextNo) nextNo=it.no+1; });
+      const nm=prompt("给「"+cur.course+" 第"+cur.ch+scChapLabel()+"」新增第 "+nextNo+" "+scSecLabel()+"\n请输入"+scSecLabel()+"标题（可留空）","");
+      if(nm===null){ try{ scSetAll(cur.course,cur.ch,cur.sec); }catch(e){} return; }
+      const p=scProjectTouch(); if(!p) return;
+      p.chapterNames[cur.course]=p.chapterNames[cur.course]||{};
+      if(p.chapterNames[cur.course][cur.ch]===undefined) p.chapterNames[cur.course][cur.ch]="";
+      p.sectionNames[cur.course]=p.sectionNames[cur.course]||{};
+      const arr=(p.sectionNames[cur.course][cur.ch]||[]).slice();
+      while(arr.length<nextNo-1) arr.push("");
+      arr[nextNo-1]=String(nm||"").trim();
+      p.sectionNames[cur.course][cur.ch]=arr;
+      try{ saveProjects(); }catch(e){}
+      scAfterStruct(cur.course, cur.ch, nextNo, "已新增 第"+nextNo+scSecLabel()+(String(nm||"").trim()?" "+String(nm).trim():"")+"；学习进度页同步可见");
     }
 
     /* ============================================================
@@ -8154,8 +8828,8 @@
     window.ScRefresh = {
       scboard: function(){ renderBoard(); },
       scwrong: function(){ renderWrongList(); },
-      scsec:   function(){ updateSeals(); },
-      scchap:  function(){ updateSeals(); }
+      scsec:   function(){ try{ scSelSyncCurrent(); }catch(e){} updateSeals(); },
+      scchap:  function(){ try{ scSelSyncCurrent(); }catch(e){} updateSeals(); }
     };
     document.querySelectorAll('#viewTabs .vtab').forEach(function(b){
       b.addEventListener('click', function(){
