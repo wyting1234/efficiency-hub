@@ -186,17 +186,38 @@
   }
 
   // 仓库不存在则建一个私有仓库（把令牌权限暴露面控制到最小）
+  //
+  // ⚠️ 性能要点：这个函数会被多个入口调用（上传前的 ensureRepo、io.ensureTarget、
+  //    readShardedMetaWith…），一次同步里可能被调 5~6 次。
+  //    如果每次都发「读仓库信息」的请求，一次上传就会多出好几个网络往返。
+  //    实测在 300ms 延迟下，一次上传 13 个请求里有 6 个是重复的仓库探测，
+  //    白白多花近 2 秒 —— 这就是用户感觉「卡顿」的主因。
+  //    因此这里做「同一轮同步内只探一次」的会话级缓存，跨轮自动失效（见 resetRepoProbe）。
+  let repoProbed = null;        // { owner, repo, branch } —— 本轮已确认过的结果
+  function resetRepoProbe() { repoProbed = null; }
+
   async function ensureRepo() {
     if (!TOKEN) throw new Error('还没有配置 Gitee 令牌');
+    // 命中缓存：同一轮里已经确认过仓库和分支，直接复用，不再发请求
+    if (repoProbed && repoProbed.repo === REPO && repoProbed.branch) {
+      setBranch(repoProbed.branch);
+      return repoProbed;
+    }
     const login = await getLogin();
     if (!login) throw new Error('无法读取 Gitee 账号信息，请检查令牌');
 
-    // 先探测：仓库到底在不在？注意 Gitee 对「私有库无权限」也回 404，
-    // 所以拿到 404 时不能直接认定「不存在」，要结合建库是否成功来判断。
+    // 一次请求同时回答两个问题：仓库在不在？默认分支叫什么？
+    // 原来这里拆成两次 GET（先探存在性、再读 default_branch），
+    // 每次同步都白花一个网络往返。Gitee 的 /repos/:o/:r 一次就把两者都给了。
+    //
+    // ⚠️ 注意 Gitee 对「私有库无权限」也回 404，所以拿到 404 时不能直接认定
+    //    「不存在」，要结合建库是否成功来判断。
     let exists = false;
+    let realBranch = '';
     try {
-      await req('GET', '/repos/' + login + '/' + REPO, { what: '检查仓库' });
+      const info = await req('GET', '/repos/' + login + '/' + REPO, { what: '检查仓库' });
       exists = true;
+      realBranch = (info && info.default_branch) || '';
     } catch (e) {
       if (!/不存在/.test(e.message || '')) {
         // 403 之类：令牌本身有问题，直接说清楚，不要硬去建库
@@ -223,29 +244,31 @@
       }
       // 新建仓库后要等它初始化出第一个提交（auto_init 是异步的），
       // 否则紧接着写 contents 会 404。旧代码只等 400ms，经常不够。
-      await waitRepoReady(login, REPO);
+      realBranch = await waitRepoReady(login, REPO);
     }
 
-    // 关键：拿到真实默认分支，否则 ref 写错会让所有读写都静默失败。
+    // 关键：核对真实默认分支，否则 ref 写错会让所有读写都静默失败。
     //
-    // 这里**每次都要核对**，不能只在 BRANCH 为空时才探测：
-    // 缓存里的分支名可能来自上一次的错误推断（比如旧版本硬编码的 master），
-    // 一旦被污染就是「每次同步都失败、但报错信息毫无线索」。
-    // 核对成本只有一次 GET，相比排查成本几乎为零。
-    let realBranch = '';
-    try {
-      const info = await req('GET', '/repos/' + login + '/' + REPO, { what: '读取仓库信息' });
-      realBranch = (info && info.default_branch) || '';
-    } catch (e) { /* 读不到就沿用已有/兜底值 */ }
-
+    // 必须核对而不能只在 BRANCH 为空时才探测：缓存里的分支名可能来自上一次的
+    // 错误推断（比如旧版本硬编码的 master），一旦被污染就是「每次同步都失败、
+    // 但报错信息毫无线索」。上面的 GET 已经顺手把 default_branch 带回来了，
+    // 所以这个核对是零额外成本的。
     if (realBranch) {
       if (realBranch !== BRANCH) {
         if (BRANCH) console.warn('[Gitee] 缓存的默认分支 "' + BRANCH + '" 与远端 "' + realBranch + '" 不一致，已纠正');
         setBranch(realBranch);
       }
     } else if (!BRANCH) {
-      setBranch('master');      // 读不到仓库信息时的最后兜底
+      // 兜底：连仓库信息都读不到时，也不能让 BRANCH 为空 —— ref='' 会被
+      // Gitee 当作「分支不存在」而静默返回 []，那是最难排查的失败方式。
+      try {
+        const info = await req('GET', '/repos/' + login + '/' + REPO, { what: '读取仓库信息' });
+        setBranch((info && info.default_branch) || 'master');
+      } catch (e) {
+        setBranch('master');
+      }
     }
+    repoProbed = { owner: login, repo: REPO, branch: BRANCH };
     return { owner: login, repo: REPO, branch: BRANCH };
   }
 
@@ -302,11 +325,39 @@
 
   // 读一个文件；不存在返回 null
   // retried 用于「分支失效 → 自愈 → 再读一次」的内部重试，最多一次。
+  //
+  // 会话级缓存：一次同步里 meta 常被读 2~3 次（上传前判云端有没有数据、
+  // readShardedMetaWith、giteeRead…），每次都是独立网络请求。
+  // 缓存一下能把一次上传的请求数从 9 降到 6 左右。
+  // 只在「同一轮同步」内有效：giteeUpload/giteeDownload 入口会清掉（见 clearFileCache）。
+  const fileCache = new Map();
+  const shaCache = new Map();
+  // 进行中的读请求：同一文件被并发读时复用同一个 Promise。
+  // 为什么必须要有：readShardedWith 会并发拉所有分片，而 meta 又可能同时被
+  // 上传流程和 io 层各读一次 —— 没有这个去重，缓存还没写进去，第二个请求就
+  // 已经发出去了，等于白读一遍（实测一次上传里 meta 被读两次）。
+  const inflight = new Map();
+  function clearFileCache() { fileCache.clear(); shaCache.clear(); inflight.clear(); }
+
   async function readContents(name, quiet, retried) {
+    if (!retried && fileCache.has(name)) return fileCache.get(name);
+    if (!retried && inflight.has(name)) return inflight.get(name);
+    const p = readContentsRaw(name, quiet, retried);
+    if (!retried) { inflight.set(name, p); p.finally(() => { if (inflight.get(name) === p) inflight.delete(name); }); }
+    return p;
+  }
+
+  async function readContentsRaw(name, quiet, retried) {
     try {
       const raw = await req('GET', contentsPath(name), { query: { ref: BRANCH }, what: '读取 ' + name });
       const n = normContents(raw);
-      if (n.kind === 'file' || n.kind === 'text') return n.text;
+      if (n.kind === 'file' || n.kind === 'text') {
+        fileCache.set(name, n.text);
+        // 同一次响应里 sha 也一起带回来了，顺手存下 —— 否则后面要写这个文件时
+        // getSha 还得为 sha 再发一次一模一样的 GET（一次上传能省 1~2 个来回）。
+        if (n.sha) shaCache.set(name, n.sha);
+        return n.text;
+      }
       // bad-branch：分支名不对时 Gitee 回 200 + []（不是 404）。这是「静默失败」的来源。
       // 处理方式：就地重探分支，然后重读一次；而不是把错误抛出去让上层瞎猜。
       if (n.kind === 'bad-branch') {
@@ -317,9 +368,12 @@
         if (!quiet) throw new Error('分支名不正确，且自动修正失败（请检查令牌是否有该仓库权限）。');
         return null;
       }
+      // 「文件不存在」也要缓存：同一轮里对同一个不存在的文件的多次查询
+      // 都会走 404，缓存成 null 能省掉重复请求。
+      fileCache.set(name, null);
       return null;
     } catch (e) {
-      if (/不存在/.test(e.message || '')) return null;
+      if (/不存在/.test(e.message || '')) { fileCache.set(name, null); return null; }
       if (quiet) { console.warn('[Gitee] 读 ' + name + ' 失败:', e.message); return null; }
       throw e;
     }
@@ -329,10 +383,13 @@
   // ⚠️ 要点：不能用 200 判断成功。分支写错时 Gitee 回 200 + []，
   //    旧代码会拿到 undefined 的 sha → 走 POST 新建 → 对已存在文件必然失败。
   async function getSha(name, retried) {
+    // 复用缓存：如果这一轮刚读过这个文件，直接把 sha 记下来，不再发请求。
+    // 注意缓存存的是「文本内容」，sha 单独用一张表记，避免又读一遍。
+    if (!retried && shaCache.has(name)) return shaCache.get(name);
     try {
       const raw = await req('GET', contentsPath(name), { query: { ref: BRANCH }, what: '读取 ' + name });
       const n = normContents(raw);
-      if (n.kind === 'file') return n.sha || null;
+      if (n.kind === 'file') { shaCache.set(name, n.sha || null); return n.sha || null; }
       if (n.kind === 'text') {
         // 纯文本形态拿不到 sha，再取一次元数据（sha 在响应头/结构里）
         return null;
@@ -345,12 +402,24 @@
         }
         throw new Error('分支名不正确，且自动修正失败（请检查令牌是否有该仓库权限）。');
       }
+      shaCache.set(name, null);
       return null;
     } catch (e) {
-      if (/不存在/.test(e.message || '')) return null;
+      if (/不存在/.test(e.message || '')) { shaCache.set(name, null); return null; }
       throw e;
     }
   }
+
+  // 取 sha 的另一种入口：先保证「内容已读过」。
+  // 这样 sha 和内容共用同一次 GET —— 上传流程往往是「先读 meta 判断云端有没有数据，
+  // 再取 meta 的 sha 去写」，两次操作其实只需要一个请求。
+  async function getShaViaRead(name) {
+    if (shaCache.has(name)) return shaCache.get(name);
+    await readContents(name, true);
+    if (shaCache.has(name)) return shaCache.get(name);
+    return getSha(name);
+  }
+
 
   // 写一个文件（有 sha 走 PUT 更新，无 sha 走 POST 新建）
   async function writeContents(name, text, sha, message) {
@@ -365,6 +434,9 @@
     } else {
       await req('POST', contentsPath(name), { json: payload, what: '新建 ' + name });
     }
+    // 写成功后本机缓存就过期了：留着会让后续读到旧内容、拿到旧 sha
+    fileCache.delete(name);
+    shaCache.delete(name);
   }
 
   async function deleteContents(name, sha, message) {
@@ -372,6 +444,8 @@
       json: { sha: sha, message: message || ('cleanup ' + name), branch: BRANCH },
       what: '删除 ' + name
     });
+    fileCache.set(name, null);      // 已删除：记成「不存在」，避免再发一次注定 404 的请求
+    shaCache.set(name, null);
   }
 
   // 分支名失效（Gitee 对不存在的分支返回 200 + [] 而不是 404）时，
@@ -380,6 +454,7 @@
   // 上层只看到「传不上去」这种毫无线索的现象。就地重探能让绝大多数情况自动恢复。
   async function healBranch() {
     const before = BRANCH;
+    resetRepoProbe();                      // 分支要重探，缓存必须先失效
     try { localStorage.removeItem('gitee_branch'); } catch (e) {}
     BRANCH = '';
     // getLogin 会用缓存 OWNER；ensureRepo 会建库（若不存在）+ 探测真实分支
@@ -412,7 +487,7 @@
         for (let attempt = 0; attempt < 3; attempt++) {
           let sha = null;
           try {
-            sha = await getSha(name);
+            sha = await getShaViaRead(name);
           } catch (e) {
             // 分支名错误会被 getSha 重置掉；重来一次会用新探测到的分支
             if (attempt < 2) { await sleep(600); continue; }
@@ -463,6 +538,11 @@
 
   async function giteeUpload() {
     if (!TOKEN) { showConfigModal(); return; }
+    // 立刻反馈「开始了」：上传要跑几秒到几十秒，没有这个提示用户会以为点了没反应
+    Core.progShow && Core.progShow('running', '正在上传到 Gitee…', '正在检查仓库、比对远端分片，稍等片刻。');
+    Core.progBusy && Core.progBusy(true);
+    resetRepoProbe();                      // 新一轮同步：仓库/分支探测缓存作废
+    clearFileCache();
     try {
       await ensureRepo();
       const cloudMeta = await readShardedMetaSafe();
@@ -475,7 +555,11 @@
         const choice = await Core.showChoice('上传到云端',
           '云端已经存有数据。\n「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖云端」用【本机数据】整体替换云端。',
           '合并到云端', '覆盖云端');
-        if (choice === 'cancel') return;
+        if (choice === 'cancel') {
+          Core.progShow && Core.progShow('running', '已取消上传', '云端数据未改动。');
+          Core.progBusy && Core.progBusy(false);
+          return;
+        }
         mode = choice;
       }
       let localData;
@@ -487,6 +571,7 @@
       }
       let info;
       try {
+        Core.progShow && Core.progShow('running', '正在写入分片…', '只重传改动过的数据片。');
         info = await Core.writeShardedWith(giteeIO, localData);
       } catch (e) {
         if (!/不存在/.test(e.message || '')) throw e;
@@ -531,11 +616,17 @@
 
   async function giteeDownload() {
     if (!TOKEN) { showConfigModal(); return; }
+    Core.progShow && Core.progShow('running', '正在从 Gitee 下载…', '正在读取远端分片并合并，稍等片刻。');
+    Core.progBusy && Core.progBusy(true);
+    resetRepoProbe();
+    clearFileCache();
     try {
       const remote = await giteeRead();
       const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
       if (!cloudHas) {
-        await Core.showAlert('Gitee 上还没有数据。\n请先在一部设备上点「上传到云端」，再来这里下载。');
+        Core.progShow && Core.progShow('fail', 'Gitee 上还没有数据',
+          '请先在一部设备上点「上传到云端」，再来这里下载。');
+        Core.progBusy && Core.progBusy(false);
         return;
       }
       const localHas = Core.getLocalKeys().length > 0;
@@ -544,7 +635,11 @@
         const choice = await Core.showChoice('下载到本机',
           '本机已经存有数据。\n「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖本机」用【云端数据】整体替换本机。',
           '合并到本机', '覆盖本机');
-        if (choice === 'cancel') return;
+        if (choice === 'cancel') {
+          Core.progShow && Core.progShow('running', '已取消下载', '本机数据未改动。');
+          Core.progBusy && Core.progBusy(false);
+          return;
+        }
         mode = choice;
       }
       let stats = null;
@@ -617,6 +712,8 @@
       const btn = modal.querySelector('#gtSaveBtn');
       if (!tk) { msg.textContent = '请先粘贴令牌'; return; }
       TOKEN = tk; REPO = rp; OWNER = '';
+      resetRepoProbe();                    // 配置变了，旧探测结果必须作废
+      clearFileCache();
       btn.textContent = '连接中...'; btn.disabled = true; msg.textContent = '';
       try {
         await ensureRepo();
@@ -658,6 +755,8 @@
       REPO = repo || REPO;
       OWNER = owner || OWNER;
       isConnected = !!TOKEN;
+      resetRepoProbe();
+      clearFileCache();
       try {
         localStorage.setItem('gitee_token', TOKEN);
         localStorage.setItem('gitee_repo', REPO);

@@ -184,8 +184,18 @@
     return merged;
   }
 
-  // 成功 / 失败提醒：优先用备份中心的提醒卡（更醒目、带数据量和下一步指引），
-  // 没有备份中心时退回站点 toast / alert。
+  // 秒表状态：把「已经跑了多久」显示出来，让人能区分「慢」和「卡死」
+  let progTimer = null, progStart = 0;
+  const PROG_STYLE = {
+    running: 'background:#eef4ff;border:1px solid #cfe0ff;color:#1f4fa8',
+    ok: 'background:#eafaf3;border:1px solid #b7ebd4;color:#0a6b45',
+    fail: 'background:#fdf0ee;border:1px solid #f7ccc4;color:#a3341f'
+  };
+
+  // 成功 / 失败提醒。
+  // v7 起优先写进同步面板里的常驻状态区：面板是用户点同步时正看着的地方，
+  // 结果就展示在原地 —— 不用去侧边栏找那个几秒就消失的 toast。
+  // 面板没开时（自动同步等）再退回 BackupHub 提醒卡 / toast / alert。
   //
   // ⚠️ 注意：这两个函数在导出的那一刻会被 _exportedNotifyOK 记下来。
   //    CloudSyncCore.notifyOK 是「对象属性」，其它后端（如 Gitee）通过
@@ -194,12 +204,14 @@
   //    千万别把这里改成「内部直接调 notifyOK」的写法，否则后端一失败就
   //    会弹永不 resolve 的对话框，测试直接卡死。
   function notifyOK(title, detail) {
+    if (document.getElementById('syncProgress')) { progShow('ok', title, detail); progBusy(false); return; }
     if (window.BackupHub && typeof window.BackupHub.notify === 'function') {
       try { window.BackupHub.notify({ icon: '☁️', title: title, detail: detail }); return; } catch (e) {}
     }
     if (typeof toast === 'function') toast('✅ ' + title);
   }
   function notifyFail(title, detail) {
+    if (document.getElementById('syncProgress')) { progShow('fail', title, detail); progBusy(false); return; }
     if (window.BackupHub && typeof window.BackupHub.notify === 'function') {
       try { window.BackupHub.notify({ type: 'warn', icon: '⚠️', title: title, detail: detail, ms: 6500 }); return; } catch (e) {}
     }
@@ -287,6 +299,62 @@
     return '<div style="font-size:13px;color:#888">备份模块未加载</div>';
   }
 
+  // ============ 同步进度 / 结果反馈（v7）============
+  // 背景：上传下载是异步的，之前点完按钮面板立刻关闭，界面上什么都不剩。
+  // 用户既不知道任务在跑、也不知道结果 —— 反馈还经常被侧边栏角落里几秒就消失的
+  // toast 吞掉。这里在面板内做一块常驻状态区，把「进行中 → 成功/失败」全程显示出来。
+  function progShow(kind, title, detail) {
+    // 每次更新状态都停掉旧计时器：否则多次同步会叠加出好几个 ticking 的定时器
+    if (progTimer) { clearInterval(progTimer); progTimer = null; }
+    const el = document.getElementById('syncProgress');
+    if (!el) return;
+    el.style.display = 'block';
+    el.style.cssText = 'display:block;margin-bottom:14px;border-radius:8px;padding:12px;font-size:13px;line-height:1.7;' +
+      (PROG_STYLE[kind] || PROG_STYLE.running);
+    const spin = kind === 'running' ? '⏳ ' : (kind === 'ok' ? '✅ ' : '⚠️ ');
+    // 标题与正文之间必须有换行/间距：之前只用 div 相邻，浏览器渲染出来
+    // 是「上传 Gitee 失败令牌无效或已过期…」粘成一坨，很难读。
+    el.innerHTML = '<div style="font-weight:600">' + spin + escText(title) +
+      '<span id="syncElapsed" style="font-weight:400;opacity:.7;font-size:12px;margin-left:6px"></span></div>' +
+      (detail ? '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.08);white-space:pre-wrap">' + escText(detail) + '</div>' : '');
+    // 进行中时显示秒表。
+    // 为什么需要：Gitee 首次同步要建仓库、逐文件取 sha，慢的时候十几秒没动静，
+    // 界面看起来就像死机了。有个跳动的秒数，用户才知道程序还在跑。
+    if (kind === 'running') {
+      progStart = Date.now();
+      const tick = function () {
+        const t = document.getElementById('syncElapsed');
+        if (!t) return;
+        t.textContent = '（已用 ' + Math.round((Date.now() - progStart) / 1000) + ' 秒）';
+      };
+      tick();
+      progTimer = setInterval(tick, 500);
+    } else if (progStart) {
+      // 结束时在正文末尾补一句总耗时，便于判断「这是网络慢还是真卡了」
+      const sec = ((Date.now() - progStart) / 1000).toFixed(1);
+      const d2 = el.querySelector('div:nth-child(2)');
+      if (d2) d2.textContent = d2.textContent + '\n耗时 ' + sec + ' 秒。';
+      progStart = 0;
+    }
+  }
+  function progHide() {
+    const el = document.getElementById('syncProgress');
+    if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+  }
+  function escText(s) {
+    return String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  }
+  // 任务期间锁住按钮，防止连点造成并发上传互相干扰
+  function progBusy(busy) {
+    ['#syncUpload', '#syncDownload'].forEach(function (sel) {
+      const b = document.querySelector(sel);
+      if (!b) return;
+      b.disabled = !!busy;
+      b.style.opacity = busy ? '0.55' : '1';
+      b.style.cursor = busy ? 'not-allowed' : 'pointer';
+    });
+  }
+
   function openSyncPanel() {
     closeTopModal();
     const backend = activeBackend();
@@ -319,6 +387,12 @@
         <button id="syncUpload" style="flex:1;padding:12px;border:none;border-radius:8px;background:#08bd74;color:white;font-size:15px;cursor:pointer">⬆️ 上传到云端</button>
         <button id="syncDownload" style="flex:1;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:15px;cursor:pointer">⬇️ 从云端下载</button>
       </div>
+
+      <!-- 同步状态区：常驻显示「进行中 / 成功 / 失败」。
+           为什么必须有它：上传是异步的，之前一点按钮面板就关掉了，
+           界面上再无任何痕迹，用户既不知道在跑、也不知道跑完没有。
+           这里原地反馈，面板不再自动关闭（完成后面板内出现「关闭」）。 -->
+      <div id="syncProgress" style="display:none;margin-bottom:14px;border-radius:8px;padding:12px;font-size:13px;line-height:1.7"></div>
 
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <button id="syncHealth" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:13px">🩺 云端体检（下载失败先点这里）</button>
@@ -381,16 +455,17 @@
       mask.remove();
       if (backend) backend.reconfigure(); else showConfigModal();
     };
+    // ⚠️ 这里刻意不关面板：后端会异步跑几秒到几十秒，
+    //    关掉面板就只剩侧边栏，用户会以为「跳到侧边栏了」而且看不到任何结果。
+    //    改为原地显示进度，状态由 progShow/progBusy 驱动（后端内部调用）。
     q('#syncUpload').onclick = () => {
-      mask.remove();
       if (!backend) { showConfigModal(); return; }
-      if (!backend.isReady()) { backend.reconfigure(); return; }
+      if (!backend.isReady()) { mask.remove(); backend.reconfigure(); return; }
       backend.upload();
     };
     q('#syncDownload').onclick = () => {
-      mask.remove();
       if (!backend) { showConfigModal(); return; }
-      if (!backend.isReady()) { backend.reconfigure(); return; }
+      if (!backend.isReady()) { mask.remove(); backend.reconfigure(); return; }
       backend.download();
     };
     q('#syncHealth').onclick = () => {
@@ -1106,6 +1181,9 @@
   // ============ 动作：上传 / 下载 ============
   async function doUpload() {
     if (!isConnected) { showConfigModal(); return; }
+    // 立刻反馈「开始了」：没有这个提示，用户点完看不到任何动静，会以为没响应
+    progShow('running', '正在上传到云端…', '正在检查远端分片、只重传改动过的片，稍等片刻。');
+    progBusy(true);
     try {
       // 提速：Gist ID 有缓存就直连；云端是否有数据优先用本地缓存，
       // 都没有才联网读一次（旧版是「拉全列表 + 读全文」两个慢请求）
@@ -1155,7 +1233,8 @@
         try { window.BackupHub.markSync('up', Object.keys(localData)); } catch (e) {}
       }
       updateStatus('已上传 ' + fmtTime(lastSyncTime));
-      closeTopModal();
+      // 刻意不再 closeTopModal()：关掉面板会让回执无处可显示（只剩侧边栏），
+      // 用户就看不到这次同步的具体结果了。结果由 notifyOK 写进面板内的状态区。
       // 压缩后仍偏大时给出明确预警：下载会慢，且会走 raw 通道（国内易断）
       const sizeTip = kb > 1024
         ? '\n⚠️ 本次写入 ' + kb + 'KB，超过云端单文件 1MB 的直读阈值，另一台设备下载会明显慢一些。'
@@ -1180,13 +1259,16 @@
 
   async function doDownload() {
     if (!isConnected) { showConfigModal(); return; }
+    progShow('running', '正在从云端下载…', '正在读取远端分片并合并，稍等片刻。');
+    progBusy(true);
     try {
       // 提速：Gist ID 有缓存就直连读，不再先拉一遍全列表
       if (!cachedGistId()) await findOrCreateGist();
       const remote = await readGist();
       const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
       if (!cloudHas) {
-        await showAlert('云端还没有数据。\n请先在一部设备上点「上传到云端」，再来这里下载。');
+        progShow('fail', '云端还没有数据', '请先在一部设备上点「上传到云端」，再来这里下载。');
+        progBusy(false);
         return;
       }
       const localHas = getLocalKeys().length > 0;
@@ -1195,7 +1277,12 @@
         const choice = await showChoice('下载到本机',
           '本机已经存有数据。\n「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖本机」用【云端数据】整体替换本机。',
           '合并到本机', '覆盖本机');
-        if (choice === 'cancel') { updateStatus('已取消下载'); return; }
+        if (choice === 'cancel') {
+          updateStatus('已取消下载');
+          progShow('running', '已取消下载', '本机数据未改动。');
+          progBusy(false);
+          return;
+        }
         mode = choice;
       }
       let mergeStats = null;
@@ -1213,7 +1300,7 @@
         try { window.BackupHub.markSync('down', Object.keys(remote.data)); } catch (e) {}
       }
       updateStatus('已下载 ' + fmtTime(lastSyncTime));
-      closeTopModal();
+      // 同上传：不关面板，让结果留在原地可见
       notifyOK(mode === 'merge' ? '已合并云端数据到本机' : '已从云端同步到本机',
         mode === 'merge'
           ? `合并完成：新增 ${mergeStats.added} 项，更新 ${mergeStats.updated} 项（云端较新），保留本机 ${mergeStats.kept} 项。\n` +
@@ -1303,6 +1390,8 @@
       isExcludedKey,
       // UI
       showChoice, showConfirm, showAlert, notifyOK, notifyFail, fmtTime,
+      // 进度反馈（多后端共用：面板内常驻状态区）
+      progShow, progBusy, progHide,
       // 刷新
       reloadActiveIframe,
       // 常量
