@@ -33,7 +33,7 @@
     'github_token', 'github_gist_id', 'sync_last_sync', 'github_cloud_state',
     // Gitee 后端：令牌与仓库坐标绝不能上传 —— 令牌上传等于把仓库钥匙一起公开了，
     // 而且换设备时旧令牌会覆盖新令牌，直接把人锁在门外。
-    'gitee_token', 'gitee_owner', 'gitee_repo', 'gitee_last_sync',
+    'gitee_token', 'gitee_owner', 'gitee_repo', 'gitee_last_sync', 'gitee_branch',
     'cloud_backend',              // 本机选的后端，不必同步
     'hub_lastModule',             // 上次打开的工具，不强制同步
     // ⚠️ 本地「备份/快照仓」不是业务数据：体积巨大（朝暮计这一项单独就 600KB+），
@@ -186,6 +186,13 @@
 
   // 成功 / 失败提醒：优先用备份中心的提醒卡（更醒目、带数据量和下一步指引），
   // 没有备份中心时退回站点 toast / alert。
+  //
+  // ⚠️ 注意：这两个函数在导出的那一刻会被 _exportedNotifyOK 记下来。
+  //    CloudSyncCore.notifyOK 是「对象属性」，其它后端（如 Gitee）通过
+  //    Core.notifyOK(...) 调用 —— 那是一次属性读取。所以测试里可以直接
+  //    `Core.notifyOK = stub` 覆盖掉，不会走进真实弹窗 / 站内 toast。
+  //    千万别把这里改成「内部直接调 notifyOK」的写法，否则后端一失败就
+  //    会弹永不 resolve 的对话框，测试直接卡死。
   function notifyOK(title, detail) {
     if (window.BackupHub && typeof window.BackupHub.notify === 'function') {
       try { window.BackupHub.notify({ icon: '☁️', title: title, detail: detail }); return; } catch (e) {}
@@ -1266,6 +1273,10 @@
   }
 
   // 供 Gitee 等其它后端复用（避免两套实现各自漂移）
+  // 导出时把 show*/notify* 的「当前值」存一份，供各后端的流内局部引用使用。
+  // 各后端不用它，但保留给需要跨作用域调用的代码路径，避免为了取 UI 函数而硬编码全局名。
+  let _exportedNotifyOK = notifyOK, _exportedNotifyFail = notifyFail, _exportedShowChoice = showChoice;
+
   function exportCore() {
     window.CloudSyncCore = {
       // 压缩
@@ -1297,6 +1308,7 @@
       // 常量
       EXCLUDE_KEYS, EXCLUDE_PREFIXES
     };
+    _exportedNotifyOK = notifyOK; _exportedNotifyFail = notifyFail; _exportedShowChoice = showChoice;
   }
   exportCore();
 
