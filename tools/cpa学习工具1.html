@@ -1998,6 +1998,27 @@
 .rv-dialog textarea[readonly] { background: #F5F1E8; color: #6E6355; }
 @media (max-width: 560px) { .rv-dialog .pf-row { flex-direction: column; gap: 0; } }
     </style>
+    <style>
+        /* 「✎ 标题」章/节标题编辑弹窗 */
+        .lv-dialog{max-width:640px;}
+        .lv-list{max-height:min(58vh,520px);overflow:auto;border:1px solid #E3D9C8;border-radius:10px;background:#FDFBF6;padding:8px 10px;margin:8px 0 4px;-webkit-overflow-scrolling:touch;}
+        .lv-ch{padding:8px 0 7px;border-bottom:1px dashed #E7DFD0;}
+        .lv-ch:last-child{border-bottom:none;}
+        .lv-row{display:flex;align-items:center;gap:8px;margin:6px 0;}
+        .lv-row .lv-no{flex:0 0 64px;font-size:12.5px;color:#8A7A62;white-space:nowrap;}
+        .lv-row input[type=text]{flex:1 1 auto;min-width:0;height:34px;padding:0 10px;border:1px solid #DFD5C4;border-radius:8px;background:#fff;font-size:14px;color:#3A3026;}
+        .lv-row input[type=text]:focus{outline:none;border-color:#8A7358;box-shadow:0 0 0 3px rgba(138,115,88,.12);}
+        .lv-secs{margin:2px 0 2px 10px;padding-left:10px;border-left:2px solid #EDE6D9;}
+        .lv-row.sub .lv-no{flex:0 0 60px;font-size:12px;color:#9B8C74;}
+        .lv-add-sec{flex:0 0 auto;height:30px;padding:0 10px;border:1px dashed #D6C9B3;border-radius:8px;background:#fff;color:#8A7358;font-size:12px;cursor:pointer;white-space:nowrap;}
+        .lv-add-sec:hover{background:#F6F1E8;}
+        @media (max-width:768px){
+            .lv-row .lv-no{flex-basis:54px;font-size:11.5px;}
+            .lv-row.sub .lv-no{flex-basis:50px;}
+            .lv-row input[type=text]{font-size:16px;height:38px;}
+            .lv-add-sec{height:34px;}
+        }
+    </style>
 </head>
 <body>
 
@@ -2129,6 +2150,7 @@
                         <div class="field">
                             <label><span data-lv="chapter">章</span> <span class="required">*</span>
                                 <button type="button" class="mini-add-btn" id="addChapterBtn">➕ 新增<span data-lv="chapter">章</span></button>
+                                <button type="button" class="mini-add-btn" id="editLevelBtn" title="给本课程的各章、各节改标题（空着就按「第N章 / 第N节」显示）">✎ 标题</button>
                             </label>
                             <select id="fChapter" required></select>
                         </div>
@@ -4131,6 +4153,8 @@
             if (addCourseBtn) addCourseBtn.addEventListener('click', () => openCourseDialog());
             const addChapterBtn = document.getElementById('addChapterBtn');
             if (addChapterBtn) addChapterBtn.addEventListener('click', () => openLevelDialog('chapter'));
+            const editLevelBtn = document.getElementById('editLevelBtn');
+            if (editLevelBtn) editLevelBtn.addEventListener('click', () => openLevelTitlesDialog());
             const addSectionBtn = document.getElementById('addSectionBtn');
             if (addSectionBtn) addSectionBtn.addEventListener('click', () => openLevelDialog('section'));
 
@@ -5664,11 +5688,19 @@
                 target.defaultPlanHours = (function () { const v = parseFloat(box.querySelector('#pdPlan').value); return (!isNaN(v) && v > 0) ? v : 0; })();
                 if (outline && outline.courses.length) {
                     dettachBuiltinStructure(target);
-                    target.courses = outline.courses.slice();
-                    target.chapterNames = outline.chapterNames;
-                    target.sectionNames = outline.sectionNames;
-                    target.kpTree = outline.kpTree || {};
-                    // 大纲里没写章节的一级，兜底补「第1章 / 第1节」
+                    if (!Array.isArray(target.courses)) target.courses = [];
+                    target.chapterNames = target.chapterNames || {};
+                    target.sectionNames = target.sectionNames || {};
+                    target.kpTree = target.kpTree || {};
+                    // 按科目逐个合并：大纲只写了部分科目时，不抹掉其余科目已有的章/节/知识点结构
+                    // （旧实现对 chapterNames / sectionNames / kpTree 做事整棵替换，粘贴单科目大纲会误伤其他科目）
+                    (outline.courses || []).forEach(function (c) {
+                        if (target.courses.indexOf(c) < 0) target.courses.push(c);
+                        if (outline.chapterNames && outline.chapterNames[c]) target.chapterNames[c] = outline.chapterNames[c];
+                        if (outline.sectionNames && outline.sectionNames[c]) target.sectionNames[c] = outline.sectionNames[c];
+                        if (outline.kpTree && outline.kpTree[c] && Object.keys(outline.kpTree[c]).length) target.kpTree[c] = outline.kpTree[c];
+                    });
+                    // 大纲里没写章节的科目，兜底补「第1章 / 第1节」
                     (outline.courses || []).forEach(function (c) { ensureCourseStructure(target, c); });
                 }
                 // 科目清单 = 权威列表：改名 → 删除 → 新增 → 保序（大纲里出现的科目强制保留）
@@ -5787,16 +5819,141 @@
             return { chapterNames: chapterNames, sectionNames: sectionNames, maxChapter: ch };
         }
 
+        // ---------- 编辑章 / 节标题：给已有结构改名、补名（标题可留空） ----------
+        function openLevelTitlesDialog() {
+            const p = getCurrentProject();
+            const cL = L('course'), chL = L('chapter'), sL = L('section');
+            const courseSel = document.getElementById('fCourse');
+            const course = courseSel ? courseSel.value : '';
+            if (!course) { alert('当前项目还没有' + cL + '，请先新增' + cL + '。'); return; }
+            // 章号取并集：chapterNames 里有，sectionNames 里出现过的也算，避免漏章
+            const chMap = (p.chapterNames && p.chapterNames[course]) ? p.chapterNames[course] : {};
+            const secMap = (p.sectionNames && p.sectionNames[course]) ? p.sectionNames[course] : {};
+            const chNos = [];
+            Object.keys(chMap).forEach(function (k) { const n = parseInt(k, 10); if (!isNaN(n) && n > 0 && chNos.indexOf(n) < 0) chNos.push(n); });
+            Object.keys(secMap).forEach(function (k) { const n = parseInt(k, 10); if (!isNaN(n) && n > 0 && chNos.indexOf(n) < 0) chNos.push(n); });
+            chNos.sort(function (a, b) { return a - b; });
+            if (!chNos.length) chNos.push(1);
+
+            const esc = function (v) {
+                return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+                });
+            };
+            const secRow = function (no, val) {
+                return '<div class="lv-row sub"><span class="lv-no">第' + no + sL + '</span>' +
+                    '<input type="text" class="lv-sec-name" value="' + esc(val) + '" placeholder="第' + no + sL + '标题（可留空）"></div>';
+            };
+            const chBlock = function (no, chName, secs) {
+                const arr = (secs && secs.length) ? secs : [''];
+                return '<div class="lv-ch" data-ch="' + no + '">' +
+                    '<div class="lv-row ch"><span class="lv-no">第' + no + chL + '</span>' +
+                    '<input type="text" class="lv-ch-name" value="' + esc(chName) + '" placeholder="第' + no + chL + '标题（可留空）">' +
+                    '<button type="button" class="lv-add-sec">＋ ' + sL + '</button></div>' +
+                    '<div class="lv-secs">' + arr.map(function (v, i) { return secRow(i + 1, v); }).join('') + '</div>' +
+                    '</div>';
+            };
+            const rows = chNos.map(function (n) { return chBlock(n, chMap[n], secMap[n]); }).join('');
+
+            let box = document.getElementById('levelTitleDialog');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'levelTitleDialog';
+                document.body.appendChild(box);
+            }
+            box.className = 'proj-mask';
+            box.innerHTML =
+                '<div class="proj-dialog lv-dialog">' +
+                '<h3>✎ 编辑 ' + chL + ' / ' + sL + ' 标题</h3>' +
+                '<div class="pf-hint">所属' + cL + '：<b>' + esc(course) + '</b>。改完标题点保存即可；留空就按「第N' + chL + ' / 第N' + sL + '」显示。' +
+                '这里改完，学习进度页的' + chL + ' / ' + sL + ' 选择框与「' + sL + '自检 / 整' + chL + '复盘」会一起生效。</div>' +
+                '<div class="lv-list" id="lvList">' + rows + '</div>' +
+                '<div class="pf-actions">' +
+                '<button class="pd-btn" id="lvAddCh">＋ 加一' + chL + '</button>' +
+                '<button class="pd-btn" id="lvCancel">取消</button>' +
+                '<button class="pd-btn primary" id="lvSave">保存</button>' +
+                '</div></div>';
+
+            const close = function () { if (box && box.parentNode) box.parentNode.removeChild(box); };
+            box.querySelector('#lvCancel').onclick = close;
+            box.onclick = function (e) { if (e.target === box) close(); };
+            box.querySelector('#lvList').onclick = function (e) {
+                const t = e.target;
+                if (!t || !t.classList || !t.classList.contains('lv-add-sec')) return;
+                const chEl = t.closest ? t.closest('.lv-ch') : null;
+                if (!chEl) return;
+                const secs = chEl.querySelector('.lv-secs');
+                if (!secs) return;
+                const no = secs.querySelectorAll('.lv-row.sub').length + 1;
+                const div = document.createElement('div');
+                div.innerHTML = secRow(no, '');
+                secs.appendChild(div.firstChild);
+            };
+            box.querySelector('#lvAddCh').onclick = function () {
+                let nextNo = 0;
+                box.querySelectorAll('#lvList .lv-ch').forEach(function (el) {
+                    const n = parseInt(el.getAttribute('data-ch'), 10);
+                    if (!isNaN(n) && n > nextNo) nextNo = n;
+                });
+                nextNo++;
+                const wrap = document.createElement('div');
+                wrap.innerHTML = chBlock(nextNo, '', ['']);
+                const el = wrap.firstChild;
+                box.querySelector('#lvList').appendChild(el);
+                if (el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+            };
+            box.querySelector('#lvSave').onclick = function () {
+                const chOut = {}, secOut = {};
+                box.querySelectorAll('#lvList .lv-ch').forEach(function (chEl) {
+                    const n = parseInt(chEl.getAttribute('data-ch'), 10);
+                    if (isNaN(n) || n < 1) return;
+                    const chIn = chEl.querySelector('.lv-ch-name');
+                    chOut[n] = chIn ? String(chIn.value || '').trim() : '';
+                    const arr = [];
+                    chEl.querySelectorAll('.lv-secs .lv-row.sub').forEach(function (sEl) {
+                        const sIn = sEl.querySelector('.lv-sec-name');
+                        arr.push(sIn ? String(sIn.value || '').trim() : '');
+                    });
+                    if (!arr.length) arr.push('');
+                    secOut[n] = arr;
+                });
+                const nos = Object.keys(chOut);
+                if (!nos.length) { alert('至少要有一个' + chL + '。'); return; }
+                dettachBuiltinStructure(p);
+                p.chapterNames = p.chapterNames || {};
+                p.sectionNames = p.sectionNames || {};
+                p.chapterNames[course] = chOut;
+                p.sectionNames[course] = secOut;
+                close();
+                afterStructureChange(course);
+                const namedCh = nos.filter(function (k) { return chOut[k]; }).length;
+                let namedSec = 0;
+                nos.forEach(function (k) { secOut[k].forEach(function (v) { if (v) namedSec++; }); });
+                showToast('✅ 已保存「' + course + '」：' + nos.length + ' 个' + chL + '（已命名 ' + namedCh + '）、' +
+                    namedSec + ' 个' + sL + '标题；' + chL + ' / ' + sL + '选择框与自检页已同步');
+            };
+        }
+
         // ---------- 科目落地：无结构时自动补「第1章 / 第1节」 ----------
         function ensureCourseStructure(p, course) {
             // 内置项目的 chapterNames 指向代码常量，写入前先落地一份副本
             if (p.builtin && !p.customStructure) dettachBuiltinStructure(p);
             p.chapterNames = p.chapterNames || {};
             p.sectionNames = p.sectionNames || {};
-            if (!p.chapterNames[course] || Object.keys(p.chapterNames[course]).length === 0) {
-                p.chapterNames[course] = { 1: '' };
-                p.sectionNames[course] = { 1: [''] };
+            // 章 / 节分开守卫：旧实现只看章，却把节结构一起重置成 ['']，
+            // 会在「章名缺失、节名已有」时把真实的节标题连坐抹掉。
+            const _chMap = p.chapterNames[course];
+            const _secMap = p.sectionNames[course];
+            const _secNos = (_secMap && typeof _secMap === 'object')
+                ? Object.keys(_secMap).map(Number).filter(function (n) { return !isNaN(n) && n > 0; })
+                : [];
+            const _hasCh = !!_chMap && typeof _chMap === 'object' && Object.keys(_chMap).length > 0;
+            if (!_hasCh) {
+                const _nos = _secNos.length ? _secNos : [1];
+                p.chapterNames[course] = {};
+                _nos.forEach(function (n) { p.chapterNames[course][n] = ''; });
             }
+            if (!_secNos.length) p.sectionNames[course] = { 1: [''] };
         }
 
         // ---------- 科目清单编辑：新增 / 删除 / 改名 ----------
@@ -6007,19 +6164,35 @@
                 const outline = parseChapterOutline(box.querySelector('#cdOutline').value);
                 const p = getCurrentProject();
                 dettachBuiltinStructure(p);
+                p.chapterNames = p.chapterNames || {};
+                p.sectionNames = p.sectionNames || {};
                 const added = addCoursesToProject(p, lines);
+                // 大纲归属：只写了一个名称时，无论它新建还是已存在，都把大纲落到它名下。
+                // （旧实现只在「新建成功」时写大纲 —— 科目已存在时用户粘的章/节大纲被静默丢弃）
+                let outlineTo = '';
                 if (outline) {
-                    if (added.length === 1) {
-                        p.chapterNames[added[0]] = outline.chapterNames;
-                        p.sectionNames[added[0]] = outline.sectionNames;
-                    } else if (lines.length > 1) {
-                        alert('一次填了多个' + cL + '，章 / ' + sL + '大纲无法自动归属，已为每个' + cL + '先建好第 1 ' + chL + '；' +
-                            '请选中某个' + cL + '后再用「➕ 新增' + chL + '」逐个补结构。');
-                    }
+                    if (lines.length === 1) outlineTo = lines[0];
+                    else if (added.length === 1) outlineTo = added[0];
                 }
-                if (!added.length) { alert('这些' + cL + '当前项目里已经有了，未重复添加。'); close(); return; }
+                if (outline && outlineTo) {
+                    p.chapterNames[outlineTo] = outline.chapterNames;
+                    p.sectionNames[outlineTo] = outline.sectionNames;
+                }
+                // 其余科目：结构为空才补占位
+                lines.forEach(function (c) { ensureCourseStructure(p, c); });
+                if (!added.length && !outlineTo) {
+                    alert('这些' + cL + '当前项目里已经有了，未重复添加。');
+                    close(); return;
+                }
                 close();
-                afterStructureChange(added[added.length - 1]);
+                if (outline && outlineTo) {
+                    showToast('✅ 已保存：' + outlineTo + ' 的 ' + outline.maxChapter + ' 个' + chL + ' / ' +
+                        sL + '结构已写入' + (added.length ? '（并新增 ' + added.length + ' 个' + cL + '）' : '，学习进度页同步可见'));
+                } else if (outline && lines.length > 1) {
+                    alert('一次填了多个' + cL + '，章 / ' + sL + '大纲无法自动归属，已为每个' + cL + '先建好第 1 ' + chL + '；' +
+                        '请选中某个' + cL + '后用「✎ 标题」或「➕ 新增' + chL + '」补结构。');
+                }
+                afterStructureChange(outlineTo || added[added.length - 1] || lines[0]);
             };
             setTimeout(function () { const el = box.querySelector('#cdName'); if (el) el.focus(); }, 30);
         }
