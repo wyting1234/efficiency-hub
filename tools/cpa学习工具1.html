@@ -1826,6 +1826,35 @@
             .pr-table th,.pr-table td{border:1px solid #888;padding:4px 6px;text-align:left;vertical-align:top;word-break:break-all;}
             .pr-table th{background:#F0ECE2;}
         }
+
+        /* ===== 增补：计划学时编辑 / 记录列表分页 ===== */
+        .course-item .plan-edit {
+            flex-shrink: 0; width: 22px; height: 22px; padding: 0; margin-left: 2px;
+            border: 1px solid var(--border, #E2D9C8); border-radius: 6px; background: #fff;
+            color: var(--text-secondary, #888); cursor: pointer; font-size: 12px; line-height: 1;
+            display: inline-flex; align-items: center; justify-content: center;
+            opacity: .45; transition: opacity .15s, background .15s, color .15s;
+        }
+        .course-item:hover .plan-edit { opacity: 1; }
+        .course-item .plan-edit:hover { background: var(--primary-bg, #F7F3EA); color: var(--primary-dark, #6E5B43); }
+        .plan-mask {
+            position: fixed; inset: 0; background: rgba(60, 48, 32, .42);
+            display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px;
+        }
+        .plan-dialog { width: 100%; max-width: 380px; background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 16px 48px rgba(0,0,0,.18); }
+        .plan-dialog h3 { margin: 0 0 12px; font-size: 16px; color: var(--text-primary, #3A3128); }
+        .plan-dialog .pf { margin-bottom: 12px; }
+        .plan-dialog .pf label { display: block; font-size: 12.5px; color: var(--text-secondary, #888); margin-bottom: 6px; }
+        .plan-dialog .pf input { width: 100%; box-sizing: border-box; padding: 9px 11px; border: 1px solid var(--border, #E2D9C8); border-radius: 8px; font-size: 13.5px; color: var(--text-primary, #3A3128); background: #fff; }
+        .plan-dialog .pd-hint { font-size: 11.5px; color: var(--text-secondary, #888); line-height: 1.75; background: var(--primary-bg, #F7F3EA); border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; }
+        .plan-dialog .pd-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .plan-dialog .pd-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border, #E2D9C8); background: #fff; color: var(--text-primary, #3A3128); font-size: 13px; cursor: pointer; }
+        .plan-dialog .pd-btn.primary { background: var(--primary, #B08A4A); border-color: var(--primary, #B08A4A); color: #fff; }
+        .plan-dialog .pd-btn.ghost { color: var(--text-secondary, #888); }
+        .rec-more-wrap { text-align: center; padding: 12px 0 4px; }
+        .rec-more-btn { padding: 8px 16px; border: 1px dashed var(--border, #E2D9C8); border-radius: 9px; background: #FAF6EE; color: var(--text-secondary, #777); font-size: 12.5px; cursor: pointer; }
+        .rec-more-btn:hover { background: #F0E9DA; }
+        #formContainer.in-edit { box-shadow: 0 0 0 2px #E8B84B inset; border-radius: 12px; }
 </style>
     <!-- SheetJS 改为按需加载（v47 优化）：~900KB 的库不再阻塞首屏/切换加载，
          仅在首次导出/导入 Excel 时动态拉取；失败自动降级 CSV（见 ensureXLSX） -->
@@ -2794,6 +2823,7 @@
                         chapterNames: {},
                         sectionNames: {},
                         targetOverrides: sp.targetOverrides || {},
+                        planHours: sp.planHours || {},
                         kpTree: sp.kpTree || (base ? (base.kpTree || {}) : {}),
                         defaultPlanHours: (typeof sp.defaultPlanHours === 'number' && sp.defaultPlanHours > 0) ? sp.defaultPlanHours : 0,
                         customStructure: !!sp.customStructure,
@@ -2819,7 +2849,7 @@
                             id: dp.id, name: dp.name, builtin: true,
                             courses: dp.courses.slice(),
                             chapterNames: dp.chapterNames, sectionNames: dp.sectionNames,
-                            targetOverrides: {}, kpTree: dp.kpTree || {}, defaultPlanHours: dp.defaultPlanHours || 0, customStructure: false,
+                            targetOverrides: {}, planHours: {}, kpTree: dp.kpTree || {}, defaultPlanHours: dp.defaultPlanHours || 0, customStructure: false,
                             projectType: dp.projectType || 'exam',
                             levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, dp.levelLabels),
                             examDate: dp.examDate || '',
@@ -2832,7 +2862,7 @@
                     id: dp.id, name: dp.name, builtin: true,
                     courses: dp.courses.slice(),
                     chapterNames: dp.chapterNames, sectionNames: dp.sectionNames,
-                    targetOverrides: {}, kpTree: dp.kpTree || {}, defaultPlanHours: dp.defaultPlanHours || 0, customStructure: false,
+                    targetOverrides: {}, planHours: {}, kpTree: dp.kpTree || {}, defaultPlanHours: dp.defaultPlanHours || 0, customStructure: false,
                     projectType: dp.projectType || 'exam',
                     levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, dp.levelLabels),
                     examDate: dp.examDate || '',
@@ -2850,6 +2880,7 @@
                     const o = {
                         id: p.id, name: p.name, builtin: !!p.builtin,
                         courses: p.courses, targetOverrides: p.targetOverrides || {},
+                        planHours: p.planHours || {},
                         kpTree: p.kpTree || {},
                         defaultPlanHours: (typeof p.defaultPlanHours === 'number' && p.defaultPlanHours > 0) ? p.defaultPlanHours : 0,
                         projectType: p.projectType || 'exam',
@@ -3317,7 +3348,7 @@
             COURSES.forEach(c => {
                 const maxCh = GUIDE_DATA[c]?.maxChapter || 0;
                 totalChapters += maxCh;
-                totalSuggested += getCourseTotalSuggestedHours(c);
+                totalSuggested += getCoursePlanHours(c).hours;
                 for (let ch = 1; ch <= maxCh; ch++) {
                     const secs = Object.keys(GUIDE_DATA[c].chapters[ch]?.sections || {});
                     totalSections += secs.length;
@@ -3376,15 +3407,100 @@
         //  渲染层
         // ============================================================
 
+        // ---------- 计划学时（进度分母）：手动设定 > 科目名解析 > 系统估算 ----------
+        // 支持直接在科目名里写：「C++语言（计划学时：50课时）」「基础算法 建议学时 40h」「数据结构（预计学时:28.8）」
+        function planEsc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+            });
+        }
+        function parsePlanFromName(name) {
+            const m = String(name || '').match(/[（(\[【]?\s*(?:计划|建议|预计|目标|安排)?\s*总?\s*学时\s*[:：]?\s*([\d.]+)\s*(课时|学时|小时|h|H|min|mins|分钟)?/);
+            if (!m) return null;
+            const v = parseFloat(m[1]);
+            if (!isFinite(v) || v <= 0) return null;
+            const u = m[2] || 'h';
+            let hours = v;
+            if (u === 'min' || u === 'mins' || u === '分钟') hours = v / 60;
+            hours = Math.round(hours * 100) / 100;
+            return {
+                hours: hours,
+                unit: (u === '课时') ? '课时' : 'h',
+                text: (u === '课时') ? (v + '课时') : ((Math.round(hours * 10) / 10).toFixed(1) + 'h')
+            };
+        }
+        function fmtPlanHours(v) { return (Math.round(v * 10) / 10).toFixed(1) + 'h'; }
+        function getCoursePlanHours(course) {
+            const proj = getCurrentProject();
+            const raw = (proj && proj.planHours) ? parseFloat(proj.planHours[course]) : NaN;
+            if (isFinite(raw) && raw > 0) return { hours: raw, src: 'custom', text: fmtPlanHours(raw), unit: 'h' };
+            const byName = parsePlanFromName(course);
+            if (byName) return { hours: byName.hours, src: 'name', text: byName.text, unit: byName.unit };
+            const g = getCourseTotalSuggestedHours(course);
+            if (g > 0) return { hours: g, src: 'guide', text: fmtPlanHours(g), unit: 'h' };
+            return { hours: 0, src: 'none', text: '', unit: 'h' };
+        }
+        const PLAN_SRC_LABEL = { custom: '手动设定', name: '从科目名读取', guide: '系统估算', none: '暂无', fallback: '按章节数估算' };
+        function openPlanHours(course) {
+            const old = document.getElementById('planDialog');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            const cur = getCoursePlanHours(course);
+            const proj = getCurrentProject();
+            const custom = (proj && proj.planHours && proj.planHours[course]) ? proj.planHours[course] : '';
+            const box = document.createElement('div');
+            box.className = 'plan-mask';
+            box.id = 'planDialog';
+            box.innerHTML = '<div class="plan-dialog">' +
+                '<h3>⏳ 计划学时</h3>' +
+                '<div class="pd-hint">科目：<b>' + planEsc(course) + '</b><br>当前分母：<b>' +
+                planEsc(cur.hours > 0 ? cur.text : '未设置') + '</b>（' + planEsc(PLAN_SRC_LABEL[cur.src] || '') + '）</div>' +
+                '<div class="pf"><label>计划学时（小时；留空 = 恢复自动）</label>' +
+                '<input id="plHours" type="number" min="0" step="0.5" placeholder="如 50" value="' + (custom || '') + '"></div>' +
+                '<div class="pd-hint">也可以直接改科目名，写「（计划学时：50课时）」，系统会自动读取。这里的设定优先级最高。</div>' +
+                '<div class="pd-actions">' +
+                (custom ? '<button class="pd-btn ghost" id="plClear">恢复自动</button>' : '') +
+                '<button class="pd-btn" id="plCancel">取消</button>' +
+                '<button class="pd-btn primary" id="plSave">保存</button>' +
+                '</div></div>';
+            document.body.appendChild(box);
+            const close = function () { if (box.parentNode) box.parentNode.removeChild(box); };
+            box.querySelector('#plCancel').onclick = close;
+            box.onclick = function (e) { if (e.target === box) close(); };
+            const clr = box.querySelector('#plClear');
+            if (clr) clr.onclick = function () { setPlanHours(course, null); close(); };
+            box.querySelector('#plSave').onclick = function () {
+                const raw = (box.querySelector('#plHours').value || '').trim();
+                if (raw === '') { setPlanHours(course, null); close(); return; }
+                const v = parseFloat(raw);
+                if (!isFinite(v) || v <= 0) { alert('计划学时请填大于 0 的数字'); return; }
+                setPlanHours(course, v);
+                close();
+            };
+            const inp = box.querySelector('#plHours');
+            if (inp) { try { inp.focus(); inp.select(); } catch (e) {} }
+        }
+        function setPlanHours(course, hours) {
+            const proj = getCurrentProject();
+            if (!proj) return;
+            proj.planHours = proj.planHours || {};
+            if (hours === null || hours === undefined) delete proj.planHours[course];
+            else proj.planHours[course] = hours;
+            saveProjects();
+            renderCourseList();
+            updateGlobalStats();
+            showToast(hours === null ? ('已恢复自动计划学时：' + course) : ('⏳ ' + course + ' 计划学时 = ' + fmtPlanHours(hours)));
+        }
+
         // ---------- 课程进度（双轨 + 三色） ----------
-        // 有建议时长 → 已学时长/建议时长；没有 → 已学节数/总节数；再没有 → 已学章数/总章数。
+        // 有计划学时 → 已学时长/计划学时；没有 → 已学节数/总节数；再没有 → 已学章数/总章数。
         // 颜色按完成度：>=100% 绿（完成）/ >=70% 黄（接近完成）/ >0 红（进行中，未完成）/ 0 灰（未开始）。
         function getCourseProgress(course) {
             const hours = getCourseHours(course);
-            const suggested = getCourseTotalSuggestedHours(course);
+            const plan = getCoursePlanHours(course);
             let done = 0, total = 0, unit = 'h';
-            if (suggested > 0) {
-                done = hours; total = suggested; unit = 'h';
+            const src = plan.hours > 0 ? plan.src : 'fallback';
+            if (plan.hours > 0) {
+                done = hours; total = plan.hours; unit = 'h';
             } else {
                 const cData = GUIDE_DATA[course];
                 let secTotal = 0;
@@ -3408,7 +3524,8 @@
             const pct = total > 0 ? Math.min((done / total) * 100, 100) : (done > 0 ? 100 : 0);
             const color = pct >= 100 ? 'var(--green)' : pct >= 70 ? '#D9A441' : pct > 0 ? 'var(--red)' : '#C9BFAD';
             const fmt = v => unit === 'h' ? v.toFixed(1) + 'h' : v + unit;
-            return { done: done, total: total, unit: unit, pct: pct, color: color, doneTxt: fmt(done), totalTxt: fmt(total) };
+            return { done: done, total: total, unit: unit, pct: pct, color: color, planSrc: src,
+                doneTxt: fmt(done), totalTxt: fmt(total) };
         }
 
         // ---------- 侧边栏课程列表（含进度条） ----------
@@ -3427,18 +3544,20 @@
                 const pct = prog.pct;
                 const color = prog.color;
                 const active = state.currentCourse === course ? 'active' : '';
+                const srcTip = PLAN_SRC_LABEL[prog.planSrc] || '';
                 html += `
-                    <div class="course-item ${active}" data-course="${course}">
+                    <div class="course-item ${active}" data-course="${planEsc(course)}">
                         <span class="dot" style="background:${color};"></span>
                         <div class="info">
                             <div class="name">
-                                <span>${course}</span>
-                                <span class="hours">${prog.doneTxt} / ${prog.totalTxt}</span>
+                                <span>${planEsc(course)}</span>
+                                <span class="hours" title="${srcTip ? ('分母来源：' + srcTip) : ''}">${prog.doneTxt} / ${prog.totalTxt}</span>
                             </div>
                             <div class="bar">
                                 <div class="fill" style="width:${pct}%;background:${color};"></div>
                             </div>
                         </div>
+                        <button type="button" class="plan-edit" data-course="${planEsc(course)}" title="编辑计划学时">✎</button>
                     </div>
                 `;
             });
@@ -3452,6 +3571,13 @@
                         document.getElementById('fCourse').value = course;
                         updateChapterSelect(course);
                     }
+                });
+            });
+            container.querySelectorAll('.plan-edit').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    openPlanHours(btn.dataset.course);
                 });
             });
         }
@@ -3736,6 +3862,7 @@
                     state.editingId = null;
                     document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                     document.getElementById('cancelEditBtn').classList.remove('visible');
+                    { const _fc = document.getElementById('formContainer'); if (_fc) _fc.classList.remove('in-edit'); }
                     updateChapterSelect(state.currentCourse);
                 }, 10);
             });
@@ -3762,6 +3889,7 @@
                 state.editingId = null;
                 document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                 document.getElementById('cancelEditBtn').classList.remove('visible');
+                { const _fc = document.getElementById('formContainer'); if (_fc) _fc.classList.remove('in-edit'); }
                 document.getElementById('recordForm').reset();
                 setTimeout(() => {
                     selectedStar = 0;
@@ -4227,16 +4355,84 @@
             const o = parts[1] ? D.indexOf(parts[1]) + 1 : 0;
             return t * 10 + o;
         }
-        function nextNumPrefix(line) {
+        // ---- 回车换行自动编号：支持 20+ 种格式，续号格式跟随上一行 ----
+        const NUM_SEQ_CIRCLE = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+        const NUM_SEQ_PAREN = '⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽';
+        const NUM_SEQ_DINGBAT = '➀➁➂➃➄➅➆➇➈➉';
+        const NUM_SEQ_SOLID = '❶❷❸❹❺❻❼❽❾❿';
+        const NUM_SEQ_ROMAN = ['Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ', 'Ⅵ', 'Ⅶ', 'Ⅷ', 'Ⅸ', 'Ⅹ', 'Ⅺ', 'Ⅻ'];
+        function nextLetterChar(c) {
+            const lower = 'abcdefghijklmnopqrstuvwxyz';
+            let s = lower, i = lower.indexOf(c);
+            if (i < 0) { s = lower.toUpperCase(); i = s.indexOf(c); }
+            if (i < 0) return null;
+            return i < s.length - 1 ? s[i + 1] : (i + 2) + '.';
+        }
+        // 统一识别行首编号：返回 {len: 前缀字符数, next: 下一行的编号前缀}；识别不出返回 null
+        function numPrefixInfo(line) {
             let m;
-            if ((m = line.match(/^\s*(\d{1,3})([.、．)）])\s*/))) return (parseInt(m[1], 10) + 1) + m[2] + ' ';
-            if ((m = line.match(/^\s*[（(](\d{1,3})[)）]\s*/))) return '（' + (parseInt(m[1], 10) + 1) + '） ';
-            if ((m = line.match(/^\s*([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳])/))) {
-                const seq = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
-                const i = seq.indexOf(m[1]);
-                return i < seq.length - 1 ? seq[i + 1] + ' ' : (i + 2) + '. ';
+            // ① 阿拉伯数字 + 分隔符：1.  1、  1．  1)  1）  1:  1：  1-  1—
+            if ((m = line.match(/^(\s*)(\d{1,3})([.、．)）:：\-—])(\s*)/))) {
+                return { len: m[0].length, next: m[1] + (parseInt(m[2], 10) + 1) + m[3] + ' ' };
             }
-            if ((m = line.match(/^\s*([一二三四五六七八九十]{1,3})[、.．]\s*/))) return cnNumTo(cnNumFrom(m[1]) + 1) + '、 ';
+            // ② 括号 / 方括号包裹：（1） (1) 【1】 [1]
+            if ((m = line.match(/^(\s*)([（(【\[])(\d{1,3})([）)】\]])(\s*)/))) {
+                return { len: m[0].length, next: m[1] + m[2] + (parseInt(m[3], 10) + 1) + m[4] + ' ' };
+            }
+            // ③ 圆圈 / 带括号 / 带圈 / 实心圆 序号：① ⑴ ➀ ❶
+            {
+                const body0 = line.replace(/^\s*/, '');
+                const lead = body0.charAt(0);
+                const seqs = [NUM_SEQ_CIRCLE, NUM_SEQ_PAREN, NUM_SEQ_DINGBAT, NUM_SEQ_SOLID];
+                for (let i = 0; i < seqs.length; i++) {
+                    const ix = seqs[i].indexOf(lead);
+                    if (ix < 0) continue;
+                    const head = line.length - body0.length;
+                    const nx = ix < seqs[i].length - 1 ? seqs[i][ix + 1] : (ix + 2) + '.';
+                    return { len: head + 1, next: line.slice(0, head) + nx + ' ' };
+                }
+            }
+            // ④ 中文数字 + 、/．/. ：一、  二、
+            if ((m = line.match(/^(\s*)([一二三四五六七八九十]{1,3})([、.．])(\s*)/))) {
+                return { len: m[0].length, next: m[1] + cnNumTo(cnNumFrom(m[2]) + 1) + m[3] + ' ' };
+            }
+            // ⑤ 括号包裹中文数字：（一） (一) 【一】
+            if ((m = line.match(/^(\s*)([（(【\[])([一二三四五六七八九十]{1,3})([）)】\]])(\s*)/))) {
+                return { len: m[0].length, next: m[1] + m[2] + cnNumTo(cnNumFrom(m[3]) + 1) + m[4] + ' ' };
+            }
+            // ⑥ 中文数字 + 右括号：一） 二)
+            if ((m = line.match(/^(\s*)([一二三四五六七八九十]{1,3})([）)])(\s*)/))) {
+                return { len: m[0].length, next: m[1] + cnNumTo(cnNumFrom(m[2]) + 1) + m[3] + ' ' };
+            }
+            // ⑦ 中文序号：第一、  第二.
+            if ((m = line.match(/^(\s*)第([一二三四五六七八九十百]{1,4})([、.．,)）])(\s*)/))) {
+                return { len: m[0].length, next: m[1] + '第' + cnNumTo(cnNumFrom(m[2]) + 1) + m[3] + ' ' };
+            }
+            // ⑧ 拉丁字母：a.  a)  (a)  A、  A）
+            if ((m = line.match(/^(\s*)([（(]?)([a-zA-Z])([.、．)）:：])(\s*)/))) {
+                const nx = nextLetterChar(m[3]);
+                if (nx) return { len: m[0].length, next: m[1] + (m[2] ? (m[2] + nx + m[4]) : (nx + m[4])) + ' ' };
+            }
+            // ⑨ 罗马数字（Unicode Ⅰ Ⅱ Ⅲ …，保留原有分隔符）
+            if ((m = line.match(/^(\s*)([ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ])([.、．)）:：])(\s*)/))) {
+                const ix = NUM_SEQ_ROMAN.indexOf(m[2]);
+                const nx = ix < NUM_SEQ_ROMAN.length - 1 ? NUM_SEQ_ROMAN[ix + 1] : (ix + 2) + '.';
+                return { len: m[0].length, next: m[1] + nx + m[3] + ' ' };
+            }
+            {
+                const body0 = line.replace(/^\s*/, '');
+                const lead = body0.charAt(0);
+                const ix = NUM_SEQ_ROMAN.indexOf(lead);
+                if (ix >= 0) {
+                    const head = line.length - body0.length;
+                    const nx = ix < NUM_SEQ_ROMAN.length - 1 ? NUM_SEQ_ROMAN[ix + 1] : (ix + 2) + '.';
+                    return { len: head + 1, next: line.slice(0, head) + nx + ' ' };
+                }
+            }
+            // ⑩ 项目符号：- * • · ▪ ‣ ◦  （续同样的符号）
+            if ((m = line.match(/^(\s*)([-*•·▪‣◦])(\s+)/))) {
+                return { len: m[0].length, next: m[1] + m[2] + ' ' };
+            }
             return null;
         }
         function bindAutoNumber(id) {
@@ -4249,12 +4445,10 @@
                 const v = el.value, pos = el.selectionStart == null ? v.length : el.selectionStart;
                 const lineStart = v.lastIndexOf('\n', pos - 1) + 1;
                 const line = v.slice(lineStart, pos);
-                const body = line.replace(/^\s*(\d{1,3}([.、．)）])|[（(]\d{1,3}[)）]|[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]|[一二三四五六七八九十]{1,3}[、.．])\s*/, '');
+                const info = numPrefixInfo(line);
+                const body = info ? line.slice(info.len) : line;
                 let insert = '\n';
-                if (body.trim()) {
-                    const np = nextNumPrefix(line);
-                    if (np) insert = '\n' + np;      // 有内容才续编号；空行回车就是普通换行
-                }
+                if (body.trim() && info) insert = '\n' + info.next;   // 有内容才续号；空行回车就是普通换行
                 if (el.setRangeText) { el.setRangeText(insert, pos, pos, 'end'); }
                 else { el.value = v.slice(0, pos) + insert + v.slice(pos); el.selectionStart = el.selectionEnd = pos + insert.length; }
                 try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
@@ -4390,6 +4584,7 @@
                 state.editingId = null;
                 document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                 document.getElementById('cancelEditBtn').classList.remove('visible');
+                { const _fc = document.getElementById('formContainer'); if (_fc) _fc.classList.remove('in-edit'); }
             } else {
                 state.records.push(record);
             }
@@ -4431,6 +4626,7 @@
                 resetKnowledgePoints();
                 document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                 document.getElementById('cancelEditBtn').classList.remove('visible');
+                { const _fc = document.getElementById('formContainer'); if (_fc) _fc.classList.remove('in-edit'); }
                 updateChapterSelect(state.currentCourse);
             }, 10);
             document.getElementById('formContainer').classList.add('collapsed');
@@ -4453,6 +4649,12 @@
             }
             records.sort((a, b) => (a.date < b.date ? 1 : -1));
 
+            // 切换科目时重置分页，避免上一个科目的展开状态串味
+            if (state._recLimitCourse !== course) { state._recLimitCourse = course; state.recordLimit = 120; }
+            const recTotal = records.length;
+            const recLimit = state.recordLimit || 120;
+            const shown = records.slice(0, recLimit);
+
             document.getElementById('recordListCount').textContent = `(${records.length})`;
 
             if (records.length === 0) {
@@ -4466,7 +4668,7 @@
             }
 
             let html = '';
-            records.forEach(r => {
+            shown.forEach(r => {
                 const stars = getStarsHtml(r.understanding || 0);
                 const assessmentEmoji = getAssessmentEmoji(r.selfAssessment);
                 const assessmentClass = getAssessmentTagClass(r.selfAssessment);
@@ -4517,36 +4719,49 @@
                     </div>
                 `;
             });
+            if (recTotal > recLimit) {
+                html += '<div class="rec-more-wrap"><button type="button" class="rec-more-btn">显示更多（已显示 ' +
+                    recLimit + ' / 共 ' + recTotal + ' 条）</button></div>';
+            }
             container.innerHTML = html;
+            bindRecordListEvents(container);
+        }
 
-            container.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+        // ---------- 记录列表事件（委托一次绑定；卡片双击 = 编辑，避免单击误触导致"保存变成改旧记录"） ----------
+        function bindRecordListEvents(container) {
+            if (container.dataset.bound === '1') return;
+            container.dataset.bound = '1';
+            container.addEventListener('click', function (e) {
+                const del = e.target.closest ? e.target.closest('.delete-btn') : null;
+                if (del) {
                     e.stopPropagation();
-                    const id = btn.dataset.id;
+                    const id = del.dataset.id;
                     if (confirm('确认删除这条记录吗？')) {
                         state.records = state.records.filter(r => r.id !== id);
                         saveData();
                         renderAll();
                     }
-                });
-            });
-
-            container.querySelectorAll('.edit-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                    return;
+                }
+                const ed = e.target.closest ? e.target.closest('.edit-btn') : null;
+                if (ed) {
                     e.stopPropagation();
-                    const record = state.records.find(r => r.id === btn.dataset.id);
-                    if (record) editRecord(record);
-                });
+                    const rec = state.records.find(r => r.id === ed.dataset.id);
+                    if (rec) editRecord(rec);
+                    return;
+                }
+                const more = e.target.closest ? e.target.closest('.rec-more-btn') : null;
+                if (more) {
+                    state.recordLimit = (state.recordLimit || 120) + 120;
+                    renderRecords();
+                }
             });
-
-            container.querySelectorAll('.record-card').forEach(card => {
-                card.addEventListener('click', () => {
-                    const id = card.dataset.id;
-                    const record = state.records.find(r => r.id === id);
-                    if (record) {
-                        editRecord(record);
-                    }
-                });
+            container.addEventListener('dblclick', function (e) {
+                const card = e.target.closest ? e.target.closest('.record-card') : null;
+                if (!card) return;
+                if (e.target.closest && e.target.closest('button')) return;
+                const rec = state.records.find(r => r.id === card.dataset.id);
+                if (rec) editRecord(rec);
             });
         }
 
@@ -4596,6 +4811,8 @@
             updateGuide(record.course, record.chapter || 1, record.section || 1);
 
             document.querySelector('.btn-submit').textContent = '✏️ 更新记录';
+            const _fc = document.getElementById('formContainer');
+            if (_fc) _fc.classList.add('in-edit');
             document.getElementById('cancelEditBtn').classList.add('visible');
             document.getElementById('formContainer').classList.remove('collapsed');
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4916,7 +5133,7 @@
                     target = {
                         id: 'p_' + Date.now().toString(36),
                         builtin: false,
-                        courses: [], chapterNames: {}, sectionNames: {}, kpTree: {}, defaultPlanHours: 0,
+                        courses: [], chapterNames: {}, sectionNames: {}, kpTree: {}, defaultPlanHours: 0, planHours: {},
                         targetOverrides: {}, customStructure: true
                     };
                     projects.push(target);
