@@ -1809,7 +1809,24 @@
         .ap-seg button.active{background:var(--primary);color:#FAF7F1;font-weight:600}
         .ap-note{font-size:12px;color:var(--text-secondary);line-height:1.6}
         input[type=color]{width:36px;height:30px;padding:2px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);cursor:pointer}
-    </style>
+    
+        /* ===== 增补：现在按钮 / 记录导出 / 打印 ===== */
+        .now-btn{margin-left:6px;padding:3px 9px;font-size:12px;line-height:1.5;border:1px solid var(--border,#E2D9C8);border-radius:7px;background:#FAF6EE;cursor:pointer;color:var(--text-secondary,#777);vertical-align:middle;}
+        .now-btn:hover{background:#F0E9DA;}
+        .rec-export{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+        .rec-exp-btn{padding:8px 14px;border:1px solid var(--border,#E2D9C8);border-radius:9px;background:#fff;cursor:pointer;font-size:13px;color:var(--text,#333);transition:background .15s;}
+        .rec-exp-btn:hover{background:#F6F1E7;}
+        #printArea{display:none;}
+        @media print{
+            body>*:not(#printArea){display:none!important;}
+            #printArea{display:block!important;}
+            .pr-head h2{margin:0 0 4px;font-size:18px;}
+            .pr-head .pr-sub{font-size:12px;color:#555;margin-bottom:12px;}
+            .pr-table{width:100%;border-collapse:collapse;font-size:11px;}
+            .pr-table th,.pr-table td{border:1px solid #888;padding:4px 6px;text-align:left;vertical-align:top;word-break:break-all;}
+            .pr-table th{background:#F0ECE2;}
+        }
+</style>
     <!-- SheetJS 改为按需加载（v47 优化）：~900KB 的库不再阻塞首屏/切换加载，
          仅在首次导出/导入 Excel 时动态拉取；失败自动降级 CSV（见 ensureXLSX） -->
 </head>
@@ -1952,11 +1969,11 @@
                     <div class="form-row three">
                         <div class="field">
                             <label>开始时间 <span style="font-weight:400;color:var(--text-secondary);">(可选)</span></label>
-                            <input type="time" id="fStartTime" step="60" />
+                            <input type="time" id="fStartTime" step="60" /><button type="button" class="now-btn" data-target="fStartTime" title="填入当前时间">⏰ 现在</button>
                         </div>
                         <div class="field">
                             <label>结束时间 <span style="font-weight:400;color:var(--text-secondary);">(可选)</span></label>
-                            <input type="time" id="fEndTime" step="60" />
+                            <input type="time" id="fEndTime" step="60" /><button type="button" class="now-btn" data-target="fEndTime" title="填入当前时间">⏰ 现在</button>
                         </div>
                         <div class="field">
                             <label>时长 (小时) <span class="required">*</span></label>
@@ -2006,6 +2023,12 @@
                                 <option value="差">💪 差</option>
                             </select>
                             <input type="text" id="fAssessmentReason" placeholder="自评原因 (可选)" style="margin-top:6px;" />
+                        </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="field">
+                            <label>📌 知识点速记 <span style="font-weight:400;color:var(--text-secondary);">(可选 · 回车自动换行续编号 · 保存时按分隔符并入知识点)</span></label>
+                            <textarea id="fKpQuick" rows="2" placeholder="例：&#10;1. 交易性金融资产的初始计量&#10;2. 公允价值变动损益的结转"></textarea>
                         </div>
                     </div>
                     <div class="form-row">
@@ -2096,7 +2119,12 @@
                     <button class="star-filter-btn" data-star="5"><span class="star-icon">★</span>5</button>
                 </div>
             </div>
-        </div>
+        <div class="rec-export">
+                <button type="button" class="rec-exp-btn" id="expRecXlsxBtn">📊 导出 Excel</button>
+                <button type="button" class="rec-exp-btn" id="expRecPdfBtn">📄 导出 PDF</button>
+                <button type="button" class="rec-exp-btn" id="printRecBtn">🖨️ 一键打印</button>
+            </div>
+            </div>
         <div class="record-list" id="recordList"></div>
 
         </div><!-- /view-study -->
@@ -3348,6 +3376,41 @@
         //  渲染层
         // ============================================================
 
+        // ---------- 课程进度（双轨 + 三色） ----------
+        // 有建议时长 → 已学时长/建议时长；没有 → 已学节数/总节数；再没有 → 已学章数/总章数。
+        // 颜色按完成度：>=100% 绿（完成）/ >=70% 黄（接近完成）/ >0 红（进行中，未完成）/ 0 灰（未开始）。
+        function getCourseProgress(course) {
+            const hours = getCourseHours(course);
+            const suggested = getCourseTotalSuggestedHours(course);
+            let done = 0, total = 0, unit = 'h';
+            if (suggested > 0) {
+                done = hours; total = suggested; unit = 'h';
+            } else {
+                const cData = GUIDE_DATA[course];
+                let secTotal = 0;
+                if (cData) {
+                    for (let ch = 1; ch <= cData.maxChapter; ch++) {
+                        secTotal += Object.keys((cData.chapters[ch] && cData.chapters[ch].sections) || {}).length;
+                    }
+                }
+                if (secTotal > 0) {
+                    const secSet = new Set();
+                    state.records.forEach(r => { if (r.course === course) secSet.add(r.chapter + '-' + r.section); });
+                    done = secSet.size; total = secTotal; unit = '节';
+                } else if (cData && cData.maxChapter > 0) {
+                    const chSet = new Set();
+                    state.records.forEach(r => { if (r.course === course) chSet.add(r.chapter); });
+                    done = chSet.size; total = cData.maxChapter; unit = '章';
+                } else {
+                    done = getCourseRecordCount(course); total = 0; unit = '条';
+                }
+            }
+            const pct = total > 0 ? Math.min((done / total) * 100, 100) : (done > 0 ? 100 : 0);
+            const color = pct >= 100 ? 'var(--green)' : pct >= 70 ? '#D9A441' : pct > 0 ? 'var(--red)' : '#C9BFAD';
+            const fmt = v => unit === 'h' ? v.toFixed(1) + 'h' : v + unit;
+            return { done: done, total: total, unit: unit, pct: pct, color: color, doneTxt: fmt(done), totalTxt: fmt(total) };
+        }
+
         // ---------- 侧边栏课程列表（含进度条） ----------
         function renderCourseList() {
             const container = document.getElementById('courseList');
@@ -3360,10 +3423,9 @@
                 return;
             }
             COURSES.forEach(course => {
-                const hours = getCourseHours(course);
-                const suggested = getCourseTotalSuggestedHours(course);
-                const pct = suggested > 0 ? Math.min((hours / suggested) * 100, 100) : 0;
-                const color = getCourseColor(course);
+                const prog = getCourseProgress(course);
+                const pct = prog.pct;
+                const color = prog.color;
                 const active = state.currentCourse === course ? 'active' : '';
                 html += `
                     <div class="course-item ${active}" data-course="${course}">
@@ -3371,7 +3433,7 @@
                         <div class="info">
                             <div class="name">
                                 <span>${course}</span>
-                                <span class="hours">${hours.toFixed(1)} / ${suggested.toFixed(1)}h</span>
+                                <span class="hours">${prog.doneTxt} / ${prog.totalTxt}</span>
                             </div>
                             <div class="bar">
                                 <div class="fill" style="width:${pct}%;background:${color};"></div>
@@ -3513,6 +3575,7 @@
 
         // ---------- 表单初始化 ----------
         let selectedStar = 0;
+        let durationManual = false;   // 手动改过时长后，起止时间不再自动覆盖（清空时长即恢复）
 
         function initForm() {
             const courseSelect = document.getElementById('fCourse');
@@ -3584,6 +3647,11 @@
             const autoHint = document.getElementById('autoCalcHint');
 
             function autoCalcDuration() {
+                if (durationManual && durationInput.value) {
+                    autoHint.textContent = '✏️ 手动模式：以输入的时长为准（清空时长可恢复自动计算）';
+                    autoHint.style.color = 'var(--orange)';
+                    return;
+                }
                 const st = startTime.value;
                 const et = endTime.value;
                 if (st && et) {
@@ -3615,6 +3683,7 @@
                     durationInput.readOnly = false;
                     autoHint.textContent = '✏️ 手动编辑模式';
                     autoHint.style.color = 'var(--orange)';
+                    durationManual = true;
                 }
             });
             durationInput.addEventListener('blur', () => {
@@ -3653,6 +3722,7 @@
                     document.getElementById('fEndTime').value = '';
                     document.getElementById('fDurationHours').value = '';
                     document.getElementById('fDurationHours').readOnly = false;
+                    durationManual = false;
                     document.getElementById('autoCalcHint').textContent = '⏱️ 填写起止时间自动计算';
                     document.getElementById('autoCalcHint').style.color = 'var(--primary)';
                     document.getElementById('fSelfAssessment').value = '';
@@ -3661,6 +3731,7 @@
                     document.getElementById('fMemoryNetwork').value = '';
                     document.getElementById('fAiQA').value = '';
                     document.getElementById('fNotes').value = '';
+                    document.getElementById('fKpQuick').value = '';
                     resetKnowledgePoints();
                     state.editingId = null;
                     document.querySelector('.btn-submit').textContent = '✅ 保存记录';
@@ -3700,6 +3771,7 @@
                     document.getElementById('fDate').value = getToday();
                     document.getElementById('fCourse').value = state.currentCourse;
                     document.getElementById('fDurationHours').readOnly = false;
+                    durationManual = false;
                     document.getElementById('autoCalcHint').textContent = '⏱️ 填写起止时间自动计算';
                     document.getElementById('autoCalcHint').style.color = 'var(--primary)';
                     resetKnowledgePoints();
@@ -4074,6 +4146,139 @@
             }, true);
         })();
 
+
+        // ============================================================
+        //  增补：记录导出 Excel / PDF / 打印 · 现在按钮 · 回车自动编号
+        // ============================================================
+        const REC_HEADERS = ['日期','科目','章','节','途径','来源','开始','结束','时长(h)','理解度(1-5)','自评','知识点','解题思路','记忆网络','AI问答','备注'];
+        function recRow(r) {
+            const chName = getChapterName(r.course, r.chapter);
+            const secName = getSectionName(r.course, r.chapter, r.section);
+            return [r.date || '', r.course || '',
+                '第' + r.chapter + '章' + (chName ? ' ' + chName : ''),
+                '第' + r.section + '节' + (secName ? ' ' + secName : ''),
+                r.resourceType || '', r.source || '', r.startTime || '', r.endTime || '',
+                r.durationHours || 0, r.understanding || 0, r.selfAssessment || '',
+                (r.knowledgePoints || []).map(k => (k.no ? k.no + '. ' : '') + (k.text || '')).join('; '),
+                r.problemSolving || '', r.memoryNetwork || '', r.aiQA || '', r.notes || ''];
+        }
+        async function exportRecordsExcel() {
+            const rows = state.records.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+            if (!rows.length) { alert('还没有学习记录可导出'); return; }
+            const data = [REC_HEADERS].concat(rows.map(recRow));
+            const stamp = getToday();
+            if (typeof XLSX === 'undefined') {
+                try { await ensureXLSX(); } catch (_) {
+                    downloadBlob('\uFEFF' + toCSV(data), '学习记录_' + stamp + '.csv', 'text/csv;charset=utf-8;');
+                    alert('Excel 组件加载失败（可能是网络问题），已改为导出 CSV 格式，Excel / WPS 同样可以打开。');
+                    return;
+                }
+            }
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            ws['!cols'] = [{ wch: 11 }, { wch: 10 }, { wch: 24 }, { wch: 24 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
+                { wch: 8 }, { wch: 11 }, { wch: 8 }, { wch: 42 }, { wch: 42 }, { wch: 42 }, { wch: 30 }, { wch: 24 }];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '学习记录');
+            XLSX.writeFile(wb, '学习记录_' + stamp + '.xlsx');
+        }
+        function buildPrintHTML() {
+            const rows = state.records.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+            let h = '<div class="pr-head"><h2>学习记录</h2><div class="pr-sub">共 ' + rows.length + ' 条 · 累计 '
+                + getTotalHours().toFixed(1) + ' 小时 · 打印于 ' + getToday() + '</div></div>';
+            h += '<table class="pr-table"><thead><tr><th>日期</th><th>科目</th><th>章 / 节</th><th>时长</th><th>理解度</th><th>知识点</th><th>解题思路 / 备注</th></tr></thead><tbody>';
+            rows.forEach(r => {
+                const chName = getChapterName(r.course, r.chapter);
+                const secName = getSectionName(r.course, r.chapter, r.section);
+                const chTxt = '第' + r.chapter + '章' + (chName ? ' ' + kpEsc(chName) : '');
+                const secTxt = secName ? '<br>第' + r.section + '节 ' + kpEsc(secName) : '';
+                const kp = (r.knowledgePoints || []).map(k => (k.no ? k.no + '. ' : '') + (k.text || '')).join('；') || '—';
+                const thought = [r.problemSolving, r.notes].filter(Boolean).join(' / ') || '—';
+                h += '<tr><td>' + (r.date || '') + '</td><td>' + kpEsc(r.course || '') + '</td><td>' + chTxt + secTxt
+                    + '</td><td>' + (r.durationHours || 0).toFixed(1) + 'h</td><td>' + (r.understanding || 0)
+                    + '</td><td>' + kpEsc(kp) + '</td><td>' + kpEsc(thought) + '</td></tr>';
+            });
+            h += '</tbody></table>';
+            return h;
+        }
+        function printRecords(mode) {
+            if (!state.records.length) { alert('还没有学习记录可打印'); return; }
+            let area = document.getElementById('printArea');
+            if (!area) { area = document.createElement('div'); area.id = 'printArea'; document.body.appendChild(area); }
+            area.innerHTML = buildPrintHTML();
+            window.print();
+            if (mode === 'pdf') showToast('🖨 在打印对话框的「目标 / 打印机」中选择「另存为 PDF」，即可保存为 PDF 文件');
+        }
+        // ---- 回车换行自动编号：格式跟随上一行（1. / （1） / ① / 一、） ----
+        function cnNumTo(n) {
+            const D = '一二三四五六七八九';
+            if (n <= 0) return String(n);
+            if (n < 10) return D[n - 1];
+            if (n === 10) return '十';
+            if (n < 20) return '十' + D[n - 11];
+            const t = Math.floor(n / 10), o = n % 10;
+            return D[t - 1] + '十' + (o ? D[o - 1] : '');
+        }
+        function cnNumFrom(s) {
+            const D = '一二三四五六七八九';
+            if (s === '十') return 10;
+            if (s.indexOf('十') < 0) return D.indexOf(s) + 1;
+            const parts = s.split('十');
+            const t = parts[0] ? D.indexOf(parts[0]) + 1 : 1;
+            const o = parts[1] ? D.indexOf(parts[1]) + 1 : 0;
+            return t * 10 + o;
+        }
+        function nextNumPrefix(line) {
+            let m;
+            if ((m = line.match(/^\s*(\d{1,3})([.、．)）])\s*/))) return (parseInt(m[1], 10) + 1) + m[2] + ' ';
+            if ((m = line.match(/^\s*[（(](\d{1,3})[)）]\s*/))) return '（' + (parseInt(m[1], 10) + 1) + '） ';
+            if ((m = line.match(/^\s*([①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳])/))) {
+                const seq = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+                const i = seq.indexOf(m[1]);
+                return i < seq.length - 1 ? seq[i + 1] + ' ' : (i + 2) + '. ';
+            }
+            if ((m = line.match(/^\s*([一二三四五六七八九十]{1,3})[、.．]\s*/))) return cnNumTo(cnNumFrom(m[1]) + 1) + '、 ';
+            return null;
+        }
+        function bindAutoNumber(id) {
+            const el = document.getElementById(id);
+            if (!el || el.dataset.autoNum === '1') return;
+            el.dataset.autoNum = '1';
+            el.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
+                e.preventDefault();
+                const v = el.value, pos = el.selectionStart == null ? v.length : el.selectionStart;
+                const lineStart = v.lastIndexOf('\n', pos - 1) + 1;
+                const line = v.slice(lineStart, pos);
+                const body = line.replace(/^\s*(\d{1,3}([.、．)）])|[（(]\d{1,3}[)）]|[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]|[一二三四五六七八九十]{1,3}[、.．])\s*/, '');
+                let insert = '\n';
+                if (body.trim()) {
+                    const np = nextNumPrefix(line);
+                    if (np) insert = '\n' + np;      // 有内容才续编号；空行回车就是普通换行
+                }
+                if (el.setRangeText) { el.setRangeText(insert, pos, pos, 'end'); }
+                else { el.value = v.slice(0, pos) + insert + v.slice(pos); el.selectionStart = el.selectionEnd = pos + insert.length; }
+                try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+            });
+        }
+        (function bindRecordExtras() {
+            const bx = document.getElementById('expRecXlsxBtn');
+            if (bx) bx.addEventListener('click', exportRecordsExcel);
+            const bp = document.getElementById('expRecPdfBtn');
+            if (bp) bp.addEventListener('click', function () { printRecords('pdf'); });
+            const pr = document.getElementById('printRecBtn');
+            if (pr) pr.addEventListener('click', function () { printRecords('print'); });
+            document.querySelectorAll('.now-btn[data-target]').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    const el = document.getElementById(b.dataset.target);
+                    if (!el) return;
+                    const d = new Date();
+                    el.value = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+                    try { el.dispatchEvent(new Event('change')); } catch (_) {}
+                });
+            });
+            ['fProblemSolving', 'fMemoryNetwork', 'fAiQA', 'fKpQuick'].forEach(bindAutoNumber);
+        })();
+
         function handleFormSubmit(e) {
             e.preventDefault();
             const course = document.getElementById('fCourse').value;
@@ -4093,6 +4298,12 @@
             const aiQA = document.getElementById('fAiQA').value.trim();
             const notes = document.getElementById('fNotes').value.trim();
             const knowledgePoints = getKnowledgePoints();
+            const kpQuickEl = document.getElementById('fKpQuick');
+            (kpQuickEl ? kpQuickEl.value : '').split(/[；;\n、]+/).forEach(s => {
+                const tok = stripKpNo(s.trim());
+                if (tok) knowledgePoints.push({ text: tok });
+            });
+            knowledgePoints.forEach((k, i) => { k.no = i + 1; });
             const addToMemory = !!(document.getElementById('fAddToMemory') && document.getElementById('fAddToMemory').checked);
 
             // ---- 必填校验：一次性收集所有缺失项，统一提示并高亮定位 ----
@@ -4207,6 +4418,7 @@
                 document.getElementById('fEndTime').value = '';
                 document.getElementById('fDurationHours').value = '';
                 document.getElementById('fDurationHours').readOnly = false;
+                    durationManual = false;
                 document.getElementById('autoCalcHint').textContent = '⏱️ 填写起止时间自动计算';
                 document.getElementById('autoCalcHint').style.color = 'var(--primary)';
                 document.getElementById('fSelfAssessment').value = '';
@@ -4215,6 +4427,7 @@
                 document.getElementById('fMemoryNetwork').value = '';
                 document.getElementById('fAiQA').value = '';
                 document.getElementById('fNotes').value = '';
+                document.getElementById('fKpQuick').value = '';
                 resetKnowledgePoints();
                 document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                 document.getElementById('cancelEditBtn').classList.remove('visible');
@@ -4352,12 +4565,14 @@
             document.getElementById('fEndTime').value = record.endTime || '';
             document.getElementById('fDurationHours').value = record.durationHours || '';
             document.getElementById('fDurationHours').readOnly = false;
+                    durationManual = false;
             document.getElementById('fSelfAssessment').value = record.selfAssessment || '';
             document.getElementById('fAssessmentReason').value = record.assessmentReason || '';
             document.getElementById('fProblemSolving').value = record.problemSolving || '';
             document.getElementById('fMemoryNetwork').value = record.memoryNetwork || '';
             document.getElementById('fAiQA').value = record.aiQA || '';
             document.getElementById('fNotes').value = record.notes || '';
+            { const kpq = document.getElementById('fKpQuick'); if (kpq) kpq.value = ''; }
             renderKnowledgePoints(record.knowledgePoints && record.knowledgePoints.length ? record.knowledgePoints : [{ text: '' }]);
             const memCb = document.getElementById('fAddToMemory');
             if (memCb) {
