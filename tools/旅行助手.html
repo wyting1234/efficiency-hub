@@ -1899,5 +1899,6 @@ datalist { display: none !important; }
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
 <script src="backup-hub.js"></script>
 <script>BackupHub.mount({id:'travel',name:'旅行助手'});</script>
+<script data-wb-now="1">/* wb-now-inject */(function(){function pad(n){return(n<10?"0":"")+n}function mk(){var list=document.querySelectorAll('input[type="time"]');for(var i=0;i<list.length;i++){(function(inp){if(inp.dataset.wbNow==="1")return;inp.dataset.wbNow="1";var b=document.createElement("button");b.type="button";b.textContent="\u23F0";b.title="填入当前时间";b.style.cssText="margin-left:5px;padding:2px 8px;font-size:12px;line-height:1.4;border:1px solid #d5cec0;border-radius:6px;background:#f7f4ec;color:#555;cursor:pointer;vertical-align:middle";b.onclick=function(){var d=new Date();inp.value=pad(d.getHours())+":"+pad(d.getMinutes());try{inp.dispatchEvent(new Event("input",{bubbles:true}))}catch(e){}try{inp.dispatchEvent(new Event("change",{bubbles:true}))}catch(e){}};if(inp.nextSibling){inp.parentNode.insertBefore(b,inp.nextSibling)}else{inp.parentNode.appendChild(b)}})(list[i])}}mk();setInterval(mk,1500)})();</script>
 </body>
 </html>
