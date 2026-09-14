@@ -715,6 +715,82 @@
             }
         }
 
+        /* 番茄模块并入课程头部条：作为第二行，全宽、去卡片感、虚线分隔 */
+        .course-header .tomato-container {
+            flex: 1 1 100%;
+            width: 100%;
+            margin: 2px 0 0;
+            padding: 12px 0 0;
+            background: transparent;
+            border: none;
+            border-top: 1px dashed var(--border);
+            border-radius: 0;
+            box-shadow: none;
+            gap: 10px;
+        }
+        .course-header .tomato-container:hover { border-color: var(--border); }
+        .course-header .tomato-container .timer { font-size: 26px; min-width: 84px; }
+        .course-header .tomato-controls button { padding: 5px 14px; font-size: 13px; }
+
+        /* 番茄设置弹窗 */
+        .tomato-dialog {
+            width: 100%; max-width: 430px; background: #fff; border-radius: 14px;
+            padding: 20px; box-shadow: 0 16px 48px rgba(0,0,0,.18);
+            max-height: 86vh; overflow: auto;
+        }
+        .tomato-dialog h3 { margin: 0 0 12px; font-size: 16px; color: var(--text); }
+        .tomato-dialog .tf { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px; }
+        .tomato-dialog .tf label { font-size: 13px; color: var(--text-secondary); }
+        .tomato-dialog .tf input[type=number] {
+            width: 92px; padding: 7px 9px; border: 1px solid var(--border);
+            border-radius: 8px; font-size: 13.5px; color: var(--text); background: #fff;
+        }
+        .tomato-dialog .tf input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--primary); cursor: pointer; }
+        .tomato-dialog .pd-hint {
+            font-size: 11.5px; color: var(--text-secondary); line-height: 1.75;
+            background: var(--primary-bg); border-radius: 8px; padding: 8px 10px; margin: 12px 0;
+        }
+        .tomato-dialog .pd-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+        .tomato-dialog .pd-btn {
+            padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+            background: #fff; color: var(--text); font-size: 13px; cursor: pointer;
+        }
+        .tomato-dialog .pd-btn.primary { background: var(--primary); border-color: var(--primary); color: #FAF7F1; }
+        .tomato-dialog .tt-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin: 14px 0 6px; }
+        .tomato-dialog .tt-list { border: 1px solid var(--border); border-radius: 10px; max-height: 220px; overflow: auto; }
+        .tomato-dialog .tt-row {
+            display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+            border-bottom: 1px solid var(--border); font-size: 13px;
+        }
+        .tomato-dialog .tt-row:last-child { border-bottom: none; }
+        .tomato-dialog .tt-row .tt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tomato-dialog .tt-row input {
+            width: 76px; padding: 5px 7px; border: 1px solid var(--border);
+            border-radius: 7px; font-size: 12.5px; text-align: right;
+        }
+        .tomato-dialog .tt-row .tt-pomo { min-width: 52px; text-align: right; font-size: 12px; font-weight: 600; color: var(--primary); }
+
+        /* 课程进度标题行 + 显示方式切换按钮（与编辑按钮合成一个） */
+        .course-list-title {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 8px; margin-bottom: 8px; padding-left: 2px;
+        }
+        .course-list-title .clt-text {
+            font-size: 12px; font-weight: 600; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .prog-mode-btn {
+            flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 9px; border: 1px solid var(--border, #E2D9C8); border-radius: 999px;
+            background: #fff; color: var(--primary-dark, #6E5B43); cursor: pointer;
+            font-size: 11.5px; font-weight: 600; line-height: 1.6;
+            transition: background .15s, border-color .15s, color .15s;
+        }
+        .prog-mode-btn:hover { background: var(--primary-bg, #F7F3EA); border-color: var(--primary-light, #A08869); }
+
+        /* 记录卡片上的番茄个数标签 */
+        .tag.pomo-tag { background: #F6E3DD; color: #94452F; }
+
         /* ===== 鼓励话语横幅 ===== */
         .encouragement-banner {
             background: linear-gradient(135deg, var(--gold-light) 0%, #FEF9E7 100%);
@@ -1069,7 +1145,8 @@
                 flex: 1 1 100%;
                 margin-bottom: 0;
             }
-            .course-list-title { display: none; }
+            .course-list-title { display: flex; margin-bottom: 6px; }
+            .course-list-title .clt-text { display: none; }
             .course-item {
                 padding: 6px 12px;
                 flex: 0 0 auto;
@@ -1914,10 +1991,13 @@
             <div class="p-item"><span class="p-label">📚 已学科目</span><span class="p-value"><span class="done" id="doneCourses">0</span> / <span class="highlight" id="totalCourses">6</span></span></div>
             <div class="p-item"><span class="p-label"><span data-lv-prefix="📖 已学" data-lv="chapter" data-lv-suffix="数">📖 已学章节</span></span><span class="p-value"><span class="done" id="doneChapters">0</span> / <span class="highlight" id="totalChapters">0</span></span></div>
             <div class="p-item"><span class="p-label"><span data-lv-prefix="📄 已学" data-lv="section" data-lv-suffix="数">📄 已学节数</span></span><span class="p-value"><span class="done" id="doneSections">0</span> / <span class="highlight" id="totalSections">0</span></span></div>
-            <div class="p-item"><span class="p-label">⏳ 建议学时</span><span class="p-value"><span class="done" id="doneHoursProgress">0</span> / <span class="highlight" id="totalHoursProgress">0</span> h</span></div>
+            <div class="p-item"><span class="p-label" id="pLabelProgress">⏳ 建议学时</span><span class="p-value"><span class="done" id="doneHoursProgress">0</span> / <span class="highlight" id="totalHoursProgress">0</span><span id="pUnitProgress"> h</span></span></div>
         </div>
 
-        <div class="course-list-title">📚 课程进度（已学 / 建议）</div>
+        <div class="course-list-title">
+            <span class="clt-text">📚 课程进度（已学 / 建议）</span>
+            <button type="button" class="prog-mode-btn" id="progModeBtn" title="切换学习进度的显示方式">✎ ⏱ 时长模式</button>
+        </div>
         <div class="course-list scrollbar" id="courseList"></div>
         <div class="sidebar-encouragement">
             <span class="quote-icon">💪</span>
@@ -1952,6 +2032,22 @@
                 </div>
             </div>
             <button class="action-btn" id="toggleFormBtn">➕ 添加记录</button>
+
+            <!-- ===== 番茄时钟（已并入课程头部条，全宽第二行） ===== -->
+            <div class="tomato-container" id="tomatoContainer">
+                <div class="tomato-display">
+                    <span class="timer" id="tomatoTimer">25:00</span>
+                    <span class="status" id="tomatoStatus">⏸️ 未开始</span>
+                    <span class="tomato-count" id="tomatoSession" style="display:none;">本次 <span class="num" id="tomatoSessionCount">0</span> 🍅</span>
+                </div>
+                <div class="tomato-controls">
+                    <button class="primary" id="tomatoStartBtn">▶ 开始</button>
+                    <button id="tomatoPauseBtn">⏸ 暂停</button>
+                    <button id="tomatoResetBtn">⏹ 重置</button>
+                    <button id="tomatoSettingsBtn" title="番茄设置：专注/休息时长、自动休息、各科目建议学时">⚙ 设置</button>
+                    <span class="tomato-count">累计 <span class="num" id="tomatoCount">0</span> 🍅</span>
+                </div>
+            </div>
         </div>
 
         <!-- 表单 -->
@@ -2026,7 +2122,12 @@
                             <span class="auto-calc" id="autoCalcHint">⏱️ 填写起止时间自动计算</span>
                         </div>
                     </div>
-                    <div class="form-row">
+                    <div class="form-row three">
+                        <div class="field">
+                            <label>🍅 番茄个数 <span style="font-weight:400;color:var(--text-secondary);">(可选 · 番茄钟自动累计)</span></label>
+                            <input type="number" id="fTomatoCount" min="0" step="1" value="0" />
+                            <span class="auto-calc" id="tomatoLinkHint">🍅 点番茄钟「开始」，起止时间与个数会自动填进来</span>
+                        </div>
                         <div class="field">
                             <label>学习途径 <span class="required">*</span></label>
                             <select id="fResourceType" required>
@@ -2119,20 +2220,6 @@
                 <div class="item" style="grid-column:1 / -1;"><span class="label">掌握程度</span><span class="value" id="guideMastery" contenteditable="true">-</span></div>
             </div>
             <div class="guide-empty" id="guideEmpty" style="display:none;"><span data-lv-prefix="该" data-lv="chapter" data-lv-suffix="暂无详细指南，请参考教材。">该章节暂无详细指南，请参考教材。</span></div>
-        </div>
-
-        <!-- ===== 番茄时钟 ===== -->
-        <div class="tomato-container" id="tomatoContainer">
-            <div class="tomato-display">
-                <span class="timer" id="tomatoTimer">25:00</span>
-                <span class="status" id="tomatoStatus">⏸️ 未开始</span>
-            </div>
-            <div class="tomato-controls">
-                <button class="primary" id="tomatoStartBtn">▶ 开始</button>
-                <button id="tomatoPauseBtn">⏸ 暂停</button>
-                <button id="tomatoResetBtn">⏹ 重置</button>
-                <span class="tomato-count">🍅 <span class="num" id="tomatoCount">0</span></span>
-            </div>
         </div>
 
         <!-- ===== 鼓励话语横幅 ===== -->
@@ -3087,13 +3174,25 @@
             currentCourse: '会计',
             editingId: null,
             filterStar: 'all',
+            progressMode: 'hours', // 'hours' 时长模式 | 'tomato' 番茄个数模式
             tomato: {
                 count: 0,
                 isRunning: false,
                 isPaused: false,
                 timeLeft: 25 * 60, // seconds
                 mode: 'focus', // 'focus' or 'break'
-                timerId: null
+                timerId: null,
+                round: 0,          // 已完成的专注轮数（用于长休息判断）
+                session: { active: false, start: '', pomodoros: 0 }, // 「本次」番茄会话
+                cfg: {             // 可编辑配置，随数据一起落盘
+                    focusMin: 25,
+                    breakMin: 5,
+                    longBreakMin: 15,
+                    longEvery: 4,
+                    autoBreak: true,
+                    autoFocus: false,
+                    sound: true
+                }
             }
         };
 
@@ -3126,7 +3225,18 @@
                     state.reviewDeleted = (data.reviewDeleted && typeof data.reviewDeleted === 'object') ? data.reviewDeleted : {};
                     if (data.tomato) {
                         state.tomato.count = data.tomato.count || 0;
+                        const _tc = data.tomato.cfg;
+                        if (_tc && typeof _tc === 'object') {
+                            ['focusMin', 'breakMin', 'longBreakMin', 'longEvery'].forEach(k => {
+                                const v = parseFloat(_tc[k]);
+                                if (isFinite(v) && v > 0) state.tomato.cfg[k] = v;
+                            });
+                            ['autoBreak', 'autoFocus', 'sound'].forEach(k => {
+                                if (typeof _tc[k] === 'boolean') state.tomato.cfg[k] = _tc[k];
+                            });
+                        }
                     }
+                    state.progressMode = (data.progressMode === 'tomato') ? 'tomato' : 'hours';
                 } else {
                     // 示例数据仅用于 CPA 项目，其他项目从空白开始
                     state.records = (currentProjectId === 'cpa') ? getSampleData() : [];
@@ -3175,7 +3285,8 @@
                 reviewDone: state.reviewDone || [],
                 reviewOverrides: state.reviewOverrides || {},
                 reviewDeleted: state.reviewDeleted || {},
-                tomato: { count: state.tomato.count }
+                tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
+                progressMode: (state.progressMode === 'tomato' ? 'tomato' : 'hours')
             };
             try {
                 localStorage.setItem(getStorageKey(), JSON.stringify(data));
@@ -3507,15 +3618,171 @@
             showToast(hours === null ? ('已恢复自动计划学时：' + course) : ('⏳ ' + course + ' 计划学时 = ' + fmtPlanHours(hours)));
         }
 
+        // ---------- 番茄个数换算（番茄时钟 ↔ 课程进度） ----------
+        function getTomatoMinutes() {
+            const c = (state.tomato && state.tomato.cfg) || {};
+            const m = parseFloat(c.focusMin);
+            return (isFinite(m) && m > 0) ? m : 25;
+        }
+        // 建议番茄个数 = 建议学时 × 60 ÷ 专注时长，四舍五入（最少 1 个）
+        function hoursToTomato(hours) {
+            const h = parseFloat(hours);
+            if (!isFinite(h) || h <= 0) return 0;
+            return Math.max(1, Math.round(h * 60 / getTomatoMinutes()));
+        }
+        // 单条记录贡献的番茄数：优先用记录里记下的番茄个数，没有就按时长换算
+        function getRecordTomatoCount(r) {
+            const n = parseFloat(r && r.tomatoCount);
+            if (isFinite(n) && n > 0) return Math.round(n);
+            const h = parseFloat(r && r.durationHours);
+            if (isFinite(h) && h > 0) return Math.round(h * 60 / getTomatoMinutes());
+            return 0;
+        }
+        function getCourseTomatoDone(course) {
+            return getRecordsByCourse(course).reduce((s, r) => s + getRecordTomatoCount(r), 0);
+        }
+
+        // ---------- 学习进度显示方式：时长模式 / 番茄个数模式 ----------
+        function renderProgModeBtn() {
+            const btn = document.getElementById('progModeBtn');
+            if (!btn) return;
+            const t = (state.progressMode === 'tomato');
+            btn.textContent = t ? '✎ 🍅 番茄模式' : '✎ ⏱ 时长模式';
+            btn.title = '学习进度显示方式（只影响这个模块）。当前：' + (t
+                ? ('番茄个数模式 —— 已学 🍅 / 建议 🍅，按专注 ' + getTomatoMinutes() + ' 分钟换算；点击改为时长模式')
+                : '时长模式 —— 已学 h / 建议 h；点击改为番茄个数模式');
+            if (!btn._bound) {
+                btn._bound = true;
+                btn.addEventListener('click', function () { toggleProgressMode(); });
+            }
+        }
+        function toggleProgressMode() {
+            state.progressMode = (state.progressMode === 'tomato') ? 'hours' : 'tomato';
+            saveData();
+            renderProgModeBtn();
+            renderCourseList();
+            updateGlobalStats();
+            showToast(state.progressMode === 'tomato'
+                ? ('🍅 已切到「番茄个数」模式：建议番茄 = 建议学时 × 60 ÷ ' + getTomatoMinutes() + '，四舍五入')
+                : '⏱ 已切到「时长」模式：按小时显示学习进度');
+        }
+
+        // ---------- 番茄时钟设置弹窗（含各科目建议学时 / 建议番茄数） ----------
+        function openTomatoSettings() {
+            const old = document.getElementById('tomatoDialog');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            const cfg = state.tomato.cfg;
+            const proj = getCurrentProject();
+            let rows = '';
+            COURSES.forEach(co => {
+                const custom = (proj && proj.planHours && proj.planHours[co] !== undefined) ? proj.planHours[co] : '';
+                rows += '<div class="tt-row" data-course="' + planEsc(co) + '">' +
+                    '<span class="tt-name" title="' + planEsc(co) + '">' + planEsc(co) + '</span>' +
+                    '<input type="number" min="0" step="0.5" class="tt-hours" placeholder="自动" value="' + custom + '">' +
+                    '<span class="tt-pomo">' + (hoursToTomato(getCoursePlanHours(co).hours) || '—') + '</span>' +
+                    '</div>';
+            });
+            const box = document.createElement('div');
+            box.className = 'plan-mask';
+            box.id = 'tomatoDialog';
+            box.innerHTML = '<div class="tomato-dialog">' +
+                '<h3>🍅 番茄时钟设置</h3>' +
+                '<div class="tf"><label>专注时长（分钟）</label><input id="tcFocus" type="number" min="1" max="180" step="1" value="' + cfg.focusMin + '"></div>' +
+                '<div class="tf"><label>休息时长（分钟）</label><input id="tcBreak" type="number" min="1" max="120" step="1" value="' + cfg.breakMin + '"></div>' +
+                '<div class="tf"><label>长休息时长（分钟）</label><input id="tcLong" type="number" min="1" max="180" step="1" value="' + cfg.longBreakMin + '"></div>' +
+                '<div class="tf"><label>每几个番茄后长休息</label><input id="tcEvery" type="number" min="1" max="12" step="1" value="' + cfg.longEvery + '"></div>' +
+                '<div class="tf"><label>专注结束自动开始休息</label><input id="tcAutoBreak" type="checkbox"' + (cfg.autoBreak ? ' checked' : '') + '></div>' +
+                '<div class="tf"><label>休息结束自动开始专注</label><input id="tcAutoFocus" type="checkbox"' + (cfg.autoFocus ? ' checked' : '') + '></div>' +
+                '<div class="tf"><label>结束时提示音</label><input id="tcSound" type="checkbox"' + (cfg.sound ? ' checked' : '') + '></div>' +
+                '<div class="pd-hint">专注时长同时决定课程进度的「建议番茄个数」：<b>建议番茄 = 建议学时 × 60 ÷ 专注时长</b>（四舍五入，至少 1 个）。保存后学习进度会自动切到番茄个数模式。</div>' +
+                '<div class="tt-title">各科目建议学时（留空 = 自动读取；可直接改） · 建议番茄数</div>' +
+                '<div class="tt-list">' + (rows || '<div class="tt-row"><span class="tt-name">当前项目还没有科目</span></div>') + '</div>' +
+                '<div class="pd-actions">' +
+                '<button class="pd-btn" id="tcCancel">取消</button>' +
+                '<button class="pd-btn primary" id="tcSave">保存</button>' +
+                '</div></div>';
+            document.body.appendChild(box);
+            const close = function () { if (box.parentNode) box.parentNode.removeChild(box); };
+            box.querySelector('#tcCancel').onclick = close;
+            box.onclick = function (e) { if (e.target === box) close(); };
+
+            function previewPomo() {
+                const fm = parseFloat(box.querySelector('#tcFocus').value);
+                const m = (isFinite(fm) && fm > 0) ? fm : 25;
+                box.querySelectorAll('.tt-row').forEach(r => {
+                    const co = r.dataset.course;
+                    if (!co) return;
+                    const inp = r.querySelector('.tt-hours');
+                    const raw = (inp.value || '').trim();
+                    let h = getCoursePlanHours(co).hours;
+                    const v = parseFloat(raw);
+                    if (raw !== '' && isFinite(v) && v > 0) h = v;
+                    r.querySelector('.tt-pomo').textContent = h > 0 ? (Math.max(1, Math.round(h * 60 / m)) + '🍅') : '—';
+                });
+            }
+            ['tcFocus', 'tcBreak', 'tcLong', 'tcEvery'].forEach(id => {
+                const el = box.querySelector('#' + id);
+                if (el) el.addEventListener('input', previewPomo);
+            });
+            box.querySelectorAll('.tt-hours').forEach(el => el.addEventListener('input', previewPomo));
+            previewPomo();
+
+            box.querySelector('#tcSave').onclick = function () {
+                const pick = function (id, dflt, min, max) {
+                    const v = parseFloat(box.querySelector('#' + id).value);
+                    return (isFinite(v) && v >= min && v <= max) ? v : dflt;
+                };
+                cfg.focusMin = pick('tcFocus', 25, 1, 180);
+                cfg.breakMin = pick('tcBreak', 5, 1, 120);
+                cfg.longBreakMin = pick('tcLong', 15, 1, 180);
+                cfg.longEvery = pick('tcEvery', 4, 1, 12);
+                cfg.autoBreak = !!box.querySelector('#tcAutoBreak').checked;
+                cfg.autoFocus = !!box.querySelector('#tcAutoFocus').checked;
+                cfg.sound = !!box.querySelector('#tcSound').checked;
+
+                let changed = 0;
+                proj.planHours = proj.planHours || {};
+                box.querySelectorAll('.tt-row').forEach(r => {
+                    const co = r.dataset.course;
+                    if (!co) return;
+                    const raw = (r.querySelector('.tt-hours').value || '').trim();
+                    if (raw === '') {
+                        if (proj.planHours[co] !== undefined) { delete proj.planHours[co]; changed++; }
+                    } else {
+                        const v = parseFloat(raw);
+                        if (isFinite(v) && v > 0 && proj.planHours[co] !== v) { proj.planHours[co] = v; changed++; }
+                    }
+                });
+                if (changed) saveProjects();
+                state.progressMode = 'tomato';   // 设完时长，学习进度按需求显示为「已学番茄 / 建议番茄」
+                if (!state.tomato.isRunning) {
+                    state.tomato.mode = 'focus';
+                    state.tomato.timeLeft = cfg.focusMin * 60;
+                }
+                saveData();
+                renderTomatoDisplay();
+                renderAll();
+                close();
+                showToast('✅ 番茄设置已保存：专注 ' + cfg.focusMin + ' 分 / 休息 ' + cfg.breakMin + ' 分' +
+                    (changed ? ('，更新 ' + changed + ' 个科目学时') : '') + '；学习进度已切到番茄个数模式');
+            };
+        }
+
         // ---------- 课程进度（双轨 + 三色） ----------
         // 有计划学时 → 已学时长/计划学时；没有 → 已学节数/总节数；再没有 → 已学章数/总章数。
         // 颜色按完成度：>=100% 绿（完成）/ >=70% 黄（接近完成）/ >0 红（进行中，未完成）/ 0 灰（未开始）。
         function getCourseProgress(course) {
             const hours = getCourseHours(course);
             const plan = getCoursePlanHours(course);
+            const mode = (state.progressMode === 'tomato') ? 'tomato' : 'hours';
             let done = 0, total = 0, unit = 'h';
             const src = plan.hours > 0 ? plan.src : 'fallback';
-            if (plan.hours > 0) {
+            if (mode === 'tomato') {
+                // 番茄个数模式：已学番茄（记录里记下的番茄数，缺省按时长换算）/ 建议番茄（建议学时 ÷ 专注时长，四舍五入）
+                done = getCourseTomatoDone(course);
+                total = hoursToTomato(plan.hours);
+                unit = 'pomo';
+            } else if (plan.hours > 0) {
                 done = hours; total = plan.hours; unit = 'h';
             } else {
                 const cData = GUIDE_DATA[course];
@@ -3539,7 +3806,7 @@
             }
             const pct = total > 0 ? Math.min((done / total) * 100, 100) : (done > 0 ? 100 : 0);
             const color = pct >= 100 ? 'var(--green)' : pct >= 70 ? '#D9A441' : pct > 0 ? 'var(--red)' : '#C9BFAD';
-            const fmt = v => unit === 'h' ? v.toFixed(1) + 'h' : v + unit;
+            const fmt = v => unit === 'h' ? v.toFixed(1) + 'h' : (unit === 'pomo' ? v + '🍅' : v + unit);
             return { done: done, total: total, unit: unit, pct: pct, color: color, planSrc: src,
                 doneTxt: fmt(done), totalTxt: fmt(total) };
         }
@@ -3553,6 +3820,7 @@
                     '当前项目还没有' + L('course') + '<br><span>点此新增，或到「目标管理」导入模板批量建立</span></div>';
                 const el = document.getElementById('courseListAdd');
                 if (el) el.addEventListener('click', () => openCourseDialog());
+                renderProgModeBtn();
                 return;
             }
             COURSES.forEach(course => {
@@ -3573,7 +3841,6 @@
                                 <div class="fill" style="width:${pct}%;background:${color};"></div>
                             </div>
                         </div>
-                        <button type="button" class="plan-edit" data-course="${planEsc(course)}" title="编辑计划学时">✎</button>
                     </div>
                 `;
             });
@@ -3589,13 +3856,7 @@
                     }
                 });
             });
-            container.querySelectorAll('.plan-edit').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    openPlanHours(btn.dataset.course);
-                });
-            });
+            renderProgModeBtn();
         }
 
         // ---------- 更新全局统计 ----------
@@ -3612,8 +3873,24 @@
             document.getElementById('totalChapters').textContent = stats.totalChapters;
             document.getElementById('doneSections').textContent = stats.doneSections;
             document.getElementById('totalSections').textContent = stats.totalSections;
-            document.getElementById('doneHoursProgress').textContent = stats.doneHours.toFixed(1);
-            document.getElementById('totalHoursProgress').textContent = stats.totalSuggested.toFixed(1);
+            const _lbl = document.getElementById('pLabelProgress');
+            const _unit = document.getElementById('pUnitProgress');
+            if (state.progressMode === 'tomato') {
+                let donePomo = 0, planPomo = 0;
+                COURSES.forEach(c => {
+                    donePomo += getCourseTomatoDone(c);
+                    planPomo += hoursToTomato(getCoursePlanHours(c).hours);
+                });
+                if (_lbl) _lbl.textContent = '🍅 番茄进度';
+                document.getElementById('doneHoursProgress').textContent = donePomo;
+                document.getElementById('totalHoursProgress').textContent = planPomo;
+                if (_unit) _unit.textContent = ' 个';
+            } else {
+                if (_lbl) _lbl.textContent = '⏳ 建议学时';
+                document.getElementById('doneHoursProgress').textContent = stats.doneHours.toFixed(1);
+                document.getElementById('totalHoursProgress').textContent = stats.totalSuggested.toFixed(1);
+                if (_unit) _unit.textContent = ' h';
+            }
         }
 
         // ---------- 课程头部 ----------
@@ -3850,6 +4127,37 @@
                 });
             }
 
+            // ---------- 番茄钟 → 记录表单 联动桥 ----------
+            // 番茄开始时把开始时间填进来；每个番茄完成时更新结束时间、重算时长、累计个数
+            const tCountEl = document.getElementById('fTomatoCount');
+            const tHintEl = document.getElementById('tomatoLinkHint');
+            window.CPATomatoLink = {
+                begin: function (startHM) {
+                    if (startTime) startTime.value = startHM;
+                    if (endTime) endTime.value = '';
+                    const dEl = document.getElementById('fDate');
+                    if (dEl) dEl.value = getToday();
+                    const cEl = document.getElementById('fCourse');
+                    if (cEl && state.currentCourse) cEl.value = state.currentCourse;
+                    durationManual = false;
+                    if (durationInput) { durationInput.value = ''; durationInput.readOnly = false; }
+                    if (tCountEl) tCountEl.value = 0;
+                    if (autoHint) { autoHint.textContent = '🍅 番茄计时中…完成一个会自动填入结束时间与时长'; autoHint.style.color = 'var(--primary)'; }
+                    if (tHintEl) { tHintEl.textContent = '🍅 番茄计时中（开始 ' + startHM + '）'; tHintEl.style.color = 'var(--primary)'; }
+                },
+                tick: function (endHM, n) {
+                    if (endTime) endTime.value = endHM;
+                    durationManual = false;
+                    if (tCountEl) tCountEl.value = n;
+                    autoCalcDuration();   // 依据起止时间自动算出时长
+                    if (tHintEl) { tHintEl.textContent = '🍅 本次已累计 ' + n + ' 个番茄（结束 ' + endHM + '）'; tHintEl.style.color = 'var(--green)'; }
+                },
+                clear: function () {
+                    if (tCountEl) tCountEl.value = 0;
+                    if (tHintEl) { tHintEl.textContent = '🍅 点番茄钟「开始」，起止时间与个数会自动填进来'; tHintEl.style.color = ''; }
+                }
+            };
+
             // 表单提交
             document.getElementById('recordForm').addEventListener('submit', handleFormSubmit);
             document.getElementById('recordForm').addEventListener('reset', () => {
@@ -3862,6 +4170,8 @@
                     document.getElementById('fCourse').value = state.currentCourse;
                     document.getElementById('fStartTime').value = '';
                     document.getElementById('fEndTime').value = '';
+                    { const _tc = document.getElementById('fTomatoCount'); if (_tc) _tc.value = 0; }
+                    { const _th = document.getElementById('tomatoLinkHint'); if (_th) { _th.textContent = '🍅 点番茄钟「开始」，起止时间与个数会自动填进来'; _th.style.color = ''; } }
                     document.getElementById('fDurationHours').value = '';
                     document.getElementById('fDurationHours').readOnly = false;
                     durationManual = false;
@@ -4505,6 +4815,9 @@
             const startTime = document.getElementById('fStartTime').value;
             const endTime = document.getElementById('fEndTime').value;
             let durationHours = parseFloat(document.getElementById('fDurationHours').value);
+            const _tcEl = document.getElementById('fTomatoCount');
+            const _tcRaw = _tcEl ? parseInt(_tcEl.value) : 0;
+            const tomatoCount = (isFinite(_tcRaw) && _tcRaw > 0) ? _tcRaw : 0;
             const understanding = parseInt(document.getElementById('fUnderstanding').value);
             const selfAssessment = document.getElementById('fSelfAssessment').value;
             const assessmentReason = document.getElementById('fAssessmentReason').value.trim();
@@ -4585,6 +4898,7 @@
                 startTime: startTime || '',
                 endTime: endTime || '',
                 durationHours: Math.round(durationHours * 10) / 10,
+                tomatoCount: tomatoCount,
                 understanding,
                 selfAssessment,
                 assessmentReason: assessmentReason || '',
@@ -4614,8 +4928,15 @@
                 // 本地存储写入失败：记录不落盘，不能当成功处理，表单内容保留让用户复制或截图
                 return;
             }
-            showToast(isEdit ? '✏️ 记录已更新' :
-                `✅ 已保存第 ${state.records.length} 条记录：${course} ${date} ${durationHours}h`);
+            showToast((isEdit ? '✏️ 记录已更新' :
+                `✅ 已保存第 ${state.records.length} 条记录：${course} ${date} ${durationHours}h`) +
+                (tomatoCount > 0 ? (' · 🍅 ' + tomatoCount + ' 个') : ''));
+            // 记录已保存 → 「本次番茄」清零，准备下一轮
+            if (state.tomato.session && (state.tomato.session.active || state.tomato.session.pomodoros)) {
+                state.tomato.session = { active: false, start: '', pomodoros: 0 };
+            }
+            if (window.CPATomatoLink) window.CPATomatoLink.clear();
+            renderTomatoDisplay();
             if (state.currentCourse !== course) {
                 state.currentCourse = course;
                 renderAll();
@@ -4713,6 +5034,7 @@
                                     <span class="tag source">${r.source || '未知'}</span>
                                     ${r.selfAssessment ? `<span class="tag ${assessmentClass}">${assessmentEmoji} ${r.selfAssessment}</span>` : ''}
                                     ${r.addToMemory === false ? '<span class="mem-tag off">不进记忆曲线</span>' : '<span class="mem-tag">🧠 记忆曲线</span>'}
+                                    ${getRecordTomatoCount(r) > 0 ? ('<span class="tag pomo-tag">🍅 ' + getRecordTomatoCount(r) + '</span>') : ''}
                                 </div>
                                 <div class="stars">${stars}</div>
                             </div>
@@ -4802,6 +5124,8 @@
             document.getElementById('fDurationHours').value = record.durationHours || '';
             document.getElementById('fDurationHours').readOnly = false;
                     durationManual = false;
+            { const _tc = document.getElementById('fTomatoCount'); if (_tc) _tc.value = record.tomatoCount || 0; }
+            { const _th = document.getElementById('tomatoLinkHint'); if (_th) { _th.textContent = getRecordTomatoCount(record) > 0 ? ('🍅 本条约 ' + getRecordTomatoCount(record) + ' 个番茄') : '🍅 点番茄钟「开始」，起止时间与个数会自动填进来'; } }
             document.getElementById('fSelfAssessment').value = record.selfAssessment || '';
             document.getElementById('fAssessmentReason').value = record.assessmentReason || '';
             document.getElementById('fProblemSolving').value = record.problemSolving || '';
@@ -4861,93 +5185,140 @@
         }
 
         // ---------- 番茄时钟 ----------
-        function initTomato() {
+        function hmNow() {
+            const d = new Date();
+            return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+        }
+        function beep() {
+            if (!state.tomato.cfg.sound) return;
+            try {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return;
+                const ac = new AC();
+                const o = ac.createOscillator();
+                const g = ac.createGain();
+                o.connect(g); g.connect(ac.destination);
+                o.type = 'sine';
+                o.frequency.value = 880;
+                g.gain.setValueAtTime(0.0001, ac.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.22, ac.currentTime + 0.02);
+                g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.6);
+                o.start(); o.stop(ac.currentTime + 0.62);
+                setTimeout(function () { try { ac.close(); } catch (e) {} }, 900);
+            } catch (e) {}
+        }
+        function renderTomatoDisplay() {
+            const t = state.tomato;
             const timerEl = document.getElementById('tomatoTimer');
             const statusEl = document.getElementById('tomatoStatus');
             const countEl = document.getElementById('tomatoCount');
+            const sessEl = document.getElementById('tomatoSession');
+            const sessCnt = document.getElementById('tomatoSessionCount');
+            if (timerEl) {
+                const mins = Math.floor(Math.max(t.timeLeft, 0) / 60);
+                const secs = Math.max(t.timeLeft, 0) % 60;
+                timerEl.textContent = ('0' + mins).slice(-2) + ':' + ('0' + secs).slice(-2);
+            }
+            if (countEl) countEl.textContent = t.count;
+            if (statusEl) {
+                statusEl.textContent = t.isRunning
+                    ? (t.mode === 'focus' ? '🍅 专注中' : '☕ 休息中')
+                    : (t.isPaused ? '⏸️ 已暂停' : '⏸️ 未开始');
+            }
+            const n = (t.session && t.session.pomodoros) || 0;
+            if (sessEl) sessEl.style.display = n > 0 ? '' : 'none';
+            if (sessCnt) sessCnt.textContent = n;
+        }
+        function startTomatoTimer() {
+            const t = state.tomato;
+            if (t.isRunning) return;
+            if (t.timeLeft <= 0) {
+                t.timeLeft = (t.mode === 'focus' ? t.cfg.focusMin : t.cfg.breakMin) * 60;
+            }
+            // 专注开始 → 新开一轮「本次会话」，并把开始时间填进记录表单
+            if (t.mode === 'focus' && !(t.session && t.session.active)) {
+                t.session = { active: true, start: hmNow(), pomodoros: 0 };
+                if (window.CPATomatoLink) window.CPATomatoLink.begin(t.session.start);
+                showToast('▶ 番茄开始（专注 ' + t.cfg.focusMin + ' 分钟），已把 ' + t.session.start + ' 填进「开始时间」');
+            }
+            t.isRunning = true;
+            t.isPaused = false;
+            t.timerId = setInterval(tickTomatoTimer, 1000);
+            renderTomatoDisplay();
+        }
+        function tickTomatoTimer() {
+            const t = state.tomato;
+            t.timeLeft--;
+            renderTomatoDisplay();
+            if (t.timeLeft > 0) return;
+            clearInterval(t.timerId);
+            t.timerId = null;
+            t.isRunning = false;
+            const now = hmNow();
+            if (t.mode === 'focus') {
+                // 一个番茄完成：累计个数 + 结束时间 + 自动算时长
+                t.count++;
+                t.round++;
+                if (!t.session || !t.session.active) t.session = { active: true, start: now, pomodoros: 0 };
+                t.session.pomodoros++;
+                if (window.CPATomatoLink) window.CPATomatoLink.tick(now, t.session.pomodoros);
+                saveData();
+                beep();
+                showToast('🍅 第 ' + t.session.pomodoros + ' 个番茄完成（' + now + '）· 本次累计 ' +
+                    t.session.pomodoros + ' 个，已填入结束时间并算出时长');
+                const isLong = t.cfg.longEvery > 0 && (t.round % t.cfg.longEvery === 0);
+                t.mode = 'break';
+                t.timeLeft = (isLong ? t.cfg.longBreakMin : t.cfg.breakMin) * 60;
+                if (t.cfg.autoBreak) { renderTomatoDisplay(); startTomatoTimer(); return; }
+            } else {
+                beep();
+                showToast('☕ 休息结束，开始下一轮专注');
+                t.mode = 'focus';
+                t.timeLeft = t.cfg.focusMin * 60;
+                if (t.cfg.autoFocus) { renderTomatoDisplay(); startTomatoTimer(); return; }
+            }
+            renderTomatoDisplay();
+        }
+        function pauseTomatoTimer() {
+            const t = state.tomato;
+            if (!t.isRunning) return;
+            clearInterval(t.timerId);
+            t.timerId = null;
+            t.isRunning = false;
+            t.isPaused = true;
+            renderTomatoDisplay();
+        }
+        function resetTomatoTimer() {
+            const t = state.tomato;
+            clearInterval(t.timerId);
+            t.timerId = null;
+            t.isRunning = false;
+            t.isPaused = false;
+            t.mode = 'focus';
+            t.timeLeft = t.cfg.focusMin * 60;
+            if (t.session && t.session.pomodoros > 0) {
+                if (confirm('重置会把「本次番茄」计数（' + t.session.pomodoros + ' 个）清零。\n表单里已填好的起止时间与番茄个数不受影响。\n\n确定清零吗？')) {
+                    t.session = { active: false, start: '', pomodoros: 0 };
+                    if (window.CPATomatoLink) window.CPATomatoLink.clear();
+                }
+            }
+            renderTomatoDisplay();
+        }
+        function initTomato() {
             const startBtn = document.getElementById('tomatoStartBtn');
             const pauseBtn = document.getElementById('tomatoPauseBtn');
             const resetBtn = document.getElementById('tomatoResetBtn');
-
-            const FOCUS_TIME = 25 * 60;
-            const BREAK_TIME = 5 * 60;
-
-            function updateDisplay() {
-                const mins = Math.floor(state.tomato.timeLeft / 60);
-                const secs = state.tomato.timeLeft % 60;
-                timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-                countEl.textContent = state.tomato.count;
-                if (state.tomato.mode === 'focus') {
-                    statusEl.textContent = state.tomato.isRunning ? '🍅 专注中' : '⏸️ 暂停';
-                } else {
-                    statusEl.textContent = state.tomato.isRunning ? '☕ 休息中' : '⏸️ 休息暂停';
-                }
+            const setBtn = document.getElementById('tomatoSettingsBtn');
+            if (startBtn) startBtn.addEventListener('click', startTomatoTimer);
+            if (pauseBtn) pauseBtn.addEventListener('click', pauseTomatoTimer);
+            if (resetBtn) resetBtn.addEventListener('click', resetTomatoTimer);
+            if (setBtn) setBtn.addEventListener('click', openTomatoSettings);
+            const t = state.tomato;
+            if (!t.isRunning) {
+                t.mode = 'focus';
+                t.timeLeft = t.cfg.focusMin * 60;
             }
-
-            function startTimer() {
-                if (state.tomato.isRunning) return;
-                if (state.tomato.timeLeft <= 0) {
-                    // 若时间为0，重置为当前模式时长
-                    state.tomato.timeLeft = state.tomato.mode === 'focus' ? FOCUS_TIME : BREAK_TIME;
-                }
-                state.tomato.isRunning = true;
-                state.tomato.isPaused = false;
-                state.tomato.timerId = setInterval(() => {
-                    state.tomato.timeLeft--;
-                    updateDisplay();
-                    if (state.tomato.timeLeft <= 0) {
-                        clearInterval(state.tomato.timerId);
-                        state.tomato.isRunning = false;
-                        // 切换模式
-                        if (state.tomato.mode === 'focus') {
-                            state.tomato.count++;
-                            saveData();
-                            alert('🍅 专注完成！休息5分钟吧。');
-                            state.tomato.mode = 'break';
-                            state.tomato.timeLeft = BREAK_TIME;
-                        } else {
-                            alert('☕ 休息结束，开始下一轮专注！');
-                            state.tomato.mode = 'focus';
-                            state.tomato.timeLeft = FOCUS_TIME;
-                        }
-                        updateDisplay();
-                        // 自动继续专注（可手动）
-                        // 不自动启动，让用户点击开始
-                    }
-                }, 1000);
-                updateDisplay();
-            }
-
-            function pauseTimer() {
-                if (!state.tomato.isRunning) return;
-                clearInterval(state.tomato.timerId);
-                state.tomato.isRunning = false;
-                state.tomato.isPaused = true;
-                updateDisplay();
-            }
-
-            function resetTimer() {
-                clearInterval(state.tomato.timerId);
-                state.tomato.isRunning = false;
-                state.tomato.isPaused = false;
-                state.tomato.mode = 'focus';
-                state.tomato.timeLeft = FOCUS_TIME;
-                updateDisplay();
-                // 重置番茄数（可选，这里保留）
-                // 如果要重置计数，可以取消注释：
-                // state.tomato.count = 0;
-                // saveData();
-                // countEl.textContent = state.tomato.count;
-            }
-
-            startBtn.addEventListener('click', startTimer);
-            pauseBtn.addEventListener('click', pauseTimer);
-            resetBtn.addEventListener('click', resetTimer);
-
-            // 初始化显示
-            state.tomato.timeLeft = FOCUS_TIME;
-            state.tomato.mode = 'focus';
-            updateDisplay();
+            renderTomatoDisplay();
         }
 
         
@@ -7803,6 +8174,6 @@
 
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
 <script src="backup-hub.js"></script>
-<script>BackupHub.mount({id:'cpa',name:'考证学习进度'});</script>
+<script>if (window.BackupHub && typeof BackupHub.mount === 'function') { BackupHub.mount({id:'cpa',name:'考证学习进度'}); }</script>
 </body>
 </html>
