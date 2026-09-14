@@ -1869,6 +1869,86 @@
         .vtab .sc-tab-badge{margin-left:5px;background:#8A7358;color:#FAF7F1;font-size:10.5px;line-height:1;padding:3px 6px;border-radius:999px;font-weight:700}
         .vtab .sc-tab-badge.sc-warn-badge{background:#A6503C}
         .vtab.active .sc-tab-badge{background:#6F5C45}
+
+        /* ===== 分类管理弹窗（学习途径 / 资料来源） ===== */
+        .cls-mask{
+            position:fixed;inset:0;background:rgba(51,41,31,.45);z-index:10000;
+            display:none;align-items:center;justify-content:center;padding:16px;
+        }
+        .cls-mask.show{display:flex}
+        .cls-modal{
+            position:relative;background:var(--card-bg);border:1px solid var(--border);
+            border-radius:var(--radius);width:520px;max-width:100%;max-height:86vh;overflow:auto;
+            padding:24px;box-shadow:0 16px 48px rgba(51,41,31,.22);
+        }
+        .cls-modal.cls-confirm{width:400px}
+        .cls-close{
+            position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;
+            line-height:1;color:var(--text-secondary);cursor:pointer;padding:2px 6px;border-radius:6px;
+        }
+        .cls-close:hover{background:var(--primary-bg);color:var(--primary-dark)}
+        .cls-title{font-size:17px;font-weight:700;color:var(--text);margin:0 0 8px}
+        .cls-sub{font-size:12.5px;line-height:1.75;color:var(--text-secondary);margin:0 0 18px}
+        .cls-sub b{color:var(--primary-dark)}
+        .cls-section{margin-bottom:20px}
+        .cls-sec-head{
+            display:flex;align-items:center;justify-content:space-between;
+            font-size:13.5px;font-weight:700;color:var(--text);
+            padding-bottom:8px;margin-bottom:10px;border-bottom:1px dashed var(--border);
+        }
+        .cls-add-btn{
+            background:var(--primary-bg);border:1px solid var(--border);color:var(--primary-dark);
+            font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;cursor:pointer;transition:var(--transition);
+        }
+        .cls-add-btn:hover{background:var(--primary);border-color:var(--primary);color:#FAF7F1}
+        .cls-list{display:flex;flex-direction:column;gap:8px}
+        .cls-row{display:flex;align-items:center;gap:8px}
+        .cls-row input[type=text]{
+            flex:1;min-width:0;padding:8px 11px;border:1px solid var(--border);border-radius:8px;
+            background:#fff;color:var(--text);font-size:13.5px;font-family:inherit;
+        }
+        .cls-row input[type=text]:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-bg)}
+        .cls-row .cls-usage{
+            font-size:11px;color:var(--text-secondary);white-space:nowrap;flex:0 0 auto;
+            background:var(--primary-bg);padding:3px 8px;border-radius:999px;
+        }
+        .cls-row .cls-usage.has{color:var(--primary-dark);font-weight:600}
+        .cls-icon-btn{
+            flex:0 0 auto;width:28px;height:28px;border:1px solid var(--border);background:#fff;
+            border-radius:7px;cursor:pointer;font-size:13px;line-height:1;color:var(--text-secondary);
+            display:flex;align-items:center;justify-content:center;transition:var(--transition);
+        }
+        .cls-icon-btn:hover:not(:disabled){border-color:var(--primary);color:var(--primary-dark);background:var(--primary-bg)}
+        .cls-icon-btn:disabled{opacity:.35;cursor:not-allowed}
+        .cls-icon-btn.del:hover{border-color:var(--red);color:var(--red);background:#FBF0ED}
+        .cls-empty{font-size:12px;color:var(--text-secondary);padding:6px 2px}
+        .cls-foot{
+            display:flex;align-items:center;justify-content:space-between;gap:10px;
+            margin-top:6px;padding-top:16px;border-top:1px solid var(--border);
+        }
+        .cls-foot-right{display:flex;gap:8px;margin-left:auto}
+        .cls-reset{background:none;border:none;color:var(--text-secondary);font-size:12.5px;cursor:pointer;text-decoration:underline;padding:4px 2px}
+        .cls-reset:hover{color:var(--primary-dark)}
+        .cls-cancel{
+            padding:8px 18px;border:1px solid var(--border);border-radius:9px;background:#fff;
+            color:var(--text);font-size:13.5px;cursor:pointer;transition:var(--transition);
+        }
+        .cls-cancel:hover{border-color:var(--primary);color:var(--primary-dark)}
+        .cls-save{
+            padding:8px 22px;border:1px solid var(--primary);border-radius:9px;background:var(--primary);
+            color:#FAF7F1;font-size:13.5px;font-weight:600;cursor:pointer;transition:var(--transition);
+        }
+        .cls-save:hover{background:var(--primary-dark);border-color:var(--primary-dark)}
+        .cls-danger{
+            padding:8px 18px;border:1px solid var(--red);border-radius:9px;background:var(--red);
+            color:#fff;font-size:13.5px;font-weight:600;cursor:pointer;transition:var(--transition);
+        }
+        .cls-danger:hover{filter:brightness(1.08)}
+        /* 记录卡片里已停用的分类标签 */
+        .tag.deprecated,.tag.source.deprecated{
+            opacity:.6;text-decoration:line-through;text-decoration-color:var(--red);
+            border-color:var(--red);color:var(--red);
+        }
         /* ===== 主题：燕麦赭石标题衬线 ===== */
         .main h1, .main h2, .main h3, .main h4 {
             font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Songti SC', 'Source Han Serif SC', STSong, serif;
@@ -2116,11 +2196,11 @@
         <div class="view-tabs" id="viewTabs">
             <button type="button" class="vtab active" data-view="study">📚 学习进度</button>
             <button type="button" class="vtab" data-view="memory">🧠 记忆曲线</button>
-            <button type="button" class="vtab vtab-small" data-view="goal" title="科目目标 / 外观设置">⚙️ 设置</button>
             <button type="button" class="vtab" data-view="scsec" title="小节精简自检">📝 小节自检</button>
             <button type="button" class="vtab" data-view="scchap" title="整章综合复盘">🗂 整章复盘</button>
             <button type="button" class="vtab" data-view="scboard" title="自检看板">📊 自检看板<span class="sc-tab-badge" id="sc-recCount">0</span></button>
             <button type="button" class="vtab" data-view="scwrong" title="错题登记与复习">❌ 错题本<span class="sc-tab-badge" id="sc-wrongCount">0</span></button>
+            <button type="button" class="vtab vtab-small" data-view="goal" title="科目目标 / 外观设置">⚙️ 设置</button>
         </div>
 
         <div class="view-pane" id="view-study">
@@ -2234,7 +2314,9 @@
                             <span class="auto-calc" id="tomatoLinkHint">🍅 点番茄钟「开始」，起止时间与个数会自动填进来</span>
                         </div>
                         <div class="field">
-                            <label>学习途径 <span class="required">*</span></label>
+                            <label>学习途径 <span class="required">*</span>
+                                <button type="button" class="mini-add-btn" id="manageTypeBtn" title="增删改「学习途径」分类">⚙️ 管理</button>
+                            </label>
                             <select id="fResourceType" required>
                                 <option value="视频">视频</option>
                                 <option value="教材">教材</option>
@@ -2243,7 +2325,9 @@
                             </select>
                         </div>
                         <div class="field">
-                            <label>资料来源 <span class="required">*</span></label>
+                            <label>资料来源 <span class="required">*</span>
+                                <button type="button" class="mini-add-btn" id="manageSourceBtn" title="增删改「资料来源」分类">⚙️ 管理</button>
+                            </label>
                             <select id="fSource" required>
                                 <option value="东奥">东奥</option>
                                 <option value="中华">中华</option>
@@ -2345,6 +2429,10 @@
                     <option value="教材">教材</option>
                     <option value="讲义">讲义</option>
                     <option value="其他">其他</option>
+                </select>
+                <span class="filter-label">🏷️ 来源</span>
+                <select id="filterSource">
+                    <option value="all">全部</option>
                 </select>
                 <span class="filter-label">⭐ 星级</span>
                 <div class="star-filter" id="starFilter">
@@ -3271,11 +3359,37 @@
         //  核心数据与状态
         // ============================================================
         function getStorageKey() { return 'cpa_learning_data_v3_' + currentProjectId; }
+
+        // ---------- 分类（学习途径 / 资料来源）默认值 ----------
+        // 用 {id,name} 而非纯字符串：改名时靠 id 判定「同一项改了名」，
+        // 否则只能按下标猜，删掉中间一项就会误判成后面全部改名。
+        const DEFAULT_RESOURCE_TYPES = [
+            { id: 'rt_video', name: '视频' },
+            { id: 'rt_book',  name: '教材' },
+            { id: 'rt_notes', name: '讲义' },
+            { id: 'rt_other', name: '其他' }
+        ];
+        const DEFAULT_SOURCES = [
+            { id: 'src_dongao',   name: '东奥' },
+            { id: 'src_zhonghua', name: '中华' },
+            { id: 'src_bt',       name: 'BT' },
+            { id: 'src_zhiniao',  name: '知鸟' }
+        ];
+        const CLASSIFY_META = {
+            type:   { label: '学习途径', def: DEFAULT_RESOURCE_TYPES, field: 'resourceType', stateKey: 'resourceTypes' },
+            source: { label: '资料来源', def: DEFAULT_SOURCES,        field: 'source',       stateKey: 'sources' }
+        };
+        const CLS_MANAGE_SENTINEL = '__manage__';
+
+        function cloneClassify(list) { return (list || []).map(x => ({ id: x.id, name: x.name })); }
+
         let state = {
             records: [],
             reviewDone: [],
             reviewOverrides: {},
             reviewDeleted: {},
+            resourceTypes: null,   // null = 用默认值；数组则覆盖（含改名/删除）
+            sources: null,
             kpReviews: {},   // 复习界面落盘：{ '<记录id>#<轮次>': {date,round,start,end,hours,tomatoes,note,newKp,nextTips} }
             currentCourse: '会计',
             editingId: null,
@@ -3302,7 +3416,40 @@
             }
         };
 
-        // ---------- 数据读写 ----------
+        // ---------- 分类读取（带兜底） ----------
+        // 返回 [{id,name}]，始终是新数组，调用方可放心改动。
+        function getClassify(kind) {
+            const meta = CLASSIFY_META[kind];
+            if (!meta) return [];
+            const custom = state[meta.stateKey];
+            // 老存档没有该字段 / 存坏了 → 回落到默认
+            if (!Array.isArray(custom) || !custom.length) return cloneClassify(meta.def);
+            return custom.filter(x => x && typeof x.name === 'string' && x.name.trim())
+                         .map(x => ({ id: x.id || genClassifyId(kind), name: x.name }));
+        }
+        function getClassifyNames(kind) { return getClassify(kind).map(x => x.name); }
+
+        function genClassifyId(kind) {
+            return (kind === 'source' ? 'src_' : 'rt_') + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        }
+
+        // 某分类名是否仍在当前列表中（用于判定「已停用」）
+        function isClassifyActive(kind, name) {
+            if (!name) return true;
+            return getClassifyNames(kind).indexOf(name) !== -1;
+        }
+
+        // 统计每个分类名被多少条记录使用（当前项目）
+        function classifyUsage(kind) {
+            const meta = CLASSIFY_META[kind];
+            const usage = {};
+            (state.records || []).forEach(r => {
+                const v = r[meta.field];
+                if (v) usage[v] = (usage[v] || 0) + 1;
+            });
+            return usage;
+        }
+
         // 兼容旧版本：历史数据存在统一键 cpa_learning_data_v3 下，
         // 现在改为按项目分键，首次加载时把旧数据迁移到 CPA 项目，避免记录“消失”。
         function migrateLegacyData() {
@@ -3344,14 +3491,21 @@
                         }
                     }
                     state.progressMode = (data.progressMode === 'tomato') ? 'tomato' : 'hours';
+                    // 分类配置：老存档没有该字段时为 null → getClassify 回落默认
+                    state.resourceTypes = Array.isArray(data.resourceTypes) ? cloneClassify(data.resourceTypes) : null;
+                    state.sources = Array.isArray(data.sources) ? cloneClassify(data.sources) : null;
                 } else {
                     // 示例数据仅用于 CPA 项目，其他项目从空白开始
                     state.records = (currentProjectId === 'cpa') ? getSampleData() : [];
                     state.reviewDone = [];
+                    state.resourceTypes = null;
+                    state.sources = null;
                 }
             } catch (e) {
                 state.records = (currentProjectId === 'cpa') ? getSampleData() : [];
                 state.reviewDone = [];
+                state.resourceTypes = null;
+                state.sources = null;
             }
             state.records.forEach(r => {
                 if (!r.id) r.id = 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -3393,6 +3547,8 @@
                 reviewOverrides: state.reviewOverrides || {},
                 reviewDeleted: state.reviewDeleted || {},
                 kpReviews: state.kpReviews || {},
+                resourceTypes: Array.isArray(state.resourceTypes) ? state.resourceTypes : null,
+                sources: Array.isArray(state.sources) ? state.sources : null,
                 tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
                 progressMode: (state.progressMode === 'tomato' ? 'tomato' : 'hours')
             };
@@ -5392,11 +5548,16 @@
             const container = document.getElementById('recordList');
             const course = state.currentCourse;
             const filterType = document.getElementById('filterResourceType').value;
+            const filterSrcEl = document.getElementById('filterSource');
+            const filterSrc = filterSrcEl ? filterSrcEl.value : 'all';
             const filterStar = state.filterStar;
 
             let records = state.records.filter(r => r.course === course);
             if (filterType !== 'all') {
                 records = records.filter(r => r.resourceType === filterType);
+            }
+            if (filterSrc !== 'all') {
+                records = records.filter(r => r.source === filterSrc);
             }
             if (filterStar !== 'all') {
                 const target = parseInt(filterStar);
@@ -5443,8 +5604,8 @@
                                 <span class="chapter">${chapterDisplay} <span class="sec">· ${sectionDisplay}</span></span>
                                 <div class="meta">
                                     <span>📅 ${formatDate(r.date)}</span>
-                                    <span class="tag">${r.resourceType || '其他'}</span>
-                                    <span class="tag source">${r.source || '未知'}</span>
+                                    <span class="tag${isClassifyActive('type', r.resourceType) ? '' : ' deprecated'}"${isClassifyActive('type', r.resourceType) ? '' : ' title="该分类已从「学习途径」中删除"'}>${r.resourceType || '其他'}</span>
+                                    <span class="tag source${isClassifyActive('source', r.source) ? '' : ' deprecated'}"${isClassifyActive('source', r.source) ? '' : ' title="该分类已从「资料来源」中删除"'}>${r.source || '未知'}</span>
                                     ${r.selfAssessment ? `<span class="tag ${assessmentClass}">${assessmentEmoji} ${r.selfAssessment}</span>` : ''}
                                     ${r.addToMemory === false ? '<span class="mem-tag off">不进记忆曲线</span>' : '<span class="mem-tag">🧠 记忆曲线</span>'}
                                     ${getRecordTomatoCount(r) > 0 ? ('<span class="tag pomo-tag">🍅 ' + getRecordTomatoCount(r) + '</span>') : ''}
@@ -5530,8 +5691,8 @@
             document.getElementById('fChapter').value = record.chapter || 1;
             updateSectionSelect(record.course, record.chapter || 1);
             document.getElementById('fSection').value = record.section || 1;
-            document.getElementById('fResourceType').value = record.resourceType || '视频';
-            document.getElementById('fSource').value = record.source || '东奥';
+            setSelectValueResilient('fResourceType', record.resourceType || '视频');
+            setSelectValueResilient('fSource', record.source || '东奥');
             document.getElementById('fStartTime').value = record.startTime || '';
             document.getElementById('fEndTime').value = record.endTime || '';
             document.getElementById('fDurationHours').value = record.durationHours || '';
@@ -5579,6 +5740,8 @@
         // ---------- 筛选器 ----------
         function initFilters() {
             document.getElementById('filterResourceType').addEventListener('change', () => { renderRecords(); });
+            const fsEl = document.getElementById('filterSource');
+            if (fsEl) fsEl.addEventListener('change', () => { renderRecords(); });
 
             const starFilter = document.getElementById('starFilter');
             starFilter.addEventListener('click', (e) => {
@@ -5595,6 +5758,293 @@
                 });
                 renderRecords();
             });
+        }
+
+        // ============================================================
+        //  分类管理（学习途径 / 资料来源 的增删改）
+        // ============================================================
+        // 渲染表单与筛选器里的分类下拉框。
+        // 重渲染前先把当前选中值存到 dataset，渲染后回填 —— 否则每次保存分类
+        // 都会把用户已经选好的值重置成第一项。
+        function renderClassifySelects() {
+            const specs = [
+                { kind: 'type',   sel: 'fResourceType',     withManage: true,  withAll: false },
+                { kind: 'source', sel: 'fSource',           withManage: true,  withAll: false },
+                { kind: 'type',   sel: 'filterResourceType', withManage: false, withAll: true },
+                { kind: 'source', sel: 'filterSource',       withManage: false, withAll: true }
+            ];
+            specs.forEach(sp => {
+                const el = document.getElementById(sp.sel);
+                if (!el) return;
+                const names = getClassifyNames(sp.kind);
+                // 保留当前选中：直接读 DOM 里的当前值即可（重渲染发生在清空 innerHTML 之前）
+                let cur = el.value;
+                // 已停用的旧值也要保留为一个选项，否则用户一打开表单就被悄悄改掉
+                const extra = (cur && cur !== 'all' && names.indexOf(cur) === -1) ? [cur] : [];
+                const opts = [];
+                if (sp.withAll) opts.push('<option value="all">全部</option>');
+                names.forEach(n => opts.push(`<option value="${escAttr(n)}">${escHtml(n)}</option>`));
+                extra.forEach(n => opts.push(`<option value="${escAttr(n)}">${escHtml(n)} · 停用</option>`));
+                if (sp.withManage) opts.push(`<option value="${CLS_MANAGE_SENTINEL}">✎ 管理分类…</option>`);
+                el.innerHTML = opts.join('');
+                // 回填：优先恢复之前选中的值；该值已不存在则退回第一项
+                if (cur && (names.indexOf(cur) !== -1 || extra.length)) {
+                    el.value = cur;
+                    if (el.value !== cur) el.selectedIndex = 0;
+                }
+            });
+        }
+
+        // 设置下拉值；若该值已被删除（不在选项里），临时补一个「停用」选项，
+        // 保证编辑旧记录时不会把它的分类悄悄改成别的值。
+        function setSelectValueResilient(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.value = value;
+            if (el.value !== value) {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = value + ' · 停用';
+                // 插到哨兵项之前
+                const sentinel = el.querySelector(`option[value="${CLS_MANAGE_SENTINEL}"]`);
+                if (sentinel) el.insertBefore(opt, sentinel); else el.appendChild(opt);
+                el.value = value;
+            }
+        }
+
+        function escHtml(s) {
+            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function escAttr(s) { return escHtml(s).replace(/'/g, '&#39;'); }
+
+        // ---- 弹窗状态：草稿副本，点「保存」才写回 state ----
+        let clsDraft = null;   // { type:[{id,name}], source:[{id,name}] }
+
+        function openClassifyModal(focusKind) {
+            clsDraft = {
+                type: getClassify('type'),
+                source: getClassify('source')
+            };
+            renderClassifyDraft();
+            document.getElementById('classifyModal').classList.add('show');
+            if (focusKind) {
+                setTimeout(() => {
+                    const list = document.getElementById('clsList' + (focusKind === 'source' ? 'Source' : 'Type'));
+                    const inp = list && list.querySelector('input[type=text]');
+                    if (inp) { inp.focus(); inp.select(); }
+                }, 60);
+            }
+        }
+
+        function closeClassifyModal() {
+            document.getElementById('classifyModal').classList.remove('show');
+            clsDraft = null;
+        }
+
+        function renderClassifyDraft() {
+            ['type', 'source'].forEach(kind => {
+                const wrap = document.getElementById('clsList' + (kind === 'source' ? 'Source' : 'Type'));
+                if (!wrap || !clsDraft) return;
+                const list = clsDraft[kind];
+                const usage = classifyUsage(kind);
+                wrap.innerHTML = '';
+
+                if (!list.length) {
+                    const tip = document.createElement('div');
+                    tip.className = 'cls-empty';
+                    tip.textContent = '还没有分类，点右上角「＋ 新增一项」添加。';
+                    wrap.appendChild(tip);
+                    return;
+                }
+
+                list.forEach((item, idx) => {
+                    const row = document.createElement('div');
+                    row.className = 'cls-row';
+                    const used = usage[item.name] || 0;
+                    row.innerHTML =
+                        `<input type="text" data-kind="${kind}" data-idx="${idx}" value="${escAttr(item.name)}" maxlength="20" placeholder="分类名称">` +
+                        `<span class="cls-usage${used ? ' has' : ''}" title="当前项目中有多少条记录在用">${used ? used + ' 条' : '未使用'}</span>` +
+                        `<button type="button" class="cls-icon-btn" data-move="-1" data-kind="${kind}" data-idx="${idx}" title="上移"${idx === 0 ? ' disabled' : ''}>↑</button>` +
+                        `<button type="button" class="cls-icon-btn" data-move="1" data-kind="${kind}" data-idx="${idx}" title="下移"${idx === list.length - 1 ? ' disabled' : ''}>↓</button>` +
+                        `<button type="button" class="cls-icon-btn del" data-del="${kind}" data-idx="${idx}" title="删除">✕</button>`;
+                    wrap.appendChild(row);
+                });
+            });
+        }
+
+        // 把输入框里的值同步回草稿（移动/删除前必须先同步，否则改动丢失）
+        function syncDraftFromInputs() {
+            if (!clsDraft) return;
+            ['type', 'source'].forEach(kind => {
+                const wrap = document.getElementById('clsList' + (kind === 'source' ? 'Source' : 'Type'));
+                if (!wrap) return;
+                wrap.querySelectorAll('input[type=text]').forEach(inp => {
+                    const i = parseInt(inp.dataset.idx);
+                    if (clsDraft[kind][i]) clsDraft[kind][i].name = inp.value.trim();
+                });
+            });
+        }
+
+        function bindClassifyModal() {
+            const modal = document.getElementById('classifyModal');
+            if (!modal || modal.dataset.bound === '1') return;
+            modal.dataset.bound = '1';
+
+            // 表单下拉里的「✎ 管理分类…」哨兵项：选中即开弹窗并立刻退回原值
+            [['fResourceType', 'type'], ['fSource', 'source']].forEach(([id, kind]) => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', () => {
+                    if (el.value === CLS_MANAGE_SENTINEL) {
+                        const names = getClassifyNames(kind);
+                        el.value = names[0] || '';
+                        openClassifyModal(kind);
+                    }
+                });
+            });
+            const mt = document.getElementById('manageTypeBtn');
+            if (mt) mt.addEventListener('click', () => openClassifyModal('type'));
+            const ms = document.getElementById('manageSourceBtn');
+            if (ms) ms.addEventListener('click', () => openClassifyModal('source'));
+
+            document.getElementById('clsClose').addEventListener('click', closeClassifyModal);
+            document.getElementById('clsCancel').addEventListener('click', closeClassifyModal);
+            modal.addEventListener('click', e => { if (e.target === modal) closeClassifyModal(); });
+
+            // 新增
+            modal.querySelectorAll('.cls-add-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    syncDraftFromInputs();
+                    const kind = btn.dataset.add;
+                    clsDraft[kind].push({ id: genClassifyId(kind), name: '' });
+                    renderClassifyDraft();
+                    const wrap = document.getElementById('clsList' + (kind === 'source' ? 'Source' : 'Type'));
+                    const inputs = wrap.querySelectorAll('input[type=text]');
+                    const last = inputs[inputs.length - 1];
+                    if (last) last.focus();
+                });
+            });
+
+            // 上移 / 下移 / 删除（事件委托）
+            modal.addEventListener('click', e => {
+                const mv = e.target.closest('.cls-icon-btn[data-move]');
+                if (mv) {
+                    syncDraftFromInputs();
+                    const kind = mv.dataset.kind;
+                    const idx = parseInt(mv.dataset.idx);
+                    const dir = parseInt(mv.dataset.move);
+                    const to = idx + dir;
+                    const list = clsDraft[kind];
+                    if (to < 0 || to >= list.length) return;
+                    const tmp = list[idx]; list[idx] = list[to]; list[to] = tmp;
+                    renderClassifyDraft();
+                    return;
+                }
+                const del = e.target.closest('.cls-icon-btn[data-del]');
+                if (del) {
+                    syncDraftFromInputs();
+                    const kind = del.dataset.del;
+                    const idx = parseInt(del.dataset.idx);
+                    const list = clsDraft[kind];
+                    if (list.length <= 1) { showToast('至少保留一个分类'); return; }
+                    const item = list[idx];
+                    const used = classifyUsage(kind)[item.name] || 0;
+                    if (used > 0) {
+                        askDeleteInUse(kind, idx, item.name, used);
+                    } else {
+                        list.splice(idx, 1);
+                        renderClassifyDraft();
+                    }
+                }
+            });
+
+            // 恢复默认
+            document.getElementById('clsReset').addEventListener('click', () => {
+                if (!confirm('恢复为默认分类？当前未保存的改动会丢失。')) return;
+                clsDraft = { type: cloneClassify(DEFAULT_RESOURCE_TYPES), source: cloneClassify(DEFAULT_SOURCES) };
+                renderClassifyDraft();
+            });
+
+            document.getElementById('clsSave').addEventListener('click', saveClassifyChanges);
+        }
+
+        // 删除仍有记录在用的分类 → 二次确认（明确告知记录不会丢）
+        function askDeleteInUse(kind, idx, name, used) {
+            const cm = document.getElementById('clsConfirmModal');
+            document.getElementById('clsConfirmText').innerHTML =
+                `「${escHtml(name)}」目前有 <b>${used}</b> 条学习记录在使用。<br><br>` +
+                `删除后这些记录<b>不会被清空</b>，但它们的「${CLASSIFY_META[kind].label}」会显示为「已停用」。` +
+                `<br><br>如果你想保留这些记录的分类，建议改用「改名」。`;
+            cm.classList.add('show');
+
+            const cleanup = () => {
+                cm.classList.remove('show');
+                okBtn.removeEventListener('click', onOk);
+                cancelBtn.removeEventListener('click', onCancel);
+            };
+            const onOk = () => {
+                syncDraftFromInputs();
+                clsDraft[kind].splice(idx, 1);
+                renderClassifyDraft();
+                cleanup();
+            };
+            const onCancel = cleanup;
+            const okBtn = document.getElementById('clsConfirmOk');
+            const cancelBtn = document.getElementById('clsConfirmCancel');
+            okBtn.addEventListener('click', onOk);
+            cancelBtn.addEventListener('click', onCancel);
+            cm.addEventListener('click', e => { if (e.target === cm) cleanup(); }, { once: true });
+        }
+
+        // 保存：校验 → 改名级联 → 写回 state → 落盘 → 重渲染
+        function saveClassifyChanges() {
+            if (!clsDraft) return;
+            syncDraftFromInputs();
+
+            // 1) 校验
+            for (const kind of ['type', 'source']) {
+                const list = clsDraft[kind];
+                const names = [];
+                for (const item of list) {
+                    const nm = (item.name || '').trim();
+                    if (!nm) { alert(`「${CLASSIFY_META[kind].label}」里有空白的分类名，请填写或删除该行。`); return; }
+                    if (names.indexOf(nm) !== -1) { alert(`「${CLASSIFY_META[kind].label}」里存在重复的分类名「${nm}」，请修改。`); return; }
+                    names.push(nm);
+                }
+            }
+
+            // 2) 改名级联：按 id 对比旧列表，把记录里的旧名换成新名
+            let renamedTotal = 0;
+            for (const kind of ['type', 'source']) {
+                const meta = CLASSIFY_META[kind];
+                const oldList = getClassify(kind);      // 改之前的
+                const newList = clsDraft[kind];
+                const renames = {};                     // oldName -> newName
+                oldList.forEach(oldItem => {
+                    const nu = newList.find(x => x.id === oldItem.id);
+                    if (nu && nu.name && nu.name !== oldItem.name) renames[oldItem.name] = nu.name;
+                });
+                const keys = Object.keys(renames);
+                if (!keys.length) continue;
+                (state.records || []).forEach(r => {
+                    const v = r[meta.field];
+                    if (v && renames[v]) { r[meta.field] = renames[v]; renamedTotal++; }
+                });
+            }
+
+            // 3) 写回
+            state.resourceTypes = cloneClassify(clsDraft.type);
+            state.sources = cloneClassify(clsDraft.source);
+
+            // 4) 落盘 + 刷新界面
+            try { saveData(); } catch (e) {}
+            renderClassifySelects();
+            renderRecords();
+            closeClassifyModal();
+
+            showToast(renamedTotal > 0
+                ? `✅ 分类已保存，同步更新了 ${renamedTotal} 条记录`
+                : '✅ 分类已保存');
         }
 
         // ---------- 番茄时钟 ----------
@@ -7879,6 +8329,8 @@
             applyProject(currentProjectId);
             loadData();
             initForm();
+            renderClassifySelects();
+            bindClassifyModal();
             initFilters();
             initTomato();
             initProjectSwitcher();
@@ -9300,6 +9752,56 @@
         document.addEventListener('DOMContentLoaded', init);
     </script>
     <div id="sc-toast"></div>
+
+    <!-- ===== 分类管理弹窗（学习途径 / 资料来源 增删改） ===== -->
+    <div class="cls-mask" id="classifyModal">
+        <div class="cls-modal">
+            <button type="button" class="cls-close" id="clsClose" title="关闭">×</button>
+            <h3 class="cls-title">🏷️ 分类管理</h3>
+            <p class="cls-sub">
+                修改后点「保存」生效。<b>改名</b>会同步更新所有已保存记录里的标签；<b>删除</b>不会清空历史记录，
+                仍在使用该分类的记录会显示为「已停用」。
+            </p>
+
+            <div class="cls-section">
+                <div class="cls-sec-head">
+                    <span>📌 学习途径</span>
+                    <button type="button" class="cls-add-btn" data-add="type">＋ 新增一项</button>
+                </div>
+                <div class="cls-list" id="clsListType"></div>
+            </div>
+
+            <div class="cls-section">
+                <div class="cls-sec-head">
+                    <span>🏷️ 资料来源</span>
+                    <button type="button" class="cls-add-btn" data-add="source">＋ 新增一项</button>
+                </div>
+                <div class="cls-list" id="clsListSource"></div>
+            </div>
+
+            <div class="cls-foot">
+                <button type="button" class="cls-reset" id="clsReset">恢复默认</button>
+                <div class="cls-foot-right">
+                    <button type="button" class="cls-cancel" id="clsCancel">取消</button>
+                    <button type="button" class="cls-save" id="clsSave">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除在用分类前的确认弹窗 -->
+    <div class="cls-mask" id="clsConfirmModal">
+        <div class="cls-modal cls-confirm">
+            <h3 class="cls-title">⚠️ 确认删除</h3>
+            <p class="cls-sub" id="clsConfirmText">—</p>
+            <div class="cls-foot">
+                <div class="cls-foot-right">
+                    <button type="button" class="cls-cancel" id="clsConfirmCancel">取消</button>
+                    <button type="button" class="cls-danger" id="clsConfirmOk">仍要删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 
 

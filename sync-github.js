@@ -31,6 +31,10 @@
   // 不纳入同步的键（只排除同步相关的技术键，用户设置类全部同步）
   const EXCLUDE_KEYS = new Set([
     'github_token', 'github_gist_id', 'sync_last_sync', 'github_cloud_state',
+    // Gitee 后端：令牌与仓库坐标绝不能上传 —— 令牌上传等于把仓库钥匙一起公开了，
+    // 而且换设备时旧令牌会覆盖新令牌，直接把人锁在门外。
+    'gitee_token', 'gitee_owner', 'gitee_repo', 'gitee_last_sync',
+    'cloud_backend',              // 本机选的后端，不必同步
     'hub_lastModule',             // 上次打开的工具，不强制同步
     // ⚠️ 本地「备份/快照仓」不是业务数据：体积巨大（朝暮计这一项单独就 600KB+），
     //    把它传上云会让 Gist 直接翻倍，是下载超时/失败的头号元凶。
@@ -232,6 +236,41 @@
     return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 
+  // ============ 后端选择（v6 新增：Gitee / GitHub 可切）============
+  // 存在 localStorage 里的只是一个 id；具体能力由各后端模块自己注册到 window.CloudSyncBackends。
+  // 这样 Gitee 模块可以完全独立加载，互不牵连。
+  function activeBackendId() {
+    let id = '';
+    try { id = localStorage.getItem('cloud_backend') || ''; } catch (e) {}
+    const reg = window.CloudSyncBackends || {};
+    // 默认：优先 Gitee（国内更稳），没配就回落到 GitHub
+    if (!id || !reg[id]) id = reg.gitee ? 'gitee' : (reg.github ? 'github' : '');
+    return id;
+  }
+
+  function activeBackend() {
+    const reg = window.CloudSyncBackends || {};
+    return reg[activeBackendId()] || null;
+  }
+
+  function setBackend(id) {
+    try { localStorage.setItem('cloud_backend', id); } catch (e) {}
+    const b = activeBackend();
+    const btn = document.getElementById('syncStatus');
+    if (btn && b) btn.textContent = b.isReady() ? '已连接' : '待配置';
+  }
+  window.refreshBackendUI = function () {
+    const b = activeBackend();
+    const el = document.getElementById('syncStatus');
+    if (el && b) el.textContent = b.isReady() ? '已连接' : '待配置';
+  };
+
+  // 后端没有体检面板时的临时提示（Gitee 侧暂未实现完整体检）
+  function Core_showToastCompat(msg) {
+    if (typeof toast === 'function') { try { toast(msg); return; } catch (e) {} }
+    notifyOK('云端同步', msg);
+  }
+
   // ============ 同步主面板 ============
   // 备份状态与操作已合并进来：侧边栏只保留「云端同步」一个入口
   function backupStateHTML() {
@@ -243,23 +282,30 @@
 
   function openSyncPanel() {
     closeTopModal();
+    const backend = activeBackend();
     const mask = document.createElement('div');
     mask.className = 'sync-mask';
     mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;';
     const modal = document.createElement('div');
     modal.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:460px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,.2);';
-    const connState = isConnected ? '✅ 已连接' : '⚙️ 未配置';
+    const connState = backend && backend.isConnected() ? '✅ 已连接' : '⚙️ 未配置';
     const lastTxt = lastSyncTime ? ('上次操作：' + fmtTime(lastSyncTime)) : '还没有同步过';
     modal.innerHTML = `
       <h2 style="margin:0 0 6px;font-size:20px">🔄 云端同步</h2>
-      <p style="margin:0 0 14px;color:#666;font-size:13px">${connState} ｜ ${lastTxt}</p>
+      <p style="margin:0 0 14px;color:#666;font-size:13px"><span id="bdLabel">${backend ? backend.name : '未选择'}</span> ｜ ${connState} ｜ ${lastTxt}</p>
+
+      <div id="bdBox" style="background:#f6f8fa;border-radius:8px;padding:10px 12px;margin-bottom:14px">
+        <div style="font-size:12px;color:#666;margin-bottom:8px">存到哪儿（可随时切换，数据格式通用）：</div>
+        <div id="bdRow" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        <div id="bdHint" style="font-size:12px;color:#7c8aa5;margin-top:8px"></div>
+      </div>
 
       <div style="background:#f6f8fa;border-radius:8px;padding:12px;font-size:13px;color:#444;line-height:1.7;margin-bottom:16px">
         <b>怎么用：</b><br>
         • <b>上传</b>：把这部设备的数据存到云端（覆盖云端）<br>
         • <b>下载</b>：把云端的数据拉到这部设备（覆盖本机）<br>
         想让手机和电脑一致，就先在「源头」那端点<b>上传</b>，再到另一端点<b>下载</b>。<br>
-        <span style="color:#7c8aa5">数据上传前会自动 gzip 压缩，体积通常只剩原来的十分之一左右，下载更快。</span>
+        <span style="color:#7c8aa5">数据上传前会自动 gzip 压缩；并按模块分片，只重传改动过的片，越快越省流量。</span>
       </div>
 
       <div style="display:flex;gap:10px;margin-bottom:10px">
@@ -282,7 +328,7 @@
       </div>
 
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <button id="syncReconfig" style="background:none;border:none;color:#888;font-size:13px;cursor:pointer;text-decoration:underline">重新配置 Token</button>
+        <button id="syncReconfig" style="background:none;border:none;color:#888;font-size:13px;cursor:pointer;text-decoration:underline">配置 / 更换账号</button>
         <button id="syncClose" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">关闭</button>
       </div>`;
     mask.appendChild(modal);
@@ -294,11 +340,58 @@
     const noopEl = { set onclick(v) {} };
     const q = (sel) => modal.querySelector(sel) || noopEl;
 
+    // ---- 后端切换按钮（GitHub Gist / Gitee），来自 window.CloudSyncBackends ----
+    const bdRow = modal.querySelector('#bdRow');
+    const bdHint = modal.querySelector('#bdHint');
+    const reg = window.CloudSyncBackends || {};
+    const order = ['github', 'gitee'];
+    if (bdRow) {
+      order.forEach(function (id) {
+        const b = reg[id];
+        if (!b) return;
+        const on = backend && backend.id === id;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.disabled = false;
+        btn.textContent = (on ? '● ' : '○ ') + b.name;
+        btn.style.cssText = 'padding:7px 12px;border-radius:999px;font-size:13px;cursor:pointer;' +
+          (on ? 'border:1px solid #08bd74;background:#eafaf3;color:#067a4d;font-weight:600;'
+              : 'border:1px solid #ddd;background:white;color:#555;');
+        btn.onclick = function () {
+          setBackend(id);
+          mask.remove();
+          openSyncPanel();
+        };
+        bdRow.appendChild(btn);
+      });
+      bdHint.textContent = backend
+        ? (backend.isReady() ? backend.name + ' 已配置完成' : backend.hint)
+        : '请选择一个存储位置';
+    }
+
     q('#syncClose').onclick = () => mask.remove();
-    q('#syncReconfig').onclick = () => { mask.remove(); showConfigModal(); };
-    q('#syncUpload').onclick = () => { mask.remove(); doUpload(); };
-    q('#syncDownload').onclick = () => { mask.remove(); doDownload(); };
-    q('#syncHealth').onclick = () => { mask.remove(); doHealth(); };
+    q('#syncReconfig').onclick = () => {
+      mask.remove();
+      if (backend) backend.reconfigure(); else showConfigModal();
+    };
+    q('#syncUpload').onclick = () => {
+      mask.remove();
+      if (!backend) { showConfigModal(); return; }
+      if (!backend.isReady()) { backend.reconfigure(); return; }
+      backend.upload();
+    };
+    q('#syncDownload').onclick = () => {
+      mask.remove();
+      if (!backend) { showConfigModal(); return; }
+      if (!backend.isReady()) { backend.reconfigure(); return; }
+      backend.download();
+    };
+    q('#syncHealth').onclick = () => {
+      mask.remove();
+      if (backend && backend.health) { backend.health(); return; }
+      if (backend) Core_showToastCompat(backend.name + ' 暂未提供体检面板');
+      else showConfigModal();
+    };
     // 备份动作：导出走 BackupHub（导出后会询问是否顺带上传云端），备份中心是完整功能面板
     q('#syncBkExport').onclick = () => {
       mask.remove();
@@ -456,8 +549,27 @@
   //    旧版把「网络断流」「JSON 解析失败」都吞成 null，界面于是弹出
   //    「云端还没有数据」—— 把故障说成没数据，非常误导。
   //    现在：返回 {data:{}} = 云端确实为空；throw = 真失败（带原因）。
+  // 读云端数据。
+  // 语义约定：真失败必须抛异常，不要静默返回 null（否则会把故障说成「云端没数据」）。
+  //   返回 {data:{}} = 云端确实为空；throw = 真失败（带原因）。
+  // v5：先看有没有分片 meta；有则走分片，没有则回落旧的单文件格式（下次上传自动升级）。
   async function readGist() {
     if (!cachedGistId()) await findOrCreateGist();
+
+    // ---- 优先尝试分片格式 ----
+    let cloudMeta = null;
+    try {
+      cloudMeta = await readShardedMeta();
+    } catch (e) {
+      throw new Error('读取云端失败：' + (e && e.message ? e.message : e) + '，请检查网络后重试');
+    }
+    if (cloudMeta && cloudMeta.shards) {
+      const merged = await readSharded(cloudMeta);
+      setCachedCloudHasData(Object.keys(merged.data).length > 0);
+      return merged;
+    }
+
+    // ---- 回落：旧的单文件格式 ----
     let data;
     try {
       data = await apiCall('GET', '/gists/' + GIST_ID);
@@ -466,7 +578,7 @@
       throw new Error('读取云端失败：' + (e && e.message ? e.message : e) + '，请检查网络后重试');
     }
     const file = data.files && data.files[GIST_FILENAME];
-    if (!file) return { version: 1, data: {}, updatedAt: 0 };
+    if (!file) return { version: 1, data: {}, updatedAt: 0, legacy: true };
     let content = file.content || '';
     if (file.truncated) {
       // 超过 1MB：API 只给片段，必须改拉 raw_url（海外 CDN，失败高发点，故重试 3 次）
@@ -479,7 +591,7 @@
           (e && e.message ? e.message : e) + '。请重试，或换网络较好的时机操作。');
       }
     }
-    if (!content) return { version: 1, data: {}, updatedAt: 0 };
+    if (!content) return { version: 1, data: {}, updatedAt: 0, legacy: true };
     let parsed;
     try {
       parsed = JSON.parse(content);
@@ -488,26 +600,11 @@
     }
     const payload = await unpackCloud(parsed);
     setCachedCloudHasData(!!(payload && payload.data && Object.keys(payload.data).length > 0));
-    return payload || { version: 1, data: {}, updatedAt: 0 };
+    return Object.assign({ legacy: true }, payload || { version: 1, data: {}, updatedAt: 0 });
   }
 
-  async function writeGist(payload) {
-    const packed = await packCloud(payload);   // gzip + base64，体积通常降到 1/4
-    const body = JSON.stringify(packed);
-    if (!GIST_ID) {
-      const data = await apiCall('POST', '/gists', {
-        description: GIST_DESC, public: false,
-        files: { [GIST_FILENAME]: { content: body } }
-      });
-      GIST_ID = data.id;
-      localStorage.setItem('github_gist_id', GIST_ID);
-    } else {
-      await apiCall('PATCH', '/gists/' + GIST_ID, {
-        files: { [GIST_FILENAME]: { content: body } }
-      });
-    }
-    return body.length;   // 返回实际写入体积，供界面展示
-  }
+  // 注意：v5 起写入统一走 writeSharded()（分片 + 只推脏片）。
+  // 旧的全量 writeGist() 已移除 —— 保留它容易被误调用，退回「每次全量重传」的老问题。
 
   // ============ 速度优化：Gist 直连缓存 ============
   // 旧流程每次同步都要「列出全部 Gists → 读 Gist → 写 Gist」三个串行请求，
@@ -709,7 +806,249 @@
     body.innerHTML = L.join('<br>');
   }
 
-  // ============ 数据收集 / 应用 ============
+  // ============ 分片（v5）============
+  // 为什么分片：Gist 单文件内联只返回 1MB，超了就得走 raw_url（海外 CDN，实测 2MB 要 55 秒且断流）。
+  // 把整包拆成若干独立压缩的小片后，① 单片压在 1MB 以下的概率大增，避开慢通道；
+  // ② 改一条记录只需要重传它所在的那一片，而不是整个数据集。
+  const SHARD_RE = /^efficiency-hub-(\d{3})\.json$/;
+  const META_FILENAME = 'efficiency-hub-meta.json';
+  const LEGACY_FILENAME = 'efficiency-hub-sync.json';
+  const MAX_SHARD_BYTES = 700 * 1024;   // 单片原始数据上限（压缩前），留足余量
+
+  // 把 key 归到某个模块片：按 index.html 的 MODULES[].keys 前缀匹配。
+  // 拿不到 MODULES（比如在工具页里打开）时退化为按键名前缀粗分。
+  function shardOfKey(key) {
+    try {
+      if (typeof MODULES !== 'undefined' && Array.isArray(MODULES)) {
+        for (const m of MODULES) {
+          if (!m || !m.keys) continue;
+          for (const k of m.keys) {
+            if (key === k || key.indexOf(k + '_') === 0) return m.id;
+          }
+        }
+      }
+    } catch (e) {}
+    // 兜底：按键名前缀粗分，保证同名业务的数据尽量落在同一片
+    const seg = key.split('_')[0];
+    return seg || 'misc';
+  }
+
+  // 把本机数据打包成 { shardId: {key: {value, timestamp}} }
+  function buildShards(dataObj) {
+    const shards = {};
+    for (const key in dataObj) {
+      const sid = shardOfKey(key);
+      if (!shards[sid]) shards[sid] = {};
+      shards[sid][key] = dataObj[key];
+    }
+    // 单片过大时再按体积切分成多个（xxx__2 这种后缀）
+    const out = {};
+    for (const sid in shards) {
+      const entries = Object.entries(shards[sid]);
+      let idx = 0, cur = {}, curBytes = 0;
+      const flush = () => {
+        if (Object.keys(cur).length) {
+          out[sid + (idx === 0 ? '' : '__' + idx)] = cur;
+          idx++; cur = {}; curBytes = 0;
+        }
+      };
+      for (const [k, v] of entries) {
+        const sz = (v && typeof v.value === 'string') ? v.value.length + k.length : 0;
+        if (curBytes + sz > MAX_SHARD_BYTES && Object.keys(cur).length) flush();
+        cur[k] = v; curBytes += sz;
+      }
+      flush();
+    }
+    return out;
+  }
+
+  function shardFile(sid) { return 'efficiency-hub-' + sid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json'; }
+
+  // 本机每个键的最后写入时间（BackupHub 全站维护），用来判定「脏键」
+  function localMeta() {
+    try { return JSON.parse(localStorage.getItem('__hub_meta_v1__') || '{}') || {}; } catch (e) { return {}; }
+  }
+  // ============ 分片读写（v5）============
+  // ⚠️ 这一层是「与后端无关」的：只看 io 接口，不认 Gist 还是 Gitee。
+  //    抽出来的原因：Gitee 没有 Gist 的批量 PATCH，若各写一套分片逻辑，
+  //    早晚会漂移（改了 GitHub 忘了 Gitee）。所以脏片判定、meta 结构、
+  //    并发拉片这些「容易出错的部分」只在这里写一次。
+  //
+  // io 接口（由各后端实现，全部返回 Promise）：
+  //   io.ensureTarget()          确保远端载体存在（Gist / 仓库+目录），返回载体标识
+  //   io.getMeta()               读远端 meta 原文对象；读不到 / 不存在返回 null
+  //   io.getFile(name)           读单个文件文本；不存在返回 null
+  //   io.putFiles(map)           map = { 文件名: 文本内容 }，批量写（各自实现并发/单请求）
+  //   io.deleteFiles(names)      删除文件（可选；分片减小时清理残留片）
+  //   io.label                   后端名，仅用于日志
+  const META_ORIGIN = '__hub_sync_origin__';   // meta 里记后端，避免两种后端的数据互相踩
+
+  function newMeta(origin) {
+    return { version: 5, origin: origin || '', updatedAt: Date.now(), shards: {}, keys: {} };
+  }
+
+  // 写：只更新「脏片」。meta 记录每片包含哪些键、以及整体 updatedAt。
+  // 返回 { wroteBytes, wroteShards, skippedShards, totalShards, deletedShards }
+  async function writeShardedWith(io, allData, forceShards) {
+    const origin = io.origin || '';
+    await io.ensureTarget();
+
+    // 1) 读取远端现有 meta（拿不到就当成全新的）
+    let cloudMeta = null;
+    try { cloudMeta = await io.getMeta(); } catch (e) { cloudMeta = null; }
+
+    // 换后端写时不能拿旧后端的 meta 做「脏片判定」——两边的分片时间戳没有可比性，
+    // 沿用会导致「以为没变，其实远端一片都没有」→ 数据静默丢失。此时强制全量写。
+    if (cloudMeta && cloudMeta.origin && origin && cloudMeta.origin !== origin) {
+      console.warn('[' + (io.label || 'sync') + '] 检测到远端 meta 属于其它后端（' +
+        cloudMeta.origin + '），本次强制全量写片');
+      cloudMeta = null;
+      forceShards = true;
+    }
+
+    // 2) 本机打成片
+    const shards = buildShards(allData);
+    const meta = localMeta();
+    const prevTs = cloudMeta && cloudMeta.keys ? cloudMeta.keys : {};
+    const files = {};
+    let wroteBytes = 0, wroteShards = 0, skippedShards = 0, totalShards = 0;
+
+    const next = newMeta(origin);
+
+    for (const sid in shards) {
+      totalShards++;
+      const raw = shards[sid];
+      const keys = Object.keys(raw);
+      // 该片里最大的写入时间 vs 上次同步记录的时间 → 判定脏不脏
+      let maxTs = 0;
+      keys.forEach(k => {
+        const t = meta[k] || 0;
+        if (t > maxTs) maxTs = t;
+        next.keys[k] = { shard: sid, ts: t || (prevTs[k] && prevTs[k].ts) || 0 };
+      });
+      next.shards[sid] = { keys: keys, ts: maxTs };
+
+      const cloudTs = cloudMeta && cloudMeta.shards && cloudMeta.shards[sid]
+        ? (cloudMeta.shards[sid].ts || 0) : 0;
+      const dirty = forceShards || !cloudMeta || maxTs > cloudTs ||
+        !(cloudMeta.shards && cloudMeta.shards[sid]);
+
+      if (!dirty) { skippedShards++; continue; }
+
+      const body = JSON.stringify(await packCloud({ version: 2, data: raw, updatedAt: Date.now() }));
+      files[shardFile(sid)] = body;
+      wroteBytes += body.length;
+      wroteShards++;
+    }
+
+    // 3) 写 meta（很小，几乎零成本）
+    files[META_FILENAME] = JSON.stringify(next);
+
+    // 4) 提交。真正「增量」的两个前提：
+    //    ① 只把这些文件推给远端（Gist 的 PATCH 天然按文件合并；Gitee 逐文件 PUT）；
+    //    ② 远端没被列出的片保持原样。
+    await io.putFiles(files);
+
+    // 5) 清理残留片：本机重新切片后片名可能变少（比如某片被拆过又合回来），
+    //    远端旧片不清掉的话，下次下载会把陈旧数据一起合并进来 —— 数据污染。
+    let deletedShards = 0;
+    if (cloudMeta && cloudMeta.shards && io.deleteFiles) {
+      const stale = [];
+      for (const oldSid in cloudMeta.shards) {
+        if (!next.shards[oldSid]) stale.push(shardFile(oldSid));
+      }
+      if (stale.length) {
+        try { await io.deleteFiles(stale); deletedShards = stale.length; }
+        catch (e) { console.warn('[' + (io.label || 'sync') + '] 清理旧分片失败（不影响本次同步）:', e.message); }
+      }
+    }
+
+    return { wroteBytes, wroteShards, skippedShards, totalShards, deletedShards, meta: next };
+  }
+
+  // 读 meta：返回 null 表示远端还是旧的单文件格式
+  async function readShardedMetaWith(io) {
+    await io.ensureTarget();
+    return io.getMeta();
+  }
+
+  // 读分片：并发拉取所有片后合并成 {key:{value,timestamp}}
+  async function readShardedWith(io, cloudMeta) {
+    const shardIds = Object.keys(cloudMeta.shards || {});
+    const merged = { data: {}, updatedAt: cloudMeta.updatedAt || 0 };
+
+    const tasks = shardIds.map(async sid => {
+      const fname = shardFile(sid);
+      let content = null;
+      try { content = await io.getFile(fname); } catch (e) { content = null; }
+      if (!content) return null;
+      try {
+        const payload = await unpackCloud(JSON.parse(content));
+        return (payload && payload.data) || {};
+      } catch (e) {
+        console.warn('[' + (io.label || 'sync') + '] 分片解析失败 ' + sid + ':', e.message);
+        return null;   // 单片失败不影响其它片
+      }
+    });
+    const results = await Promise.all(tasks);
+    let okCount = 0;
+    results.forEach(d => { if (d) { okCount++; Object.assign(merged.data, d); } });
+    merged.shardCount = shardIds.length;
+    merged.shardOk = okCount;
+    return merged;
+  }
+
+  // ============ GitHub（Gist）侧的 io 实现 ============
+  // Gist 的特别之处：一次 PATCH 可以把多个文件一起提交（天然批量），
+  // 且未列出的文件保持不变 —— 这也是最早用 Gist 的原因。
+  const gistIO = {
+    origin: 'github',
+    label: 'GitHub',
+    ensureTarget: async function () {
+      if (!cachedGistId()) await findOrCreateGist();
+      return GIST_ID;
+    },
+    getMeta: async function () {
+      let g;
+      try {
+        g = await apiCall('GET', '/gists/' + GIST_ID);
+      } catch (e) {
+        if (isNotFound(e)) { clearGistCache(); throw new Error('云端同步文件不存在（可能已被删除），请重新上传一次'); }
+        throw e;
+      }
+      const mf = g.files && g.files[META_FILENAME];
+      if (!mf || !mf.content) return null;
+      try { return JSON.parse(mf.content); } catch (e) { return null; }
+    },
+    // Gist 单文件超 1MB 时 content 是截断的，必须改走 raw_url
+    getFile: async function (name) {
+      const g = await apiCall('GET', '/gists/' + GIST_ID);
+      const f = g.files && g.files[name];
+      if (!f) return null;
+      if (f.truncated || !f.content) {
+        const raw = await fetchRetry(f.raw_url, { cache: 'no-store' }, 3, name + ' 下载');
+        return await raw.text();
+      }
+      return f.content;
+    },
+    putFiles: async function (map) {
+      const files = {};
+      for (const name in map) files[name] = { content: map[name] };
+      await apiCall('PATCH', '/gists/' + GIST_ID, { files: files });
+    },
+    deleteFiles: async function (names) {
+      const files = {};
+      names.forEach(function (n) { files[n] = null; });   // Gist 里置 null 即删除
+      await apiCall('PATCH', '/gists/' + GIST_ID, { files: files });
+    }
+  };
+
+  // 兼容旧调用点：GitHub 路径继续走这两个名字
+  function writeSharded(allData, forceShards) { return writeShardedWith(gistIO, allData, forceShards); }
+  function readShardedMeta() { return readShardedMetaWith(gistIO); }
+  function readSharded(cloudMeta) { return readShardedWith(gistIO, cloudMeta); }
+
+  // 数据收集 / 应用
   function collectLocalData() {
     const data = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -787,14 +1126,17 @@
         localData = collectLocalData();
       }
       let bodyLen = 0;
-      const payload = { version: 2, data: localData, updatedAt: Date.now() };
+      let shardInfo = null;
+      const payloadData = localData;
       try {
-        bodyLen = await writeGist(payload);
+        shardInfo = await writeSharded(payloadData);
+        bodyLen = shardInfo.wroteBytes;
       } catch (e) {
         if (!isNotFound(e)) throw e;
         clearGistCache();                 // 缓存的 Gist 已被删：重建后重试一次
         await findOrCreateGist();
-        bodyLen = await writeGist(payload);
+        shardInfo = await writeSharded(payloadData, true);
+        bodyLen = shardInfo.wroteBytes;
       }
       const kb = Math.round(bodyLen / 1024);
       const nItem = Object.keys(localData).length;
@@ -809,13 +1151,17 @@
       closeTopModal();
       // 压缩后仍偏大时给出明确预警：下载会慢，且会走 raw 通道（国内易断）
       const sizeTip = kb > 1024
-        ? '\n⚠️ 压缩后仍有 ' + kb + 'KB，超过云端单文件 1MB 的直读阈值，另一台设备下载会明显慢一些。'
+        ? '\n⚠️ 本次写入 ' + kb + 'KB，超过云端单文件 1MB 的直读阈值，另一台设备下载会明显慢一些。'
+        : '';
+      const shardTip = shardInfo
+        ? `\n本次只更新了 ${shardInfo.wroteShards} / ${shardInfo.totalShards} 个数据片` +
+          (shardInfo.skippedShards > 0 ? `（跳过 ${shardInfo.skippedShards} 个未变化的片，省流量）` : '') + '。'
         : '';
       notifyOK(mode === 'merge' ? '已合并上传到云端' : '已上传到云端',
         (mode === 'merge'
           ? `两边数据已按「较新保留」合并，共 ${nItem} 项。`
           : `本机的 ${nItem} 项数据已存到云端。`) +
-        `\n云端体积约 ${kb}KB（已压缩）。` + sizeTip +
+        shardTip + `\n本次写入约 ${kb}KB（已压缩）。` + sizeTip +
         '\n在手机 / 其他电脑点「云端 → 本机」就能同步过去。');
     } catch (e) {
       console.warn('[GitHub] 上传失败:', e.message);
@@ -877,6 +1223,14 @@
 
   // ============ 初始化 ============
   async function initSync() {
+    const b = activeBackend();
+    // 选中的是 Gitee：连接流程归 Gitee 模块自己管（它没有「查找已有载体」这一步）
+    if (b && b.id !== 'github') {
+      isConnected = !!b.isConnected();
+      updateStatus(isConnected ? '已连接' : '待配置');
+      if (!isConnected) b.reconfigure();
+      return;
+    }
     if (!GITHUB_TOKEN) { showConfigModal(); return; }
     // 提速：有缓存的 Gist ID 就立即显示「已连接」，启动不再发网络请求。
     // 首次真正同步时才会联网；若 Gist 已被删，404 兜底会自动重建，不影响使用。
@@ -899,7 +1253,9 @@
 
   async function init() {
     createSyncUI();
-    if (!GITHUB_TOKEN) { updateStatus('未配置'); return; }
+    const b = activeBackend();
+    if (!b || !b.isReady()) { updateStatus(b ? '待配置' : '未配置'); return; }
+    if (b.id !== 'github') { updateStatus('已连接'); return; }   // 非 GitHub 后端不在这里联网
     await initSync();
   }
 
@@ -908,6 +1264,56 @@
   } else {
     init();
   }
+
+  // 供 Gitee 等其它后端复用（避免两套实现各自漂移）
+  function exportCore() {
+    window.CloudSyncCore = {
+      // 压缩
+      packCloud, unpackCloud, canCompress,
+      // 合并策略
+      mergeCloudToLocal, buildMergedUpload,
+      // 本地数据
+      collectLocalData, getLocalKeys, applyCloudToLocal, localMeta,
+      // 分片：工具函数
+      buildShards, shardOfKey, shardFile, newMeta,
+      // 分片：与后端无关的通用读写（传 io 进来）
+      writeShardedWith, readShardedWith, readShardedMetaWith,
+      // 分片：GitHub（Gist）实现，其它后端可作参考
+      gistIO,
+      writeSharded, readSharded, readShardedMeta,
+      // 常量
+      META_FILENAME, LEGACY_FILENAME, MAX_SHARD_BYTES,
+      // 测试/多后端用：直接设定 gist id，绕过连接流程
+      setGistId: function (id) { GIST_ID = id; try { localStorage.setItem('github_gist_id', id); } catch (e) {} },
+      markConnected: function () { isConnected = true; },
+      // 只读探测
+      peekCloud, readGist,
+      // 判定
+      isExcludedKey,
+      // UI
+      showChoice, showConfirm, showAlert, notifyOK, notifyFail, fmtTime,
+      // 刷新
+      reloadActiveIframe,
+      // 常量
+      EXCLUDE_KEYS, EXCLUDE_PREFIXES
+    };
+  }
+  exportCore();
+
+  // 后端注册表：各后端（GitHub / Gitee）注册自己，主面板据此渲染切换项
+  window.CloudSyncBackends = window.CloudSyncBackends || {};
+  window.CloudSyncBackends.github = {
+    id: 'github',
+    name: 'GitHub Gist',
+    hint: '国内可直连，免费，需 GitHub Token',
+    // 主面板调用这几个口子，具体实现留在本文件（闭包内有状态）
+    isReady: function () { return !!GITHUB_TOKEN; },
+    isConnected: function () { return isConnected; },
+    reconfigure: function () { showConfigModal(); },
+    upload: function () { return doUpload(); },
+    download: function () { return doDownload(); },
+    health: function () { return doHealth(); }
+  };
 
   window.CloudSync = {
     upload: doUpload,
