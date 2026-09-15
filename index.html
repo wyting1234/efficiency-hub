@@ -754,7 +754,7 @@
       <div class="side-btn" id="toggleTheme"><span id="themeIco">🌙</span><span id="themeTxt">夜间模式</span></div>
 
 
-      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.14a</span></div>
+      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.15a</span></div>
 
 
     </div>
@@ -1247,10 +1247,24 @@ function buildNav(){
   const customOrder = getCustomOrder();
   const modules = getModules();
   
-  // 按自定义顺序或默认顺序排列
-  const sortedModules = customOrder 
-    ? customOrder.map(id => modules.find(m => m.id === id)).filter(Boolean)
-    : modules;
+  // 自定义顺序只决定「排序优先级」，不是白名单。
+  // 旧实现 customOrder.map(id=>modules.find(...)).filter(Boolean) 有自锁缺陷：
+  // 只要某模块 id 不在 customOrder 里（新增模块、或先隐藏后取消隐藏的模块），
+  // 就被 filter(Boolean) 静默剔除；又因为它不渲染 → saveNavOrder() 也永远写不进它，
+  // 于是永久丢失且无法自愈。而「管理」弹窗直接遍历 MODULES，不受顺序表影响，
+  // 于是表现为「管理里显示为显示、侧边栏却找不到」。
+  let sortedModules = modules;
+  if(customOrder){
+    const byId = new Map(modules.map(m => [m.id, m]));
+    const seen = new Set();
+    sortedModules = [];
+    customOrder.forEach(id => {
+      const m = byId.get(id);
+      if(m && !seen.has(id)){ seen.add(id); sortedModules.push(m); }
+    });
+    // 不在顺序表里的模块补在后面（保持 MODULES 原顺序），保证一个都不少
+    modules.forEach(m => { if(!seen.has(m.id)) sortedModules.push(m); });
+  }
   
   sortedModules.forEach(m=>{
     const el=document.createElement('div');
@@ -2154,14 +2168,15 @@ function saveModuleManager(){
 
 
 function init(){
-  // 版本迁移：升级到新版本时重置模块显示/排序配置，避免旧数据隐藏新增模块
+  // 版本标记。旧实现靠「升版本就清空 hub_nav_order / hub_module_hidden」兜底，
+  // 代价是无条件抹掉用户排好的顺序与隐藏设置，且忘改版本号就复发。
+  // buildNav() 已改为「顺序只影响排序、模块永不丢失」，故不再删除用户配置，
+  // 这里只留版本钩子。
   try {
-    var HUB_PATCH = 'v2026.09.14f';
+    var HUB_PATCH = 'v2026.09.15a';
     if (localStorage.getItem('hub_patch') !== HUB_PATCH) {
-      localStorage.removeItem('hub_module_hidden');
-      localStorage.removeItem('hub_nav_order');
       localStorage.setItem('hub_patch', HUB_PATCH);
-      console.warn('[修复] 版本升级，已重置模块显示配置');
+      console.warn('[修复] 版本升级：模块顺序与隐藏配置已保留（顺序表不再吞掉新模块）');
     }
   } catch(e) {}
 
@@ -2185,7 +2200,7 @@ function init(){
     if (needReset) {
       console.warn('[修复] 检测到模块隐藏配置异常，已自动恢复');
       localStorage.removeItem('hub_module_hidden');
-      localStorage.removeItem('hub_nav_order');
+      // 不删 hub_nav_order：顺序表与隐藏配置互相独立，且新算法下恢复隐藏的模块会自动归位
     }
   } catch(e) {
     // 忽略修复过程中的错误
