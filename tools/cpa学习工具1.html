@@ -2131,6 +2131,115 @@
             .sd-msg{margin-left:0;flex-basis:100%;}
         }
     </style>
+    <style>
+        /* ===== 学习记录：知识点记录 / 其他 双 Tab ===== */
+        .rec-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 2px 0 16px; }
+        .rec-tab {
+            background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
+            padding: 9px 18px; font-family: inherit; font-size: 14px; font-weight: 600;
+            color: var(--text-secondary); transition: var(--transition);
+        }
+        .rec-tab:hover { color: var(--primary-dark); }
+        .rec-tab.active { color: var(--primary-dark); border-bottom-color: var(--primary); }
+        .rec-pane { display: flex; flex-direction: column; gap: 16px; }
+        .rec-pane[hidden] { display: none; }
+        .rec-pane .field { display: flex; flex-direction: column; min-width: 0; }
+        .rec-pane textarea { width: 100%; min-height: 152px; line-height: 1.75; resize: vertical; }
+        .rec-pane.rec-pane-out textarea { min-height: 216px; }
+
+        /* 草稿恢复条 */
+        .rec-draft-bar {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            background: var(--primary-bg); border: 1px solid #DCCFB8; border-radius: var(--radius-sm);
+            padding: 9px 14px; margin-bottom: 14px; font-size: 13px; color: var(--primary-dark);
+        }
+        .rec-draft-bar[hidden] { display: none; }
+        .rec-draft-bar button {
+            background: #FAF7F1; border: 1px solid var(--primary-light); border-radius: 8px;
+            padding: 3px 12px; font-family: inherit; font-size: 12.5px; font-weight: 600;
+            color: var(--primary-dark);
+        }
+        .rec-draft-bar button:hover { background: #fff; }
+        .rec-autosave { margin-right: auto; align-self: center; font-size: 12px; color: var(--text-secondary); }
+
+        /* 展示模式切换 */
+        .kp-mode-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 7px 0 9px; }
+        .kp-mode-cap { font-size: 12px; color: var(--text-secondary); }
+        .kp-modes { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; vertical-align: middle; }
+        .kp-mode {
+            background: #FAF7F1; border: none; border-right: 1px solid var(--border);
+            padding: 3px 11px; font-family: inherit; font-size: 12px; font-weight: 600;
+            color: var(--text-secondary); transition: var(--transition);
+        }
+        .kp-mode:last-child { border-right: none; }
+        .kp-mode:hover { background: var(--primary-bg); color: var(--primary-dark); }
+        .kp-mode.active { background: var(--primary); color: #FAF7F1; }
+        .kp-view { display: flex; flex-direction: column; gap: 10px; }
+        .kp-view[hidden] { display: none; }
+
+        /* 速记工具栏 */
+        .kp-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+        .kp-bar button {
+            background: #FAF7F1; border: 1px solid var(--primary-light); border-radius: 9px;
+            padding: 5px 13px; font-family: inherit; font-size: 12.5px; font-weight: 600;
+            color: var(--primary-dark); transition: var(--transition);
+        }
+        .kp-bar button:hover { background: var(--primary-bg); }
+        .kp-bar .kp-bar-stat { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
+        .kp-bar .kp-bar-stat + .kp-bar-stat { margin-left: 8px; }
+
+        /* 思维导图网格 */
+        .kp-grid-legend { font-size: 12px; color: var(--text-secondary); }
+        .kp-grid-legend b { color: var(--primary-dark); font-weight: 600; }
+        .kp-grid-wrap { overflow-x: auto; }
+        .kp-grid {
+            display: grid; gap: 6px; min-width: 620px; padding: 8px;
+            grid-template-columns: var(--kp-cols, 30fr 32fr 38fr);
+            border: 1px solid var(--border); border-radius: var(--radius-sm); background: #FDFBF7;
+        }
+        .kp-cell {
+            position: relative; display: flex; align-items: stretch; gap: 6px;
+            border: 1px solid var(--border); border-radius: 9px; background: #fff;
+            padding: 7px 9px; min-height: 38px; min-width: 0;
+        }
+        .kp-cell.kp-lv1 { background: #F3EDE3; border-color: #DCCFB8; }
+        .kp-cell.kp-lv2 { background: #FAF7F1; }
+        .kp-cell.kp-lv3 { background: #fff; }
+        .kp-cell .kp-cell-no { flex: 0 0 auto; min-width: 24px; padding-top: 2px; font-size: 11.5px; font-weight: 700; color: var(--primary); }
+        .kp-cell .kp-cell-in {
+            flex: 1; min-width: 0; padding: 1px 2px; font-size: 14px; line-height: 1.55;
+            color: var(--text); white-space: pre-wrap; word-break: break-word; outline: none;
+        }
+        .kp-cell .kp-cell-in:empty::before { content: attr(data-ph); color: #B4A792; }
+        .kp-cell .kp-cell-in:focus { background: #FFFDF8; border-radius: 6px; }
+        .kp-cell .kp-cell-ops { position: absolute; right: 4px; top: 4px; display: none; gap: 2px; }
+        .kp-cell:hover .kp-cell-ops { display: flex; }
+        .kp-cell .kp-cell-ops button {
+            width: 22px; height: 22px; padding: 0; line-height: 1; font-size: 12px;
+            background: #fff; border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary);
+        }
+        .kp-cell .kp-cell-ops button:hover { background: var(--primary-bg); color: var(--primary-dark); }
+        .kp-cell .kp-cell-ops button:disabled { opacity: 0.35; }
+        .kp-grid-add { display: grid; gap: 6px; min-width: 620px; grid-template-columns: var(--kp-cols, 30fr 32fr 38fr); }
+        .kp-grid-add button {
+            border: 1px dashed #C9BBA4; border-radius: 9px; background: transparent;
+            padding: 6px 8px; font-family: inherit; font-size: 12px; color: var(--text-secondary);
+            transition: var(--transition);
+        }
+        .kp-grid-add button:hover { background: var(--primary-bg); color: var(--primary-dark); border-style: solid; }
+        .kp-grid-empty { grid-column: 1 / -1; padding: 24px 10px; text-align: center; font-size: 13px; color: var(--text-secondary); }
+
+        @media (max-width: 860px) {
+            .rec-tab { padding: 8px 12px; font-size: 13px; }
+            .rec-pane textarea { min-height: 128px; }
+            .rec-pane.rec-pane-out textarea { min-height: 160px; }
+            .kp-grid, .kp-grid-add { min-width: 0; }
+            .kp-grid-add { grid-template-columns: 1fr; }
+            .kp-mode-row { gap: 6px; }
+            .kp-modes .kp-mode { padding: 3px 8px; }
+            .kp-bar .kp-bar-stat { margin-left: 0; }
+        }
+    </style>
 </head>
 <body>
 
@@ -2360,35 +2469,83 @@
                             <input type="text" id="fAssessmentReason" placeholder="自评原因 (可选)" style="margin-top:6px;" />
                         </div>
                     </div>
-                    <div class="form-row full">
-                        <div class="field">
-                            <label>📌 知识点速记 <span style="font-weight:400;color:var(--text-secondary);">(可选 · 回车自动换行续编号 · 保存时按分隔符并入知识点)</span></label>
-                            <textarea id="fKpQuick" rows="2" placeholder="例：&#10;1. 交易性金融资产的初始计量&#10;2. 公允价值变动损益的结转"></textarea>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="field">
-                            <label>🧠 解题思路 <span style="font-weight:400;color:var(--text-secondary);">(重点)</span></label>
-                            <textarea id="fProblemSolving" rows="3" placeholder="记录你的解题思路、关键步骤、易错点…"></textarea>
-                        </div>
-                        <div class="field">
-                            <label>🔗 记忆网络 <span style="font-weight:400;color:var(--text-secondary);">(知识点关联)</span></label>
-                            <textarea id="fMemoryNetwork" rows="3" placeholder="记录知识点之间的关联、对比、框架…"></textarea>
-                        </div>
+                                        <div class="rec-draft-bar" id="recDraftBar" hidden>
+                        <span id="recDraftMsg"></span>
+                        <button type="button" id="recDraftDrop">丢弃草稿</button>
                     </div>
                     <div class="form-row full">
                         <div class="field">
-                            <label>🤖 AI 问答 <span style="font-weight:400;color:var(--text-secondary);">(学习中的疑问与AI对话)</span></label>
-                            <textarea id="fAiQA" rows="3" placeholder="记录你向AI提出的问题及回答要点…"></textarea>
-                        </div>
-                    </div>
-                    <div class="form-row full">
-                        <div class="field">
-                            <label>📌 备注</label>
-                            <input type="text" id="fNotes" placeholder="其他补充信息…" />
+                            <div class="rec-tabs" id="recTabs" role="tablist">
+                                <button type="button" class="rec-tab active" role="tab" aria-selected="true" aria-controls="recPaneKp" data-rec="kp">📌 知识点记录</button>
+                                <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneOther" data-rec="other">📝 其他</button>
+                            </div>
+
+                            <div class="rec-pane" id="recPaneKp" role="tabpanel">
+                                <div class="field">
+                                    <label>📌 知识点速记 <span style="font-weight:400;color:var(--text-secondary);">(可选 · 默认视角回车自动续编号 · 保存时按分隔符并入知识点)</span></label>
+                                    <div class="kp-mode-row">
+                                        <span class="kp-mode-cap">展示模式</span>
+                                        <span class="kp-modes" id="kpModes">
+                                            <button type="button" class="kp-mode active" data-kpmode="default" title="现在的输入方式：一行一个知识点，回车自动续编号">默认</button>
+                                            <button type="button" class="kp-mode" data-kpmode="outline" title="缩进表示层级，Tab / Shift+Tab 调整">大纲视角</button>
+                                            <button type="button" class="kp-mode" data-kpmode="mind" title="列 = 层级，父单元格纵向合并">思维导图视角</button>
+                                            <button type="button" class="kp-mode" data-kpmode="md" title="Markdown 源码，可编辑并与其他视角双向同步">MD视角</button>
+                                        </span>
+                                    </div>
+
+                                    <div class="kp-view" data-kpview="default">
+                                        <textarea id="fKpQuick" rows="6" spellcheck="false" placeholder="例：&#10;1. 交易性金融资产的初始计量&#10;2. 公允价值变动损益的结转"></textarea>
+                                    </div>
+
+                                    <div class="kp-view" data-kpview="outline" hidden>
+                                        <textarea id="fKpOutline" rows="10" spellcheck="false" placeholder="一行一个节点，用缩进表示层级（Tab 缩进 / Shift+Tab 反缩进）：&#10;第三章 金融资产&#10;  交易性金融资产&#10;    初始计量&#10;  债权投资&#10;    摊余成本"></textarea>
+                                    </div>
+
+                                    <div class="kp-view" data-kpview="mind" hidden>
+                                        <div class="kp-grid-legend">列 = 层级：<b>第 1 列</b> 总标题 · <b>第 2 列</b> 子标题 · <b>第 3 列</b> 细节；在某一列下方新增单元格时，同一分组的上层单元格会自动纵向合并。回车 = 在下方加同级，悬停单元格右上角可加下级或删除。</div>
+                                        <div class="kp-grid-wrap"><div class="kp-grid" id="kpGrid"></div></div>
+                                        <div class="kp-grid-add" id="kpGridAdd">
+                                            <button type="button" data-addcol="1">＋ 加到第 1 列</button>
+                                            <button type="button" data-addcol="2">＋ 加到第 2 列</button>
+                                            <button type="button" data-addcol="3">＋ 加到第 3 列</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="kp-view" data-kpview="md" hidden>
+                                        <textarea id="fKpMd" rows="10" spellcheck="false" placeholder="# 1. 第三章 金融资产&#10;  - 1.1 交易性金融资产&#10;  - 1.2 债权投资"></textarea>
+                                    </div>
+
+                                    <div class="kp-bar">
+                                        <button type="button" id="kpRenumberBtn" title="按层级重新编号（1 / 1.1 / 1.1.1）">🔢 一键编号</button>
+                                        <button type="button" id="kpToMdBtn" title="生成 Markdown，切到 MD 视角并复制到剪贴板">📋 转 Markdown</button>
+                                        <button type="button" id="kpCopyMdBtn" title="复制当前 Markdown 到剪贴板">⧉ 复制 MD</button>
+                                        <span class="kp-bar-stat" id="kpStat"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="rec-pane rec-pane-out" id="recPaneOther" role="tabpanel" hidden>
+                                <div class="field">
+                                    <label>🧠 解题思路 <span style="font-weight:400;color:var(--text-secondary);">(重点)</span></label>
+                                    <textarea id="fProblemSolving" rows="4" spellcheck="false" placeholder="记录你的解题思路、关键步骤、易错点…"></textarea>
+                                </div>
+                                <div class="field">
+                                    <label>🔗 记忆网络 <span style="font-weight:400;color:var(--text-secondary);">(知识点关联)</span></label>
+                                    <textarea id="fMemoryNetwork" rows="4" spellcheck="false" placeholder="记录知识点之间的关联、对比、框架…"></textarea>
+                                </div>
+                                <div class="field">
+                                    <label>🤖 AI 问答 <span style="font-weight:400;color:var(--text-secondary);">(学习中的疑问与AI对话)</span></label>
+                                    <textarea id="fAiQA" rows="4" spellcheck="false" placeholder="记录你向AI提出的问题及回答要点…"></textarea>
+                                </div>
+                                <div class="field">
+                                    <label>📌 备注</label>
+                                    <input type="text" id="fNotes" placeholder="其他补充信息…" />
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="form-actions">
+                        <span class="rec-autosave" id="kpDraftStat"></span>
                         <button type="button" class="btn-cancel-edit" id="cancelEditBtn">取消编辑</button>
                         <button type="reset" class="btn-reset">清空</button>
                         <button type="submit" class="btn-submit">✅ 保存记录</button>
@@ -4753,6 +4910,7 @@
                     document.getElementById('fAiQA').value = '';
                     document.getElementById('fNotes').value = '';
                     document.getElementById('fKpQuick').value = '';
+                    if (window.CpaKpEditor) window.CpaKpEditor.clearAll();
                     resetKnowledgePoints();
                     state.editingId = null;
                     document.querySelector('.btn-submit').textContent = '✅ 保存记录';
@@ -4835,6 +4993,7 @@
         // 去掉粘贴文本自带的序号：1. / 1、/ 1) / （1）/ 1 空格
         function stripKpNo(s) {
             return String(s || '')
+                .replace(/^\s*[0-9]{1,3}(?:\.[0-9]{1,3}){1,2}\s*/, '')
                 .replace(/^\s*[0-9]{1,3}\s*[.、．)）:：]\s*/, '')
                 .replace(/^\s*[(\uff08\u3010]?\s*[0-9]{1,3}\s*[)\uff09\u3011]?\s*[.、．:：]?\s+(?=\S)/, '')
                 .trim();
@@ -5271,6 +5430,12 @@
         // 统一识别行首编号：返回 {len: 前缀字符数, next: 下一行的编号前缀}；识别不出返回 null
         function numPrefixInfo(line) {
             let m;
+            // ⓪ 层级编号：1.1 / 1.1.1 —— 只把最后一段 +1（须放在 ① 之前，否则 1.1 会被当成 1. 续成 2.）
+            if ((m = line.match(/^(\s*)(\d{1,3}(?:\.\d{1,3}){1,2})([.、．)）:：])?(\s*)/))) {
+                const segs = m[2].split('.');
+                segs[segs.length - 1] = String(parseInt(segs[segs.length - 1], 10) + 1);
+                return { len: m[0].length, next: m[1] + segs.join('.') + (m[3] || '') + ' ' };
+            }
             // ① 阿拉伯数字 + 分隔符：1.  1、  1．  1)  1）  1:  1：  1-  1—
             if ((m = line.match(/^(\s*)(\d{1,3})([.、．)）:：\-—])(\s*)/))) {
                 return { len: m[0].length, next: m[1] + (parseInt(m[2], 10) + 1) + m[3] + ' ' };
@@ -5396,6 +5561,7 @@
             const notes = document.getElementById('fNotes').value.trim();
             const knowledgePoints = getKnowledgePoints();
             const kpQuickEl = document.getElementById('fKpQuick');
+            const kpQuickRaw = kpQuickEl ? kpQuickEl.value : '';
             (kpQuickEl ? kpQuickEl.value : '').split(/[；;\n、]+/).forEach(s => {
                 const tok = stripKpNo(s.trim());
                 if (tok) knowledgePoints.push({ text: tok });
@@ -5476,6 +5642,7 @@
                 aiQA: aiQA || '',
                 notes: notes || '',
                 knowledgePoints: knowledgePoints,
+                kpQuickRaw: kpQuickRaw,
                 addToMemory: addToMemory,
             };
 
@@ -5534,6 +5701,7 @@
                 document.getElementById('fAiQA').value = '';
                 document.getElementById('fNotes').value = '';
                 document.getElementById('fKpQuick').value = '';
+                if (window.CpaKpEditor) window.CpaKpEditor.clearAll();
                 resetKnowledgePoints();
                 document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                 document.getElementById('cancelEditBtn').classList.remove('visible');
@@ -5706,7 +5874,8 @@
             document.getElementById('fMemoryNetwork').value = record.memoryNetwork || '';
             document.getElementById('fAiQA').value = record.aiQA || '';
             document.getElementById('fNotes').value = record.notes || '';
-            { const kpq = document.getElementById('fKpQuick'); if (kpq) kpq.value = ''; }
+            { const kpq = document.getElementById('fKpQuick'); if (kpq) kpq.value = record.kpQuickRaw || ''; }
+            if (window.CpaKpEditor) window.CpaKpEditor.onRecordLoad(record);
             renderKnowledgePoints(record.knowledgePoints && record.knowledgePoints.length ? record.knowledgePoints : [{ text: '' }]);
             const memCb = document.getElementById('fAddToMemory');
             if (memCb) {
@@ -9806,5 +9975,619 @@
 
 
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
+    <script>
+    /* =====================================================================
+       学习记录增强 v1：
+         1) 红框区改为「知识点记录 / 其他」两个 Tab，各自纵向铺满
+         2) 知识点速记支持四种展示模式：默认 / 大纲视角 / 思维导图视角 / MD视角
+         3) 一键编号（1 / 1.1 / 1.1.1）与一键转 Markdown
+         4) 表单草稿每 10 秒自动保存到 localStorage，下次打开自动恢复
+
+       数据流：各视角文本 <-> 树(tree) <-> #fKpQuick
+       #fKpQuick 始终是保存时的唯一数据源，所以 handleFormSubmit 完全不用改。
+       ===================================================================== */
+    (function () {
+        'use strict';
+
+        var KP_MODE_KEY = 'hub_cpa_kp_mode_v1';
+        var REC_TAB_KEY = 'hub_cpa_rec_tab_v1';
+        var DRAFT_KEY   = 'hub_cpa_draft_v1';
+        var DRAFT_MS    = 10000;
+        var VIEWS       = ['default', 'outline', 'mind', 'md'];
+        var IN_ID       = { default: 'fKpQuick', outline: 'fKpOutline', md: 'fKpMd' };
+        var COLS        = '30fr 32fr 38fr';
+
+        var mode = 'default';
+        var curTab = 'kp';
+        var outlineNo = false;
+        var tree = [];
+        var statTimer = null;
+        var draftTimer = null;
+
+        function el(id) { return document.getElementById(id); }
+        function two(n) { return ('0' + n).slice(-2); }
+        function clockStr(t) {
+            var d = t ? new Date(t) : new Date();
+            return two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds());
+        }
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+        function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+        function drop(k) { try { localStorage.removeItem(k); } catch (e) {} }
+        function toast(msg) {
+            try { if (typeof showToast === 'function') { showToast(msg); return; } } catch (e) {}
+            try { console.log('[kp] ' + msg); } catch (e2) {}
+        }
+        function eachNode(sel, fn) {
+            var list = document.querySelectorAll(sel);
+            for (var i = 0; i < list.length; i++) fn(list[i]);
+        }
+
+        /* ================= 文本 -> 树 ================= */
+        function stripNoInner(s) {
+            return String(s || '')
+                .replace(/^[0-9]{1,3}(?:\.[0-9]{1,3}){1,2}\s*/, '')
+                .replace(/^[0-9]{1,3}\s*[.、．)）:：]\s*/, '')
+                .replace(/^[(\uff08\u3010]?\s*[0-9]{1,3}\s*[)\uff09\u3011]?\s*[.、．:：]?\s+(?=\S)/, '')
+                .trim();
+        }
+        // 一个解析器吃下四种视角：层级编号 / 缩进 / Markdown 标题与列表
+        function parse(text) {
+            var roots = [], lv = [null, null, null];
+            var headingDepth = 0;
+            String(text || '').split(/\r?\n/).forEach(function (raw) {
+                var line = raw.replace(/\s+$/, '');
+                if (!line.trim()) return;
+                var indent = (line.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '  ').length;
+                var indentLvl = Math.min(Math.floor(indent / 2) + 1, 3);
+                var body = line.trim();
+                var lvl = 0, numLvl = 0, isHeading = false, isList = false;
+                var h = body.match(/^(#{1,6})\s+(.*)$/);
+                if (h) { isHeading = true; lvl = Math.min(h[1].length, 3); body = h[2]; }
+                var lm = body.match(/^[-*+\u2022\u00b7]\s+(.*)$/);
+                if (lm) { isList = true; body = lm[1]; }
+                // 带内容的编号行
+                var n = body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,2})\s*[.、．)）:：]?\s+(?=\S)(.*)$/);
+                // 只有编号没有内容：这是刚加出来还没填的空格子，保留它（否则层级会塌）
+                var only = n ? null : body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,2})\s*[.、．)）:：]?$/);
+                if (n) { numLvl = Math.min(n[1].split('.').length, 3); body = n[2]; }
+                else if (only) { numLvl = Math.min(only[1].split('.').length, 3); body = ''; }
+
+                if (isHeading) {
+                    /* 标题行层级已定 */
+                } else if (numLvl) {
+                    lvl = Math.max(numLvl, indentLvl);          // 编号与缩进取更深的一层
+                } else {
+                    // 没有编号时靠缩进；若上文出现过标题，整体下沉一级（手写 MD 的常见写法）
+                    lvl = indentLvl + headingDepth;
+                }
+                if (lvl > 3) lvl = 3;
+                if (lvl < 1) lvl = 1;
+
+                if (body) {
+                    body = stripNoInner(body).trim();
+                    if (!body) return;
+                    if (!/[\u4e00-\u9fa5A-Za-z0-9]/.test(body)) return;   // 纯标点/残渣不成节点
+                } else if (!numLvl) {
+                    return;
+                }
+
+                var node = { t: body, c: [] };
+                if (lvl > 1 && lv[lvl - 2]) {
+                    lv[lvl - 2].c.push(node);
+                    lv[lvl - 1] = node;
+                    for (var d = lvl; d < 3; d++) lv[d] = null;
+                } else {
+                    roots.push(node);
+                    lv[0] = node; lv[1] = null; lv[2] = null;
+                }
+                if (isHeading) headingDepth = lvl;
+            });
+            return roots;
+        }
+
+        /* ================= 树 -> 文本 ================= */
+        function walk(roots, fn) {
+            (function rec(list, path, depth) {
+                list.forEach(function (n, i) {
+                    var p = path.concat(i + 1);
+                    fn(n, p, depth);
+                    rec(n.c || [], p, depth + 1);
+                });
+            })(roots || [], [], 1);
+        }
+        // 编号写法：一级带点（1.），二级起不带（1.1 / 1.1.1）
+        function noStr(p) {
+            var s = p.join('.');
+            return p.length === 1 ? (s + '.') : s;
+        }
+        function toFlat(roots) {
+            var out = [];
+            walk(roots, function (n, p) { out.push(noStr(p) + ' ' + n.t); });
+            return out.join('\n').replace(/[ \t]+$/gm, '');
+        }
+        function toOutline(roots, withNo) {
+            var out = [];
+            walk(roots, function (n, p, d) {
+                out.push(new Array(d).join('  ') + (withNo ? (noStr(p) + ' ') : '') + n.t);
+            });
+            return out.join('\n').replace(/[ \t]+$/gm, '');
+        }
+        function toMD(roots) {
+            var out = [];
+            walk(roots, function (n, p, d) {
+                if (d === 1) out.push('# ' + noStr(p) + ' ' + n.t);
+                else out.push(new Array(d).join('  ') + '- ' + noStr(p) + ' ' + n.t);
+            });
+            return out.join('\n').replace(/[ \t]+$/gm, '');
+        }
+        function leafCount(n) {
+            return (n.c && n.c.length) ? n.c.reduce(function (s, x) { return s + leafCount(x); }, 0) : 1;
+        }
+        function countNodes(roots) {
+            return (roots || []).reduce(function (s, n) { return s + 1 + countNodes(n.c || []); }, 0);
+        }
+        function nodeAt(p) {
+            var list = tree, cur = null;
+            for (var i = 0; i < p.length; i++) {
+                cur = list[p[i] - 1];
+                if (!cur) return null;
+                list = cur.c || [];
+            }
+            return cur;
+        }
+        function parentListOf(p) {
+            if (p.length === 1) return { list: tree, i: p[0] - 1 };
+            var par = nodeAt(p.slice(0, -1));
+            if (!par) return null;
+            if (!par.c) par.c = [];
+            return { list: par.c, i: p[p.length - 1] - 1 };
+        }
+        // 某一层最后一个节点的路径 —— 「往下加一格」就接在它后面
+        function lastPathAtDepth(d, list, path) {
+            list = list || tree; path = path || [];
+            var found = null;
+            for (var i = 0; i < list.length; i++) {
+                var np = path.concat(i + 1);
+                if (np.length === d) found = np;
+                var sub = lastPathAtDepth(d, list[i].c || [], np);
+                if (sub) found = sub;
+            }
+            return found;
+        }
+
+        /* ================= 视角读写 ================= */
+        function syncFromView() {
+            if (mode === 'mind') return;          // 网格直接改 tree，不需要回读
+            var e = el(IN_ID[mode]);
+            if (e) tree = parse(e.value);
+        }
+        function writeViews() {
+            if (el('fKpQuick')) el('fKpQuick').value = toFlat(tree);
+            if (el('fKpOutline')) el('fKpOutline').value = toOutline(tree, outlineNo);
+            if (el('fKpMd')) el('fKpMd').value = toMD(tree);
+        }
+        function syncFlatOnly() {
+            if (el('fKpQuick')) el('fKpQuick').value = toFlat(tree);
+        }
+        function updateStat() {
+            var s = el('kpStat');
+            if (!s) return;
+            var n = countNodes(tree);
+            s.textContent = n ? (n + ' 个节点 · ' + tree.length + ' 个一级标题') : '';
+        }
+        function applyMode() {
+            eachNode('#kpModes .kp-mode', function (b) {
+                b.classList.toggle('active', b.getAttribute('data-kpmode') === mode);
+            });
+            eachNode('.kp-view', function (v) {
+                v.hidden = v.getAttribute('data-kpview') !== mode;
+            });
+            writeViews();
+            renderGrid();
+            updateStat();
+        }
+        function setMode(next, keepTree) {
+            if (VIEWS.indexOf(next) < 0) next = 'default';
+            if (next !== mode) {
+                if (!keepTree) syncFromView();
+                mode = next;
+                store(KP_MODE_KEY, mode);
+            }
+            applyMode();
+        }
+
+        /* ================= 思维导图网格 ================= */
+        function cellHTML(node, depth, path, r0, span) {
+            var no = path.join('.');
+            var ph = depth === 1 ? '总标题 / 内容' : (depth === 2 ? '子标题 / 内容' : '细节 / 内容');
+            return '<div class="kp-cell kp-lv' + depth + '" data-path="' + esc(no) + '"' +
+                ' style="grid-column:' + depth + ';grid-row:' + r0 + ' / span ' + span + '">' +
+                '<span class="kp-cell-no">' + esc(no) + '</span>' +
+                '<div class="kp-cell-in" contenteditable="true" spellcheck="false"' +
+                ' data-path="' + esc(no) + '" data-ph="' + esc(ph) + '">' + esc(node.t) + '</div>' +
+                '<span class="kp-cell-ops">' +
+                '<button type="button" data-op="sib" data-path="' + esc(no) + '" title="在下方加一个同级单元格">＋</button>' +
+                '<button type="button" data-op="child" data-path="' + esc(no) + '" title="加一个下级单元格"' +
+                (depth >= 3 ? ' disabled' : '') + '>\u21b3</button>' +
+                '<button type="button" data-op="del" data-path="' + esc(no) + '" title="删除该单元格及其下级">\u2715</button>' +
+                '</span></div>';
+        }
+        function emitNode(html, node, depth, path, startRow) {
+            var span = leafCount(node);
+            html.push(cellHTML(node, depth, path, startRow, span));
+            var cur = startRow;
+            (node.c || []).forEach(function (ch, i) {
+                cur = emitNode(html, ch, depth + 1, path.concat(i + 1), cur);
+            });
+            return startRow + span;
+        }
+        function renderGrid() {
+            var g = el('kpGrid');
+            if (!g) return;
+            // 用 CSS 变量下发列宽：内联 grid-template-columns 会盖掉小屏媒体查询
+            g.style.setProperty('--kp-cols', COLS);
+            var add = el('kpGridAdd');
+            if (add) add.style.setProperty('--kp-cols', COLS);
+            if (!tree.length) {
+                g.innerHTML = '<div class="kp-grid-empty">还没有内容。点下面的「＋ 加到第 1 列」开始，或切到「默认」直接输入。</div>';
+            } else {
+                var html = [], r = 1;
+                tree.forEach(function (n, i) { r = emitNode(html, n, 1, [i + 1], r); });
+                g.innerHTML = html.join('');
+            }
+            syncFlatOnly();
+        }
+        function focusCell(p) {
+            var e = document.querySelector('#kpGrid .kp-cell-in[data-path="' + p.join('.') + '"]');
+            if (!e) return;
+            try {
+                e.focus();
+                var r = document.createRange();
+                r.selectNodeContents(e);
+                r.collapse(false);
+                var sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(r);
+            } catch (err) {}
+        }
+        function addSiblingOf(pathStr) {
+            var p = String(pathStr).split('.').map(Number);
+            var pl = parentListOf(p);
+            if (!pl || pl.i < 0 || pl.i >= pl.list.length) return;
+            pl.list.splice(pl.i + 1, 0, { t: '', c: [] });
+            renderGrid(); updateStat();
+            focusCell(p.slice(0, -1).concat(p[p.length - 1] + 1));
+        }
+        // 在某一列下方新增一格：归属第一行那个分组，于是上层单元格自然纵向合并
+        function addCellAt(col) {
+            col = Math.max(1, Math.min(3, parseInt(col, 10) || 1));
+            var p, parentPath = null;
+            if (col > 1) parentPath = lastPathAtDepth(col - 1);
+            if (!parentPath) {
+                tree.push({ t: '', c: [] });
+                p = [tree.length];
+            } else {
+                var par = nodeAt(parentPath);
+                if (!par) { tree.push({ t: '', c: [] }); p = [tree.length]; }
+                else {
+                    if (!par.c) par.c = [];
+                    par.c.push({ t: '', c: [] });
+                    p = parentPath.concat(par.c.length);
+                }
+            }
+            renderGrid(); updateStat();
+            focusCell(p);
+        }
+        function bindGrid() {
+            var g = el('kpGrid');
+            if (!g) return;
+            g.addEventListener('input', function (ev) {
+                var t = ev.target;
+                if (!t || !t.classList || !t.classList.contains('kp-cell-in')) return;
+                var nd = nodeAt(String(t.getAttribute('data-path')).split('.').map(Number));
+                if (!nd) return;
+                nd.t = String(t.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+$/, '');
+                syncFlatOnly(); updateStat();
+            });
+            g.addEventListener('keydown', function (ev) {
+                var t = ev.target;
+                if (!t || !t.classList || !t.classList.contains('kp-cell-in')) return;
+                if (ev.key === 'Enter' && !ev.shiftKey) {
+                    ev.preventDefault();
+                    addSiblingOf(t.getAttribute('data-path'));
+                }
+            });
+            g.addEventListener('click', function (ev) {
+                var b = (ev.target && ev.target.closest) ? ev.target.closest('button[data-op]') : null;
+                if (!b) return;
+                ev.preventDefault();
+                var p = String(b.getAttribute('data-path')).split('.').map(Number);
+                var op = b.getAttribute('data-op');
+                if (op === 'del') {
+                    var pl = parentListOf(p);
+                    if (pl && pl.i >= 0 && pl.i < pl.list.length) {
+                        pl.list.splice(pl.i, 1);
+                        renderGrid(); updateStat();
+                    }
+                } else if (op === 'sib') {
+                    addSiblingOf(b.getAttribute('data-path'));
+                } else if (op === 'child') {
+                    var nd = nodeAt(p);
+                    if (nd && p.length < 3) {
+                        if (!nd.c) nd.c = [];
+                        nd.c.push({ t: '', c: [] });
+                        renderGrid(); updateStat();
+                        focusCell(p.concat(nd.c.length));
+                    }
+                }
+            });
+        }
+
+        /* ================= 工具栏 ================= */
+        function insertAt(t, pos, s) {
+            if (t.setRangeText) {
+                t.setRangeText(s, pos, pos, 'end');
+            } else {
+                var v = t.value;
+                t.value = v.slice(0, pos) + s + v.slice(pos);
+                t.selectionStart = t.selectionEnd = pos + s.length;
+            }
+            try { t.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+        }
+        function fallbackCopy(txt) {
+            try {
+                var ta = document.createElement('textarea');
+                ta.value = txt;
+                ta.setAttribute('readonly', 'readonly');
+                ta.style.position = 'fixed';
+                ta.style.top = '-2000px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                toast('已复制 Markdown 到剪贴板');
+            } catch (e) { toast('复制失败，请手动选中 MD 文本框里的内容'); }
+        }
+        function copyText(txt) {
+            if (!String(txt || '').trim()) { toast('还没有内容可复制'); return; }
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(txt).then(
+                        function () { toast('已复制 Markdown 到剪贴板'); },
+                        function () { fallbackCopy(txt); }
+                    );
+                    return;
+                }
+            } catch (e) {}
+            fallbackCopy(txt);
+        }
+        function doRenumber() {
+            syncFromView();
+            if (mode === 'outline') outlineNo = true;
+            applyMode();
+            toast(mode === 'mind' ? '思维导图视角始终按层级编号（1 / 1.1 / 1.1.1）'
+                : (tree.length ? '已按层级重新编号' : '还没有内容，先输入知识点'));
+        }
+        function doToMD() {
+            syncFromView();
+            if (mode !== 'md') { mode = 'md'; store(KP_MODE_KEY, mode); }
+            applyMode();
+            copyText(el('fKpMd') ? el('fKpMd').value : toMD(tree));
+        }
+        function onTextInput() {
+            if (statTimer) clearTimeout(statTimer);
+            statTimer = setTimeout(function () {
+                var e = el(IN_ID[mode]);
+                if (e) tree = parse(e.value);
+                updateStat();
+            }, 400);
+        }
+        function onOutlineKey(e) {
+            var t = e.target;
+            if (!t) return;
+            var v = t.value, pos = (t.selectionStart == null) ? v.length : t.selectionStart;
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                var ls = v.lastIndexOf('\n', pos - 1) + 1;
+                var ind = (v.slice(ls, pos).match(/^[ \t]*/) || [''])[0];
+                insertAt(t, pos, '\n' + ind);
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                var s0 = v.lastIndexOf('\n', pos - 1) + 1;
+                var e0 = v.indexOf('\n', pos);
+                if (e0 < 0) e0 = v.length;
+                var line = v.slice(s0, e0);
+                var nl = e.shiftKey ? line.replace(/^( {1,2}|\t)/, '') : '  ' + line;
+                var delta = nl.length - line.length;
+                t.value = v.slice(0, s0) + nl + v.slice(e0);
+                t.selectionStart = t.selectionEnd = Math.max(s0, pos + delta);
+                try { t.dispatchEvent(new Event('input', { bubbles: true })); } catch (err) {}
+            }
+        }
+
+        /* ================= Tab 切换 ================= */
+        function setTab(t) {
+            curTab = (t === 'other') ? 'other' : 'kp';
+            eachNode('#recTabs .rec-tab', function (b) {
+                var on = b.getAttribute('data-rec') === curTab;
+                b.classList.toggle('active', on);
+                b.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            var pk = el('recPaneKp'), po = el('recPaneOther');
+            if (pk) pk.hidden = curTab !== 'kp';
+            if (po) po.hidden = curTab !== 'other';
+            store(REC_TAB_KEY, curTab);
+        }
+
+        /* ================= 草稿：10 秒自动保存 ================= */
+        var DRAFT_FIELDS = ['fCourse', 'fDate', 'fChapter', 'fSection', 'fResourceType', 'fSource',
+            'fStartTime', 'fEndTime', 'fDurationHours', 'fTomatoCount', 'fSelfAssessment',
+            'fAssessmentReason', 'fProblemSolving', 'fMemoryNetwork', 'fAiQA', 'fNotes', 'fKpQuick'];
+        // 有内容才算有草稿：只勾了「学习状态自评」之类不算
+        var DRAFT_MEANINGFUL = ['fProblemSolving', 'fMemoryNetwork', 'fAiQA', 'fNotes', 'fKpQuick',
+            'fDurationHours', 'fAssessmentReason', 'fStartTime', 'fEndTime'];
+        // 课程 / 章 / 节 依赖动态生成的 options，恢复时容易对不上，刻意跳过
+        var DRAFT_SKIP_RESTORE = ['fCourse', 'fChapter', 'fSection', 'fKpQuick'];
+
+        function isEditingRecord() {
+            try { return !!(typeof state !== 'undefined' && state && state.editingId); } catch (e) { return false; }
+        }
+        function collectDraft() {
+            syncFromView();
+            var v = {};
+            DRAFT_FIELDS.forEach(function (id) { var e = el(id); if (e) v[id] = e.value; });
+            var u = el('fUnderstanding'); if (u) v.fUnderstanding = u.value;
+            var m = el('fAddToMemory'); if (m) v.fAddToMemory = !!m.checked;
+            return { t: Date.now(), mode: mode, outlineNo: outlineNo, tab: curTab, tree: tree, v: v };
+        }
+        function draftMeaningful(d) {
+            if (!d) return false;
+            var v = d.v || {};
+            for (var i = 0; i < DRAFT_MEANINGFUL.length; i++) {
+                if (String(v[DRAFT_MEANINGFUL[i]] || '').trim()) return true;
+            }
+            return countNodes(d.tree || []) > 0;
+        }
+        function setDraftStat(txt) {
+            var s = el('kpDraftStat');
+            if (s) s.textContent = txt;
+        }
+        function saveDraft() {
+            if (isEditingRecord()) return;
+            var d = collectDraft();
+            if (!draftMeaningful(d)) { drop(DRAFT_KEY); setDraftStat(''); return; }
+            store(DRAFT_KEY, JSON.stringify(d));
+            setDraftStat('已自动保存 ' + clockStr());
+        }
+        function clearDraft() {
+            drop(DRAFT_KEY);
+            setDraftStat('');
+            var bar = el('recDraftBar');
+            if (bar) bar.hidden = true;
+        }
+        function dropDraftByUser() {
+            if (!confirm('丢弃草稿？知识点速记、解题思路、记忆网络、AI 问答、备注 都会被清空。')) return;
+            clearDraft();
+            ['fProblemSolving', 'fMemoryNetwork', 'fAiQA', 'fNotes', 'fKpQuick'].forEach(function (id) {
+                var e = el(id); if (e) e.value = '';
+            });
+            tree = [];
+            applyMode();
+            toast('草稿已丢弃');
+        }
+        function restoreDraft() {
+            var raw = load(DRAFT_KEY);
+            if (!raw) return;
+            var d = null;
+            try { d = JSON.parse(raw); } catch (e) { clearDraft(); return; }
+            if (!draftMeaningful(d)) return;
+            window.setTimeout(function () {
+                if (isEditingRecord()) return;
+                var v = d.v || {};
+                Object.keys(v).forEach(function (id) {
+                    if (DRAFT_SKIP_RESTORE.indexOf(id) >= 0) return;
+                    var e = el(id);
+                    if (!e) return;
+                    if (e.tagName === 'SELECT') {
+                        for (var i = 0; i < e.options.length; i++) {
+                            if (e.options[i].value === String(v[id])) { e.value = v[id]; return; }
+                        }
+                    } else if (e.type === 'checkbox') {
+                        e.checked = !!v[id];
+                    } else {
+                        e.value = v[id];
+                    }
+                });
+                try {
+                    var n = parseInt(v.fUnderstanding, 10) || 0;
+                    if (n > 0) {
+                        var ue = el('fUnderstanding'); if (ue) ue.value = n;
+                        if (typeof updateStars === 'function') updateStars(n);
+                        var sl = el('starLabel');
+                        if (sl && typeof getStarLabel === 'function') sl.textContent = n + ' 星 - ' + getStarLabel(n);
+                        try { if (typeof selectedStar !== 'undefined') selectedStar = n; } catch (e2) {}
+                    }
+                } catch (e3) {}
+                tree = (d.tree && d.tree.length) ? d.tree : parse(el('fKpQuick') ? el('fKpQuick').value : '');
+                outlineNo = !!d.outlineNo;
+                mode = VIEWS.indexOf(d.mode) >= 0 ? d.mode : 'default';
+                applyMode();
+                if (d.tab === 'other') setTab('other');
+                var bar = el('recDraftBar'), msg = el('recDraftMsg');
+                if (bar && msg) {
+                    bar.hidden = false;
+                    msg.textContent = '已恢复 ' + clockStr(d.t) + ' 自动保存的草稿（打开表单后每 10 秒自动保存一次）';
+                }
+            }, 700);
+        }
+
+        /* ================= 初始化 ================= */
+        function init() {
+            if (!el('fKpQuick')) return;           // 表单不在这台设备上（理论上不会）
+            var savedMode = load(KP_MODE_KEY);
+            mode = (VIEWS.indexOf(savedMode) >= 0) ? savedMode : 'default';
+            tree = parse(el('fKpQuick').value);
+            bindGrid();
+            eachNode('#kpModes .kp-mode', function (b) {
+                b.addEventListener('click', function () { setMode(b.getAttribute('data-kpmode')); });
+            });
+            eachNode('#recTabs .rec-tab', function (b) {
+                b.addEventListener('click', function () { setTab(b.getAttribute('data-rec')); });
+            });
+            ['fKpQuick', 'fKpOutline', 'fKpMd'].forEach(function (id) {
+                var e = el(id);
+                if (e) e.addEventListener('input', onTextInput);
+            });
+            var ob = el('fKpOutline');
+            if (ob) ob.addEventListener('keydown', onOutlineKey);
+            var rn = el('kpRenumberBtn'); if (rn) rn.addEventListener('click', doRenumber);
+            var tm = el('kpToMdBtn'); if (tm) tm.addEventListener('click', doToMD);
+            var cm = el('kpCopyMdBtn');
+            if (cm) cm.addEventListener('click', function () { syncFromView(); copyText(toMD(tree)); });
+            var ga = el('kpGridAdd');
+            if (ga) ga.addEventListener('click', function (ev) {
+                var b = (ev.target && ev.target.closest) ? ev.target.closest('button[data-addcol]') : null;
+                if (b) addCellAt(b.getAttribute('data-addcol'));
+            });
+            var dd = el('recDraftDrop'); if (dd) dd.addEventListener('click', dropDraftByUser);
+            var f = el('recordForm');
+            if (f) f.addEventListener('reset', function () { window.setTimeout(clearDraft, 0); });
+            setTab(load(REC_TAB_KEY) === 'other' ? 'other' : 'kp');
+            applyMode();
+            restoreDraft();
+            if (draftTimer) clearInterval(draftTimer);
+            draftTimer = setInterval(saveDraft, DRAFT_MS);
+            window.addEventListener('pagehide', function () { saveDraft(); });
+        }
+
+        // 供外部（表单重置 / 编辑既有记录）调用
+        window.CpaKpEditor = {
+            clearAll: function () {
+                var q = el('fKpQuick'); if (q) q.value = '';
+                tree = [];
+                applyMode();
+            },
+            onRecordLoad: function (rec) {
+                var q = el('fKpQuick');
+                if (q) q.value = (rec && rec.kpQuickRaw) || '';
+                tree = parse(q ? q.value : '');
+                applyMode();
+            },
+            syncFromView: syncFromView,
+            clearDraft: clearDraft,
+            saveDraft: saveDraft,
+            setTab: setTab,
+            setMode: setMode
+        };
+
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+        else init();
+    })();
+    </script>
 </body>
 </html>
