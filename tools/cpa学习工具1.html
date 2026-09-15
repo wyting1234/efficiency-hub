@@ -2141,7 +2141,11 @@
         }
         .rec-tab:hover { color: var(--primary-dark); }
         .rec-tab.active { color: var(--primary-dark); border-bottom-color: var(--primary); }
-        .rec-pane { display: flex; flex-direction: column; gap: 16px; }
+        /* min-width:0 一路打通到 .kp-grid-wrap —— 否则网格的 min-width 会顺着
+           flex 项的 min-width:auto 把每一层父级都撑到 620px，结果是整页横向滚动，
+           而不是网格自己滚（手机上尤其难看） */
+        .form-row.full > .field { min-width: 0; }
+        .rec-pane { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
         .rec-pane[hidden] { display: none; }
         .rec-pane .field { display: flex; flex-direction: column; min-width: 0; }
         .rec-pane textarea { width: 100%; min-height: 152px; line-height: 1.75; resize: vertical; }
@@ -2174,8 +2178,11 @@
         .kp-mode:last-child { border-right: none; }
         .kp-mode:hover { background: var(--primary-bg); color: var(--primary-dark); }
         .kp-mode.active { background: var(--primary); color: #FAF7F1; }
-        .kp-view { display: flex; flex-direction: column; gap: 10px; }
+        .kp-view { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
         .kp-view[hidden] { display: none; }
+        /* 列数开关：只有思维导图视角下才出现 */
+        .kp-colgate { display: inline-flex; align-items: center; gap: 8px; }
+        .kp-colgate[hidden] { display: none; }
 
         /* 速记工具栏 */
         .kp-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
@@ -2191,21 +2198,31 @@
         /* 思维导图网格 */
         .kp-grid-legend { font-size: 12px; color: var(--text-secondary); }
         .kp-grid-legend b { color: var(--primary-dark); font-weight: 600; }
-        .kp-grid-wrap { overflow-x: auto; }
+        .kp-hidden-hint {
+            font-size: 12px; color: #8A6D3B; background: #FCF7EC;
+            border: 1px solid #E6D9BE; border-radius: 8px; padding: 6px 10px;
+        }
+        .kp-hidden-hint[hidden] { display: none; }
+        .kp-grid-wrap { overflow-x: auto; min-width: 0; }
         .kp-grid {
-            display: grid; gap: 6px; min-width: 620px; padding: 8px;
+            display: grid; gap: 6px; min-width: var(--kp-min, 620px); padding: 8px;
             grid-template-columns: var(--kp-cols, 30fr 32fr 38fr);
             border: 1px solid var(--border); border-radius: var(--radius-sm); background: #FDFBF7;
         }
         .kp-cell {
-            position: relative; display: flex; align-items: stretch; gap: 6px;
+            /* 文字在格子里竖直居中：合并格行高很大，靠顶部会显得文字被吊在上面 */
+            position: relative; display: flex; align-items: center; gap: 6px;
             border: 1px solid var(--border); border-radius: 9px; background: #fff;
             padding: 7px 9px; min-height: 38px; min-width: 0;
         }
         .kp-cell.kp-lv1 { background: #F3EDE3; border-color: #DCCFB8; }
         .kp-cell.kp-lv2 { background: #FAF7F1; }
         .kp-cell.kp-lv3 { background: #fff; }
-        .kp-cell .kp-cell-no { flex: 0 0 auto; min-width: 24px; padding-top: 2px; font-size: 11.5px; font-weight: 700; color: var(--primary); }
+        .kp-cell.kp-lv4 { background: #F5F6F7; }
+        /* 有下级的父格（跨行合并格）：编号 + 文字作为一组，在整块区域里居中 */
+        .kp-cell.kp-merged { justify-content: center; }
+        .kp-cell.kp-merged .kp-cell-in { flex: 0 1 auto; min-width: 56px; text-align: center; }
+        .kp-cell .kp-cell-no { flex: 0 0 auto; min-width: 24px; font-size: 11.5px; font-weight: 700; color: var(--primary); }
         .kp-cell .kp-cell-in {
             flex: 1; min-width: 0; padding: 1px 2px; font-size: 14px; line-height: 1.55;
             color: var(--text); white-space: pre-wrap; word-break: break-word; outline: none;
@@ -2220,7 +2237,7 @@
         }
         .kp-cell .kp-cell-ops button:hover { background: var(--primary-bg); color: var(--primary-dark); }
         .kp-cell .kp-cell-ops button:disabled { opacity: 0.35; }
-        .kp-grid-add { display: grid; gap: 6px; min-width: 620px; grid-template-columns: var(--kp-cols, 30fr 32fr 38fr); }
+        .kp-grid-add { display: grid; gap: 6px; min-width: var(--kp-min, 620px); grid-template-columns: repeat(var(--kp-add-cols, 3), 1fr); }
         .kp-grid-add button {
             border: 1px dashed #C9BBA4; border-radius: 9px; background: transparent;
             padding: 6px 8px; font-family: inherit; font-size: 12px; color: var(--text-secondary);
@@ -2234,6 +2251,11 @@
             .rec-pane textarea { min-height: 128px; }
             .rec-pane.rec-pane-out textarea { min-height: 160px; }
             .kp-grid, .kp-grid-add { min-width: 0; }
+            /* 4 列在手机上压得太狠（每列 ~85px，「要点」会被拆成竖排），
+               保留一个下限让 .kp-grid-wrap 横向滚动，单格仍然可读。
+               注意只给网格加，下面那排「加到第 N 列」在手机上本来就是单列堆叠，
+               再加下限就会顶穿页面（它在 .kp-grid-wrap 之外，没人裁它）。 */
+            .kp-grid[data-cols="4"] { min-width: 620px; }
             .kp-grid-add { grid-template-columns: 1fr; }
             .kp-mode-row { gap: 6px; }
             .kp-modes .kp-mode { padding: 3px 8px; }
@@ -2491,6 +2513,13 @@
                                             <button type="button" class="kp-mode" data-kpmode="mind" title="列 = 层级，父单元格纵向合并">思维导图视角</button>
                                             <button type="button" class="kp-mode" data-kpmode="md" title="Markdown 源码，可编辑并与其他视角双向同步">MD视角</button>
                                         </span>
+                                        <span class="kp-colgate" id="kpColGate" hidden>
+                                            <span class="kp-mode-cap">列数</span>
+                                            <span class="kp-modes" id="kpCols">
+                                                <button type="button" class="kp-mode active" data-kpcols="3" title="第 1~3 列：总标题 / 子标题 / 细节">3 列</button>
+                                                <button type="button" class="kp-mode" data-kpcols="4" title="第 1~4 列：总标题 / 子标题 / 细节 / 要点">4 列</button>
+                                            </span>
+                                        </span>
                                     </div>
 
                                     <div class="kp-view" data-kpview="default">
@@ -2502,12 +2531,14 @@
                                     </div>
 
                                     <div class="kp-view" data-kpview="mind" hidden>
-                                        <div class="kp-grid-legend">列 = 层级：<b>第 1 列</b> 总标题 · <b>第 2 列</b> 子标题 · <b>第 3 列</b> 细节；在某一列下方新增单元格时，同一分组的上层单元格会自动纵向合并。回车 = 在下方加同级，悬停单元格右上角可加下级或删除。</div>
+                                        <div class="kp-grid-legend">列 = 层级：<span id="kpLegendCols"></span>；在某一列下方新增单元格时，同一分组的上层单元格会自动纵向合并。回车 = 在下方加同级，悬停单元格右上角可加下级或删除。</div>
+                                        <div class="kp-hidden-hint" id="kpHiddenHint" hidden></div>
                                         <div class="kp-grid-wrap"><div class="kp-grid" id="kpGrid"></div></div>
                                         <div class="kp-grid-add" id="kpGridAdd">
                                             <button type="button" data-addcol="1">＋ 加到第 1 列</button>
                                             <button type="button" data-addcol="2">＋ 加到第 2 列</button>
                                             <button type="button" data-addcol="3">＋ 加到第 3 列</button>
+                                            <button type="button" data-addcol="4" hidden>＋ 加到第 4 列</button>
                                         </div>
                                     </div>
 
@@ -2516,7 +2547,7 @@
                                     </div>
 
                                     <div class="kp-bar">
-                                        <button type="button" id="kpRenumberBtn" title="按层级重新编号（1 / 1.1 / 1.1.1）">🔢 一键编号</button>
+                                        <button type="button" id="kpRenumberBtn" title="按层级重新编号（1 / 1.1 / 1.1.1 / 1.1.1.1）">🔢 一键编号</button>
                                         <button type="button" id="kpToMdBtn" title="生成 Markdown，切到 MD 视角并复制到剪贴板">📋 转 Markdown</button>
                                         <button type="button" id="kpCopyMdBtn" title="复制当前 Markdown 到剪贴板">⧉ 复制 MD</button>
                                         <span class="kp-bar-stat" id="kpStat"></span>
@@ -4993,7 +5024,7 @@
         // 去掉粘贴文本自带的序号：1. / 1、/ 1) / （1）/ 1 空格
         function stripKpNo(s) {
             return String(s || '')
-                .replace(/^\s*[0-9]{1,3}(?:\.[0-9]{1,3}){1,2}\s*/, '')
+                .replace(/^\s*[0-9]{1,3}(?:\.[0-9]{1,3}){1,3}\s*/, '')
                 .replace(/^\s*[0-9]{1,3}\s*[.、．)）:：]\s*/, '')
                 .replace(/^\s*[(\uff08\u3010]?\s*[0-9]{1,3}\s*[)\uff09\u3011]?\s*[.、．:：]?\s+(?=\S)/, '')
                 .trim();
@@ -5430,8 +5461,8 @@
         // 统一识别行首编号：返回 {len: 前缀字符数, next: 下一行的编号前缀}；识别不出返回 null
         function numPrefixInfo(line) {
             let m;
-            // ⓪ 层级编号：1.1 / 1.1.1 —— 只把最后一段 +1（须放在 ① 之前，否则 1.1 会被当成 1. 续成 2.）
-            if ((m = line.match(/^(\s*)(\d{1,3}(?:\.\d{1,3}){1,2})([.、．)）:：])?(\s*)/))) {
+            // ⓪ 层级编号：1.1 / 1.1.1 / 1.1.1.1 —— 只把最后一段 +1（须放在 ① 之前，否则 1.1 会被当成 1. 续成 2.）
+            if ((m = line.match(/^(\s*)(\d{1,3}(?:\.\d{1,3}){1,3})([.、．)）:：])?(\s*)/))) {
                 const segs = m[2].split('.');
                 segs[segs.length - 1] = String(parseInt(segs[segs.length - 1], 10) + 1);
                 return { len: m[0].length, next: m[1] + segs.join('.') + (m[3] || '') + ' ' };
@@ -9977,14 +10008,16 @@
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
     <script>
     /* =====================================================================
-       学习记录增强 v1：
+       学习记录增强 v2：
          1) 红框区改为「知识点记录 / 其他」两个 Tab，各自纵向铺满
          2) 知识点速记支持四种展示模式：默认 / 大纲视角 / 思维导图视角 / MD视角
-         3) 一键编号（1 / 1.1 / 1.1.1）与一键转 Markdown
+            思维导图视角可切 3 列 / 4 列（列 = 层级，父格纵向合并、文字居中）
+         3) 一键编号（1 / 1.1 / 1.1.1 / 1.1.1.1）与一键转 Markdown
          4) 表单草稿每 10 秒自动保存到 localStorage，下次打开自动恢复
 
        数据流：各视角文本 <-> 树(tree) <-> #fKpQuick
        #fKpQuick 始终是保存时的唯一数据源，所以 handleFormSubmit 完全不用改。
+       列数只影响网格的渲染宽度，不改树 —— 3 列模式下第 4 列的内容只是不显示，切回即还原。
        ===================================================================== */
     (function () {
         'use strict';
@@ -9992,15 +10025,21 @@
         var KP_MODE_KEY = 'hub_cpa_kp_mode_v1';
         var REC_TAB_KEY = 'hub_cpa_rec_tab_v1';
         var DRAFT_KEY   = 'hub_cpa_draft_v1';
+        var COL_KEY     = 'hub_cpa_kp_cols_v1';
         var DRAFT_MS    = 10000;
         var VIEWS       = ['default', 'outline', 'mind', 'md'];
         var IN_ID       = { default: 'fKpQuick', outline: 'fKpOutline', md: 'fKpMd' };
-        var COLS        = '30fr 32fr 38fr';
+        var MAXD        = 4;                                   // 树最深支持 4 层
+        var COLS_N      = { 3: '30fr 32fr 38fr', 4: '24fr 25fr 25fr 26fr' };
+        var MINW        = { 3: '620px', 4: '820px' };
+        var COLNAME     = ['', '总标题', '子标题', '细节', '要点'];
+        var PH          = ['', '总标题 / 内容', '子标题 / 内容', '细节 / 内容', '要点 / 内容'];
 
         var mode = 'default';
         var curTab = 'kp';
         var outlineNo = false;
         var tree = [];
+        var colCount = 3;                                      // 当前展示列数：3 或 4
         var statTimer = null;
         var draftTimer = null;
 
@@ -10030,32 +10069,33 @@
         /* ================= 文本 -> 树 ================= */
         function stripNoInner(s) {
             return String(s || '')
-                .replace(/^[0-9]{1,3}(?:\.[0-9]{1,3}){1,2}\s*/, '')
+                .replace(/^[0-9]{1,3}(?:\.[0-9]{1,3}){1,3}\s*/, '')
                 .replace(/^[0-9]{1,3}\s*[.、．)）:：]\s*/, '')
                 .replace(/^[(\uff08\u3010]?\s*[0-9]{1,3}\s*[)\uff09\u3011]?\s*[.、．:：]?\s+(?=\S)/, '')
                 .trim();
         }
         // 一个解析器吃下四种视角：层级编号 / 缩进 / Markdown 标题与列表
         function parse(text) {
-            var roots = [], lv = [null, null, null];
+            var roots = [], lv = [], k;
+            for (k = 0; k < MAXD; k++) lv.push(null);
             var headingDepth = 0;
             String(text || '').split(/\r?\n/).forEach(function (raw) {
                 var line = raw.replace(/\s+$/, '');
                 if (!line.trim()) return;
                 var indent = (line.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '  ').length;
-                var indentLvl = Math.min(Math.floor(indent / 2) + 1, 3);
+                var indentLvl = Math.min(Math.floor(indent / 2) + 1, MAXD);
                 var body = line.trim();
                 var lvl = 0, numLvl = 0, isHeading = false, isList = false;
                 var h = body.match(/^(#{1,6})\s+(.*)$/);
-                if (h) { isHeading = true; lvl = Math.min(h[1].length, 3); body = h[2]; }
+                if (h) { isHeading = true; lvl = Math.min(h[1].length, MAXD); body = h[2]; }
                 var lm = body.match(/^[-*+\u2022\u00b7]\s+(.*)$/);
                 if (lm) { isList = true; body = lm[1]; }
                 // 带内容的编号行
-                var n = body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,2})\s*[.、．)）:：]?\s+(?=\S)(.*)$/);
+                var n = body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,3})\s*[.、．)）:：]?\s+(?=\S)(.*)$/);
                 // 只有编号没有内容：这是刚加出来还没填的空格子，保留它（否则层级会塌）
-                var only = n ? null : body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,2})\s*[.、．)）:：]?$/);
-                if (n) { numLvl = Math.min(n[1].split('.').length, 3); body = n[2]; }
-                else if (only) { numLvl = Math.min(only[1].split('.').length, 3); body = ''; }
+                var only = n ? null : body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,3})\s*[.、．)）:：]?$/);
+                if (n) { numLvl = Math.min(n[1].split('.').length, MAXD); body = n[2]; }
+                else if (only) { numLvl = Math.min(only[1].split('.').length, MAXD); body = ''; }
 
                 if (isHeading) {
                     /* 标题行层级已定 */
@@ -10065,7 +10105,7 @@
                     // 没有编号时靠缩进；若上文出现过标题，整体下沉一级（手写 MD 的常见写法）
                     lvl = indentLvl + headingDepth;
                 }
-                if (lvl > 3) lvl = 3;
+                if (lvl > MAXD) lvl = MAXD;
                 if (lvl < 1) lvl = 1;
 
                 if (body) {
@@ -10080,10 +10120,11 @@
                 if (lvl > 1 && lv[lvl - 2]) {
                     lv[lvl - 2].c.push(node);
                     lv[lvl - 1] = node;
-                    for (var d = lvl; d < 3; d++) lv[d] = null;
+                    for (var d = lvl; d < MAXD; d++) lv[d] = null;
                 } else {
                     roots.push(node);
-                    lv[0] = node; lv[1] = null; lv[2] = null;
+                    for (k = 0; k < MAXD; k++) lv[k] = null;
+                    lv[0] = node;
                 }
                 if (isHeading) headingDepth = lvl;
             });
@@ -10161,10 +10202,17 @@
         }
 
         /* ================= 视角读写 ================= */
+        // 只有用户真的在文本框里改过，才把文本回读成树。
+        // 否则每次切视角都会绕一圈纯文本：而「大纲视角」是纯缩进、承载不了空节点，
+        // 网格里刚加出来的空格一经过它就没了（默认视角靠编号还能救回来）。
+        var viewDirty = { default: false, outline: false, md: false };
+        function resetDirty() { viewDirty = { default: false, outline: false, md: false }; }
         function syncFromView() {
             if (mode === 'mind') return;          // 网格直接改 tree，不需要回读
+            if (!viewDirty[mode]) return;         // 文本没被人动过，树就是最新的
             var e = el(IN_ID[mode]);
             if (e) tree = parse(e.value);
+            viewDirty[mode] = false;
         }
         function writeViews() {
             if (el('fKpQuick')) el('fKpQuick').value = toFlat(tree);
@@ -10180,6 +10228,13 @@
             var n = countNodes(tree);
             s.textContent = n ? (n + ' 个节点 · ' + tree.length + ' 个一级标题') : '';
         }
+        function applyCols() {
+            eachNode('#kpCols .kp-mode', function (b) {
+                b.classList.toggle('active', (+b.getAttribute('data-kpcols')) === colCount);
+            });
+            var gate = el('kpColGate');
+            if (gate) gate.hidden = (mode !== 'mind');   // 列数只对思维导图视角有意义
+        }
         function applyMode() {
             eachNode('#kpModes .kp-mode', function (b) {
                 b.classList.toggle('active', b.getAttribute('data-kpmode') === mode);
@@ -10187,6 +10242,7 @@
             eachNode('.kp-view', function (v) {
                 v.hidden = v.getAttribute('data-kpview') !== mode;
             });
+            applyCols();
             writeViews();
             renderGrid();
             updateStat();
@@ -10200,12 +10256,22 @@
             }
             applyMode();
         }
+        // 列数：只改展示宽度，树不动 —— 切回多列时第 4 列的内容原样回来
+        function setCols(n) {
+            n = (parseInt(n, 10) === 4) ? 4 : 3;
+            if (n === colCount) { applyCols(); renderGrid(); return; }
+            syncFromView();
+            colCount = n;
+            store(COL_KEY, String(colCount));
+            applyMode();
+        }
 
         /* ================= 思维导图网格 ================= */
         function cellHTML(node, depth, path, r0, span) {
             var no = path.join('.');
-            var ph = depth === 1 ? '总标题 / 内容' : (depth === 2 ? '子标题 / 内容' : '细节 / 内容');
-            return '<div class="kp-cell kp-lv' + depth + '" data-path="' + esc(no) + '"' +
+            var ph = PH[depth] || '内容';
+            return '<div class="kp-cell kp-lv' + depth + (span > 1 ? ' kp-merged' : '') + '"' +
+                ' data-path="' + esc(no) + '"' +
                 ' style="grid-column:' + depth + ';grid-row:' + r0 + ' / span ' + span + '">' +
                 '<span class="kp-cell-no">' + esc(no) + '</span>' +
                 '<div class="kp-cell-in" contenteditable="true" spellcheck="false"' +
@@ -10213,26 +10279,65 @@
                 '<span class="kp-cell-ops">' +
                 '<button type="button" data-op="sib" data-path="' + esc(no) + '" title="在下方加一个同级单元格">＋</button>' +
                 '<button type="button" data-op="child" data-path="' + esc(no) + '" title="加一个下级单元格"' +
-                (depth >= 3 ? ' disabled' : '') + '>\u21b3</button>' +
+                (depth >= colCount ? ' disabled' : '') + '>\u21b3</button>' +
                 '<button type="button" data-op="del" data-path="' + esc(no) + '" title="删除该单元格及其下级">\u2715</button>' +
                 '</span></div>';
         }
+        // 只统计「看得见的」叶子：超出当前列数的层级不算行数，否则父格会撑出空行
+        function visLeaves(n, depth) {
+            if (depth >= colCount || !n.c || !n.c.length) return 1;
+            return n.c.reduce(function (s, x) { return s + visLeaves(x, depth + 1); }, 0);
+        }
         function emitNode(html, node, depth, path, startRow) {
-            var span = leafCount(node);
+            var span = visLeaves(node, depth);
             html.push(cellHTML(node, depth, path, startRow, span));
             var cur = startRow;
-            (node.c || []).forEach(function (ch, i) {
-                cur = emitNode(html, ch, depth + 1, path.concat(i + 1), cur);
-            });
+            if (depth < colCount) {
+                (node.c || []).forEach(function (ch, i) {
+                    cur = emitNode(html, ch, depth + 1, path.concat(i + 1), cur);
+                });
+            }
             return startRow + span;
+        }
+        // 被列数挡住的节点数（3 列模式下的第 4 列）
+        function hiddenCount() {
+            var n = 0;
+            walk(tree, function (nd, p) { if (p.length > colCount) n++; });
+            return n;
+        }
+        function paintLegend() {
+            var lg = el('kpLegendCols');
+            if (lg) {
+                var parts = [];
+                for (var i = 1; i <= colCount; i++) parts.push('<b>第 ' + i + ' 列</b> ' + COLNAME[i]);
+                lg.innerHTML = parts.join(' · ');
+            }
+            var hint = el('kpHiddenHint');
+            if (hint) {
+                var hid = hiddenCount();
+                hint.hidden = !hid;
+                hint.textContent = hid
+                    ? ('有 ' + hid + ' 个第 ' + (colCount + 1) + ' 列及更深的单元格未显示（数据没丢，切到 4 列即可看到）')
+                    : '';
+            }
         }
         function renderGrid() {
             var g = el('kpGrid');
             if (!g) return;
-            // 用 CSS 变量下发列宽：内联 grid-template-columns 会盖掉小屏媒体查询
-            g.style.setProperty('--kp-cols', COLS);
+            // 用 CSS 变量下发列宽/最小宽：内联 grid-template-columns 会盖掉小屏媒体查询
+            g.style.setProperty('--kp-cols', COLS_N[colCount]);
+            g.style.setProperty('--kp-min', MINW[colCount]);
+            g.setAttribute('data-cols', colCount);          // 小屏媒体查询按列数区别对待
             var add = el('kpGridAdd');
-            if (add) add.style.setProperty('--kp-cols', COLS);
+            if (add) {
+                add.style.setProperty('--kp-min', MINW[colCount]);
+                add.style.setProperty('--kp-add-cols', colCount);
+                add.setAttribute('data-cols', colCount);
+                eachNode('#kpGridAdd button[data-addcol]', function (b) {
+                    b.hidden = (+b.getAttribute('data-addcol')) > colCount;
+                });
+            }
+            paintLegend();
             if (!tree.length) {
                 g.innerHTML = '<div class="kp-grid-empty">还没有内容。点下面的「＋ 加到第 1 列」开始，或切到「默认」直接输入。</div>';
             } else {
@@ -10265,7 +10370,7 @@
         }
         // 在某一列下方新增一格：归属第一行那个分组，于是上层单元格自然纵向合并
         function addCellAt(col) {
-            col = Math.max(1, Math.min(3, parseInt(col, 10) || 1));
+            col = Math.max(1, Math.min(colCount, parseInt(col, 10) || 1));
             var p, parentPath = null;
             if (col > 1) parentPath = lastPathAtDepth(col - 1);
             if (!parentPath) {
@@ -10304,7 +10409,16 @@
             });
             g.addEventListener('click', function (ev) {
                 var b = (ev.target && ev.target.closest) ? ev.target.closest('button[data-op]') : null;
-                if (!b) return;
+                if (!b) {
+                    // 居中后的父格，可编辑区只有内容那么宽；点格子空白处也落到编辑区，
+                    // 但点在文字本身上要保留浏览器原生的「按点击位置落光标」
+                    var cell = (ev.target && ev.target.closest) ? ev.target.closest('.kp-cell') : null;
+                    if (cell) {
+                        var inp = cell.querySelector('.kp-cell-in');
+                        if (inp && ev.target !== inp) inp.focus();
+                    }
+                    return;
+                }
                 ev.preventDefault();
                 var p = String(b.getAttribute('data-path')).split('.').map(Number);
                 var op = b.getAttribute('data-op');
@@ -10380,10 +10494,14 @@
             copyText(el('fKpMd') ? el('fKpMd').value : toMD(tree));
         }
         function onTextInput() {
+            var m = mode;
+            viewDirty[m] = true;
             if (statTimer) clearTimeout(statTimer);
             statTimer = setTimeout(function () {
-                var e = el(IN_ID[mode]);
+                if (mode !== m) { viewDirty[m] = false; return; }   // 已切走：syncFromView 刚回读过
+                var e = el(IN_ID[m]);
                 if (e) tree = parse(e.value);
+                viewDirty[m] = false;
                 updateStat();
             }, 400);
         }
@@ -10443,7 +10561,7 @@
             DRAFT_FIELDS.forEach(function (id) { var e = el(id); if (e) v[id] = e.value; });
             var u = el('fUnderstanding'); if (u) v.fUnderstanding = u.value;
             var m = el('fAddToMemory'); if (m) v.fAddToMemory = !!m.checked;
-            return { t: Date.now(), mode: mode, outlineNo: outlineNo, tab: curTab, tree: tree, v: v };
+            return { t: Date.now(), mode: mode, cols: colCount, outlineNo: outlineNo, tab: curTab, tree: tree, v: v };
         }
         function draftMeaningful(d) {
             if (!d) return false;
@@ -10477,6 +10595,7 @@
                 var e = el(id); if (e) e.value = '';
             });
             tree = [];
+            resetDirty();
             applyMode();
             toast('草稿已丢弃');
         }
@@ -10515,6 +10634,7 @@
                 } catch (e3) {}
                 tree = (d.tree && d.tree.length) ? d.tree : parse(el('fKpQuick') ? el('fKpQuick').value : '');
                 outlineNo = !!d.outlineNo;
+                if (d.cols === 3 || d.cols === 4) colCount = d.cols;
                 mode = VIEWS.indexOf(d.mode) >= 0 ? d.mode : 'default';
                 applyMode();
                 if (d.tab === 'other') setTab('other');
@@ -10531,10 +10651,14 @@
             if (!el('fKpQuick')) return;           // 表单不在这台设备上（理论上不会）
             var savedMode = load(KP_MODE_KEY);
             mode = (VIEWS.indexOf(savedMode) >= 0) ? savedMode : 'default';
+            colCount = (parseInt(load(COL_KEY), 10) === 4) ? 4 : 3;
             tree = parse(el('fKpQuick').value);
             bindGrid();
             eachNode('#kpModes .kp-mode', function (b) {
                 b.addEventListener('click', function () { setMode(b.getAttribute('data-kpmode')); });
+            });
+            eachNode('#kpCols .kp-mode', function (b) {
+                b.addEventListener('click', function () { setCols(b.getAttribute('data-kpcols')); });
             });
             eachNode('#recTabs .rec-tab', function (b) {
                 b.addEventListener('click', function () { setTab(b.getAttribute('data-rec')); });
@@ -10570,19 +10694,23 @@
             clearAll: function () {
                 var q = el('fKpQuick'); if (q) q.value = '';
                 tree = [];
+                resetDirty();
                 applyMode();
             },
             onRecordLoad: function (rec) {
                 var q = el('fKpQuick');
                 if (q) q.value = (rec && rec.kpQuickRaw) || '';
                 tree = parse(q ? q.value : '');
+                resetDirty();
                 applyMode();
             },
             syncFromView: syncFromView,
             clearDraft: clearDraft,
             saveDraft: saveDraft,
             setTab: setTab,
-            setMode: setMode
+            setMode: setMode,
+            setCols: setCols,
+            getCols: function () { return colCount; }
         };
 
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
