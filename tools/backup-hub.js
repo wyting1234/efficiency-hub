@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.8.0';
+    var VERSION = '1.8.1';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
@@ -19,6 +19,16 @@
     var MAX_SNAPSHOTS = 5;
     var QUOTA = 5 * 1024 * 1024;               // localStorage 常规上限 5MB
     var FORMAT = 'efficiency-hub-backup';
+
+    /* ---- 每日自动快照：调度参数与状态 ----
+       声明放在这里、而不是紧挨下面的函数，是因为 localStorage.setItem 的 hook 在本文件
+       靠前的位置就装好了，之后任何一次写入都会调用 scheduleAutoSnapshot()。
+       若这几个变量声明在下面，早期调用会读到 undefined：
+       常量 undefined → Math.min(undefined, x) = NaN → setTimeout(fn, NaN) 当作 0ms，
+       结果是「立刻封存」，正好退回 v1.8.1 要修掉的老行为。 */
+    var AUTO_SNAP_IDLE_MS = 20000;      // 静默期：最后一次写入后 20s 无新写入才封存
+    var AUTO_SNAP_MAX_WAIT_MS = 120000; // 兜底：自首次调度起最多等 2 分钟
+    var autoSnapTimer = null, autoSnapDeadline = 0;
 
     /* ============ 模块清单：keys=精确键，prefixes=前缀键 ============ */
     var MANIFEST = [
@@ -110,6 +120,23 @@
         }
         return false;
     }
+    // 纯界面偏好键：值变了不代表「你的数据还没备份」，不计入 pendingChanges。
+    //
+    // hub_*（单下划线，不是 __hub_）是导航页自身的 UI 状态：hub_theme、hub_lastModule、
+    // hub_sidebar_pref、hub_tools_collapsed、hub_nav_order、hub_custom_modules…
+    // 这些键的特点是：只要在导航页点一下（切模块、收侧边栏、换主题）就被重写，
+    // 而它们的变化对「数据是否已经有一份备份」毫无信息量。把它们算进 pending，
+    // 橙字警告几乎永远亮着，真正的内容差异（比如日记、工作日志改了）反而被淹没。
+    //
+    // ⚠️ 注意这里只是「不参与待备份统计」，不是「不备份」：
+    //    hub_* 仍归 hub 模块、照旧进快照与导出，换设备照样能带走主题和侧边栏偏好。
+    var UI_ONLY_PREFIXES = ['hub_'];
+    function isUiOnlyKey(k) {
+        for (var i = 0; i < UI_ONLY_PREFIXES.length; i++) {
+            if (k.indexOf(UI_ONLY_PREFIXES[i]) === 0) return true;
+        }
+        return false;
+    }
 
     /* ============ 写入时间埋点（节流写 meta） ============ */
     var meta = {}, metaDirty = false, metaTimer = null;
@@ -124,7 +151,12 @@
     // 关页 / 切后台前把时间埋点落盘，否则"备份后又有改动"会漏判
     try {
         window.addEventListener('beforeunload', flushMeta);
-        window.addEventListener('pagehide', flushMeta);
+        window.addEventListener('pagehide', function () {
+            flushMeta();
+            // 补一次当天备份：新策略是「静默期后封存」，只开几秒就关掉的访问等不到静默期，
+            // 不能因此整天没有备份。这里做兜底（runAutoSnapshot 内部会先查当天是否已备份）。
+            try { if (!autoSnapshotDone()) runAutoSnapshot(); } catch (e) {}
+        });
     } catch (e) {}
 
     // 数据一改动就顺带刷新侧边栏（节流，避免频繁 scan）
@@ -147,6 +179,9 @@
                 if (!isInternalKey(k)) { meta[k] = Date.now(); metaDirty = true; }
                 if (!metaTimer) metaTimer = setTimeout(flushMeta, 2000);
                 scheduleSideRefresh();
+                // 数据还在动 → 把「每日自动快照」往后推，等页面安静下来再拍，
+                // 否则拍到的永远是「刚打开那一秒」的状态（见 scheduleAutoSnapshot 注释）
+                scheduleAutoSnapshot();
             } catch (e) {}
             return r;
         };
@@ -305,18 +340,35 @@
             if (rec && rec.fp && rec.ts === since) fp = rec.fp;
         } catch (e) { fp = null; }
         var keys = [];
+        var k;
         try {
-            for (var k in meta) {
-                if (!Object.prototype.hasOwnProperty.call(meta, k)) continue;
-                if (isInternalKey(k) || isIgnoredKey(k)) continue;
-                // 有指纹：以「值是否变化」为准。
-                // 为什么这比时间戳准：备份过程本身要花时间，期间被重写但内容没变的键
+            if (fp) {
+                // 有指纹：以「值是否变化」为准。遍历的是 localStorage 的当前全量业务键，
+                // **不依赖 meta 埋点**。
+                //
+                // 为什么不依赖 meta：meta 是靠给 localStorage.setItem 打 hook 记写入时间的，
+                // 而这个 hook 有可能**静默装不上**——比如浏览器把 Storage 包成 Proxy、
+                // 隐私模式下 Storage 被冻结、实例属性赋值被忽略。hook 一失效 meta 就是空的，
+                // 旧实现会永远报「0 项改动」：不是少报，是**永远不报**。
+                // 用户看到「备份后有改动 0 项」，会以为全都备份好了——这是最危险的一类静默失效。
+                // 而指纹比对本来只需要「当前值 + 备份时的指纹」，根本用不到写入时间。
+                //
+                // 为什么指纹比时间戳准：备份过程本身要花时间，期间被重写但内容没变的键
                 // （业务代码无脑重写很常见）时间戳会晚于锚点，用时间戳就会误报
                 // 「备份后有改动」；比对内容则不会。
-                if (fp) {
+                var cur = allKeys();
+                for (var i = 0; i < cur.length; i++) {
+                    k = cur[i];
+                    if (isIgnoredKey(k) || isUiOnlyKey(k)) continue;
                     if (valueFingerprint(k) !== fp[k]) keys.push(k);
-                } else if ((meta[k] || 0) > since) {
-                    keys.push(k);
+                }
+            } else {
+                // 没有可用指纹（首次使用、指纹写不下）：只能退回时间戳判断，
+                // 此时 meta 是唯一依据，hook 失效就确实无能为力。
+                for (k in meta) {
+                    if (!Object.prototype.hasOwnProperty.call(meta, k)) continue;
+                    if (isInternalKey(k) || isIgnoredKey(k) || isUiOnlyKey(k)) continue;
+                    if ((meta[k] || 0) > since) keys.push(k);
                 }
             }
         } catch (e) {}
@@ -1153,13 +1205,42 @@
     });
 
     /* ============ 每日自动快照（仅导航页执行） ============ */
-    function maybeAutoSnapshot() {
-        try {
-            var today = new Date().toDateString();
-            if (localStorage.getItem(LAST_SNAP_KEY) === today) return;
-            localStorage.setItem(LAST_SNAP_KEY, today);
-            createSnapshot('每日自动快照');
-        } catch (e) {}
+    //
+    // v1.8.1 起改为「静默期封存」，不再在 DOMContentLoaded 立刻执行。
+    //
+    // 为什么改：导航页自身的初始化（恢复侧边栏折叠、主题、上次停留模块）以及各工具
+    // iframe 的懒加载启动，会在页面打开后的几秒到几十秒里持续写 localStorage。
+    // 原来一加载就封存，等于拍下「开机第一秒」的照片——之后全部的开机写入都落在锚点
+    // 之后，pendingChanges 于是每次都稳定报出「⚠️ 备份后有改动 N 项」。
+    // 后果不是误报某一项，而是**提示整体失效**：用户发现它天天亮，就不再看了，
+    // 真正需要被看见的差异（日记/工作日志没进备份）也跟着被忽略。
+    //
+    // 现在：最后一次数据写入之后静默 AUTO_SNAP_IDLE_MS 才封存；数据一直在动就顺延，
+    // 但自首次调度起最迟不超过 AUTO_SNAP_MAX_WAIT_MS（否则只开几秒的访问永远备份不了）。
+    // 页面被关闭 / 切后台时由 pagehide 补一次（见文件上方的 pagehide 监听）。
+    // 调度参数与状态变量（AUTO_SNAP_IDLE_MS / AUTO_SNAP_MAX_WAIT_MS / autoSnapTimer /
+    // autoSnapDeadline）声明在文件顶部的常量区，原因见那里的注释。
+
+    function autoSnapshotDone() {
+        try { return localStorage.getItem(LAST_SNAP_KEY) === new Date().toDateString(); }
+        catch (e) { return true; }   // 读不到就当已完成，宁可漏一次也不重复拍
+    }
+    // 真正封存。先落日期标记，保证同一天不会重复执行（createSnapshot 是异步落盘的）。
+    function runAutoSnapshot() {
+        if (autoSnapTimer) { clearTimeout(autoSnapTimer); autoSnapTimer = null; }
+        autoSnapDeadline = 0;
+        if (autoSnapshotDone()) return;
+        try { localStorage.setItem(LAST_SNAP_KEY, new Date().toDateString()); } catch (e) {}
+        try { createSnapshot('每日自动快照'); } catch (e) {}
+    }
+    // 数据每变动一次就调用：重设静默计时器，把封存时刻往后推。
+    function scheduleAutoSnapshot() {
+        if (autoSnapshotDone()) return;
+        var now = Date.now();
+        if (!autoSnapDeadline) autoSnapDeadline = now + AUTO_SNAP_MAX_WAIT_MS;
+        var wait = Math.min(AUTO_SNAP_IDLE_MS, Math.max(1000, autoSnapDeadline - now));
+        if (autoSnapTimer) clearTimeout(autoSnapTimer);
+        autoSnapTimer = setTimeout(runAutoSnapshot, wait);
     }
 
     /* ============ 侧边栏入口（导航页） ============ */
@@ -1494,7 +1575,9 @@
             opts = opts || {};
             var boot = function () {
                 watchSidebar();
-                maybeAutoSnapshot();
+                // v1.8.1：不再立刻封存，改为「静默期后封存」（数据写入会不断顺延）。
+                // 若此刻还没有任何写入，scheduleAutoSnapshot 会在 20s 后拍下第一张。
+                scheduleAutoSnapshot();
                 // v1.6.2：侧边栏无常驻状态条，备份/同步状态只在云端同步面板内展示
                 window.addEventListener('storage', function () { updateBadge(); });
                 // 导航页不再加右下角悬浮按钮：侧边栏已有常驻入口 + 容量卡，悬浮按钮重复碍事
