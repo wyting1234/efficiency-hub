@@ -856,6 +856,28 @@
       if (cloudMeta && cloudMeta.shards) {
         cloudHas = !!(cloudMeta.shards && Object.keys(cloudMeta.shards).length);
       }
+      // ★ 「只剩空壳 meta」自动识别（2026-09-16 晚线上：用户在 Gitee 手动清空仓库后，
+      //   meta 残留、分片全已删除，于是每次上传都被判为「云端有数据」→ 弹窗 → 选合并
+      //   → 去读早已不存在的分片 → 报「接口返回空结果」，用户怎么点都出不来）。
+      //   这里用 1 个列目录请求判断：meta 引用的分片若一个都不存在，就认定云端实际为空，
+      //   不弹窗、不走合并，直接按全新仓库全量重建 —— 这正是用户想要的「清空后重建」。
+      if (cloudHas) {
+        try {
+          const filesNow = await listCloudFiles();
+          const refSids = Object.keys(cloudMeta.shards || {});
+          if (filesNow) {
+            const present = refSids.filter(function (sid) {
+              return filesNow.indexOf(Core.shardFile(sid)) >= 0;
+            });
+            if (present.length === 0) {
+              console.warn('[Gitee] meta 引用的 ' + refSids.length +
+                ' 个分片在云端全部不存在 —— 判定为「残留空壳索引」，按全新仓库全量重建');
+              cloudMeta = null;
+              cloudHas = false;
+            }
+          }
+        } catch (e) { /* 列目录失败不改判：保守当云端仍有数据 */ }
+      }
       let mode = 'overwrite';
       if (cloudHas) {
         const choice = await Core.showChoice('上传到云端',
@@ -991,6 +1013,23 @@
     await ensureRepo();
     const meta = metaHint || await readShardedMetaSafe();
     if (meta && meta.shards && Object.keys(meta.shards).length) {
+      // ★ 空壳索引自愈（与 giteeUpload 同理）：仓库被手动清空后 meta 仍残留时，
+      //   引用的分片全部不存在，直接当作「云端没有数据」返回，而不是抛一堆
+      //   「接口返回空结果」让用户以为是自己网络/令牌的问题。
+      try {
+        const filesNow = await listCloudFiles();
+        if (filesNow) {
+          const refSids = Object.keys(meta.shards || {});
+          const present = refSids.filter(function (sid) {
+            return filesNow.indexOf(Core.shardFile(sid)) >= 0;
+          });
+          if (!present.length && filesNow.indexOf(Core.META_FILENAME) >= 0) {
+            console.warn('[Gitee] 云端只剩空壳索引（' + refSids.length +
+              ' 个被引用的分片全部不存在）—— 视为云端无数据');
+            return { data: {}, updatedAt: 0, emptyShell: true };
+          }
+        }
+      } catch (e) { /* 列目录失败则按原逻辑继续读，让下面的错误处理兜底 */ }
       const r = await Core.readShardedWith(giteeIO, meta);
       // ★ 孤儿 meta 检测：有片读不到时，花 1 个请求列目录核对。
       //   若 meta 引用的片在目录里根本不存在 → 云端元数据已损坏（上次写入
@@ -1050,12 +1089,29 @@
       //   改到这里还有两个附带好处：① 弹窗耗时与数据量彻底无关；
       //   ② 选「取消」时一个分片都不读，省流量。
       const meta = await readShardedMetaSafe();
-      const hasShards = !!(meta && meta.shards && Object.keys(meta.shards).length);
+      let hasShards = !!(meta && meta.shards && Object.keys(meta.shards).length);
+      // ★ 空壳索引（仓库被手动清空后 meta 残留）在这里也要先干掉：
+      //   否则 hasShards 为真 → 直接判定「云端有数据」→ 弹窗 → 读分片全失败。
+      if (hasShards) {
+        try {
+          const filesNow = await listCloudFiles();
+          if (filesNow) {
+            const refSids = Object.keys(meta.shards || {});
+            const present = refSids.filter(function (sid) {
+              return filesNow.indexOf(Core.shardFile(sid)) >= 0;
+            });
+            if (!present.length) {
+              console.warn('[Gitee] 云端只剩空壳索引 —— 视为云端无数据');
+              hasShards = false;
+            }
+          }
+        } catch (e) { /* 列目录失败不改判 */ }
+      }
       let pre = null;
       if (!hasShards) {
         // 没有分片索引：可能是从 Gist 搬过来的旧单文件，也可能真的空。
         // 这时没有更省的办法，才读一次全量。
-        pre = await giteeRead(meta);
+        pre = await giteeRead(hasShards ? meta : null);
       }
       const cloudHas = hasShards
         || !!(pre && pre.data && Object.keys(pre.data).length > 0);
