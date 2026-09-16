@@ -734,8 +734,13 @@
 
   // 双向同步（Gitee）：与 GitHub 侧同语义 —— 读远端 → 合并进本机 → 合并结果写回远端。
   // 只做合并、永不覆盖，所以不需要弹窗让用户选模式。
-  async function giteeSyncBoth() {
-    if (!TOKEN) { showConfigModal(); return; }
+  // opts.silent：自动同步走这条通道（不弹通知卡），与 GitHub 侧保持一致。
+  // 返回的摘要字段也与 doSyncBoth 完全一致 —— 否则换后端之后，同一条「自动同步记录」
+  // 会显示成两种样子，用户会以为换个后端就改变了同步行为。
+  async function giteeSyncBoth(opts) {
+    const silent = !!(opts && opts.silent);
+    if (!TOKEN) { if (!silent) showConfigModal(); return { error: '尚未配置 Gitee 令牌' }; }
+    const t0 = Date.now();
     Core.progShow && Core.progShow('running', '正在双向同步（Gitee）…',
       '先读 Gitee 上的数据，与两端合并后同时更新本机与云端。两端都只会变全，不会丢数据。');
     Core.progBusy && Core.progBusy(true);
@@ -758,17 +763,34 @@
       if (typeof buildCards === 'function') buildCards();
       markSynced('both', Core.getLocalKeys());
       const st = r.localStats;
-      Core.notifyOK('已完成双向同步（Gitee）',
+      if (!silent) {
+        Core.notifyOK('已完成双向同步（Gitee）',
         (r.hasRemote
           ? '云端 → 本机：新增 ' + st.added + ' 项，更新 ' + st.updated + ' 项，保留本机 ' + st.kept + ' 项' +
             (st.merged ? '，另有 ' + st.merged + ' 项按内容合并' : '') + '。\n'
           : 'Gitee 上原本没有数据，本次已把本机的数据存过去。\n') +
         '本机 → 云端：已写入 ' + r.nItem + ' 项，约 ' + Math.round(r.info.wroteBytes / 1024) + 'KB（已压缩）。\n' +
         '两端现在一致，谁都没有被覆盖。');
+      }
+      return {
+        mode: 'both', at: Date.now(), ms: Date.now() - t0, hasRemote: r.hasRemote,
+        local: st
+          ? { added: st.added, updated: st.updated, merged: st.merged, kept: st.kept, keys: st.keys || [] }
+          : { added: 0, updated: 0, merged: 0, kept: 0, keys: [] },
+        cloud: {
+          added: r.cloudAddedKeys || [], wrote: r.nItem,
+          bytes: (r.info && r.info.wroteBytes) || 0,
+          shards: r.info ? r.info.wroteShards : 0,
+          totalShards: r.info ? r.info.totalShards : 0
+        }
+      };
     } catch (e) {
       console.warn('[Gitee] 双向同步失败:', e.message);
-      Core.notifyFail('双向同步（Gitee）失败',
-        (e.message || String(e)) + '\n本机与 Gitee 上的数据都未曾被覆盖。');
+      if (!silent) {
+        Core.notifyFail('双向同步（Gitee）失败',
+          (e.message || String(e)) + '\n本机与 Gitee 上的数据都未曾被覆盖。');
+      }
+      return { error: (e.message || String(e)) };
     }
   }
 
@@ -878,7 +900,7 @@
         if (OWNER) localStorage.setItem('gitee_owner', OWNER);
       } catch (e) {}
     },
-    build: '2026-09-16-both',
+    build: '2026-09-16-auto',
     io: giteeIO,
     read: giteeRead,
     upload: giteeUpload,

@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.8.2';
+    var VERSION = '1.8.3';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
@@ -1516,10 +1516,14 @@
         toast: toast,
         notify: notify,
         // 供 sync-github.js 调用：记录一次云端同步的时间与项目
-        markSync: function (dir, keys) {
+        // opts.auto：来自自动同步（页面上并没有人点按钮）。
+        // 记录里必须区分开 —— 否则用户在「最近活动」里看到一条双向同步，
+        // 会以为是自己手动点的，无法判断这其实是后台自动跑的结果。
+        markSync: function (dir, keys, opts) {
             var ks = keys || [];
+            var auto = !!(opts && opts.auto);
             recordAct('sync', {
-                kind: dir === 'down' ? '云端 → 本机' : (dir === 'both' ? '双向同步（两端合并）' : '本机 → 云端'),
+                kind: (auto ? '自动' : '') + (dir === 'down' ? '云端 → 本机' : (dir === 'both' ? '双向同步（两端合并）' : '本机 → 云端')),
                 count: ks.length,
                 items: summarizeKeys(ks)
             });
