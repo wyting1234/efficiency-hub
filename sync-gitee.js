@@ -839,7 +839,7 @@
     resetHealBudget();                     // 新一轮同步：自愈预算恢复
     try {
       await ensureRepo();
-      const cloudMeta = await readShardedMetaSafe();
+      let cloudMeta = await readShardedMetaSafe();
       let cloudHas = false;
       if (cloudMeta && cloudMeta.shards) {
         cloudHas = !!(cloudMeta.shards && Object.keys(cloudMeta.shards).length);
@@ -866,6 +866,46 @@
         localData = Core.buildMergedUpload(remote || { data: {} });
       } else {
         localData = Core.collectLocalData();
+        // ★ 覆盖前核对孤儿索引：meta 引用的片是否真实存在于云端目录。
+        //   存在孤儿时给用户两条路：清空重建（最干净）或直接覆盖（最快）。
+        try {
+          const filesNow = await listCloudFiles();
+          const refSids = Object.keys((cloudMeta && cloudMeta.shards) || {});
+          if (filesNow && refSids.length) {
+            const missing = refSids.filter(function (sid) {
+              return filesNow.indexOf(Core.shardFile(sid)) < 0;
+            });
+            if (missing.length) {
+              const how = await Core.showChoice('检测到云端索引损坏',
+                '云端索引引用了 ' + missing.length + ' 个实际不存在的分片文件' +
+                '（' + missing.slice(0, 3).join('、') + (missing.length > 3 ? ' 等' : '') + '）。\n' +
+                '这是之前某次写入中途失败留下的孤儿索引，普通重试无法修复。\n\n' +
+                '【清空云端并重建】先删除云端全部同步数据，再用本机完整数据重建 —— 最干净，约 1~2 分钟；\n' +
+                '【直接覆盖】只重写有效分片，几秒完成，但会残留旧的垃圾文件（不影响使用）。',
+                '清空云端并重建', '直接覆盖');
+              if (how === 'cancel') {
+                Core.progShow && Core.progShow('running', '已取消', '云端数据未改动。');
+                Core.progBusy && Core.progBusy(false);
+                return;
+              }
+              if (how === 'merge') {   // 主按钮（绿色）= 清空重建
+                Core.progShow && Core.progShow('running', '正在清空云端…',
+                  '删除旧的分片与索引文件，共约 ' +
+                  Math.ceil((filesNow.filter(function (n) { return /^efficiency-hub-/.test(n); }).length) / 4) +
+                  ' 批，请稍候。');
+                const w = await wipeCloudFiles();
+                if (w.remain.length) {
+                  throw new Error('有 ' + w.remain.length + ' 个旧文件未能删除（' +
+                    w.remain.slice(0, 2).join('、') + ' 等）。可能是配额限制，请等 1 分钟后重新执行覆盖。');
+                }
+                cloudMeta = null;   // 云端已清空：后续按「全新仓库」处理
+              }
+            }
+          }
+        } catch (e) {
+          if (/未能删除/.test(e.message || '')) throw e;
+          /* 列目录失败不阻断覆盖：覆盖本身会全量重写有效片 */
+        }
       }
       let info;
       try {
@@ -912,6 +952,28 @@
     } catch (e) {
       return null;
     }
+  }
+
+  // 清空云端全部「本应用的同步文件」（efficiency-hub-* 前缀），仓库里其他文件一律不碰。
+  // 用途：孤儿索引 / 彻底重置。删除后由调用方用本机数据全量重建。
+  // 限速：每批 4 个、批间 800ms —— 删除是「读 sha + DELETE」各一个请求，
+  // 几十个文件就是近百个请求，必须给 Gitee 的分钟配额留喘息。
+  async function wipeCloudFiles() {
+    const files = await listCloudFiles();
+    if (!files) throw new Error('无法列出云端文件清单，已取消删除（云端未改动）。');
+    const mine = files.filter(function (n) { return /^efficiency-hub-/.test(n); });
+    if (!mine.length) return { total: 0, deleted: 0, remain: [] };
+    let done = 0;
+    for (let i = 0; i < mine.length; i += 4) {
+      const batch = mine.slice(i, i + 4);
+      try { await giteeIO.deleteFiles(batch); } catch (e) { /* 单批失败由最终复核兜底 */ }
+      done += batch.length;
+      if (i + 4 < mine.length) await sleep(800);
+    }
+    // 复核：再列一次目录，确认删干净；没删掉的如实报出来。
+    const left = await listCloudFiles();
+    const remain = (left || []).filter(function (n) { return /^efficiency-hub-/.test(n); });
+    return { total: mine.length, deleted: done, remain: remain };
   }
 
   async function giteeRead(metaHint) {
