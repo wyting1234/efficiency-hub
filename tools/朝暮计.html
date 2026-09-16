@@ -5018,6 +5018,172 @@
 <script data-page-node-id="eJvM4063Z4kOgPD64nf9Yb" data-pnid-children="hTRXpBE5H3mpTELYT0W04R">
     /* ================= 数据层 ================= */
     const DKEY = 'chaomuji_web_v27';
+    /* ================= v48：背景图专用存储（IndexedDB 存原始 Blob）=================
+       为什么必须换掉 localStorage：它的配额是一只有硬上限的桶 —— 本机 Chromium 实测
+       5,242,368 个字符（ASCII 与中文上限完全一致 ⇒ 按 UTF-16 计，即 10.00MB），
+       且同一源下所有站点共享。背景图在桶里以 base64 dataURL 形式存在，
+       1 字节图片 = 4/3 字符 × 2 字节 = 2.67 字节配额，
+       于是整只桶最多只装得下 5,242,368 × 3/4 ≈ 3.75MB 的原图，还得先清空全部业务数据。
+       30MB / 50MB 是这个数字的 8~13 倍，没有任何设置项能调上去 —— 不是配置问题，
+       是规范层面的硬上限。
+       IndexedDB 则按磁盘比例给配额（本机实测 4.17GB，30/50/80MB 单条写入回读全部通过），
+       而且能直接存 Blob：不走 base64（省掉 33% 膨胀）、不进 JS 堆（大图由浏览器落盘，
+       页面只拿到一个句柄），因此**不需要任何压缩**。
+       渲染侧一行都不用改：取出来 URL.createObjectURL() 得到的 blob: URL，
+       放在 background-image: url("...") 里与原来的 dataURL 完全等价。 */
+    const ZMIMG = (function () {
+        const DB = 'zm_bg_v48', ST = 'img';
+        const URLS = Object.create(null);          /* idbKey -> objectURL（成对 revoke） */
+        let _db = null, _opening = null, _ok = false, _err = '', _inited = false;
+        const _ready = [];
+
+        function openDB() {
+            if (_opening) return _opening;
+            _opening = new Promise(function (res, rej) {
+                if (typeof indexedDB === 'undefined' || !indexedDB) { rej(new Error('本浏览器不支持 IndexedDB')); return; }
+                let rq;
+                try { rq = indexedDB.open(DB, 1); } catch (e) { rej(e); return; }
+                rq.onupgradeneeded = function () {
+                    const d = rq.result;
+                    if (!d.objectStoreNames.contains(ST)) d.createObjectStore(ST);
+                };
+                rq.onsuccess = function () { res(rq.result); };
+                rq.onerror = function () { rej(rq.error || new Error('IndexedDB 打开失败')); };
+                rq.onblocked = function () { rej(new Error('IndexedDB 被其它标签页占用')); };
+            });
+            return _opening;
+        }
+        function store(mode) {
+            return openDB().then(function (db) { return db.transaction(ST, mode).objectStore(ST); });
+        }
+        function wrap(rq) {
+            return new Promise(function (res, rej) {
+                rq.onsuccess = function () { res(rq.result); };
+                rq.onerror = function () { rej(rq.error); };
+            });
+        }
+        function revoke(key) {
+            const u = URLS[key];
+            if (u) { try { URL.revokeObjectURL(u); } catch (e) {} delete URLS[key]; }
+        }
+
+        const api = {
+            ok: function () { return _ok; },
+            err: function () { return _err; },
+            url: function (key) { return URLS[key] || ''; },
+            key: function (scope) { return 'bg:' + scope; },
+            partKey: function (scope, k) { return 'bgp:' + scope + ':' + k; },
+
+            /* 打开 + 真写真读一次。private 模式下 open 可能成功但不可写，
+               所以必须以「回读到的字节数」为准，不能只看 open 是否成功。 */
+            init: function () {
+                if (_inited) return Promise.resolve(_ok);
+                _inited = true;
+                const probe = new Blob(['zmimg-probe'], { type: 'text/plain' });
+                return openDB().then(function (db) {
+                    _db = db;
+                    return new Promise(function (res) {
+                        let done = false;
+                        const fin = function (v, e) {
+                            if (done) return; done = true;
+                            _ok = v; if (e) _err = e;
+                            try { const t = db.transaction(ST, 'readwrite'); t.objectStore(ST).delete('__probe__'); } catch (x) {}
+                            res(v);
+                        };
+                        try {
+                            const t = db.transaction(ST, 'readwrite');
+                            t.objectStore(ST).put({ blob: probe, size: probe.size, at: Date.now() }, '__probe__');
+                            t.oncomplete = function () {
+                                try {
+                                    const t2 = db.transaction(ST, 'readonly');
+                                    const q = t2.objectStore(ST).get('__probe__');
+                                    q.onsuccess = function () {
+                                        const g = q.result;
+                                        if (g && g.blob && g.blob.size === probe.size) fin(true, '');
+                                        else fin(false, '回读校验不一致');
+                                    };
+                                    q.onerror = function () { fin(false, '回读失败'); };
+                                } catch (e) { fin(false, '回读异常'); }
+                            };
+                            t.onerror = function () { fin(false, '写入被拒（可能是隐私模式）'); };
+                            t.onabort = function () { fin(false, '写入被中止（可能空间不足）'); };
+                        } catch (e) { fin(false, (e && e.message) || '写入异常'); }
+                    });
+                }).then(function (v) {
+                    _ready.splice(0).forEach(function (f) { try { f(v); } catch (e) {} });
+                    return v;
+                }).catch(function (e) {
+                    _ok = false; _err = (e && e.message) || String(e);
+                    _ready.splice(0).forEach(function (f) { try { f(false); } catch (x) {} });
+                    return false;
+                });
+            },
+            onReady: function (fn) { if (_inited) { try { fn(_ok); } catch (e) {} } else _ready.push(fn); },
+
+            /* 写 blob，返回可直接用于 background-image 的 objectURL；失败返回 '' */
+            put: function (key, blob) {
+                if (!_ok) return Promise.resolve('');
+                if (!blob || typeof blob.size !== 'number') return Promise.resolve('');
+                return store('readwrite')
+                    .then(function (s) { return wrap(s.put({ blob: blob, type: blob.type || '', size: blob.size, at: Date.now() }, key)); })
+                    .then(function () {
+                        revoke(key);
+                        const u = URL.createObjectURL(blob);
+                        URLS[key] = u;
+                        return u;
+                    })
+                    .catch(function (e) { _err = (e && e.message) || String(e); return ''; });
+            },
+            /* 已有记录则复用，避免重复建 URL（否则切换页面会不断泄漏） */
+            hydrate: function (key) {
+                if (!_ok) return Promise.resolve('');
+                if (URLS[key]) return Promise.resolve(URLS[key]);
+                return store('readonly')
+                    .then(function (s) { return wrap(s.get(key)); })
+                    .then(function (r) {
+                        if (!r || !r.blob) return '';
+                        const u = URL.createObjectURL(r.blob);
+                        URLS[key] = u;
+                        return u;
+                    })
+                    .catch(function () { return ''; });
+            },
+            del: function (key) {
+                revoke(key);
+                if (!_ok) return Promise.resolve(false);
+                return store('readwrite')
+                    .then(function (s) { return wrap(s.delete(key)); })
+                    .then(function () { return true; })
+                    .catch(function () { return false; });
+            },
+            size: function (key) {
+                if (!_ok) return Promise.resolve(0);
+                return store('readonly')
+                    .then(function (s) { return wrap(s.get(key)); })
+                    .then(function (r) { return (r && r.size) || 0; })
+                    .catch(function () { return 0; });
+            },
+            keys: function () {
+                if (!_ok) return Promise.resolve([]);
+                return store('readonly')
+                    .then(function (s) { return wrap(s.getAllKeys()); })
+                    .catch(function () { return []; });
+            },
+            /* 真机配额（含 IDB）—— 取代原来那套对 localStorage 做二分探测的模型 */
+            estimate: function () {
+                if (!navigator.storage || !navigator.storage.estimate) return Promise.resolve(null);
+                return navigator.storage.estimate().catch(function () { return null; });
+            },
+            /* 申请持久化：不申请的话浏览器在磁盘紧张时可以直接回收 IndexedDB */
+            persist: function () {
+                if (!navigator.storage || !navigator.storage.persist) return Promise.resolve(false);
+                return navigator.storage.persisted()
+                    .then(function (has) { return has ? true : navigator.storage.persist(); })
+                    .catch(function () { return false; });
+            }
+        };
+        return api;
+    })();
     /* v33：出厂设置模板 —— 「恢复系统全部默认」时整体替换 S.settings */
     function defaultSettings() {
         return { defCat: '', defPri: 'follow', strike: true, expandSubs: false, autoCheck: true, compact: false,
@@ -5129,7 +5295,8 @@
         try { return JSON.parse(localStorage.getItem(CARDKEY) || 'null') || {}; } catch (e) { return {}; }
     })();
     function saveCardBg() {
-        try { localStorage.setItem(CARDKEY, JSON.stringify(CARDBG)); return true; }
+        /* v48：图片实体在 IndexedDB，这里只落元数据 —— 体积几十字节，不会再撑爆 */
+        try { localStorage.setItem(CARDKEY, JSON.stringify(bgStripMap(CARDBG))); return true; }
         catch (e) { notify('卡片背景存储不足，请先清除一张卡片背景'); return false; }
     }
     /* ===== v26：习惯页单条习惯栏的背景（独立 key，按 habit id 存）=====
@@ -5140,7 +5307,8 @@
         try { return JSON.parse(localStorage.getItem(HBGKEY) || 'null') || {}; } catch (e) { return {}; }
     })();
     function saveHabitBg() {
-        try { localStorage.setItem(HBGKEY, JSON.stringify(HABITBG)); return true; }
+        /* v48：同 saveCardBg —— 图片在 IndexedDB，本地只留标记 */
+        try { localStorage.setItem(HBGKEY, JSON.stringify(bgStripMap(HABITBG))); return true; }
         catch (e) { notify('习惯背景存储不足，请先清除一条习惯背景'); return false; }
     }
     /* 背景落库统一出口：card: 前缀走独立 key，hcard: 走习惯 key，其余走 BG */
@@ -15344,17 +15512,69 @@
                     <button class="btn gray" onclick="askClearAllData()">清空</button>
                 </div>
                 <div style="font-size:11px;color:#9a9aa8;line-height:1.6;margin-top:7px">
-                    导出 = 完整 JSON 文件（含背景图，可跨设备迁移）。云端同步与备份已统一到主页侧边栏。
+                    导出 = 完整 JSON 文件（含背景原图，可跨设备迁移）。云端同步与备份已统一到主页侧边栏。<br>
+                    <b>背景图存在 IndexedDB</b>，单张 30MB / 50MB 也无需压缩；但它不参与云同步，只在本机。
                 </div></div>
             <p style="text-align:center;color:#bbb;font-size:10px;padding:12px 0">朝暮计 v2.7 · 本地存储</p>`;
     }
 
-    function exportData() {
-        const a = document.createElement('a');
-        const out = Object.assign({}, S, { __bg: BG, __cardbg: CARDBG, __ink: INK });
-        a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
-        a.download = 'chaomuji-backup-' + today() + '.json';
-        a.click();
+    /* v48：导出必须仍「含背景图」，否则跨设备迁移就废了。
+       图片实体在 IndexedDB，这里按需取回来转 dataURL 塞进 JSON。
+       注意体积：base64 会膨胀 33%，30MB 的图导出来约 40MB —— 超过阈值先问一次。 */
+    async function exportData() {
+        const toDataURL = async function (scope, partK) {
+            if (!ZMIMG.ok()) return '';
+            const key = partK ? bgPartIdbKey(scope, partK) : bgIdbKey(scope);
+            try {
+                const u = await ZMIMG.hydrate(key);
+                if (!u) return '';
+                const bl = await (await fetch(u)).blob();
+                return await blobToDataURL(bl);
+            } catch (e) { return ''; }
+        };
+        const recOut = async function (rec, scope) {
+            if (!rec || typeof rec !== 'object') return rec || null;
+            const o = {};
+            Object.keys(rec).forEach(function (k) { o[k] = rec[k]; });
+            if (rec.img) {
+                const d = await toDataURL(scope);
+                if (d) { o.d = d; delete o.img; } else { delete o.d; }
+            }
+            if (rec.parts && typeof rec.parts === 'object') {
+                const ps = {};
+                for (const pk of Object.keys(rec.parts)) {
+                    const v = rec.parts[pk];
+                    if (v && typeof v === 'object') {
+                        const nv = {};
+                        Object.keys(v).forEach(function (q) { nv[q] = v[q]; });
+                        if (typeof v.img === 'string' && v.img.indexOf('blob:') === 0) nv.img = (await toDataURL(scope, pk)) || null;
+                        ps[pk] = nv;
+                    } else ps[pk] = v;
+                }
+                o.parts = ps;
+            }
+            return o;
+        };
+        try {
+            showToast('正在打包备份…');
+            const bgOut = { page: null, pages: {}, quad: [null, null, null, null] };
+            bgOut.page = await recOut(BG.page, 'page');
+            for (let i = 0; i < 4; i++) bgOut.quad[i] = await recOut((BG.quad || [])[i], 'q' + (i + 1));
+            for (const k of Object.keys(BG.pages || {})) bgOut.pages[k] = await recOut(BG.pages[k], k);
+            const cardOut = {};
+            for (const k of Object.keys(CARDBG)) cardOut[k] = await recOut(CARDBG[k], 'card:' + k);
+            const habitOut = {};
+            for (const k of Object.keys(HABITBG)) habitOut[k] = await recOut(HABITBG[k], 'hcard:' + k);
+
+            const out = Object.assign({}, S, { __bg: bgOut, __cardbg: cardOut, __habitbg: habitOut, __ink: INK });
+            const json = JSON.stringify(out);
+            const mb = json.length / 1048576;
+            if (mb > 25 && !confirm('备份文件约 ' + mb.toFixed(1) + 'MB（含背景原图），生成较慢、文件较大。\n\n仍要继续吗？')) return;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+            a.download = 'chaomuji-backup-' + today() + '.json';
+            a.click();
+        } catch (e) { notify('导出失败：' + ((e && e.message) || '未知错误')); }
     }
 
     function importData(inp) {
@@ -15365,8 +15585,18 @@
                 const obj = JSON.parse(e.target.result);
                 const { __bg, __cardbg, __ink, ...rest } = obj;
                 S = rest;
-                if (__bg) { BG = __bg; saveBg(); }
-                if (__cardbg && typeof __cardbg === 'object') { CARDBG = __cardbg; saveCardBg(); }
+                /* v48：备份里的背景图还是 dataURL 形态，直接 saveBg() 会把大图写回
+                   localStorage（那里最多只装得下 3.75MB）。先放进内存，等下面的
+                   bgHydrateAll() 把它们搬进 IndexedDB，再刷新页面。 */
+                if (__bg) {
+                    BG = {
+                        page: __bg.page || null,
+                        pages: Object.assign({ list: null, view: null, habit: null, focus: null, me: null, stats: null }, __bg.pages || {}),
+                        quad: (Array.isArray(__bg.quad) && __bg.quad.length === 4) ? __bg.quad : [null, null, null, null]
+                    };
+                }
+                if (__cardbg && typeof __cardbg === 'object') { CARDBG = __cardbg; }
+                if (__habitbg && typeof __habitbg === 'object') { HABITBG = __habitbg; }
                 /* v31：边线与字浮配置随备份迁移 */
                 if (__ink && typeof __ink === 'object') {
                     INK = { on: !!__ink.on,
@@ -15382,7 +15612,13 @@
                 try { localStorage.setItem(DKEY, JSON.stringify(S)); _dirty = false; } catch (e) {}
                 invalidateDateCache();
                 notify('导入成功');
-                location.reload();     // 兜底迁移 & 视图状态全部重建，避免半旧半新
+                /* v48：先把导入的背景图搬进 IndexedDB，再刷新（否则刷新时又被当成
+                   「本机无图的旧记录」处理一遍）。失败也必须刷新，不能卡住。 */
+                ZMIMG.init()
+                    .then(function () { return bgRedoHydrate(); })
+                    .then(function () { location.reload(); })
+                    .catch(function () { location.reload(); });
+                return;
             } catch (x) { notify('文件格式错误') } };
         r.readAsText(f);
     }
@@ -16493,12 +16729,146 @@
             quad: (Array.isArray(o.quad) && o.quad.length === 4) ? o.quad : [null, null, null, null]
         };
     })();
+    /* ===== v48：落库前把图片从记录里摘掉 =====
+       图片实体已进 IndexedDB，localStorage 里只需要留一个 img:1 标记（几十字节）。
+       不摘的话，一次 saveBg 就要把几十 MB 的 dataURL 重新序列化一遍 ——
+       既写不下，也白白卡住主线程。
+       注意判据是 img 标记而不是「d 是不是 data: 开头」：迁移中途两种形态都可能存在，
+       用标记判断才能保证幂等（重复跑不会把已迁移的记录又写回去）。 */
+    function bgStripRec(r) {
+        if (!r || typeof r !== 'object') return r;
+        const o = {};
+        Object.keys(r).forEach(function (k) {
+            if (k === 'd' && r.img) return;            /* 图片在 IDB，d 只是内存里的 blob: URL */
+            o[k] = r[k];
+        });
+        if (r.img && o.d !== undefined) delete o.d;
+        if (o.parts && typeof o.parts === 'object') {
+            const ps = {};
+            Object.keys(o.parts).forEach(function (pk) {
+                const v = o.parts[pk];
+                if (v && typeof v === 'object') {
+                    const nv = {};
+                    Object.keys(v).forEach(function (q) {
+                        if (q === 'img' && typeof v.img === 'string' && v.img.indexOf('blob:') === 0) { nv.img = 1; return; }
+                        nv[q] = v[q];
+                    });
+                    ps[pk] = nv;
+                } else ps[pk] = v;
+            });
+            o.parts = ps;
+        }
+        return o;
+    }
+    function bgStripMap(map) {
+        const out = {};
+        Object.keys(map || {}).forEach(function (k) { out[k] = bgStripRec(map[k]); });
+        return out;
+    }
+
     function saveBg() {
-        try { localStorage.setItem(BGKEY, JSON.stringify(BG)); return true; }
+        try {
+            localStorage.setItem(BGKEY, JSON.stringify({
+                page: bgStripRec(BG.page),
+                pages: bgStripMap(BG.pages),
+                quad: (BG.quad || []).map(bgStripRec)
+            }));
+            return true;
+        }
         catch(e) {
             notify('图片存储空间不足，请先清除一张背景图再试');
             return false;
         }
+    }
+
+    /* ===== v48：IndexedDB 还原 / 迁移 ===== */
+    const bgIdbKey = function (scope) { return ZMIMG.key(scope); };
+    const bgPartIdbKey = function (scope, k) { return ZMIMG.partKey(scope, k); };
+
+    /* 遍历所有 (scope, rec) 对 —— 口径与 bgGet 保持一致 */
+    function bgEachRec(fn) {
+        try { if (BG.page) fn('page', BG.page); } catch (e) {}
+        (BG.quad || []).forEach(function (r, i) { if (r) fn('q' + (i + 1), r); });
+        Object.keys(BG.pages || {}).forEach(function (k) { if (BG.pages[k]) fn(k, BG.pages[k]); });
+        Object.keys(CARDBG || {}).forEach(function (k) { if (CARDBG[k]) fn('card:' + k, CARDBG[k]); });
+        Object.keys(HABITBG || {}).forEach(function (k) { if (HABITBG[k]) fn('hcard:' + k, HABITBG[k]); });
+    }
+
+    /* dataURL -> Blob。迁移旧数据用；atob 仅用于这里，新数据一律走 Blob 不碰 base64。 */
+    function dataURLtoBlob(u) {
+        try {
+            const i = u.indexOf(',');
+            if (i < 0 || u.indexOf(';base64') < 0) return null;
+            const mime = (u.slice(0, i).match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+            const bin = atob(u.slice(i + 1));
+            const n = bin.length;
+            const arr = new Uint8Array(n);
+            for (let j = 0; j < n; j++) arr[j] = bin.charCodeAt(j);
+            return new Blob([arr], { type: mime });
+        } catch (e) { return null; }
+    }
+    function blobToDataURL(blob) {
+        return new Promise(function (res) {
+            try {
+                const r = new FileReader();
+                r.onload = function () { res(r.result); };
+                r.onerror = function () { res(''); };
+                r.readAsDataURL(blob);
+            } catch (e) { res(''); }
+        });
+    }
+
+    /* 一次性把两种形态都处理掉：
+       ① 旧版遗留的 data: dataURL → 搬进 IndexedDB，本地改成 img:1 标记
+       ② 已有 img:1 标记的 → 取回 Blob 建成 objectURL 填回内存（渲染侧无感）
+       完成后重写一次 localStorage —— 这一步才真正把空间腾出来还给业务数据。 */
+    let _bgHydrateP = null;
+    /* 导入备份后需要重跑一次迁移 —— hydrate 带记忆化，这里显式清掉 */
+    function bgRedoHydrate() { _bgHydrateP = null; return bgHydrateAll(); }
+    function bgHydrateAll() {
+        if (_bgHydrateP) return _bgHydrateP;
+        _bgHydrateP = new Promise(function (res) {
+            if (!ZMIMG.ok()) { res(0); return; }
+            const jobs = [];
+            let touched = 0;
+            bgEachRec(function (scope, rec) {
+                const d = rec.d;
+                if (typeof d === 'string' && d.indexOf('data:image') === 0) {
+                    const blob = dataURLtoBlob(d);
+                    if (blob) {
+                        touched++;
+                        jobs.push(ZMIMG.put(bgIdbKey(scope), blob).then(function (u) {
+                            if (u) { rec.d = u; rec.img = 1; } else { rec.img = 0; }
+                        }));
+                    }
+                } else if (rec.img) {
+                    jobs.push(ZMIMG.hydrate(bgIdbKey(scope)).then(function (u) {
+                        if (u) rec.d = u; else { rec.img = 0; delete rec.d; }
+                    }));
+                }
+                if (rec.parts && typeof rec.parts === 'object') {
+                    Object.keys(rec.parts).forEach(function (k) {
+                        const v = rec.parts[k];
+                        if (!v || typeof v !== 'object') return;
+                        const im = v.img;
+                        if (typeof im === 'string' && im.indexOf('data:image') === 0) {
+                            const blob = dataURLtoBlob(im);
+                            if (blob) {
+                                touched++;
+                                jobs.push(ZMIMG.put(bgPartIdbKey(scope, k), blob).then(function (u) { v.img = u || null; }));
+                            }
+                        } else if (im === 1) {
+                            jobs.push(ZMIMG.hydrate(bgPartIdbKey(scope, k)).then(function (u) { v.img = u || null; }));
+                        }
+                    });
+                }
+            });
+            Promise.all(jobs).then(function () {
+                if (touched) { try { saveBg(); saveCardBg(); saveHabitBg(); } catch (e) {} }
+                res(touched);
+            }).catch(function () { res(touched); });
+        });
+        return _bgHydrateP;
     }
 
     /* ===== v31: 边线与字浮（独立 localStorage key，与背景图 / 任务数据隔离）======
@@ -17008,13 +17378,12 @@
     function renderBgScopeList() {
         const box = document.getElementById('bgScopeList');
         if (!box) return;
-        /* v28：占用条按动态配额显示（额度随业务数据增长自动收紧） */
-        const usedB = bgTotalBytes(), quotaB = bgQuota();
-        const pct = quotaB > 0 ? Math.min(999, Math.round(usedB / quotaB * 100)) : 100;
-        const warnCls = pct >= 80 ? ' warn' : '';
-        let html = `<div class="bgscope-usage${warnCls}">
-            <span>🖼 背景图 <b>${mbTxt(usedB)}MB</b> / 可用 ${mbTxt(quotaB)}MB
-            <span class="u-tip">已用 ${pct}% · 额度随可用空间自动调整</span></span>
+        /* v48：存储换成 IndexedDB 之后，v28 那套「对 localStorage 二分探测出的固定桶」模型
+           前提已经不成立 —— IndexedDB 的配额由浏览器按磁盘比例动态分配，不由站点控制。
+           与其继续拿一个错误的模型算百分比，不如直接问浏览器要真实数字（navigator.storage）。
+           真实数字要异步取，所以这里先占位，填数交给 refreshBgUsage()。 */
+        let html = `<div class="bgscope-usage" id="bgUsageRow">
+            <span id="bgUsageTxt">🖼 背景图 <span class="u-tip">统计中…</span></span>
             </div>`;
         html += BG_SCOPES.map(s => {
             if (s.group) return `<div class="bgscope-sep">${s.group}</div>`;
@@ -17052,6 +17421,54 @@
             }).join('');
         }
         box.innerHTML = html;
+        refreshBgUsage();
+    }
+    /* v48：背景图存储用量 —— 直接取浏览器自报的配额（含 IndexedDB） */
+    function refreshBgUsage() {
+        const el = document.getElementById('bgUsageTxt');
+        if (!el) return;
+        const fmt = function (n) {
+            if (n == null || n < 0) return '—';
+            if (n >= 1073741824) return (n / 1073741824).toFixed(2) + 'GB';
+            return (n / 1048576).toFixed(2) + 'MB';
+        };
+        if (!ZMIMG.ok()) {
+            el.innerHTML = '🖼 背景图 <b>小容量模式</b>' +
+                '<span class="u-tip">本浏览器 IndexedDB 不可用，已退回 localStorage（单图上限约 3MB，超出会自动降质）</span>';
+            return;
+        }
+        /* 背景图自身占用 = IndexedDB 里每个 scope 主图 + 各栏目图 size 之和 */
+        const scopes = [];
+        try { bgEachRec(function (sc) { scopes.push(sc); }); } catch (e) {}
+        const sumOne = function (sc) {
+            const rec = bgGet(sc);
+            const parts = (rec && rec.parts && typeof rec.parts === 'object')
+                ? Object.keys(rec.parts).filter(function (k) {
+                    const v = rec.parts[k];
+                    return v && typeof v === 'object' && v.img;
+                }) : [];
+            return Promise.all([
+                ZMIMG.size(bgIdbKey(sc)),
+                Promise.all(parts.map(function (k) { return ZMIMG.size(bgPartIdbKey(sc, k)); }))
+            ]).then(function (r) {
+                return (r[0] || 0) + (r[1] || []).reduce(function (a, b) { return a + (b || 0); }, 0);
+            }).catch(function () { return 0; });
+        };
+        Promise.all([
+            Promise.all(scopes.map(sumOne)),
+            ZMIMG.estimate()
+        ]).then(function (r) {
+            const used = (r[0] || []).reduce(function (a, b) { return a + b; }, 0);
+            const est = r[1];
+            let t = '🖼 背景图 <b>' + fmt(used) + '</b>';
+            if (est && est.quota) {
+                t += ' · 可用 ' + fmt(Math.max(0, est.quota - (est.usage || 0))) + ' / ' + fmt(est.quota);
+                t += '<span class="u-tip">IndexedDB 按磁盘空间自动分配配额 · 单张 30MB / 50MB 原图可直接保存，不压缩</span>';
+            } else {
+                t += '<span class="u-tip">已启用 IndexedDB 大容量存储 · 原图直接保存，不压缩</span>';
+            }
+            el.innerHTML = t;
+        }).catch(function () { el.innerHTML = '🖼 背景图 <span class="u-tip">统计失败</span>'; });
     }
     function backToBgScope() {
         closeM('mBg');
@@ -17110,15 +17527,27 @@
         renderBgParts();
     }
     function closeBgPicker() {
-        /* v22：关闭前把未落库的调整补存一次（✕ / 返回 / 点遮罩都不丢） */
-        if (bgEdit) { if (commitBgEdit()) applyBg(); }
-        else if (window._bgScope && window._bgPartMode !== 'part') bgPersist(window._bgScope);
+        /* v22：关闭前把未落库的调整补存一次（✕ / 返回 / 点遮罩都不丢）
+           v48：commitBgEdit 变成 async（等 canvas.toBlob + IndexedDB 写入），
+           不能再写成 `if (commitBgEdit()) applyBg();` —— 那样拿到的是 Promise 对象，
+           恒真，而且会在落库完成前就用旧记录重绘，新背景要等下一次 applyBg 才出现。
+           这里先发起保存，等它 resolve 后再重绘，同时释放预览用的 object URL。 */
+        const pending = bgEdit ? Promise.resolve(commitBgEdit()) : null;
+        if (!bgEdit && window._bgScope && window._bgPartMode !== 'part') bgPersist(window._bgScope);
         bgEdit = null;
         bgPreviewMode = false;
         window._bgPartK = null;
         window._bgPartMode = '';
         closeM('mBg');
         closeM('mBgScope');
+        if (pending) {
+            pending.then(function (ok) {
+                if (ok) { try { applyBg(); } catch (e) {} }
+                releaseBgPreviewURL();
+            }).catch(function () { releaseBgPreviewURL(); });
+        } else {
+            releaseBgPreviewURL();
+        }
     }
     function pickBgPart(partK) {
         /* 关闭 mBg 与 part picker 的兼容 hook：openPartImgPicker 会自己开 mBg */
@@ -17766,11 +18195,11 @@
         closeM('mBgScope');
         openM('mBg');
     }
-    function commitPartImg(dataURL) {
+    function commitPartImg(src) {
         const scope = window._bgScope;
         const k = window._bgPartK || _partImgTarget;
-        if (!scope || !k || !dataURL) return;
-        setBgPartImg(k, dataURL);
+        if (!scope || !k || !src) return;
+        setBgPartImg(k, src);      /* v48：Blob 或 dataURL 都接，内部按形态分流 */
         applyBg();
     }
     function setBgPart(k, v) {
@@ -17787,6 +18216,7 @@
         if (row && row.nextElementSibling) row.nextElementSibling.textContent = (_readPartOp(rec, k) || 0) + '%';
         if (bgPreviewMode) renderBgPreview();
     }
+    /* v48：img 参数可以是 Blob（新路径，直接进 IndexedDB）或字符串 URL（兼容旧调用） */
     function setBgPartImg(k, img) {
         const scope = window._bgScope;
         if (!scope) return;
@@ -17798,10 +18228,33 @@
         if (!rec.parts) rec.parts = rec.parts instanceof Object ? rec.parts : {};
         const cur = rec.parts[k];
         const nextOp = (cur != null && typeof cur === 'object') ? (cur.op) : (typeof cur === 'number' ? cur : bgPartBaseOp(bgPartsTpl(scope).find(x => x.k === k)?.role || 'card'));
-        rec.parts[k] = { op: +nextOp, img: img || null, imgFit: 'cover' };
-        if (bgPersist(scope)) applyBg();
-        renderBgParts();
-        if (bgPreviewMode) renderBgPreview();
+        const done = function (url) {
+            rec.parts[k] = { op: +nextOp, img: url || null, imgFit: 'cover' };
+            if (bgPersist(scope)) applyBg();
+            renderBgParts();
+            if (bgPreviewMode) renderBgPreview();
+        };
+        /* Blob → IndexedDB */
+        if (img && typeof img === 'object' && typeof img.size === 'number') {
+            if (ZMIMG.ok()) {
+                ZMIMG.put(bgPartIdbKey(scope, k), img).then(function (u) {
+                    if (!u) { notify('栏目图保存失败：' + (ZMIMG.err() || '未知原因')); return; }
+                    done(u);
+                });
+                return;
+            }
+            blobToDataURL(img).then(function (d) { done(d || null); });
+            return;
+        }
+        /* 旧的 dataURL 形态（网络图片 / 老调用）→ 同样搬进 IndexedDB */
+        if (typeof img === 'string' && img.indexOf('data:image') === 0 && ZMIMG.ok()) {
+            const blob = dataURLtoBlob(img);
+            if (blob) {
+                ZMIMG.put(bgPartIdbKey(scope, k), blob).then(function (u) { done(u || img); });
+                return;
+            }
+        }
+        done(img);
     }
     function removeBgPartImg(k) {
         const scope = window._bgScope;
@@ -17810,6 +18263,7 @@
         if (!rec || !rec.parts) return;
         const cur = rec.parts[k];
         if (cur && typeof cur === 'object') {
+            if (cur.img) { try { ZMIMG.del(bgPartIdbKey(scope, k)); } catch (e) {} }
             const op = cur.op;
             rec.parts[k] = op == null ? null : op;     // 退回数字版
         }
@@ -17996,31 +18450,22 @@
         /* v25: 栏目背景图 mode —— 直接走 commitPartImg，不影响整页背景 */
         if (window._bgPartK && window._bgPartMode === 'part') {
             const partK = window._bgPartK;
-            /* v38：栏目图不再压缩 —— 原图 dataURL 直接保存。
-               存储确实装不下时如实提示（不再自动降质缩水，尊重「背景图不要压缩」的设置）。 */
+            /* v48：栏目图改为「原始 File 直接进 IndexedDB」。
+               不再先转 dataURL 再比体积 —— 那个体积上限（3.75MB）本来就是因为
+               localStorage 装不下才存在的，现在存储换成 IndexedDB，这个限制随之消失。 */
             showToast('正在读取原图…');
-            readFileAsDataURL(f).then(({ dataURL }) => {
-                const need = dataURL.length * LS_CHAR_BYTES;
-                const used = bgTotalBytes(), quota = bgQuota();
-                if ((used + need) <= quota) {
-                    commitPartImg(dataURL);
-                    /* 仅保存栏目图，不显示舞台预览 */
-                    bgEdit = null;
-                    inp.value = '';
-                    applyBg();
-                    showToast('栏目图已保存（原图）');
-                    bgStage.style.backgroundImage = '';
-                } else {
-                    notify('背景图空间不足：这张原图需要 ' + mbTxt(need) + 'MB，当前可用 ' + mbTxt(Math.max(0, quota - used)) + 'MB。\n\n请清除不再使用的背景图后重试（背景图保持原图保存，不会自动压缩）。');
-                }
-            }).catch(e => notify('图片读取失败：' + (e.message || '未知错误')));
+            commitPartImg(f);
+            bgEdit = null;
+            inp.value = '';
+            showToast('栏目图已保存');
+            bgStage.style.backgroundImage = '';
             return;
         }
         // 换图时保留用户上次调好的"底图可见度"
         const prev = bgGet(scope);
         const existingAlpha = prev ? prev.alpha : null;
         // v23：免压缩 —— 原图直接 dataURL 保存，只走 cropBgImage 裁剪，不再调用 compressImage
-        readFileAsDataURL(f).then(({ dataURL, w, h }) => {
+        readFileForPreview(f).then(({ dataURL, w, h }) => {
             /* v28：不再拿「原图 dataURL 的体积」卡准入。
                真正写进 localStorage 的是 cropBgImage() 按目标区域裁剪后的图
                （长边上限 1080、JPEG 0.85，通常 200~500KB）；原图只留在内存里，
@@ -18031,12 +18476,16 @@
                 notify('图片尺寸过大（' + w + '×' + h + '），请换一张或先裁小一点');
                 return;
             }
-            if (dataURL.length > 28 * 1024 * 1024) {       // 极端兜底：dataURL 大到内存吃不消
-                notify('图片过大，浏览器加载不动，请换一张小一点的图');
+            /* v48：体量判据改用文件本身的字节数 —— 预览已经是 object URL，
+               再去量 dataURL 字符串长度没有意义（而且那个上限本来就是给
+               localStorage 那 3.75MB 的桶设的，现在存储换成 IndexedDB 已经不适用）。
+               保留的只是「解码内存吃不吃得消」这一层保护。 */
+            if (f.size > 120 * 1024 * 1024) {
+                notify('这张图有 ' + (f.size / 1048576).toFixed(0) + 'MB，超出浏览器解码能力，请换一张小一点的');
                 return;
             }
-            if (dataURL.length > 8 * 1024 * 1024) {
-                showToast('⚠️ 图片较大（' + (dataURL.length / 1024 / 1024).toFixed(1) + 'MB），正在处理…');
+            if (f.size > 8 * 1024 * 1024) {
+                showToast('⚠️ 图片较大（' + (f.size / 1048576).toFixed(1) + 'MB），正在处理…');
             }
             /* 配额不再提前拦截：真正存不下时由 commitBgEdit 自动逐级瘦身重试 */
             const img = document.getElementById('bgImg');
@@ -18054,7 +18503,9 @@
                 document.getElementById('bgClear').style.display = 'block';
                 const alpha = (existingAlpha != null) ? existingAlpha : 55;
                 // 标记一下：原图直存，不压缩（cropBgImage() 仍然会按目标区域裁剪）
-                bgEdit = { scope, dataURL, baseW: w, baseH: h, x: 0, y: 0, userScale: 1, fit: 'area', alpha, raw: true };
+                /* v48：把原始 File 一并留在编辑态 —— 用户没缩放/位移时可以直接原样入库，
+                   连解码重编码都省掉（真正意义上的「不压缩」） */
+                bgEdit = { scope, dataURL, file: f, baseW: w, baseH: h, x: 0, y: 0, userScale: 1, fit: 'area', alpha, raw: true };
                 const slider = document.getElementById('bgAlpha');
                 if (slider) slider.value = alpha;
                 onBgAlpha(alpha);
@@ -18068,7 +18519,27 @@
         }).catch(e => notify('图片读取失败：' + (e.message || '未知错误')));
     }
 
-    /* v23：把 File 读成 dataURL（不压缩）+ 顺手拿原始宽高 —— 用于免压缩路径 */
+    /* v48：预览路径不再使用 dataURL。
+       一张 50MB 的图转 dataURL 会变成约 67MB 的字符串常驻内存（base64 膨胀 33%
+       且是按 UTF-16 计的字符），手机浏览器上基本等于 OOM。
+       object URL 不复制数据 —— 浏览器只在内部记一个引用，我们拿到的是一小段字符串。 */
+    let __bgPreviewURL = '';
+    function readFileForPreview(file) {
+        return new Promise((resolve, reject) => {
+            let url = '';
+            try { url = URL.createObjectURL(file); } catch (e) { reject(new Error('无法读取该文件')); return; }
+            if (__bgPreviewURL && __bgPreviewURL !== url) { try { URL.revokeObjectURL(__bgPreviewURL); } catch (e) {} }
+            __bgPreviewURL = url;
+            const img = new Image();
+            img.onload = () => resolve({ dataURL: url, w: img.width, h: img.height });
+            img.onerror = () => { try { URL.revokeObjectURL(url); } catch (e) {} reject(new Error('图片解码失败，建议换成 JPG / PNG')); };
+            img.src = url;
+        });
+    }
+    function releaseBgPreviewURL() {
+        if (__bgPreviewURL) { try { URL.revokeObjectURL(__bgPreviewURL); } catch (e) {} __bgPreviewURL = ''; }
+    }
+    /* v23：把 File 读成 dataURL（不压缩）+ 顺手拿原始宽高 —— 仅剩旧调用路径在用 */
     function readFileAsDataURL(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -18386,10 +18857,11 @@
     /* v5：按舞台（=目标区域真实比例）把图片裁剪固化，返回裁剪后的 dataURL。
        裁剪后图片比例与目标区域一致，应用时 cover+center 即可精确还原预览构图，
        彻底消除旧版"预览对得上、应用后偏移"的偏差。 */
-    function cropBgImage(be, q, maxLong) {
+    function cropBgCanvas(be, maxLong) {
         if (!be || !be.dataURL) return null;
         const stage = document.getElementById('bgStage');
         const img = document.getElementById('bgImg');
+        if (!stage) return null;
         const stW = stage.clientWidth, stH = stage.clientHeight;
         if (!stW || !stH || !img || !img.naturalWidth) return null;
         const baseW = be.baseW || img.naturalWidth, baseH = be.baseH || img.naturalHeight;
@@ -18398,7 +18870,7 @@
         const rw = baseW * cover, rh = baseH * cover;
         // 输出：v38 起按「舞台可见区域在原图中的 1:1 像素」输出 —— 原图多少分辨率，
         // 存的就是多少分辨率，不再缩到 1080。仅设 4096 硬上限防极端超限（canvas 解码极限）。
-        // v28：maxLong / q 可由调用方指定，用于存不下时逐级降质重试。
+        // v28：maxLong 可由调用方指定，用于降质兜底档。
         const cap = maxLong || 4096;
         let pixW = stW / cover, pixH = stH / cover;      // 舞台可见区域对应的源图像素
         const longPx = Math.max(pixW, pixH);
@@ -18421,11 +18893,42 @@
             ctx.drawImage(img, (outW - fw) / 2, (outH - fh) / 2, fw, fh);
             ctx.restore();
             ctx.drawImage(img, (be.x || 0) * k, (be.y || 0) * k, rw * k, rh * k);
-            return c.toDataURL('image/jpeg', q == null ? 0.92 : q);
+            return c;
         } catch (e) {
-            console.warn('cropBgImage 失败，退回原图+偏移', e);
+            console.warn('cropBgCanvas 失败，退回原图+偏移', e);
             return null;
         }
+    }
+    /* 旧接口：返回 dataURL（仅在 IndexedDB 不可用的降级路径上还会用到） */
+    function cropBgImage(be, q, maxLong) {
+        const c = cropBgCanvas(be, maxLong);
+        if (!c) return null;
+        try { return c.toDataURL('image/jpeg', q == null ? 0.92 : q); } catch (e) { return null; }
+    }
+    /* v48：返回 Blob —— 主路径。不经过 base64，直接交给 IndexedDB。
+       mime 传 'image/png' 即无损（原图模式烘焙构图时用）。 */
+    function cropBgBlob(be, q, maxLong, mime) {
+        return new Promise(function (res) {
+            const c = cropBgCanvas(be, maxLong);
+            if (!c) { res(null); return; }
+            const type = mime || (q == null ? 'image/png' : 'image/jpeg');
+            try {
+                c.toBlob(function (bl) { res(bl || null); }, type, q == null ? undefined : q);
+            } catch (e) { res(null); }
+        });
+    }
+    /* v48：原图模式真正「不压缩」的两种情形 ——
+       ① 用户没做缩放/位移：原图直接交给浏览器 cover 渲染，与烘焙裁剪像素级等价，
+          于是把**上传的原始文件字节**原样存进库，一个字节都没动过（连解码重编码都没有）。
+       ② 用户调过构图：必须把构图烘焙进像素，走 PNG 无损（不是 JPEG，不丢画质）。 */
+    function bgOriginalBlob(be) {
+        if (!be) return Promise.resolve(null);
+        const untouched = (Math.abs((be.userScale || 1) - 1) < 1e-9) && !be.x && !be.y;
+        if (untouched) {
+            if (be.file && typeof be.file.size === 'number') return Promise.resolve(be.file);
+            if (be.originBlob && typeof be.originBlob.size === 'number') return Promise.resolve(be.originBlob);
+        }
+        return cropBgBlob(be, null, 4096, 'image/png');
     }
 
     /* ===== v22：背景自动保存 =====
@@ -18464,7 +18967,7 @@
     function pickBgQual(m) {
         try { localStorage.setItem('zmv_bg_quality', m === 'cmp' ? 'cmp' : 'orig'); } catch (e) {}
         syncBgQualUI();
-        if (bgEdit && window._bgScope) bgAutoSave(300);   // 切换后立即按新档位重存当前图
+        if (bgEdit && window._bgScope) bgAutoSave(300);   // v48：切换后立即按新档位重存（异步落 IndexedDB）
     }
     function syncBgQualUI() {
         const row = document.getElementById('bgQualRow');
@@ -18472,21 +18975,55 @@
         const m = bgQualMode();
         document.querySelectorAll('#bgQual span').forEach(s => s.classList.toggle('on', s.dataset.q === m));
     }
-    function commitBgEdit() {
+    async function commitBgEdit() {
         const scope = window._bgScope;
         if (!scope || !bgEdit) return false;
+        /* v48：必须在最前面把编辑态抓成局部快照。
+           本函数是 async，await 之后 closeBgPicker 可能已经把全局 bgEdit 置成 null，
+           继续读 bgEdit.fit / bgEdit.alpha 会直接抛 TypeError。 */
+        const be = bgEdit;
+        const editScope = be.scope || scope;
         const old = bgGet(scope);
         const keep = old && old.parts ? old.parts : undefined;
         const keepCover = old ? old.cover : undefined;   /* v26：覆盖层整体系数一并保留 */
         const put = rec => { if (keep) rec.parts = keep; if (keepCover != null) rec.cover = keepCover; bgSet(scope, rec); };
 
-        /* v39：首选档由「保存方式」决定 —— 原图=1:1 不缩；压缩=长边 1080 / q0.85 */
-        if (bgQualMode() === 'cmp') put(buildBgRec(bgEdit, 0.85, 1080));
-        else put(buildBgRec(bgEdit, 0.92));
+        /* ===== v48 主路径：图片进 IndexedDB =====
+           IndexedDB 配额按磁盘比例给（本机实测 4.17GB），30/50MB 原图可原样存下，
+           因此这里既不需要压缩、也不需要下面那套逐级降质的兜底阶梯。 */
+        if (ZMIMG.ok()) {
+            let blob = null;
+            try {
+                blob = (bgQualMode() === 'cmp')
+                    ? await cropBgBlob(be, 0.85, 1080, 'image/jpeg')   /* 用户主动选了压缩 */
+                    : await bgOriginalBlob(be);                        /* 原图：不动或无损 PNG */
+            } catch (e) { blob = null; }
+
+            if (!blob) {
+                notify('图片处理失败，原背景未改动。\n\n可换一张 JPG / PNG 再试。');
+                return false;
+            }
+            const url = await ZMIMG.put(bgIdbKey(scope), blob);
+            if (!url) {
+                notify('背景图保存失败：' + (ZMIMG.err() || '未知原因') + '\n\n原背景保留，未做任何改动。');
+                return false;
+            }
+            put({ img: 1, d: url, fit: be.fit, alpha: (be.alpha == null ? 55 : be.alpha), crop: 1 });
+            if (bgPersist(scope)) return true;
+            /* 元数据都写不下（几乎不可能）→ 回滚 */
+            bgSet(scope, old || null);
+            bgPersist(scope);
+            return false;
+        }
+
+        /* ===== 降级路径：IndexedDB 不可用（老浏览器 / 隐私模式）=====
+           退回原来的 localStorage + 逐级降质，行为与 v47 完全一致。 */
+        if (bgQualMode() === 'cmp') put(buildBgRec(be, 0.85, 1080));
+        else put(buildBgRec(be, 0.92));
         if (bgPersist(scope)) return true;
 
         for (let i = 0; i < BG_SAVE_LADDER.length; i++) {
-            put(buildBgRec(bgEdit, BG_SAVE_LADDER[i][0], BG_SAVE_LADDER[i][1]));
+            put(buildBgRec(be, BG_SAVE_LADDER[i][0], BG_SAVE_LADDER[i][1]));
             if (bgPersist(scope)) {
                 closeM('mNotify');   // 降质过程中闪过的"空间不足"提示要收掉，别吓到用户
                 showToast('⚠️ 存储紧张，已自动调整到可保存的大小');
@@ -18505,12 +19042,15 @@
         __bgSaveT = setTimeout(() => {
             const scope = window._bgScope;
             if (!scope) return;
-            if (bgEdit) { if (commitBgEdit()) { applyBg(); bgFlashSaved(); } }
+            if (bgEdit) {
+                /* v48：commitBgEdit 变 async（要等 canvas.toBlob 与 IndexedDB 写入） */
+                Promise.resolve(commitBgEdit()).then(function (ok) { if (ok) { applyBg(); bgFlashSaved(); } });
+            }
             else { if (bgPersist(scope)) bgFlashSaved(); }
         }, delay == null ? 200 : delay);
     }
     function confirmBg() {
-        if (bgEdit) { if (commitBgEdit()) applyBg(); }
+        if (bgEdit) { Promise.resolve(commitBgEdit()).then(function (ok) { if (ok) applyBg(); }); }
         else if (window._bgScope) bgPersist(window._bgScope);
         bgFlashSaved('✓ 已保存');
         showToast('背景已保存');
@@ -18519,6 +19059,8 @@
     function clearBg() {
         const scope = window._bgScope;
         if (!scope) return;
+        /* v48：图在 IndexedDB，清背景时必须一并删除，否则 blob 永远留在磁盘上 */
+        try { ZMIMG.del(bgIdbKey(scope)); } catch (e) {}
         bgSet(scope, null);
         if (bgPersist(window._bgScope)) applyBg();
         bgEdit = null;
@@ -19301,15 +19843,31 @@
         save();
     }
     applyBg();
+    /* v48：背景图实体在 IndexedDB，启动时要把它们取回来。
+       顺序：打开并回读校验 → 申请持久化（不申请的话磁盘紧张时浏览器可直接回收）
+             → 还原/迁移（把旧 dataURL 搬进 IDB 并腾空 localStorage）→ 重绘。 */
+    try {
+        ZMIMG.init().then(function (ok) {
+            if (!ok) return null;
+            return ZMIMG.persist();
+        }).then(function () {
+            if (!ZMIMG.ok()) return 0;
+            return bgHydrateAll();
+        }).then(function (n) {
+            if (n) { try { applyBg(); } catch (e) {} }
+            try { refreshBgUsage(); } catch (e) {}
+        }).catch(function () {});
+    } catch (e) {}
     render();
     applyAppearance();   /* v42：恢复字体缩放与主题色 */
     updateViewSettingsUI();
     startFutureTick();   // 未来倒计时全局秒级刷新 + 到点提醒
     try { rescheduleAllReminders(); _bridgeNativeAskPermission(); } catch (e) {}
     try { scheduleDailyReminders(); } catch (e) {}   // v27：复盘 / 习惯 / 专注目标 每日例行提醒
-    /* v28：空闲时预热存储配额探测（写大字符串实测，放到空闲做，别卡住首屏） */
+    /* v28：空闲时预热存储配额探测。v48：背景图已迁到 IndexedDB，
+       不再需要为它探测 localStorage 的剩余空间；这里只在降级模式下才预热。 */
     try {
-        const warm = () => { try { lsTotalQuota(); } catch (e) {} };
+        const warm = () => { if (!ZMIMG.ok()) { try { lsTotalQuota(); } catch (e) {} } };
         if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 3000 });
         else setTimeout(warm, 2500);
     } catch (e) {}
