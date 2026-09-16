@@ -20,7 +20,7 @@
             --bg: #f5f6fa;
             --card: #fff;
             --txt: #2d3436;
-            --sidebar-width: 150px;
+            --sidebar-width: 150px;   /* v50: 侧边栏开关修复批次 */
             --header-height: 44px;
             --nav-height: 56px;
             /* 应用宽度：手机 480，宽屏由媒体查询放大 */
@@ -4886,6 +4886,12 @@
                 <span data-q="cmp" onclick="pickBgQual('cmp')">压缩（省空间）</span>
             </div>
         </div>
+        <!-- v49：把「这张图保存后会变成什么样」写在明面上。
+             之前只有像素被拒时才说话，用户根本无从知道存下来的是原图还是被缩过的。 -->
+        <div data-page-node-id="zmjBgInfoRow" class="bg-alpha" id="bgInfoRow" style="display:none">
+            <span>原图</span>
+            <span id="bgInfoTxt" style="flex:1; text-align:left; font-size:11px; line-height:1.55; color:#777"></span>
+        </div>
         <div data-page-node-id="zmjBgPrevRow" class="bg-prev-row" id="bgPrevRow" style="display:none">
             <button data-page-node-id="zmjBgPrevBtn" id="bgPrevToggle" onclick="toggleBgPreviewMode()" type="button"><!--pnid:2P8ZL31VGw7ipjKYaxwO0X--><!--pnid:zmjBgPrevBtnTx--><!--pnid:z4EGkzeDP5Qlizbu1HURr8-->👁 看实际效果</button>
             <span data-page-node-id="zmjBgPrevTip" class="bg-prev-tip"><!--pnid:mt04wjmKoAdpwW5f05fDvY--><!--pnid:zmjBgPrevTipTx--><!--pnid:6I3z4ewlcBmhvILw5k2AIq-->＝保存后的样子</span>
@@ -6227,8 +6233,16 @@
     (function () {
         const app = document.getElementById('app');
         if (!app) return;
-        app.addEventListener('click', function () {
+        app.addEventListener('click', function (e) {
             try {
+                /* v50：必须放掉「左上角按钮」自己的点击 —— 这就是「浏览器模式下次点关不掉」的根因。
+                   监听挂在 #app 上、又跑在 capture 阶段，而汉堡按钮（header.bar .left）就在 #app 里面：
+                   点它时这里先把侧边栏 closeSidebar() 掉，紧接着按钮自己的 onLeftClick()
+                   → toggleSidebar() 又把它打开，两下抵消，看起来就是点了没反应。
+                   手机视图下之所以一直正常，是因为 overlay 全屏盖住了按钮 ——
+                   那一下其实点在 overlay 的 closeSidebar() 上，根本没进到按钮；
+                   而 auto / desktop 视图里 CSS 把 #overlay 设成 display:none，按钮露出来，问题才显形。 */
+                if (e.target && e.target.closest && e.target.closest('header.bar .left')) return;
                 /* v43：强制电脑版侧边栏常驻，点内容区不收起 */
                 var __dv = document.documentElement.getAttribute('data-view');
                 if (sidebarOpen && window.innerWidth >= 900
@@ -17497,6 +17511,7 @@
         document.getElementById('bgUploadBtn').style.display = 'flex';
         document.getElementById('bgFit').style.display = 'none';
         document.getElementById('bgQualRow').style.display = 'none';
+        var _bgInfoRowEl = document.getElementById('bgInfoRow'); if (_bgInfoRowEl) _bgInfoRowEl.style.display = 'none';
         document.getElementById('bgZoom').style.display = 'none';
         (function () { const pk = document.getElementById('bgPickBtn'); if (pk) { pk.style.display = ''; pk.textContent = '📁 上传本地图片'; } })();
         document.getElementById('bgConfirmRow').style.display = 'none';
@@ -18185,7 +18200,7 @@
         bgEdit = null;
         /* mBg 上：上传按钮仍可见，但裁剪/缩放/可见度控件全部隐藏 — 栏目图直接整图覆盖 */
         document.getElementById('bgTitle').textContent = '栏目图 · ' + partK;
-        const ids = ['bgImg','bgFit','bgZoom','bgPMask','bgPTasks','bgConfirmRow','bgAlphaRow','bgPrevRow','bgPresets','bgQualRow'];
+        const ids = ['bgImg','bgFit','bgZoom','bgPMask','bgPTasks','bgConfirmRow','bgAlphaRow','bgPrevRow','bgPresets','bgQualRow','bgInfoRow'];
         ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         const up = document.getElementById('bgUploadBtn'); if (up) up.style.display = 'flex';
         const pk = document.getElementById('bgPickBtn'); if (pk) { pk.style.display = ''; pk.textContent = '📁 上传栏目图'; }
@@ -18417,7 +18432,12 @@
             img.style.display = 'block';
             document.getElementById('bgUploadBtn').style.display = 'none';
             document.getElementById('bgFit').style.display = 'flex';
-            syncBgQualUI();   // v39：显示「保存方式」选项（原图/压缩）
+            /* v49：顺带修掉一个从 v39 就在的老 bug —— #bgQualRow（原图/压缩选择器）
+               在 HTML 里是 display:none，而全文件只有三处把它设成 none，
+               没有任何一处把它设回可见，所以这个选择器从来没在界面上出现过。 */
+            syncBgQualUI();
+            document.getElementById('bgQualRow').style.display = 'flex';
+            document.getElementById('bgInfoRow').style.display = 'flex';
             document.getElementById('bgZoom').style.display = 'flex';
             document.getElementById('bgAlphaRow').style.display = 'flex';
             document.getElementById('bgPMask').style.display = 'block';
@@ -18430,7 +18450,7 @@
                 scope: window._bgScope,
                 dataURL: rec.d, baseW: img.naturalWidth, baseH: img.naturalHeight,
                 x: rec.x || 0, y: rec.y || 0, userScale: rec.s || 1,
-                fit: rec.fit || 'area', alpha
+                fit: rec.fit || 'area', alpha, touched: false
             };
             const slider = document.getElementById('bgAlpha');
             if (slider) slider.value = alpha;
@@ -18471,21 +18491,34 @@
                （长边上限 1080、JPEG 0.85，通常 200~500KB）；原图只留在内存里，
                不落库。旧版却拿原图体积去拒 —— 一张 4.7MB 的手机照片转 dataURL
                后 6.3MB，直接被"超过 6MB"挡掉，用户看到的就是"换了图没反应"。 */
-            const MAX_PIXELS = 45e6;                       // 4500 万像素，再大就很容易解码失败
-            if (w && h && w * h > MAX_PIXELS) {
-                notify('图片尺寸过大（' + w + '×' + h + '），请换一张或先裁小一点');
+            /* v49：删掉 v47 留下的「4500 万像素硬拒」。
+               它的理由是「再大就很容易解码失败」，但实测比真实能力严了 2~6 倍。
+               本机 Edge 实测（见 _probe48.log）：
+                 8627×11503 (99.2Mpx) / 12000×16000 (192Mpx) / 16384×16384 (268Mpx)
+                 解码、createImageBitmap、同尺寸 canvas 创建、4096 长边 blur+drawImage、
+                 PNG toBlob —— 全部成功（解码 0.2~0.8s，烘焙 0.3~0.8s）。
+               被它挡掉的恰恰是「本来就存得下」的图：用户那张 8627×11503 就是。
+               而且存不存得下跟像素数无关 —— 不改构图时走的是原文件字节直存
+               （见 bgOriginalBlob），一个像素都不用解码；只有调过构图才需要 canvas 烘焙。
+               所以这里不再拒绝，只把「这张图要吃多少内存」如实讲清楚，由用户决定。 */
+            const px = (w && h) ? (w * h) : 0;
+            /* 保命线：确实存在「大到会把渲染进程搞崩」的量级，越过它连提示都来不及看到。
+               这不是用来限制正常使用的（见 _probe48.log 的实测上限）。 */
+            const GUARD_PX = 4e8;
+            if (px > GUARD_PX) {
+                notify('这张图有 ' + Math.round(px / 1e6) + 'M 像素（' + w + '×' + h + '）,\n'
+                     + '超出浏览器单页能安全渲染的量级。\n\n请先用图片工具缩小后再上传。');
                 return;
             }
-            /* v48：体量判据改用文件本身的字节数 —— 预览已经是 object URL，
-               再去量 dataURL 字符串长度没有意义（而且那个上限本来就是给
-               localStorage 那 3.75MB 的桶设的，现在存储换成 IndexedDB 已经不适用）。
-               保留的只是「解码内存吃不吃得消」这一层保护。 */
             if (f.size > 120 * 1024 * 1024) {
-                notify('这张图有 ' + (f.size / 1048576).toFixed(0) + 'MB，超出浏览器解码能力，请换一张小一点的');
+                notify('这张图的文件有 ' + (f.size / 1048576).toFixed(0) + 'MB，超出浏览器单张解码能力。\n\n请换一张小一点的图。');
                 return;
             }
-            if (f.size > 8 * 1024 * 1024) {
-                showToast('⚠️ 图片较大（' + (f.size / 1048576).toFixed(1) + 'MB），正在处理…');
+            if (px > 60e6 || f.size > 8 * 1024 * 1024) {
+                const bits = [];
+                if (px > 60e6) bits.push(w + '×' + h + '（约 ' + Math.round(px / 1e6) + 'M 像素，渲染约需 ' + Math.round(px * 4 / 1048576) + 'MB 内存）');
+                if (f.size > 8 * 1024 * 1024) bits.push('文件 ' + (f.size / 1048576).toFixed(1) + 'MB');
+                showToast('ℹ️ ' + bits.join(' · ') + '，正在读取…');
             }
             /* 配额不再提前拦截：真正存不下时由 commitBgEdit 自动逐级瘦身重试 */
             const img = document.getElementById('bgImg');
@@ -18493,7 +18526,9 @@
                 img.style.display = 'block';
                 document.getElementById('bgUploadBtn').style.display = 'none';
                 document.getElementById('bgFit').style.display = 'flex';
-                syncBgQualUI();   // v39：显示「保存方式」选项（原图/压缩）
+                syncBgQualUI();
+                document.getElementById('bgQualRow').style.display = 'flex';
+                document.getElementById('bgInfoRow').style.display = 'flex';
                 document.getElementById('bgZoom').style.display = 'flex';
                 document.getElementById('bgAlphaRow').style.display = 'flex';
                 document.getElementById('bgPMask').style.display = 'block';
@@ -18505,7 +18540,11 @@
                 // 标记一下：原图直存，不压缩（cropBgImage() 仍然会按目标区域裁剪）
                 /* v48：把原始 File 一并留在编辑态 —— 用户没缩放/位移时可以直接原样入库，
                    连解码重编码都省掉（真正意义上的「不压缩」） */
-                bgEdit = { scope, dataURL, file: f, baseW: w, baseH: h, x: 0, y: 0, userScale: 1, fit: 'area', alpha, raw: true };
+                /* v49：touched 记录「用户有没有手工调过构图」。
+                   注意紧接着的 applyBgPreviewLayout(true) 会把 x/y 改写成居中偏移，
+                   所以不能用「x/y 是否为 0」来判断 —— v48 正是这么判的，
+                   结果「不改构图就原图直存」这条路从未生效。 */
+                bgEdit = { scope, dataURL, file: f, baseW: w, baseH: h, x: 0, y: 0, userScale: 1, fit: 'area', alpha, raw: true, touched: false };
                 const slider = document.getElementById('bgAlpha');
                 if (slider) slider.value = alpha;
                 onBgAlpha(alpha);
@@ -18607,6 +18646,9 @@
         bgEdit.fit = f;
         bgEdit.userScale = 1;
         bgEdit.x = 0; bgEdit.y = 0;
+        /* v49：切回「按区域」= 回到默认构图，仍然可以走原图直存；
+           切到 16:9 / 4:3 / 1:1 则舞台比例与原图不同，必须烘焙。 */
+        bgEdit.touched = (f !== 'area');
         applyBgPreviewLayout(true);   // 换比例后居中
         bgAutoSave();                           // v22
         if (bgPreviewMode) renderBgPreview();   // v10
@@ -18758,6 +18800,7 @@
         /* v25：缩小不再卡在 100% —— 允许缩到 30%，小于舞台露出的空白由模糊补底。
            旧版 min=1，图一进编辑器就是铺满态，按「−」被钳回 1，
            表现就是用户报的「缩小功能无用」。 */
+        bgEdit.touched = true;   /* v49：缩放过 → 必须烘焙 */
         bgEdit.userScale = Math.max(0.3, Math.min(2.5, bgEdit.userScale + d * 0.12));
         applyBgPreviewLayout();
         bgAutoSave();                           // v22
@@ -18795,6 +18838,7 @@
         }
         document.getElementById('bgScaleTxt').textContent = Math.round(bgEdit.userScale * 100) + '%';
         document.querySelectorAll('#bgFit span').forEach(s => s.classList.toggle('on', s.dataset.f === bgEdit.fit));
+        syncBgInfoTxt();   /* v49：拖动/缩放后，「会怎么存」也要跟着变 */
     }
 
     /* ===== 拖动定位 ===== */
@@ -18822,6 +18866,7 @@
                 if (e.cancelable) e.preventDefault();
             }
             if (moved) {
+                bgEdit.touched = true;   /* v49：拖过 → 必须烘焙 */
                 bgEdit.x += dx; bgEdit.y += dy;
                 lx = p.clientX; ly = p.clientY;
                 applyBgPreviewLayout();
@@ -18857,14 +18902,23 @@
     /* v5：按舞台（=目标区域真实比例）把图片裁剪固化，返回裁剪后的 dataURL。
        裁剪后图片比例与目标区域一致，应用时 cover+center 即可精确还原预览构图，
        彻底消除旧版"预览对得上、应用后偏移"的偏差。 */
-    function cropBgCanvas(be, maxLong) {
+    function cropBgCanvas(be, maxLong, srcOverride) {
         if (!be || !be.dataURL) return null;
         const stage = document.getElementById('bgStage');
-        const img = document.getElementById('bgImg');
+        /* v49：srcOverride 允许传入一个「降采样源」顶替预览图。
+           桌面 Chromium 的 canvas 面积上限是 2.68 亿像素（实测 16384×16384 正常创建），
+           但 iOS Safari 只有约 1670 万 —— 手机上放一张大图进来，全尺寸源会让 canvas 直接失败。
+           降采样源与原图等比：baseW/baseH 缩小多少倍，cover 就放大多少倍，
+           最终 rw = baseW * cover 以及各偏移完全不变 ——
+           构图一模一样，只是像素来自较低分辨率的源。 */
+        const img = srcOverride || document.getElementById('bgImg');
         if (!stage) return null;
         const stW = stage.clientWidth, stH = stage.clientHeight;
-        if (!stW || !stH || !img || !img.naturalWidth) return null;
-        const baseW = be.baseW || img.naturalWidth, baseH = be.baseH || img.naturalHeight;
+        const iw = (img && (img.naturalWidth || img.width)) || 0;
+        const ih = (img && (img.naturalHeight || img.height)) || 0;
+        if (!stW || !stH || !iw) return null;
+        const baseW = srcOverride ? iw : (be.baseW || iw);
+        const baseH = srcOverride ? ih : (be.baseH || ih);
         const cover = Math.max(stW / baseW, stH / baseH) * (be.userScale || 1);
         if (!cover) return null;
         const rw = baseW * cover, rh = baseH * cover;
@@ -18905,26 +18959,66 @@
         if (!c) return null;
         try { return c.toDataURL('image/jpeg', q == null ? 0.92 : q); } catch (e) { return null; }
     }
-    /* v48：返回 Blob —— 主路径。不经过 base64，直接交给 IndexedDB。
-       mime 传 'image/png' 即无损（原图模式烘焙构图时用）。 */
-    function cropBgBlob(be, q, maxLong, mime) {
+    /* v49：把源图按长边降到 maxLong，只在「全尺寸源烘焙失败」时才会用到。
+       交给 createImageBitmap 的 resize 选项，直接得到位图，不必再编码一次。 */
+    async function downscaleSourceBitmap(file, baseW, baseH, maxLong) {
+        if (!file || !file.size) return null;
+        if (typeof createImageBitmap !== 'function') return null;
+        const long = Math.max(baseW || 0, baseH || 0);
+        if (!long || long <= maxLong) return null;      /* 本来就不大，降采样没意义 */
+        const opts = { resizeQuality: 'high' };
+        if ((baseW || 0) >= (baseH || 0)) opts.resizeWidth = maxLong; else opts.resizeHeight = maxLong;
+        try { return await createImageBitmap(file, opts); } catch (e) { return null; }
+    }
+    function canvasToBlobAsync(c, q, mime) {
         return new Promise(function (res) {
-            const c = cropBgCanvas(be, maxLong);
-            if (!c) { res(null); return; }
             const type = mime || (q == null ? 'image/png' : 'image/jpeg');
             try {
                 c.toBlob(function (bl) { res(bl || null); }, type, q == null ? undefined : q);
             } catch (e) { res(null); }
         });
     }
+    /* v48：返回 Blob —— 主路径。不经过 base64，直接交给 IndexedDB。
+       mime 传 'image/png' 即无损（原图模式烘焙构图时用）。
+       v49：改成 async —— 全尺寸源烘焙失败时用降采样源重试一次。 */
+    let bgBakeNote = '';
+    async function cropBgBlob(be, q, maxLong, mime) {
+        let c = cropBgCanvas(be, maxLong);
+        if (!c && be && be.file) {
+            try {
+                const bm = await downscaleSourceBitmap(be.file, be.baseW, be.baseH, 8192);
+                if (bm) {
+                    c = cropBgCanvas(be, maxLong, bm);
+                    if (c) bgBakeNote = '这张图超出本机 canvas 上限，已改用降采样源完成构图烘焙（构图一致，细节略有损失）';
+                    else { try { bm.close(); } catch (e) {} }
+                }
+            } catch (e) {}
+        }
+        if (!c) return null;
+        return canvasToBlobAsync(c, q, mime);
+    }
     /* v48：原图模式真正「不压缩」的两种情形 ——
        ① 用户没做缩放/位移：原图直接交给浏览器 cover 渲染，与烘焙裁剪像素级等价，
           于是把**上传的原始文件字节**原样存进库，一个字节都没动过（连解码重编码都没有）。
        ② 用户调过构图：必须把构图烘焙进像素，走 PNG 无损（不是 JPEG，不丢画质）。 */
+    /* v49：判断「构图是否仍是默认态」—— 决定能不能直接把原始文件字节入库。
+       判据必须是 touched 标志，不能是坐标：onBgFile 里的 applyBgPreviewLayout(true)
+       会把 x/y 写成居中偏移（竖图时 y 必为负），于是 v48 的 `!be.x && !be.y` 恒为假，
+       用户一下都不拖也会被送去 canvas 烘焙、被 4096 上限缩掉 ——
+       v48 宣称的「不压缩」在实际路径上从未生效过。 */
+    function bgIsUntouched(be) {
+        if (!be) return false;
+        if (be.touched) return false;                      /* 手动拖动或缩放过 */
+        const fit = be.fit || 'area';
+        if (fit !== 'area') return false;                  /* 换过比例 → 舞台比例与原图不同 */
+        return true;
+    }
     function bgOriginalBlob(be) {
         if (!be) return Promise.resolve(null);
-        const untouched = (Math.abs((be.userScale || 1) - 1) < 1e-9) && !be.x && !be.y;
-        if (untouched) {
+        if (bgIsUntouched(be)) {
+            /* 与预览像素等价：渲染侧 crop=1 走 cover + center，
+               而预览的初始态就是「居中 cover」—— 所以原图字节可以原样入库，
+               不解码、不重编码、不做任何重采样。 */
             if (be.file && typeof be.file.size === 'number') return Promise.resolve(be.file);
             if (be.originBlob && typeof be.originBlob.size === 'number') return Promise.resolve(be.originBlob);
         }
@@ -18969,11 +19063,25 @@
         syncBgQualUI();
         if (bgEdit && window._bgScope) bgAutoSave(300);   // v48：切换后立即按新档位重存（异步落 IndexedDB）
     }
+    /* v49：如实说明「保存后会怎样」 */
+    function syncBgInfoTxt() {
+        const info = document.getElementById('bgInfoTxt');
+        if (!info) return;
+        if (!bgEdit || !bgEdit.baseW) { info.textContent = ''; return; }
+        const px = bgEdit.baseW * bgEdit.baseH;
+        const head = bgEdit.baseW + '×' + bgEdit.baseH + ' · ' + Math.round(px / 1e6) + 'M 像素';
+        let tail;
+        if (bgQualMode() === 'cmp') tail = '保存时压缩到长边 1080';
+        else if (bgIsUntouched(bgEdit)) tail = '不动构图 → 原图字节原样入库，不压缩';
+        else tail = '构图已调整 → 无损烘焙（长边上限 4096）';
+        info.textContent = head + ' · ' + tail;
+    }
     function syncBgQualUI() {
         const row = document.getElementById('bgQualRow');
         if (!row) return;
         const m = bgQualMode();
         document.querySelectorAll('#bgQual span').forEach(s => s.classList.toggle('on', s.dataset.q === m));
+        syncBgInfoTxt();
     }
     async function commitBgEdit() {
         const scope = window._bgScope;
@@ -19000,7 +19108,10 @@
             } catch (e) { blob = null; }
 
             if (!blob) {
-                notify('图片处理失败，原背景未改动。\n\n可换一张 JPG / PNG 再试。');
+                notify('这张图没能处理成功，原背景未改动。\n\n'
+                     + '· 不缩放、不拖动，直接点确认 → 原图会原样入库（不压缩，也最省内存）\n'
+                     + '· 或改用「压缩（省空间）」档\n'
+                     + '· 或换一张小一点的图');
                 return false;
             }
             const url = await ZMIMG.put(bgIdbKey(scope), blob);
@@ -19009,6 +19120,7 @@
                 return false;
             }
             put({ img: 1, d: url, fit: be.fit, alpha: (be.alpha == null ? 55 : be.alpha), crop: 1 });
+            if (bgBakeNote) { const _bn = bgBakeNote; bgBakeNote = ''; notify(_bn); }
             if (bgPersist(scope)) return true;
             /* 元数据都写不下（几乎不可能）→ 回滚 */
             bgSet(scope, old || null);
@@ -19073,6 +19185,7 @@
         document.getElementById('bgZoom').style.display = 'none';
         document.getElementById('bgAlphaRow').style.display = 'none';
         document.getElementById('bgQualRow').style.display = 'none';
+        var _bgInfoRowEl = document.getElementById('bgInfoRow'); if (_bgInfoRowEl) _bgInfoRowEl.style.display = 'none';
         document.getElementById('bgPMask').style.display = 'none';
         document.getElementById('bgPTasks').style.display = 'none';
         document.getElementById('bgPickBtn').style.display = '';
@@ -19413,7 +19526,7 @@
     /* 预设不走图片编辑流程：直接把舞台铺成该背景作为预览 */
     function showBgPresetPreview(p) {
         const stage = document.getElementById('bgStage');
-        const ids = ['bgImg', 'bgFit', 'bgZoom', 'bgPMask', 'bgPTasks', 'bgConfirmRow', 'bgQualRow'];
+        const ids = ['bgImg', 'bgFit', 'bgZoom', 'bgPMask', 'bgPTasks', 'bgConfirmRow', 'bgQualRow', 'bgInfoRow'];
         ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
         /* v22：已有背景时仍保留「换成图片」入口（旧版把上传按钮一起藏了 → 换不了图） */
         const up = document.getElementById('bgUploadBtn');
