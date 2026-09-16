@@ -616,7 +616,7 @@
   // 内核 readShardedWith 已把并发降到 4，这里在 getFile 这一层再压一道闸门，
   // 把同一时刻在飞的读请求限到 3 —— 这是针对 Gitee 的双保险，
   // 且不碰共享内核、不会影响 GitHub 后端。
-  const GITEE_READ_CONCURRENCY = 3;
+  const GITEE_READ_CONCURRENCY = 5;
   let _giteeSlots = GITEE_READ_CONCURRENCY;
   const _giteeWaiters = [];
   function _giteeAcquireSlot() {

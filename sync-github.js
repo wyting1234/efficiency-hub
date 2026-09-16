@@ -1330,6 +1330,14 @@
   const META_FILENAME = 'efficiency-hub-meta.json';
   const LEGACY_FILENAME = 'efficiency-hub-sync.json';
   const MAX_SHARD_BYTES = 700 * 1024;   // 单片原始数据上限（压缩前），留足余量
+  // ⚠️ 分片粒度（性能关键）：早期按「模块」切片，模块一多就切出几十片（实测 43 片），
+  //    而每片独立一次网络往返 —— 43 片 × 数百 ms RTT 直接就是几十秒。
+  //    这里改为「按体积打包」：优先把数据塞满少数几片，片数由体积决定而非模块数。
+  //    好处：① 往返次数从 O(模块数) 降到 O(数据量/片容量)，通常 3~5 片；
+  //    ② 脏片判定仍按模块归属，改动一个模块只重传它落到的那些片。
+  //    目标容量取 400KB 而非更大：Gitee 对 >1MB 的文件不返回 inline content、
+  //    强制走 download_url 慢通道，压缩后留足余量才不会踩到那条路。
+  const TARGET_SHARD_BYTES = 400 * 1024;
 
   // 把 key 归到某个模块片：按 index.html 的 MODULES[].keys 前缀匹配。
   // 拿不到 MODULES（比如在工具页里打开）时退化为按键名前缀粗分。
@@ -1349,32 +1357,56 @@
     return seg || 'misc';
   }
 
+  // 估一条记录占多少字节（用于打包计量）
+  function entryBytes(k, v) {
+    if (v && typeof v.value === 'string') return v.value.length + k.length;
+    return k.length + 16;
+  }
+
   // 把本机数据打包成 { shardId: {key: {value, timestamp}} }
+  //
+  // 策略：按体积打包，而不是按模块切片。
+  //   ① 先按体积把 key 顺序装进若干片，每片尽量装到 TARGET_SHARD_BYTES；
+  //   ② 片名用 shardOfKey(key) 里的模块名打头，便于排查「某个模块的数据在哪片」；
+  //      同模块的 key 会被连续遍历到，通常落在相邻片，不会被打散到很远。
+  //   ③ 片数与模块数解耦 —— 数据少时就是 1 片，不再出现「43 个模块 = 43 片」。
+  // 排序理由：把同模块的 key 排在一起，能让「同模块基本同片」的概率最大化，
+  //           这样改动一个模块时被牵动的片数最少（增量上传仍然省）。
   function buildShards(dataObj) {
-    const shards = {};
-    for (const key in dataObj) {
-      const sid = shardOfKey(key);
-      if (!shards[sid]) shards[sid] = {};
-      shards[sid][key] = dataObj[key];
-    }
-    // 单片过大时再按体积切分成多个（xxx__2 这种后缀）
+    const entries = [];
+    for (const key in dataObj) entries.push([key, dataObj[key]]);
+    // 稳定排序：先按模块名，再按 key 原序，保证同模块相邻
+    const modOf = {};
+    entries.forEach(function (e) { if (modOf[e[0]] === undefined) modOf[e[0]] = shardOfKey(e[0]); });
+    entries.sort(function (a, b) {
+      const ma = modOf[a[0]], mb = modOf[b[0]];
+      if (ma === mb) return 0;
+      return ma < mb ? -1 : 1;
+    });
+
     const out = {};
-    for (const sid in shards) {
-      const entries = Object.entries(shards[sid]);
-      let idx = 0, cur = {}, curBytes = 0;
-      const flush = () => {
-        if (Object.keys(cur).length) {
-          out[sid + (idx === 0 ? '' : '__' + idx)] = cur;
-          idx++; cur = {}; curBytes = 0;
-        }
-      };
-      for (const [k, v] of entries) {
-        const sz = (v && typeof v.value === 'string') ? v.value.length + k.length : 0;
-        if (curBytes + sz > MAX_SHARD_BYTES && Object.keys(cur).length) flush();
-        cur[k] = v; curBytes += sz;
-      }
-      flush();
+    let cur = {}, curBytes = 0, idx = 0, curMod = '';
+    const flush = function () {
+      if (!Object.keys(cur).length) return;
+      // 片名 = 「该片第一个模块名」+ 序号，只作标识不作归属声明。
+      // 加序号是为了排序稳定、且避免同名冲突；用模块名打头纯粹为了人肉排查时
+      // 能一眼看出「这片大概装的是哪个模块区间的数据」。
+      var head = curMod || 'misc';
+      var name = idx === 0 ? head : head + '__' + idx;
+      while (out[name]) { idx++; name = head + '__' + idx; }
+      out[name] = cur;
+      cur = {}; curBytes = 0; idx++; curMod = '';
+    };
+    for (var i = 0; i < entries.length; i++) {
+      var k = entries[i][0], v = entries[i][1];
+      var sz = entryBytes(k, v);
+      if (curBytes + sz > TARGET_SHARD_BYTES && Object.keys(cur).length) flush();
+      if (!Object.keys(cur).length) curMod = modOf[k] || 'misc';
+      cur[k] = v; curBytes += sz;
     }
+    flush();
+    // 极端情况：没有任何 key
+    if (!Object.keys(out).length) out['misc'] = {};
     return out;
   }
 
@@ -1517,18 +1549,21 @@
     const shardIds = Object.keys(cloudMeta.shards || {});
     const merged = { data: {}, updatedAt: cloudMeta.updatedAt || 0 };
 
-    // 限流并发读：一次最多同时 4 片（43 片全并发会被 Gitee 成片拒绝）。
-    let results = await poolMap(shardIds, 4, function (sid) { return readShardOnce(io, sid); });
+    // 并发读分片。片数已由「按体积打包」压到个位数（见 buildShards），
+    // 所以这里给到 6 并发既安全又能压满带宽：3 片一轮就走完。
+    // 若仍是历史遗留的几十片老 meta，6 并发可能在 Gitee 侧被拒 ——
+    // 下面的重试轮会兜住，且下一次上传就会自动重切成少量大片的格式。
+    let results = await poolMap(shardIds, 6, function (sid) { return readShardOnce(io, sid); });
 
-    // 有片没读回来 → 只把失败的片分轮重试，最多 3 轮、退避递增（0.8s / 1.6s / 2.4s）。
+    // 有片没读回来 → 只把失败的片分轮重试，最多 3 轮、退避递增（0.6s / 1.2s / 1.8s）。
     // 并发读时一次抖动会同时打中多片，而「部分失败」会让整次同步被安全闸拒绝，
     // 所以这里值得多给几次机会（已读到的片不重复请求）。
     for (let round = 1; round <= 3; round++) {
       const failed = [];
       results.forEach(function (d, i) { if (!d) failed.push(i); });
       if (!failed.length) break;
-      await sleep(800 * round);
-      const again = await poolMap(failed, 4, function (i) { return readShardOnce(io, shardIds[i]); });
+      await sleep(600 * round);
+      const again = await poolMap(failed, 6, function (i) { return readShardOnce(io, shardIds[i]); });
       failed.forEach(function (i, k) { results[i] = again[k]; });
     }
 
