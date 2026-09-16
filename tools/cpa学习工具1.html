@@ -2272,9 +2272,17 @@
         }
         .kp-tmpl:hover { border-color: var(--primary-light); background: #fff; }
         .kp-tmpl.on { border-color: var(--primary); background: var(--primary-bg); }
-        .kp-tmpl input { margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--primary); }
-        .kp-tmpl-name { font-size: 13px; font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
-        .kp-tmpl-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-left: 2px; }
+        /* 必须显式重置：主样式里有全局 `input, select, textarea { width:100%; padding:10px 14px;
+           border:1px solid; background:#FAF7F1 }`，那个 width:100% 会把 radio 撑满整张卡片，
+           把模版名和说明一路挤到右边甚至挤出卡片（应用里其它 radio/checkbox 也都各自重置了） */
+        .kp-tmpl input[type="radio"] {
+            flex: 0 0 auto; width: 15px; height: 15px; min-width: 0; margin: 3px 0 0; padding: 0;
+            border: none; background: none; border-radius: 0; box-shadow: none;
+            accent-color: var(--primary);
+        }
+        .kp-tmpl input[type="radio"]:focus { box-shadow: none; }
+        .kp-tmpl-name { flex: 0 0 auto; font-size: 13px; font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
+        .kp-tmpl-desc { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-left: 2px; }
         .kp-tmpl-preview {
             margin: 0; padding: 11px 14px; background: #FDFBF7; border: 1px solid var(--border);
             border-radius: var(--radius-sm); font-family: ui-monospace, Consolas, "Courier New", monospace;
