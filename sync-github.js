@@ -1521,16 +1521,33 @@
   }
 
   // 读一个分片；成功返回它包含的 data，失败返回 null
+  //
+  // ⚠️ 失败时不仅要返回 null，还要把「为什么失败」记进 io.lastShardErrors。
+  //    旧实现用 catch(e){content=null} 把所有原因吞掉，上层只能笼统报
+  //    「N 个分片没读到」，用户和排查者都拿不到线索（限流？权限？网络？）
+  //    —— 这是排查效率的最大杀手。原因集中收集后由 shardIncompleteMsg 展示。
   function readShardOnce(io, sid) {
     return (async function () {
       const fname = shardFile(sid);
+      if (!io.lastShardErrors) io.lastShardErrors = [];
       let content = null;
-      try { content = await io.getFile(fname); } catch (e) { content = null; }
-      if (!content) return null;
+      try {
+        content = await io.getFile(fname);
+      } catch (e) {
+        io.lastShardErrors.push({ sid: sid, msg: (e && e.message) || String(e), status: e && e.status });
+        return null;
+      }
+      if (!content) {
+        // 拿到 null 分两种情况，值得区分：文件确实不存在 vs 读取被降级。
+        // 这里只能保守记为「未取到内容」，并带上 io 侧最近一次的错误（若有）。
+        io.lastShardErrors.push({ sid: sid, msg: '未取到内容（文件不存在或读取被降级）', status: null });
+        return null;
+      }
       try {
         const payload = await unpackCloud(JSON.parse(content));
         return (payload && payload.data) || {};
       } catch (e) {
+        io.lastShardErrors.push({ sid: sid, msg: '分片解析失败：' + ((e && e.message) || e), status: null });
         console.warn('[' + (io.label || 'sync') + '] 分片解析失败 ' + sid + ':', e.message);
         return null;
       }
@@ -1548,6 +1565,7 @@
   async function readShardedWith(io, cloudMeta) {
     const shardIds = Object.keys(cloudMeta.shards || {});
     const merged = { data: {}, updatedAt: cloudMeta.updatedAt || 0 };
+    io.lastShardErrors = [];        // 采集本轮的失败原因，供错误提示展示
 
     // 并发读分片。片数已由「按体积打包」压到个位数（见 buildShards），
     // 所以这里给到 6 并发既安全又能压满带宽：3 片一轮就走完。
@@ -1577,6 +1595,7 @@
     merged.shardOk = okCount;
     merged.shardFail = failIds.length;
     merged.shardFailIds = failIds;
+    merged.shardErrors = io.lastShardErrors || [];
     return merged;
   }
 
@@ -1587,8 +1606,48 @@
     const shown = ids.slice(0, 3).join('、') + (ids.length > 3 ? ' 等 ' + ids.length + ' 片' : '');
     const n = (remote && remote.shardFail) || 0;
     const total = (remote && remote.shardCount) || 0;
+    // 附上真实失败原因（去重后最多列 3 条），否则用户只知道「没读到」却不知为何，
+    // 排查只能靠猜。典型可辨识原因：429 配额、403 权限、分支名、网络断流。
+    let why = '';
+    const errs = (remote && remote.shardErrors) || [];
+    if (errs.length) {
+      // 按「错误类别」去重再展示：同一次限流会让每片都报一条几乎相同的消息，
+      // 全列出来只是噪音。这里剥掉「读取 xxx.json」这类文件名片段后归类。
+      const norm = function (s) {
+        return String(s)
+          .replace(/（[^）]*\.json[^）]*）/g, '')
+          .replace(/读取\s*[^\s，。]+\.json/g, '读取分片')
+          .trim();
+      };
+      const byKind = {};
+      errs.forEach(function (e) {
+        const raw = (e && e.msg) || '';
+        if (!raw) return;
+        const kind = norm(raw);
+        if (!byKind[kind]) byKind[kind] = { kind: kind, ids: [], status: (e && e.status) || null };
+        if (byKind[kind].ids.length < 4) byKind[kind].ids.push((e && e.sid) || '?');
+      });
+      const kinds = Object.keys(byKind);
+      if (kinds.length) {
+        why = '\n\n失败原因（来自 Gitee 返回）：';
+        kinds.slice(0, 3).forEach(function (k) {
+          const v = byKind[k];
+          // 按「分片」去重计数：同片在重试中会留下多条，计数要去重才准确。
+          const sidSet = {};
+          errs.forEach(function (e) {
+            if (norm((e && e.msg) || '') === k) sidSet[(e && e.sid) || '?'] = 1;
+          });
+          const n = Object.keys(sidSet).length;
+          why += '\n  · ' + k + '（影响 ' + n + ' 片：' + v.ids.join('、') +
+            (n > v.ids.length ? ' 等' : '') + '）';
+          if (v.status === 429) {
+            why += '\n    → 这是 Gitee 的调用次数限流，等约 1 分钟后重试即可，与数据本身无关。';
+          }
+        });
+      }
+    }
     return '云端有 ' + n + ' / ' + total + ' 个数据分片这次没读到（' + shown + '）。\n' +
-      '为避免用不完整的数据覆盖云端（那会把没读到的那些片从云端删掉），本次同步已中止。';
+      '为避免用不完整的数据覆盖云端（那会把没读到的那些片从云端删掉），本次同步已中止。' + why;
   }
 
   // ============ GitHub（Gist）侧的 io 实现 ============

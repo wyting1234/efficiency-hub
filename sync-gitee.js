@@ -602,9 +602,22 @@
   //   ③ 探测本身要重试：Gitee 侧瞬时异常是常态，一次就下结论太急。
   let healErr = null;          // 最近一次自愈的失败原因（不能丢，报错文案要用它）
   let healInFlight = null;     // 并发去重：同一时刻只跑一次自愈
+  // ④ 自愈预算（本轮同步内最多自愈 1 次）。
+  //    为什么需要它：healBranch 本身要发「读仓库/建库」请求，而它会消耗配额；
+  //    若失败根因是 429 限流，则「限流 → 返回空数组 → 触发自愈 → 自愈发请求 →
+  //    限流更严重」会形成正反馈，把一次瞬时抖动放大成整轮失败。
+  //    实测 3 片并发读时，bad-branch 分支逻辑会放大出十几次仓库探测请求。
+  //    有了一次性预算，配额紧张时不会自己把自己打死。
+  let healBudget = 1;
+  function resetHealBudget() { healBudget = 1; healErr = null; healInFlight = null; }
 
   async function healBranch() {
     if (healInFlight) return healInFlight;
+    // 预算耗尽：不再重探分支（那只会更耗配额），直接沿用当前值让上层走重试。
+    if (healBudget <= 0) {
+      return BRANCH;
+    }
+    healBudget--;
     healInFlight = (async function () {
       const saved = BRANCH;                 // ★ 备份：失败要能原样还回去
       let lastErr = null;
@@ -790,6 +803,7 @@
     Core.progBusy && Core.progBusy(true);
     resetRepoProbe();                      // 新一轮同步：仓库/分支探测缓存作废
     clearFileCache();
+    resetHealBudget();                     // 新一轮同步：自愈预算恢复
     try {
       await ensureRepo();
       const cloudMeta = await readShardedMetaSafe();
@@ -874,6 +888,7 @@
     Core.progBusy && Core.progBusy(true);
     resetRepoProbe();
     clearFileCache();
+    resetHealBudget();                     // 新一轮同步：自愈预算恢复
     try {
       await ensureRepo();
       // ★ 顺序是本函数的核心：读索引 → 弹窗定模式 → 再读数据。
@@ -964,6 +979,7 @@
     Core.progBusy && Core.progBusy(true);
     resetRepoProbe();
     clearFileCache();
+    resetHealBudget();                   // 新一轮同步：自愈预算恢复
     rateLimitUntil = 0;                  // 新一轮同步：清掉上一轮的配额冷却状态
     try {
       await ensureRepo();
