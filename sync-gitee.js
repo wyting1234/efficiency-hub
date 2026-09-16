@@ -922,7 +922,7 @@
       console.warn('[Gitee] 双向同步失败:', e.message);
       if (!silent) {
         Core.notifyFail('双向同步（Gitee）失败',
-          (e.message || String(e)) + '\n本机与 Gitee 上的数据都未曾被覆盖。');
+          (e.message || String(e)) + healHint() + '\n本机与 Gitee 上的数据都未曾被覆盖。');
       }
       return { error: (e.message || String(e)) + healHint() };
     }
