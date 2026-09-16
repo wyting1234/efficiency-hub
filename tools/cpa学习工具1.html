@@ -2255,6 +2255,71 @@
             .kp-modes .kp-mode { padding: 3px 8px; }
             .kp-bar .kp-bar-stat { margin-left: 0; }
         }
+
+        /* ===== 记录学习表单：八项内容 4 列表展示（开始时间 → 学习状态自评） =====
+           注意：原样式块里 @media (max-width:1024px) 的 .form-row{1fr} 只有 (0,1,0)，
+           .form-row.four 是 (0,2,0)，特异性更高会盖掉它 —— 所以断点必须自带 */
+        .form-row.four { grid-template-columns: repeat(4, 1fr); gap: 14px 18px; }
+        @media (max-width: 1280px) { .form-row.four { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 1024px) { .form-row.four { grid-template-columns: 1fr; } }
+
+        /* ===== 模版设置面板 ===== */
+        .kp-tmpl-list { display: flex; flex-direction: column; gap: 8px; }
+        .kp-tmpl {
+            display: flex; align-items: flex-start; gap: 9px; cursor: pointer;
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            background: #FDFBF7; padding: 9px 12px; transition: var(--transition);
+        }
+        .kp-tmpl:hover { border-color: var(--primary-light); background: #fff; }
+        .kp-tmpl.on { border-color: var(--primary); background: var(--primary-bg); }
+        .kp-tmpl input { margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--primary); }
+        .kp-tmpl-name { font-size: 13px; font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
+        .kp-tmpl-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-left: 2px; }
+        .kp-tmpl-preview {
+            margin: 0; padding: 11px 14px; background: #FDFBF7; border: 1px solid var(--border);
+            border-radius: var(--radius-sm); font-family: ui-monospace, Consolas, "Courier New", monospace;
+            font-size: 12.5px; line-height: 1.75; color: var(--text); white-space: pre; overflow-x: auto;
+        }
+        @media (max-width: 860px) {
+            .kp-tmpl { flex-direction: column; gap: 3px; }
+            .kp-tmpl-name { white-space: normal; }
+            .kp-tmpl-desc { margin-left: 0; }
+        }
+
+        /* ===== 学习记录列表：展示内容 / 展示方式 控件条 ===== */
+        .rec-display-bar {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            padding: 8px 12px; margin: -6px 0 14px;
+            background: #FDFBF7; border: 1px solid var(--border); border-radius: var(--radius-sm);
+        }
+        .rec-display-bar .filter-label {
+            font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-right: 2px;
+        }
+        .rec-display-bar .rec-dbar-sep {
+            width: 1px; flex: 0 0 1px; align-self: stretch; background: var(--border); margin: 0 4px;
+        }
+        .rec-chips { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+        .rec-chip {
+            background: #fff; border: 1px solid var(--border); border-radius: 999px;
+            padding: 3px 11px; font-family: inherit; font-size: 12px; font-weight: 600;
+            color: var(--text-secondary); transition: var(--transition);
+        }
+        .rec-chip:hover { border-color: var(--primary-light); color: var(--primary-dark); }
+        .rec-chip.active { background: var(--primary); border-color: var(--primary); color: #FAF7F1; }
+        .rec-display-bar .rec-dbar-stat { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
+        @media (max-width: 860px) {
+            .rec-display-bar { gap: 6px; }
+            .rec-display-bar .rec-dbar-sep { display: none; }
+            .rec-display-bar .rec-dbar-stat { margin-left: 0; flex-basis: 100%; }
+        }
+        /* 卡片里的知识点：大纲 / MD 两种展示方式都用 <pre> 保缩进 */
+        .rec-pre {
+            margin: 0; padding: 9px 12px; background: #FDFBF7; border: 1px solid var(--border);
+            border-radius: var(--radius-sm); font-family: ui-monospace, Consolas, "Courier New", monospace;
+            font-size: 12.5px; line-height: 1.7; color: var(--text); white-space: pre; overflow-x: auto;
+        }
+        .rec-pre-md { background: #F7F5F0; }
+        .rec-kp-empty { color: var(--text-secondary); font-style: italic; }
     </style>
 </head>
 <body>
@@ -2417,7 +2482,7 @@
                             </label>
                         </div>
                     </div>
-                    <div class="form-row three">
+                    <div class="form-row four">
                         <div class="field">
                             <label>开始时间 <span style="font-weight:400;color:var(--text-secondary);">(可选)</span></label>
                             <input type="time" id="fStartTime" step="60" /><button type="button" class="now-btn" data-target="fStartTime" title="填入当前时间">⏰ 现在</button>
@@ -2431,13 +2496,13 @@
                             <input type="number" id="fDurationHours" min="0.1" step="0.1" placeholder="如 2.5" required />
                             <span class="auto-calc" id="autoCalcHint">⏱️ 填写起止时间自动计算</span>
                         </div>
-                    </div>
-                    <div class="form-row three">
                         <div class="field">
                             <label>🍅 番茄个数 <span style="font-weight:400;color:var(--text-secondary);">(可选 · 番茄钟自动累计)</span></label>
                             <input type="number" id="fTomatoCount" min="0" step="1" value="0" />
                             <span class="auto-calc" id="tomatoLinkHint">🍅 点番茄钟「开始」，起止时间与个数会自动填进来</span>
                         </div>
+                    </div>
+                    <div class="form-row four">
                         <div class="field">
                             <label>学习途径 <span class="required">*</span>
                                 <button type="button" class="mini-add-btn" id="manageTypeBtn" title="增删改「学习途径」分类">⚙️ 管理</button>
@@ -2460,8 +2525,6 @@
                                 <option value="知鸟">知鸟</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="form-row">
                         <div class="field">
                             <label>理解程度 <span class="required">*</span></label>
                             <div class="star-rating" id="starRating">
@@ -2485,15 +2548,12 @@
                             <input type="text" id="fAssessmentReason" placeholder="自评原因 (可选)" style="margin-top:6px;" />
                         </div>
                     </div>
-                                        <div class="rec-draft-bar" id="recDraftBar" hidden>
-                        <span id="recDraftMsg"></span>
-                        <button type="button" id="recDraftDrop">丢弃草稿</button>
-                    </div>
                     <div class="form-row full">
                         <div class="field">
                             <div class="rec-tabs" id="recTabs" role="tablist">
                                 <button type="button" class="rec-tab active" role="tab" aria-selected="true" aria-controls="recPaneKp" data-rec="kp">📌 知识点记录</button>
                                 <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneOther" data-rec="other">📝 其他</button>
+                                <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneTmpl" data-rec="tmpl" title="设置一键编号使用的编号模版">🧩 模版设置</button>
                             </div>
 
                             <div class="rec-pane" id="recPaneKp" role="tabpanel">
@@ -2517,7 +2577,7 @@
                                     </div>
 
                                     <div class="kp-view" data-kpview="default">
-                                        <textarea id="fKpQuick" rows="3" spellcheck="false" placeholder="例：&#10;1. 交易性金融资产的初始计量&#10;2. 公允价值变动损益的结转"></textarea>
+                                        <textarea id="fKpQuick" rows="3" spellcheck="false" placeholder="例：&#10;1. 交易性金融资产&#10;1.1 初始确认金额&#10;2. 公允价值变动损益的结转"></textarea>
                                     </div>
 
                                     <div class="kp-view" data-kpview="outline" hidden>
@@ -2537,7 +2597,7 @@
                                     </div>
 
                                     <div class="kp-view" data-kpview="md" hidden>
-                                        <textarea id="fKpMd" rows="3" spellcheck="false" placeholder="# 1. 第三章 金融资产&#10;  - 1.1 交易性金融资产&#10;  - 1.2 债权投资"></textarea>
+                                        <textarea id="fKpMd" rows="3" spellcheck="false" placeholder="# 1. 第三章 金融资产（回车自动续号，且保留 # / - 前缀）&#10;- 1.1 交易性金融资产&#10;  - 1.1.1 初始计量"></textarea>
                                     </div>
 
                                     <div class="kp-bar">
@@ -2565,6 +2625,25 @@
                                 <div class="field">
                                     <label>📌 备注</label>
                                     <textarea id="fNotes" rows="3" spellcheck="false" placeholder="其他补充信息…"></textarea>
+                                </div>
+                            </div>
+                            <div class="rec-pane" id="recPaneTmpl" role="tabpanel" hidden>
+                                <div class="field">
+                                    <label>🔢 编号模版 <span style="font-weight:400;color:var(--text-secondary);">(「一键编号」与四个视角的行首编号都按此模版生成；只改编号写法，不动内容与层级)</span></label>
+                                    <div class="kp-tmpl-list" id="kpTmplList">
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="cn-chapter" /> <span class="kp-tmpl-name">第一章 / 1.1 / 1.1.1 / (1) / ①</span><span class="kp-tmpl-desc">章节体：一级写「第N章」，二三级用十进制路径，第四级用 (N)</span></label>
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="cn-classic" /> <span class="kp-tmpl-name">一、 / (一) / 1. / (1) / ①</span><span class="kp-tmpl-desc">中文公文体：一、（一）1.（1）① 递进（本工具最深 4 级，① 暂无层级可用）</span></label>
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="arabic" /> <span class="kp-tmpl-name">1. / 1.1 / 1.1.1 / 1.1.1.1</span><span class="kp-tmpl-desc">阿拉伯多级（默认）：每级都是十进制路径，最通用</span></label>
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="part" /> <span class="kp-tmpl-name">第1部分 / 第1章 / 第1节 / 1.1</span><span class="kp-tmpl-desc">教材体：部分 → 章 → 节 → 节内序号.要点序号</span></label>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label>预览 <span style="font-weight:400;color:var(--text-secondary);">(按当前模版渲染现有内容；没有内容时用示例)</span></label>
+                                    <pre class="kp-tmpl-preview" id="kpTmplPreview"></pre>
+                                </div>
+                                <div class="kp-bar">
+                                    <button type="button" id="kpTmplApply" title="按当前模版重新编号（等同于「一键编号」）">🔢 按此模版重新编号</button>
+                                    <span class="kp-bar-stat" id="kpTmplStat"></span>
                                 </div>
                             </div>
                         </div>
@@ -2632,6 +2711,23 @@
                 <button type="button" class="rec-exp-btn" id="printRecBtn">🖨️ 一键打印</button>
             </div>
             </div>
+        <div class="rec-display-bar" id="recDisplayBar">
+            <span class="filter-label">👁 展示内容</span>
+            <div class="rec-chips" id="recShowChips">
+                <button type="button" class="rec-chip active" data-show="kp" aria-pressed="true" title="每条记录的知识点（展示方式见右侧）">📌 知识点</button>
+                <button type="button" class="rec-chip active" data-show="ps" aria-pressed="true" title="解题思路">🧠 解题思路</button>
+                <button type="button" class="rec-chip active" data-show="mem" aria-pressed="true" title="记忆网络">🔗 记忆网络</button>
+                <button type="button" class="rec-chip active" data-show="other" aria-pressed="true" title="AI 问答 / 自评原因 / 备注">📝 其他</button>
+            </div>
+            <span class="rec-dbar-sep"></span>
+            <span class="filter-label">📐 展示方式</span>
+            <div class="rec-chips" id="recViewChips">
+                <button type="button" class="rec-chip active" data-rvview="default" title="一行一个知识点（标签形式）">默认</button>
+                <button type="button" class="rec-chip" data-rvview="outline" title="缩进表示层级，编号保留">大纲视角</button>
+                <button type="button" class="rec-chip" data-rvview="md" title="Markdown 源码，方便复制">MD视角</button>
+            </div>
+            <span class="rec-dbar-stat" id="recDbarStat"></span>
+        </div>
         <div class="record-list" id="recordList"></div>
 
         </div><!-- /view-study -->
@@ -5020,6 +5116,11 @@
             return String(s || '')
                 .replace(/^\s*[0-9]{1,3}(?:\.[0-9]{1,3}){1,3}\s*/, '')
                 .replace(/^\s*[0-9]{1,3}\s*[.、．)）:：]\s*/, '')
+                .replace(/^\s*第[0-9]{1,3}\s*(?:部分|章|节|讲|篇|单元)\s*/, '')
+                .replace(/^\s*第[一二三四五六七八九十百]{1,4}\s*(?:部分|章|节|讲|篇|单元)\s*/, '')
+                .replace(/^\s*[一二三四五六七八九十]{1,3}\s*[、.．]\s*/, '')
+                .replace(/^\s*[(\uff08\u3010]\s*(?:[一二三四五六七八九十]|[0-9]){1,3}\s*[)\uff09\u3011]\s*/, '')
+                .replace(/^\s*[\u2460-\u2473\u24EA\u2776-\u277F\u2780-\u2789\u278A-\u2793]\s*/, '')
                 .replace(/^\s*[(\uff08\u3010]?\s*[0-9]{1,3}\s*[)\uff09\u3011]?\s*[.、．:：]?\s+(?=\S)/, '')
                 .trim();
         }
@@ -5461,6 +5562,13 @@
                 segs[segs.length - 1] = String(parseInt(segs[segs.length - 1], 10) + 1);
                 return { len: m[0].length, next: m[1] + segs.join('.') + (m[3] || '') + ' ' };
             }
+            // ⓪b 章节体编号：第1部分 / 第1章 / 第1节 / 第一章（编号模版会用）
+            if ((m = line.match(/^(\s*)第(\d{1,3})\s*(部分|章|节|讲|篇|单元)(\s*)/))) {
+                return { len: m[0].length, next: m[1] + '第' + (parseInt(m[2], 10) + 1) + m[3] + ' ' };
+            }
+            if ((m = line.match(/^(\s*)第([一二三四五六七八九十百]{1,4})\s*(部分|章|节|讲|篇|单元)(\s*)/))) {
+                return { len: m[0].length, next: m[1] + '第' + cnNumTo(cnNumFrom(m[2]) + 1) + m[3] + ' ' };
+            }
             // ① 阿拉伯数字 + 分隔符：1.  1、  1．  1)  1）  1:  1：  1-  1—
             if ((m = line.match(/^(\s*)(\d{1,3})([.、．)）:：\-—])(\s*)/))) {
                 return { len: m[0].length, next: m[1] + (parseInt(m[2], 10) + 1) + m[3] + ' ' };
@@ -5589,7 +5697,10 @@
             const kpQuickRaw = kpQuickEl ? kpQuickEl.value : '';
             (kpQuickEl ? kpQuickEl.value : '').split(/[；;\n、]+/).forEach(s => {
                 const tok = stripKpNo(s.trim());
-                if (tok) knowledgePoints.push({ text: tok });
+                // 「一、」这类一级标记会被上面的顿号切开，留下一个孤零零的「一」；
+                // 纯编号残渣不是知识点，丢掉（否则每行一级都会多出一个假知识点）
+                const residue = /^(?:[0-9]{1,3}|[一二三四五六七八九十]{1,3}|[\u2460-\u2473])[.、．)）:：]?$/;
+                if (tok && !residue.test(tok)) knowledgePoints.push({ text: tok });
             });
             knowledgePoints.forEach((k, i) => { k.no = i + 1; });
             const addToMemory = !!(document.getElementById('fAddToMemory') && document.getElementById('fAddToMemory').checked);
@@ -5812,20 +5923,28 @@
                             </div>
                         </div>
                         ${timeDisplay ? `<div class="time-row"><span class="time-badge">⏱️ ${timeDisplay}</span></div>` : ''}
-                        <div class="bottom">
-                            <div class="item">
-                                <span class="lbl">🧠 解题思路</span>
-                                <span class="val ${r.problemSolving ? '' : 'empty'}">${r.problemSolving || '未记录'}</span>
-                            </div>
-                            <div class="item">
-                                <span class="lbl">🔗 记忆网络</span>
-                                <span class="val ${r.memoryNetwork ? '' : 'empty'}">${r.memoryNetwork || '未记录'}</span>
-                            </div>
-                            ${(r.knowledgePoints && r.knowledgePoints.length) ? `<div class="item full"><span class="lbl">📌 知识点</span><span class="val"><span class="kp-chips" style="display:inline-flex;">${kpChipsHTML(r.knowledgePoints)}</span></span></div>` : ''}
-                            ${r.aiQA ? `<div class="item full"><span class="lbl">🤖 AI 问答</span><span class="val">${r.aiQA}</span></div>` : ''}
-                            ${r.assessmentReason ? `<div class="item full"><span class="lbl">📝 自评原因</span><span class="val">${r.assessmentReason}</span></div>` : ''}
-                            ${r.notes ? `<div class="item full"><span class="lbl">📌 备注</span><span class="val">${r.notes}</span></div>` : ''}
-                        </div>
+                        ${(() => {
+                            // 展示内容 / 展示方式由 CpaRecView 提供（见 tools 内联的增强脚本）
+                            const rv = window.CpaRecView;
+                            const on = k => !rv || rv.show(k);
+                            const kpView = rv ? rv.kpView() : 'default';
+                            const kpBlock = (window.CpaKpEditor && window.CpaKpEditor.kpBlockHtml)
+                                ? window.CpaKpEditor.kpBlockHtml(r, kpView) : null;
+                            const showPs = on('ps'), showMem = on('mem');
+                            let h = '<div class="bottom">';
+                            if (showPs) h += `<div class="item${showMem ? '' : ' full'}"><span class="lbl">🧠 解题思路</span><span class="val ${r.problemSolving ? '' : 'empty'}">${r.problemSolving || '未记录'}</span></div>`;
+                            if (showMem) h += `<div class="item${showPs ? '' : ' full'}"><span class="lbl">🔗 记忆网络</span><span class="val ${r.memoryNetwork ? '' : 'empty'}">${r.memoryNetwork || '未记录'}</span></div>`;
+                            if (on('kp') && r.knowledgePoints && r.knowledgePoints.length) {
+                                const inner = kpBlock || ('<span class="kp-chips" style="display:inline-flex;">' + kpChipsHTML(r.knowledgePoints) + '</span>');
+                                const cap = (kpView === 'default' || !rv) ? '' : '（' + rv.name(kpView) + '）';
+                                h += `<div class="item full"><span class="lbl">📌 知识点${cap}</span><div class="val">${inner}</div></div>`;
+                            }
+                            if (on('other') && r.aiQA) h += `<div class="item full"><span class="lbl">🤖 AI 问答</span><span class="val">${r.aiQA}</span></div>`;
+                            if (on('other') && r.assessmentReason) h += `<div class="item full"><span class="lbl">📝 自评原因</span><span class="val">${r.assessmentReason}</span></div>`;
+                            if (on('other') && r.notes) h += `<div class="item full"><span class="lbl">📌 备注</span><span class="val">${r.notes}</span></div>`;
+                            if (h === '<div class="bottom">') h += '<div class="item full"><span class="val empty">（展示内容已全部隐藏，可在列表上方「展示内容」里勾选回来）</span></div>';
+                            return h + '</div>';
+                        })()}
                     </div>
                 `;
             });
@@ -10002,12 +10121,17 @@
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
     <script>
     /* =====================================================================
-       学习记录增强 v2：
+       学习记录增强 v3：
          1) 红框区改为「知识点记录 / 其他」两个 Tab，各自纵向铺满
          2) 知识点速记支持四种展示模式：默认 / 大纲视角 / 思维导图视角 / MD视角
             思维导图视角可切 3 列 / 4 列（列 = 层级，父格纵向合并、文字居中）
          3) 一键编号（1 / 1.1 / 1.1.1 / 1.1.1.1）与一键转 Markdown
          4) 表单草稿每 10 秒自动保存到 localStorage，下次打开自动恢复
+        v3 追加：
+         5) 编号模版设置（第三个 Tab）——「一键编号」与四个视角的行首编号都按模版生成
+         6) MD 视角回车自动续编号（保留 # / - 前缀）
+         7) 修正 4 列模式下末级格 ↳（加下级）失效（原硬编码 p.length < 3）
+         8) 学习记录列表：展示内容开关 + 展示方式（默认 / 大纲视角 / MD视角）
 
        数据流：各视角文本 <-> 树(tree) <-> #fKpQuick
        #fKpQuick 始终是保存时的唯一数据源，所以 handleFormSubmit 完全不用改。
@@ -10020,6 +10144,9 @@
         var REC_TAB_KEY = 'hub_cpa_rec_tab_v1';
         var DRAFT_KEY   = 'hub_cpa_draft_v1';
         var COL_KEY     = 'hub_cpa_kp_cols_v1';
+        var TMPL_KEY    = 'hub_cpa_kp_tmpl_v1';
+        var REC_SHOW_KEY   = 'hub_cpa_rec_show_v1';
+        var REC_KPVIEW_KEY = 'hub_cpa_rec_kpview_v1';
         var DRAFT_MS    = 10000;
         var VIEWS       = ['default', 'outline', 'mind', 'md'];
         var IN_ID       = { default: 'fKpQuick', outline: 'fKpOutline', md: 'fKpMd' };
@@ -10034,6 +10161,17 @@
         var outlineNo = false;
         var tree = [];
         var colCount = 3;                                      // 当前展示列数：3 或 4
+        var tmpl = 'arabic';                                   // 当前编号模版
+        // 学习记录列表：展示内容（选中才展示）/ 知识点展示方式
+        var REC_SHOW = ['kp', 'ps', 'mem', 'other'];
+        var REC_SHOW_NAME = {
+            kp: '知识点', ps: '解题思路', mem: '记忆网络',
+            other: '其他（AI问答 / 自评原因 / 备注）'
+        };
+        var REC_KPVIEWS = ['default', 'outline', 'md'];
+        var REC_KPVIEW_NAME = { default: '默认', outline: '大纲视角', md: 'MD视角' };
+        var recShow = { kp: true, ps: true, mem: true, other: true };
+        var recKpView = 'default';
         var statTimer = null;
         var draftTimer = null;
 
@@ -10063,8 +10201,13 @@
         /* ================= 文本 -> 树 ================= */
         function stripNoInner(s) {
             return String(s || '')
-                .replace(/^[0-9]{1,3}(?:\.[0-9]{1,3}){1,3}\s*/, '')
-                .replace(/^[0-9]{1,3}\s*[.、．)）:：]\s*/, '')
+                .replace(/^[0-9]{1,3}(?:\.[0-9]{1,3}){1,3}\s*/, '')                       // 1.1.1.1
+                .replace(/^第[0-9]{1,3}\s*(?:部分|章|节|讲|篇|单元)\s*/, '')                  // 第1章 / 第1部分
+                .replace(/^第[一二三四五六七八九十百]{1,4}\s*(?:部分|章|节|讲|篇|单元)\s*/, '')      // 第一章
+                .replace(/^[0-9]{1,3}\s*[.、．)）:：]\s*/, '')                                 // 1. 1、
+                .replace(/^[一二三四五六七八九十]{1,3}\s*[、.．]\s*/, '')                        // 一、 二.
+                .replace(/^[\uff08(\u3010\[]\s*(?:[一二三四五六七八九十]|[0-9]){1,3}\s*[\uff09)\u3011\]]\s*/, '')  // （一）(1)
+                .replace(/^[\u2460-\u2473\u24EA\u2776-\u277F\u2780-\u2789\u278A-\u2793]\s*/, '')   // ①②③ ⑴ ❶
                 .replace(/^[(\uff08\u3010]?\s*[0-9]{1,3}\s*[)\uff09\u3011]?\s*[.、．:：]?\s+(?=\S)/, '')
                 .trim();
         }
@@ -10104,8 +10247,9 @@
 
                 if (body) {
                     body = stripNoInner(body).trim();
-                    if (!body) return;
-                    if (!/[\u4e00-\u9fa5A-Za-z0-9]/.test(body)) return;   // 纯标点/残渣不成节点
+                    // 剥完变空串 = 整行都是编号。模版的「第一章」「一、」「(1)」「①」正好长这样，
+                    // 那是刚加出来还没填的空格子：必须留着，丢了层级会塌（父格的合并也会错）。
+                    if (body && !/[\u4e00-\u9fa5A-Za-z0-9]/.test(body)) return;   // 纯标点/残渣才丢
                 } else if (!numLvl) {
                     return;
                 }
@@ -10135,14 +10279,59 @@
                 });
             })(roots || [], [], 1);
         }
-        // 编号写法：一级带点（1.），二级起不带（1.1 / 1.1.1）
-        function noStr(p) {
-            var s = p.join('.');
-            return p.length === 1 ? (s + '.') : s;
+        /* ---- 编号模版：把「路径」翻译成行首编号 ----
+           路径 = 每级的序号数组，如 [1,2] = 第 1 章的第 2 个子节点。
+           模版只决定「怎么写」，层级与内容始终由树决定 —— 所以切模版不动数据。 */
+        var CN_D = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+        function cnNum(n) {
+            n = parseInt(n, 10);
+            if (!isFinite(n) || n < 0) return String(n);
+            if (n < 10) return CN_D[n];
+            if (n === 10) return '十';
+            if (n < 20) return '十' + CN_D[n - 10];
+            if (n < 100) {
+                var t = Math.floor(n / 10), r = n % 10;
+                return CN_D[t] + '十' + (r ? CN_D[r] : '');
+            }
+            return String(n);
         }
+        function circledNo(n) {
+            n = parseInt(n, 10);
+            return (n >= 1 && n <= 20) ? String.fromCharCode(0x245F + n) : ('(' + n + ')');
+        }
+        function noStr(p) {
+            var a = p, d = p.length;
+            if (tmpl === 'cn-chapter') {                 // 第一章 / 1.1 / 1.1.1 / (1) / ①
+                if (d === 1) return '第' + cnNum(a[0]) + '章';
+                if (d === 2) return a[0] + '.' + a[1];
+                if (d === 3) return a[0] + '.' + a[1] + '.' + a[2];
+                if (d === 4) return '(' + a[3] + ')';
+                return circledNo(a[4]);
+            }
+            if (tmpl === 'cn-classic') {                 // 一、 / (一) / 1. / (1) / ①
+                if (d === 1) return cnNum(a[0]) + '、';
+                if (d === 2) return '(' + cnNum(a[1]) + ')';
+                if (d === 3) return a[2] + '.';
+                if (d === 4) return '(' + a[3] + ')';
+                return circledNo(a[4]);
+            }
+            if (tmpl === 'part') {                       // 第1部分 / 第1章 / 第1节 / 1.1
+                if (d === 1) return '第' + a[0] + '部分';
+                if (d === 2) return '第' + a[1] + '章';
+                if (d === 3) return '第' + a[2] + '节';
+                return a[2] + '.' + a[3];
+            }
+            // arabic：一级带点（1.），二级起是完整十进制路径（1.1 / 1.1.1 / 1.1.1.1）
+            var s2 = a.join('.');
+            return d === 1 ? (s2 + '.') : s2;
+        }
+        // 每级缩进 2 空格。这不是装饰：编号模版可能写出 parse 认不出的标记
+        // （第一章 / 一、 / 第1节 …），缩进是层级唯一稳定的载体，缺了它切模版会塌层级。
         function toFlat(roots) {
             var out = [];
-            walk(roots, function (n, p) { out.push(noStr(p) + ' ' + n.t); });
+            walk(roots, function (n, p) {
+                out.push(new Array(p.length).join('  ') + noStr(p) + ' ' + n.t);
+            });
             return out.join('\n').replace(/[ \t]+$/gm, '');
         }
         function toOutline(roots, withNo) {
@@ -10241,6 +10430,7 @@
             renderGrid();
             updateStat();
             growAll();
+            paintTmpl();
         }
         function setMode(next, keepTree) {
             if (VIEWS.indexOf(next) < 0) next = 'default';
@@ -10263,12 +10453,13 @@
 
         /* ================= 思维导图网格 ================= */
         function cellHTML(node, depth, path, r0, span) {
-            var no = path.join('.');
+            var no = path.join('.');          // data-path 始终用阿拉伯路径（内部标识，不随模版变）
+            var show = noStr(path);           // 显示用编号，随模版变
             var ph = PH[depth] || '内容';
             return '<div class="kp-cell kp-lv' + depth + (span > 1 ? ' kp-merged' : '') + '"' +
                 ' data-path="' + esc(no) + '"' +
                 ' style="grid-column:' + depth + ';grid-row:' + r0 + ' / span ' + span + '">' +
-                '<span class="kp-cell-no">' + esc(no) + '</span>' +
+                '<span class="kp-cell-no">' + esc(show) + '</span>' +
                 '<div class="kp-cell-in" contenteditable="true" spellcheck="false"' +
                 ' data-path="' + esc(no) + '" data-ph="' + esc(ph) + '">' + esc(node.t) + '</div>' +
                 '<span class="kp-cell-ops">' +
@@ -10427,7 +10618,9 @@
                     addSiblingOf(b.getAttribute('data-path'));
                 } else if (op === 'child') {
                     var nd = nodeAt(p);
-                    if (nd && p.length < 3) {
+                    // 门槛必须跟着列数走：原先硬编码 < 3，4 列模式下第 3 层格的 ↳
+                    // 按钮是亮的却点了没反应（第 4 列因此永远建不出来）
+                    if (nd && p.length < colCount) {
                         if (!nd.c) nd.c = [];
                         nd.c.push({ t: '', c: [] });
                         renderGrid(); updateStat();
@@ -10479,8 +10672,8 @@
             syncFromView();
             if (mode === 'outline') outlineNo = true;
             applyMode();
-            toast(mode === 'mind' ? '思维导图视角始终按层级编号（1 / 1.1 / 1.1.1）'
-                : (tree.length ? '已按层级重新编号' : '还没有内容，先输入知识点'));
+            toast(mode === 'mind' ? ('思维导图视角按层级编号（' + tmplName(tmpl) + '）')
+                : (tree.length ? ('已按模版「' + tmplName(tmpl) + '」重新编号') : '还没有内容，先输入知识点'));
         }
         function doToMD() {
             syncFromView();
@@ -10500,15 +10693,38 @@
                 updateStat();
             }, 400);
         }
-        function onOutlineKey(e) {
+        // 回车续号：默认视角由主应用的 bindAutoNumber 负责（认识 10+ 种编号格式），
+        // 这里补上「大纲视角 / MD 视角」——两者都是多行文本，行首还多一层 # / - 标记
+        function lineCtx(v, pos) {
+            var ls = v.lastIndexOf('\n', pos - 1) + 1;
+            var line = v.slice(ls, pos);
+            var ind = (line.match(/^[ \t]*/) || [''])[0];
+            var rest = line.slice(ind.length);
+            var marker = '';
+            var m = rest.match(/^(#{1,6}[ \t]+|[-*+\u2022\u00b7][ \t]+)/);
+            if (m) { marker = m[1]; rest = rest.slice(marker.length); }
+            return { ind: ind, marker: marker, rest: rest };
+        }
+        // 借主应用的编号识别：1. / 1.1 / 一、 / （一） / ① / a. / 第一条 等
+        function nextNoOf(rest) {
+            try {
+                if (typeof numPrefixInfo === 'function') {
+                    var info = numPrefixInfo(rest);
+                    if (info && info.next) return info.next.replace(/^[ \t]+/, '');
+                }
+            } catch (e) {}
+            return '';
+        }
+        function onTextKey(e) {
             var t = e.target;
             if (!t) return;
             var v = t.value, pos = (t.selectionStart == null) ? v.length : t.selectionStart;
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                var ls = v.lastIndexOf('\n', pos - 1) + 1;
-                var ind = (v.slice(ls, pos).match(/^[ \t]*/) || [''])[0];
-                insertAt(t, pos, '\n' + ind);
+                var c = lineCtx(v, pos);
+                // 有内容才续号；空行回车就是普通换行（与默认视角行为一致）
+                var nx = c.rest.trim() ? nextNoOf(c.rest) : '';
+                insertAt(t, pos, '\n' + c.ind + c.marker + nx);
             } else if (e.key === 'Tab') {
                 e.preventDefault();
                 var s0 = v.lastIndexOf('\n', pos - 1) + 1;
@@ -10524,17 +10740,20 @@
         }
 
         /* ================= Tab 切换 ================= */
+        var TAB_PANES = { kp: 'recPaneKp', other: 'recPaneOther', tmpl: 'recPaneTmpl' };
         function setTab(t) {
-            curTab = (t === 'other') ? 'other' : 'kp';
+            curTab = TAB_PANES[t] ? t : 'kp';
             eachNode('#recTabs .rec-tab', function (b) {
                 var on = b.getAttribute('data-rec') === curTab;
                 b.classList.toggle('active', on);
                 b.setAttribute('aria-selected', on ? 'true' : 'false');
             });
-            var pk = el('recPaneKp'), po = el('recPaneOther');
-            if (pk) pk.hidden = curTab !== 'kp';
-            if (po) po.hidden = curTab !== 'other';
+            Object.keys(TAB_PANES).forEach(function (k) {
+                var e = el(TAB_PANES[k]);
+                if (e) e.hidden = (curTab !== k);
+            });
             store(REC_TAB_KEY, curTab);
+            growAll();
         }
 
         /* ================= 草稿：10 秒自动保存 ================= */
@@ -10632,7 +10851,7 @@
                 if (d.cols === 3 || d.cols === 4) colCount = d.cols;
                 mode = VIEWS.indexOf(d.mode) >= 0 ? d.mode : 'default';
                 applyMode();
-                if (d.tab === 'other') setTab('other');
+                if (d.tab) setTab(d.tab);
                 var bar = el('recDraftBar'), msg = el('recDraftMsg');
                 if (bar && msg) {
                     bar.hidden = false;
@@ -10688,12 +10907,110 @@
             window.addEventListener('resize', growAll);
         }
 
+        /* ================= 编号模版 ================= */
+        var TMPLS = [
+            { id: 'cn-chapter', name: '第一章 / 1.1 / 1.1.1 / (1) / ①' },
+            { id: 'cn-classic', name: '一、 / (一) / 1. / (1) / ①' },
+            { id: 'arabic',     name: '1. / 1.1 / 1.1.1 / 1.1.1.1' },
+            { id: 'part',       name: '第1部分 / 第1章 / 第1节 / 1.1' }
+        ];
+        var DEMO_TREE = [{ t: '金融资产', c: [{ t: '交易性金融资产', c: [{ t: '初始计量', c: [{ t: '入账价值', c: [] }] }] }] }];
+        function tmplName(id) {
+            for (var i = 0; i < TMPLS.length; i++) if (TMPLS[i].id === id) return TMPLS[i].name;
+            return id;
+        }
+        function previewRoots() { return tree.length ? tree : DEMO_TREE; }
+        function paintTmpl() {
+            eachNode('#kpTmplList input[name="kpTmpl"]', function (b) { b.checked = (b.value === tmpl); });
+            eachNode('#kpTmplList .kp-tmpl', function (lb) {
+                var i = lb.querySelector ? lb.querySelector('input[name="kpTmpl"]') : null;
+                lb.classList.toggle('on', !!i && i.value === tmpl);
+            });
+            var pv = el('kpTmplPreview');
+            if (pv) pv.textContent = toOutline(previewRoots(), true);
+            var st = el('kpTmplStat');
+            if (st) st.textContent = (tree.length ? '' : '（预览为示例内容）') + '当前模版：' + tmplName(tmpl);
+        }
+        function setTmpl(id, quiet) {
+            var ok = false;
+            for (var i = 0; i < TMPLS.length; i++) if (TMPLS[i].id === id) ok = true;
+            if (!ok) id = 'arabic';
+            if (id === tmpl) { paintTmpl(); return; }
+            syncFromView();
+            tmpl = id;
+            store(TMPL_KEY, tmpl);
+            applyMode();
+            if (!quiet) toast('编号模版已切换：' + tmplName(tmpl));
+        }
+
+        /* ================= 学习记录列表：展示内容 / 展示方式 ================= */
+        function recViewName(v) { return REC_KPVIEW_NAME[v] || REC_KPVIEW_NAME.default; }
+        function applyRecCfg() {
+            eachNode('#recShowChips .rec-chip', function (b) {
+                var on = recShow[b.getAttribute('data-show')] !== false;
+                b.classList.toggle('active', on);
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            eachNode('#recViewChips .rec-chip', function (b) {
+                b.classList.toggle('active', b.getAttribute('data-rvview') === recKpView);
+            });
+            var st = el('recDbarStat');
+            if (st) {
+                var off = [];
+                REC_SHOW.forEach(function (k) { if (recShow[k] === false) off.push(REC_SHOW_NAME[k]); });
+                st.textContent = (off.length ? ('已隐藏：' + off.join('、')) : '全部内容都展示')
+                    + ' · 知识点按「' + recViewName(recKpView) + '」展示';
+            }
+        }
+        function reRenderRecords() {
+            try { if (typeof renderRecords === 'function') renderRecords(); } catch (e) {}
+        }
+        function setRecShow(k, on) {
+            if (REC_SHOW.indexOf(k) < 0) return;
+            recShow[k] = !!on;
+            store(REC_SHOW_KEY, JSON.stringify(recShow));
+            applyRecCfg();
+            reRenderRecords();
+        }
+        function setRecKpView(v) {
+            if (REC_KPVIEWS.indexOf(v) < 0) v = 'default';
+            if (v === recKpView) { applyRecCfg(); return; }
+            recKpView = v;
+            store(REC_KPVIEW_KEY, recKpView);
+            applyRecCfg();
+            reRenderRecords();
+        }
+        // 记录卡片里的知识点：默认返回 null（交给主应用渲染成 chips），
+        // 大纲 / MD 两种方式在这里渲染成保缩进的 <pre>
+        function kpBlockHtml(rec, v) {
+            if (v !== 'outline' && v !== 'md') return null;
+            var kps = (rec && rec.knowledgePoints) || [];
+            var raw = (rec && rec.kpQuickRaw) || '';
+            if (!raw && kps.length) {
+                raw = kps.map(function (k, i) { return (i + 1) + '. ' + ((k && (k.text || k)) || ''); }).join('\n');
+            }
+            var roots = raw ? parse(raw) : [];
+            if (!roots.length) return '<span class="rec-kp-empty">未记录</span>';
+            var txt = (v === 'md') ? toMD(roots) : toOutline(roots, true);
+            return '<pre class="rec-pre' + (v === 'md' ? ' rec-pre-md' : '') + '">' + esc(txt) + '</pre>';
+        }
+
         /* ================= 初始化 ================= */
         function init() {
             if (!el('fKpQuick')) return;           // 表单不在这台设备上（理论上不会）
             var savedMode = load(KP_MODE_KEY);
             mode = (VIEWS.indexOf(savedMode) >= 0) ? savedMode : 'default';
             colCount = (parseInt(load(COL_KEY), 10) === 4) ? 4 : 3;
+            var savedTmpl = load(TMPL_KEY);
+            for (var ti = 0; ti < TMPLS.length; ti++) if (TMPLS[ti].id === savedTmpl) tmpl = savedTmpl;
+            try {
+                var rawShow = load(REC_SHOW_KEY);
+                if (rawShow) {
+                    var objShow = JSON.parse(rawShow);
+                    REC_SHOW.forEach(function (k) { if (objShow && typeof objShow[k] === 'boolean') recShow[k] = objShow[k]; });
+                }
+            } catch (e) {}
+            if (REC_KPVIEWS.indexOf(load(REC_KPVIEW_KEY)) >= 0) recKpView = load(REC_KPVIEW_KEY);
             tree = parse(el('fKpQuick').value);
             bindGrid();
             eachNode('#kpModes .kp-mode', function (b) {
@@ -10709,8 +11026,28 @@
                 var e = el(id);
                 if (e) e.addEventListener('input', onTextInput);
             });
-            var ob = el('fKpOutline');
-            if (ob) ob.addEventListener('keydown', onOutlineKey);
+            // 大纲 / MD 两个多行视角都要回车续号
+            ['fKpOutline', 'fKpMd'].forEach(function (id) {
+                var e2 = el(id);
+                if (e2) e2.addEventListener('keydown', onTextKey);
+            });
+            eachNode('#kpTmplList input[name="kpTmpl"]', function (b) {
+                b.addEventListener('change', function () { if (b.checked) setTmpl(b.value); });
+            });
+            var ta = el('kpTmplApply');
+            if (ta) ta.addEventListener('click', function () { syncFromView(); applyMode(); doRenumber(); });
+            eachNode('#recShowChips .rec-chip', function (b) {
+                b.addEventListener('click', function () {
+                    var k = b.getAttribute('data-show');
+                    setRecShow(k, recShow[k] === false);
+                });
+            });
+            eachNode('#recViewChips .rec-chip', function (b) {
+                b.addEventListener('click', function () { setRecKpView(b.getAttribute('data-rvview')); });
+            });
+            applyRecCfg();
+            // 首屏可能已经渲染过（主应用的初始化与本模块的顺序不定），补一次把用户的隐藏设置生效
+            window.setTimeout(function () { applyRecCfg(); reRenderRecords(); }, 400);
             var rn = el('kpRenumberBtn'); if (rn) rn.addEventListener('click', doRenumber);
             var tm = el('kpToMdBtn'); if (tm) tm.addEventListener('click', doToMD);
             var cm = el('kpCopyMdBtn');
@@ -10754,7 +11091,20 @@
             setMode: setMode,
             setCols: setCols,
             getCols: function () { return colCount; },
-            grow: growAll
+            grow: growAll,
+            setTmpl: setTmpl,
+            getTmpl: function () { return tmpl; },
+            parseText: parse,
+            toOutlineText: toOutline,
+            toMdText: toMD,
+            kpBlockHtml: kpBlockHtml
+        };
+        // 记录列表（主应用渲染）读这里：哪些内容要展示、知识点按哪种方式展示
+        window.CpaRecView = {
+            show: function (k) { return recShow[k] !== false; },
+            kpView: function () { return recKpView; },
+            kpBlockHtml: kpBlockHtml,
+            name: recViewName
         };
 
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
