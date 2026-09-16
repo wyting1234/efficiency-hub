@@ -4206,6 +4206,10 @@
         html[data-view="desktop"] #sidebar { transform: none; box-shadow: none; border-right: 1px solid #ececf4; }
         html[data-view="desktop"] #overlay { display: none !important; }
         html[data-view="desktop"] #app { margin-left: var(--sidebar-width); margin-right: 0; max-width: none; min-width: 680px; }
+        /* v51b：强制电脑版同理 —— #app 已铺满（x=300 w=1620），
+           底部导航却因自带 max-width: var(--app-w) 缩在 920 居中（实测双侧各留 350px）。
+           这条必须跟上面 #app 一样放在全局（不套媒体查询），否则窄窗口下又会不一致。 */
+        html[data-view="desktop"] nav.tabs { max-width: none; margin: 0; }
         html[data-view="desktop"] #app.shifted { transform: none; }
         html[data-view="desktop"] .modal { align-items: center; }
         html[data-view="desktop"] .sheet { border-radius: 16px; max-width: 640px; width: 92%; box-shadow: 0 18px 50px rgba(25,25,55,.28); }
@@ -4220,9 +4224,14 @@
             html:not([data-view="mobile"]):not([data-view="desktop"]) #sidebar { transform: translateX(calc(-1 * var(--sidebar-width))); box-shadow: none; border-right: 1px solid #ececf4; }
             html:not([data-view="mobile"]):not([data-view="desktop"]) #sidebar.open { transform: translateX(0); }
             html:not([data-view="mobile"]):not([data-view="desktop"]) #overlay { display: none !important; }
-            html:not([data-view="mobile"]):not([data-view="desktop"]) #app { margin-left: max(0px, (100vw - var(--app-w)) / 2); transition: margin-left .25s ease, transform .25s ease; }
+            html:not([data-view="mobile"]):not([data-view="desktop"]) #app { margin-left: 0; margin-right: 0; max-width: none; transition: margin-left .25s ease, transform .25s ease; }
             /* v43：侧边栏滑出后，展示区吃掉侧边栏以外的全部剩余空间（不再居中留白） */
             html:not([data-view="mobile"]):not([data-view="desktop"]) #app.shifted { transform: none; margin-left: var(--sidebar-width); margin-right: 0; max-width: none; }
+            /* v51：底部导航同样铺满。
+               它自带 `max-width: var(--app-w)` + `margin: 0 auto`，不覆盖的话
+               侧边栏展开时会缩在中间（实测 app 宽 1620，nav 却只有 920、两侧各留 350px），
+               与已经铺满的顶栏和内容区明显不齐。 */
+            html:not([data-view="mobile"]):not([data-view="desktop"]) nav.tabs { max-width: none; margin: 0; }
             html:not([data-view="mobile"]) .modal { align-items: center; }
             html:not([data-view="mobile"]) .sheet { border-radius: 16px; max-width: 640px; box-shadow: 0 18px 50px rgba(25,25,55,.28); }
         }
@@ -11671,7 +11680,7 @@
     /* v8: 专注页分组折叠 + 详情侧栏 */
     const FCD_COLORS = ['#f7f7fc','#fff7e6','#e8f5e9','#e3f2fd','#fce4ec','#f3e5f5','#f5f5f5','#fffbe6'];
     /* v13: 肉眼可见的版本号 —— 用于判断浏览器是否还在用旧缓存 */
-    const APP_VER = 'v47';
+    const APP_VER = 'v51';
     let focusDetailOpen = false,
         focusDetailPct = +((S.settings && S.settings.focusDetailPct) || 32),
         focusDetailColor = (S.settings && S.settings.focusDetailColor) || '#f7f7fc',
