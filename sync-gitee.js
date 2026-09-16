@@ -129,9 +129,29 @@
     return st === 408 || st === 429 || st >= 500;
   }
 
+  // ---- 配额状态（Gitee 限流的核心）----
+  // Gitee 的 API 配额是按「请求次数/分钟」计的（未认证 60，认证 100 量级），
+  // 超了会回 429 + Retry-After。旧实现遇到 429 仍是「隔 600ms 快速重试 3 次」，
+  // 配额没恢复就再撞 429，3 次瞬间用完 → 整次同步报失败，用户看到「全片没读到」。
+  // 这里做两件事：
+  //   ① 记住服务端要求的冷却截止时间（remaining/retryAfter），冷却期内不再发请求；
+  //   ② 遇到 429 时按 Retry-After 等待，而不是固定 600ms。
+  let rateLimitUntil = 0;     // 冷却截止时间戳；> now 表示处于冷却期
+  let rateLimitedAt = 0;      // 最近一次 429 的时间，用于给出友好提示
+  function quotaCoolingMs() { return Math.max(0, rateLimitUntil - Date.now()); }
+
+  // 等待配额冷却。返回实际等待毫秒数。
+  async function waitForQuota() {
+    const ms = quotaCoolingMs();
+    if (ms > 0) { await sleep(Math.min(ms, 65000)); return ms; }
+    return 0;
+  }
+
   async function req(method, path, opts) {
     const o = opts || {};
     let lastErr = null;
+    // 发请求前先看配额：冷却期内先等，避免明知会 429 还硬打。
+    await waitForQuota();
     for (let i = 0; i < 3; i++) {
       try {
         const headers = { 'Authorization': 'Bearer ' + TOKEN };
@@ -147,6 +167,24 @@
           body = JSON.stringify(o.json);
         }
         const r = await fetch(API + url, { method: method, headers: headers, body: body, cache: 'no-store' });
+
+        // 读配额响应头：Gitee 会给出剩余额度与重置时间。
+        // 只要剩余为 0，就把「冷却截止」记下来，后续请求自动等待，
+        // 不必等到撞 429 才发现没配额了。
+        try {
+          const rem = parseInt(r.headers.get('X-RateLimit-Remaining') || r.headers.get('RateLimit-Remaining') || '', 10);
+          const resetHdr = r.headers.get('X-RateLimit-Reset') || r.headers.get('RateLimit-Reset');
+          if (rem === 0 && resetHdr) {
+            const reset = parseInt(resetHdr, 10);
+            // reset 可能是秒级时间戳，也可能是「距现在多少秒」
+            const ms = reset > 1e9 ? (reset * 1000 - Date.now()) : (reset * 1000);
+            if (ms > 0) rateLimitUntil = Date.now() + Math.min(ms, 65000);
+            else rateLimitUntil = Date.now() + 60000;
+          } else if (rem === 0) {
+            rateLimitUntil = Date.now() + 60000;
+          }
+        } catch (e) { /* 头读不到就算了，不影响主流程 */ }
+
         if (r.ok) {
           const txt = await r.text();
           if (!txt) return null;
@@ -154,6 +192,21 @@
         }
         let payload = null;
         try { payload = JSON.parse(await r.text()); } catch (e) {}
+
+        // 429：配额用尽。按 Retry-After 冷却，而不是固定 600ms 硬撞。
+        if (r.status === 429) {
+          rateLimitedAt = Date.now();
+          const ra = parseInt(r.headers.get('Retry-After') || '', 10);
+          const waitMs = (!isNaN(ra) && ra > 0)
+            ? Math.min(ra * 1000, 65000)
+            : 30000;   // 没给就等 30 秒
+          rateLimitUntil = Date.now() + waitMs;
+          const e429 = new Error('Gitee 接口调用配额已用尽（' + (o.what || path) + '）。' +
+            '已自动等待 ' + Math.round(waitMs / 1000) + ' 秒后重试；若仍失败，请等 1 分钟后再点同步。');
+          e429.status = 429; e429.gitee = true; e429.retryAfterMs = waitMs;
+          throw e429;
+        }
+
         const err = new Error(humanError(r.status, payload, o.what || path));
         err.status = r.status;
         err.gitee = true;
@@ -162,7 +215,14 @@
         lastErr = e;
         if (!isRetryable(e)) throw e;
       }
-      if (i < 2) await sleep(600 * (i + 1));
+      // 重试前的等待：429 用配额冷却时间，其它错误用递增退避。
+      if (i < 2) {
+        if (lastErr && lastErr.status === 429) {
+          await waitForQuota();                     // 等配额恢复，再重试
+        } else {
+          await sleep(600 * (i + 1));
+        }
+      }
     }
     throw lastErr || new Error('Gitee 请求失败：' + path);
   }
@@ -904,6 +964,7 @@
     Core.progBusy && Core.progBusy(true);
     resetRepoProbe();
     clearFileCache();
+    rateLimitUntil = 0;                  // 新一轮同步：清掉上一轮的配额冷却状态
     try {
       await ensureRepo();
       const readFn = function () { return giteeRead(); };
@@ -945,8 +1006,17 @@
     } catch (e) {
       console.warn('[Gitee] 双向同步失败:', e.message);
       if (!silent) {
+        // 配额用尽导致的失败，给一条更明确、可执行的提示。
+        // 否则用户只会看到「N 个分片没读到」，误以为是数据损坏。
+        const quotaHit = (e && e.status === 429) || quotaCoolingMs() > 0;
+        const tip = quotaHit
+          ? '\n\n【原因】Gitee 接口调用次数达到本分钟上限（限流）。' +
+            '这是临时性的，等约 1 分钟后重试即可，与数据本身无关。' +
+            '\n【已优化】新版会把数据打包成少数几个分片（而非按模块切成几十片），' +
+            '使每次同步的请求数下降一个数量级，正常不会再触发限流。'
+          : '';
         Core.notifyFail('双向同步（Gitee）失败',
-          (e.message || String(e)) + healHint() + '\n本机与 Gitee 上的数据都未曾被覆盖。');
+          (e.message || String(e)) + tip + healHint() + '\n本机与 Gitee 上的数据都未曾被覆盖。');
       }
       return { error: (e.message || String(e)) + healHint() };
     }
