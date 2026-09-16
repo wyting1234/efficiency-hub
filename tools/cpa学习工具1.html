@@ -2353,7 +2353,7 @@
         <div class="stats-mini">
             <div class="stat-item">
                 <span class="num" id="totalHours">0</span>
-                <span class="label">总学时</span>
+                <span class="label" id="totalHoursLabel">总学时</span>
             </div>
             <div class="stat-item">
                 <span class="num" id="totalRecords">0</span>
@@ -2408,7 +2408,7 @@
             <div class="left">
                 <h2 id="currentCourseName">会计 <span class="badge">未选择</span></h2>
                 <div class="sub" id="courseStats">
-                    <span>⏱️ 总学时 <span class="num" id="courseTotalHours">0</span> h</span>
+                    <span id="courseHoursLabel">⏱️ 总学时</span> <span class="num" id="courseTotalHours">0</span><span id="courseHoursUnit"> h</span>
                     <span>📝 记录 <span class="num" id="courseRecordCount">0</span></span>
                     <span>⭐ 平均理解 <span class="num" id="courseAvgUnderstanding">-</span></span>
                 </div>
@@ -4215,7 +4215,7 @@
             if (!btn) return;
             const t = (state.progressMode === 'tomato');
             btn.textContent = t ? '🍅 番茄模式' : '⏱ 时长模式';
-            btn.title = '学习进度显示方式（只影响这个模块）。当前：' + (t
+            btn.title = '学习量显示方式（全局生效：侧边栏进度条、学习指南、章节目录、课程头部、顶部统计、本月统计都按它显示）。当前：' + (t
                 ? ('番茄个数模式 —— 已学 🍅 / 建议 🍅，按专注 ' + getTomatoMinutes() + ' 分钟换算；点击改为时长模式')
                 : '时长模式 —— 已学 h / 建议 h；点击改为番茄个数模式');
             if (!btn._bound) {
@@ -4514,12 +4514,12 @@
         function toggleProgressMode() {
             state.progressMode = (state.progressMode === 'tomato') ? 'hours' : 'tomato';
             saveData();
-            renderProgModeBtn();
-            renderCourseList();
-            updateGlobalStats();
+            // 模式现在是全局的：侧边栏进度、学习指南、章节目录、课程头部、顶部统计、
+            // 本月统计都要一起换 —— 逐项列举容易漏，统一走 renderAll()
+            renderAll();
             showToast(state.progressMode === 'tomato'
-                ? ('🍅 已切到「番茄个数」模式：建议番茄 = 建议学时 × 60 ÷ ' + getTomatoMinutes() + '，四舍五入')
-                : '⏱ 已切到「时长」模式：按小时显示学习进度');
+                ? ('🍅 已切到「番茄个数」模式（全局）：建议番茄 = 建议学时 × 60 ÷ ' + getTomatoMinutes() + '，四舍五入')
+                : '⏱ 已切到「时长」模式（全局）：各科学习量按小时显示');
         }
 
         // ---------- 番茄时钟设置弹窗（含各科目建议学时 / 建议番茄数） ----------
@@ -4623,6 +4623,29 @@
             };
         }
 
+        /* ---------- 单位统一：所有「学习量」展示都从这几个出口走 ---------- */
+        // isTomatoMode 为真 → 显示番茄个数；否则显示小时。凡是「已学 / 建议 / 计划 /
+        // 学时统计」的展示都必须走 durNum / durStr / durUnit，不要在别处自己拼 'h'。
+        // 例外（刻意保持小时）：录入框（时长(小时) / 番茄个数）、导出 CSV、打印表 —— 那是原始留档数据。
+        function isTomatoMode() { return state.progressMode === 'tomato'; }
+        // 「1.8h」「1.8」「1.8 h」→ 1.8；取不到数字返回 NaN
+        function parseHoursTxt(v) {
+            if (typeof v === 'number') return v;
+            const m = String(v === null || v === undefined ? '' : v).replace(/,/g, '.').match(/\d+(?:\.\d+)?/);
+            return m ? parseFloat(m[0]) : NaN;
+        }
+        // 只要数字（HTML 里单位另放 <small> 时用）
+        function durNum(hours) {
+            const h = parseFloat(hours);
+            if (!isFinite(h) || h <= 0) return isTomatoMode() ? '0' : '0.0';
+            return isTomatoMode() ? String(hoursToTomato(h)) : (Math.round(h * 10) / 10).toFixed(1);
+        }
+        // 数字 + 单位（注意番茄模式带 🍅，时长模式带 h）
+        function durStr(hours) { return durNum(hours) + (isTomatoMode() ? '🍅' : 'h'); }
+        function durUnit() { return isTomatoMode() ? '个' : 'h'; }
+        // 学习指南里的那个标签：时长模式保持原文案「建议时长」不变
+        function guideDurLabel() { return isTomatoMode() ? '建议番茄' : '建议时长'; }
+
         // ---------- 课程进度（双轨 + 三色） ----------
         // 有计划学时 → 已学时长/计划学时；没有 → 已学节数/总节数；再没有 → 已学章数/总章数。
         // 颜色按完成度：>=100% 绿（完成）/ >=70% 黄（接近完成）/ >0 红（进行中，未完成）/ 0 灰（未开始）。
@@ -4717,7 +4740,9 @@
 
         // ---------- 更新全局统计 ----------
         function updateGlobalStats() {
-            document.getElementById('totalHours').textContent = getTotalHours().toFixed(1);
+            const _thL = document.getElementById('totalHoursLabel');
+            if (_thL) _thL.textContent = isTomatoMode() ? '总番茄' : '总学时';
+            document.getElementById('totalHours').textContent = durNum(getTotalHours());
             document.getElementById('totalRecords').textContent = state.records.length;
             const avg = getGlobalAvgUnderstanding();
             document.getElementById('avgUnderstanding').textContent = avg !== null ? avg.toFixed(1) : '-';
@@ -4754,7 +4779,11 @@
             const course = state.currentCourse;
             document.getElementById('currentCourseName').innerHTML =
                 `${course} <span class="badge">${COURSES.indexOf(course) + 1}/${COURSES.length}</span>`;
-            document.getElementById('courseTotalHours').textContent = getCourseHours(course).toFixed(1);
+            const _chL = document.getElementById('courseHoursLabel');
+            const _chU = document.getElementById('courseHoursUnit');
+            if (_chL) _chL.textContent = isTomatoMode() ? '🍅 总番茄' : '⏱️ 总学时';
+            if (_chU) _chU.textContent = isTomatoMode() ? ' 个' : ' h';
+            document.getElementById('courseTotalHours').textContent = durNum(getCourseHours(course));
             document.getElementById('courseRecordCount').textContent = getCourseRecordCount(course);
             const avg = getCourseAvgUnderstanding(course);
             document.getElementById('courseAvgUnderstanding').textContent = avg !== null ? avg.toFixed(1) : '-';
@@ -4772,7 +4801,7 @@
                 const chName = getChapterName(course, i);
                 const totalH = getChapterTotalHours(course, i);
                 const _cl = L('chapter');
-                const _hTxt = totalH > 0 ? ` (${totalH.toFixed(1)}h)` : '';
+                const _hTxt = totalH > 0 ? ` (${durStr(totalH)})` : '';
                 opt.textContent = chName ? `第${i}${_cl} ${chName}${_hTxt}` : `第${i}${_cl}${_hTxt}`;
                 chapterSelect.appendChild(opt);
             }
@@ -4830,7 +4859,8 @@
                         `第${chapter}${_cl} ${chName} · 第${section}${_sl}`) :
                     `第${chapter}${_cl} 第${section}${_sl}`;
                 titleEl.textContent = `📖 ${title} · 学习指南`;
-                durationEl.textContent = `建议时长：${guide.duration || '-'} (本${_cl}共${totalH.toFixed(1)}h)`;
+                const _gd = parseHoursTxt(guide.duration);
+                durationEl.textContent = `${guideDurLabel()}：${(isFinite(_gd) && _gd > 0) ? durStr(_gd) : (guide.duration || '-')} (本${_cl}共${durStr(totalH)})`;
                 objectiveEl.textContent = guide.objective || '-';
                 keypointsEl.textContent = guide.keypoints || '-';
                 const mastery = guide.mastery || '了解';
@@ -4843,7 +4873,7 @@
                 const _cl2 = L('chapter');
                 const title = chName ? `第${chapter}${_cl2} ${chName}` : `第${chapter}${_cl2}`;
                 titleEl.textContent = `📖 ${title} · 学习指南`;
-                durationEl.textContent = `建议时长：${totalH.toFixed(1)}h (总计)`;
+                durationEl.textContent = `${guideDurLabel()}：${durStr(totalH)} (总计)`;
                 emptyEl.style.display = 'block';
                 document.querySelector('.guide-body').style.display = 'none';
             }
@@ -7852,7 +7882,7 @@
             document.getElementById('memSummary').innerHTML = `
                 <div class="mem-stat"><div class="k">🧠 当前平均记忆保持率</div><div class="v">${projectRecords.length ? avgRet + '<small>%</small>' : '—'}</div></div>
                 <div class="mem-stat"><div class="k">🔥 连续学习天数</div><div class="v">${streak}<small> 天</small></div></div>
-                <div class="mem-stat"><div class="k">📅 本月学习时长</div><div class="v">${monthHours.toFixed(1)}<small> h</small></div></div>
+                <div class="mem-stat"><div class="k">📅 本月学习${isTomatoMode() ? '番茄' : '时长'}</div><div class="v">${durNum(monthHours)}<small> ${durUnit()}</small></div></div>
                 <div class="mem-stat"><div class="k">⏰ 待复习（保持率&lt;60%）</div><div class="v">${toReview}<small> 条</small></div></div>`;
 
             // 模式按钮选中态 + 图例显隐
