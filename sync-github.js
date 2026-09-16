@@ -1022,6 +1022,27 @@
 
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
+  // 有并发上限的 map：同时最多跑 limit 个任务，完成一个补一个。
+  // 分片可能多达几十片（实测已有 43 片），一次性 Promise.all 全并发时，
+  // Gitee 这类对突发请求敏感的后端会成片拒绝（实测 43 并发只读回 14 片），
+  // 所以读分片必须限流。
+  async function poolMap(items, limit, fn) {
+    const results = new Array(items.length);
+    let cursor = 0;
+    const workers = [];
+    const n = Math.max(1, Math.min(limit, items.length));
+    for (let w = 0; w < n; w++) {
+      workers.push((async function () {
+        while (cursor < items.length) {
+          const i = cursor++;
+          results[i] = await fn(items[i], i);
+        }
+      })());
+    }
+    await Promise.all(workers);
+    return results;
+  }
+
   // 带重试的请求：国内访问 api.github.com / gist.githubusercontent.com 偶发断流，
   // 不重试就会整次同步失败。
   async function fetchRetry(url, opts, tries, label) {
@@ -1496,16 +1517,18 @@
     const shardIds = Object.keys(cloudMeta.shards || {});
     const merged = { data: {}, updatedAt: cloudMeta.updatedAt || 0 };
 
-    let results = await Promise.all(shardIds.map(function (sid) { return readShardOnce(io, sid); }));
+    // 限流并发读：一次最多同时 4 片（43 片全并发会被 Gitee 成片拒绝）。
+    let results = await poolMap(shardIds, 4, function (sid) { return readShardOnce(io, sid); });
 
-    // 有片没读回来 → 隔 500ms 只把失败的片重试一次。
+    // 有片没读回来 → 只把失败的片分轮重试，最多 3 轮、退避递增（0.8s / 1.6s / 2.4s）。
     // 并发读时一次抖动会同时打中多片，而「部分失败」会让整次同步被安全闸拒绝，
-    // 所以这里值得多给一次机会（已读到的片不重复请求）。
-    const failed = [];
-    results.forEach(function (d, i) { if (!d) failed.push(i); });
-    if (failed.length) {
-      await sleep(500);
-      const again = await Promise.all(failed.map(function (i) { return readShardOnce(io, shardIds[i]); }));
+    // 所以这里值得多给几次机会（已读到的片不重复请求）。
+    for (let round = 1; round <= 3; round++) {
+      const failed = [];
+      results.forEach(function (d, i) { if (!d) failed.push(i); });
+      if (!failed.length) break;
+      await sleep(800 * round);
+      const again = await poolMap(failed, 4, function (i) { return readShardOnce(io, shardIds[i]); });
       failed.forEach(function (i, k) { results[i] = again[k]; });
     }
 

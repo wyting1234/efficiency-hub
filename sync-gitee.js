@@ -611,6 +611,30 @@
       '只有在反复出现时，才需要检查令牌是否勾选了「projects」权限。';
   }
 
+  // ⚠️ Gitee 对「同一时刻大量并发读」非常敏感：实测 43 个分片全并发打出去，
+  // 会被成片拒绝（只读回 ~14 片），触发安全闸「29/43 个分片没读到」。
+  // 内核 readShardedWith 已把并发降到 4，这里在 getFile 这一层再压一道闸门，
+  // 把同一时刻在飞的读请求限到 3 —— 这是针对 Gitee 的双保险，
+  // 且不碰共享内核、不会影响 GitHub 后端。
+  const GITEE_READ_CONCURRENCY = 3;
+  let _giteeSlots = GITEE_READ_CONCURRENCY;
+  const _giteeWaiters = [];
+  function _giteeAcquireSlot() {
+    return new Promise(function (resolve) {
+      if (_giteeSlots > 0) { _giteeSlots--; resolve(); }
+      else _giteeWaiters.push(resolve);
+    });
+  }
+  function _giteeReleaseSlot() {
+    if (_giteeWaiters.length) _giteeWaiters.shift()();
+    else _giteeSlots++;
+  }
+  async function _giteeReadSlot(name) {
+    await _giteeAcquireSlot();
+    try { return await readContents(name); }
+    finally { _giteeReleaseSlot(); }
+  }
+
   const giteeIO = {
     origin: 'gitee',
     label: 'Gitee',
@@ -622,7 +646,7 @@
       const headless = await readContents(Core.META_FILENAME, true);
       return headless || null;              // 这里返回的是 meta 的 JSON 对象，见下方 wrapper
     },
-    getFile: function (name) { return readContents(name); },
+    getFile: function (name) { return _giteeReadSlot(name); },
     // ⚠️ 与 Gist 最大的差异：没有批量写。并发 PUT，逐个取 sha。
     //    分片数通常只有 1~5 片，并发不会有压力。
     putFiles: async function (map) {
