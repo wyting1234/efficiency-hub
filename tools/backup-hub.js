@@ -76,7 +76,6 @@
           keys: ['previewer_html', 'previewer_css', 'previewer_js'] },
         { id: 'travel', name: '旅行助手', icon: '🧭',
           keys: ['roam_last_tab'], prefixes: ['roam_assistant_', 'roam_'] },
-        { id: 'msgsrc', name: '消息源工作台', icon: '📡', keys: ['msgSourceBoard_v1'] },
         { id: 'chaomu', name: '朝暮计', icon: '🌅',
           keys: [], prefixes: ['chaomuji_'],
           exclude: ['chaomuji_backups_v1'] },   // 旧版自带备份仓，避免体积翻倍
