@@ -804,16 +804,28 @@
       }
       return names;
     },
+    // ★ 串行删除（2026-09-16 晚「4 个旧文件未删除」的根修）：
+    //   Gitee contents API 的每次删除 = 同分支上的一次提交；一批 4 个并行打过去
+    //   （Promise.all 8 个并发请求）会互相踩 —— 分支头快进冲突/触发限流，
+    //   实测整批一起失败，且错误被逐文件吞掉，最终复核只剩「N 个未删除」。
+    //   改为逐个删：单文件失败退避 600ms 重试一次，文件间留 300ms 间隔。
     deleteFiles: async function (names) {
-      await Promise.all(names.map(async function (name) {
-        try {
-          const sha = await getSha(name);
-          if (sha) await deleteContents(name, sha);
-        } catch (e) {
-          // 单个文件删不掉不该让整次同步失败（旧片残留只影响体积，不影响正确性）
-          console.warn('[Gitee] 删除 ' + name + ' 失败:', e.message);
+      for (let i = 0; i < names.length; i++) {
+        const name = names[i];
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const sha = await getSha(name);
+            if (!sha) break;                  // 文件本来就不在，视为已删
+            await deleteContents(name, sha);
+            break;                            // 删成功，进入下一个文件
+          } catch (e) {
+            // 单个文件删不掉不该让整次同步失败（旧片残留只影响体积，不影响正确性）
+            console.warn('[Gitee] 删除 ' + name + ' 失败' + (attempt ? '（重试后仍失败）' : '') + ':', e && e.message);
+            if (attempt === 0) await sleep(600);
+          }
         }
-      }));
+        if (i < names.length - 1) await sleep(300);   // 文件间留间隔，别贴着配额上限跑
+      }
     }
   };
 
@@ -889,10 +901,9 @@
                 return;
               }
               if (how === 'merge') {   // 主按钮（绿色）= 清空重建
+                const wipeN = filesNow.filter(function (n) { return /^efficiency-hub-/.test(n); }).length;
                 Core.progShow && Core.progShow('running', '正在清空云端…',
-                  '删除旧的分片与索引文件，共约 ' +
-                  Math.ceil((filesNow.filter(function (n) { return /^efficiency-hub-/.test(n); }).length) / 4) +
-                  ' 批，请稍候。');
+                  '逐个删除云端旧文件（共 ' + wipeN + ' 个），每个删除都是一次提交，需要一点时间，请稍候。');
                 const w = await wipeCloudFiles();
                 if (w.remain.length) {
                   throw new Error('有 ' + w.remain.length + ' 个旧文件未能删除（' +
@@ -954,26 +965,26 @@
     }
   }
 
-  // 清空云端全部「本应用的同步文件」（efficiency-hub-* 前缀），仓库里其他文件一律不碰。
+  // 清空云端全部「本应用的同步文件」（efficiency-hub- 前缀），仓库里其他文件一律不碰。
   // 用途：孤儿索引 / 彻底重置。删除后由调用方用本机数据全量重建。
-  // 限速：每批 4 个、批间 800ms —— 删除是「读 sha + DELETE」各一个请求，
-  // 几十个文件就是近百个请求，必须给 Gitee 的分钟配额留喘息。
+  // 限速：逐个串行删（见 deleteFiles），文件间 300ms —— 几十个文件就是近百个请求，
+  // 必须给 Gitee 的分钟配额留喘息。复核发现残留自动补删（最多两轮）。
   async function wipeCloudFiles() {
     const files = await listCloudFiles();
     if (!files) throw new Error('无法列出云端文件清单，已取消删除（云端未改动）。');
     const mine = files.filter(function (n) { return /^efficiency-hub-/.test(n); });
     if (!mine.length) return { total: 0, deleted: 0, remain: [] };
-    let done = 0;
-    for (let i = 0; i < mine.length; i += 4) {
-      const batch = mine.slice(i, i + 4);
-      try { await giteeIO.deleteFiles(batch); } catch (e) { /* 单批失败由最终复核兜底 */ }
-      done += batch.length;
-      if (i + 4 < mine.length) await sleep(800);
+    await giteeIO.deleteFiles(mine);
+    // 复核：再列一次目录，确认删干净；仍有残留（多为配额原因）→ 等 2 秒补一轮，最多补两轮
+    let left = await listCloudFiles();
+    let remain = (left || []).filter(function (n) { return /^efficiency-hub-/.test(n); });
+    for (let pass = 0; pass < 2 && remain.length; pass++) {
+      await sleep(2000);
+      await giteeIO.deleteFiles(remain);
+      left = await listCloudFiles();
+      remain = (left || []).filter(function (n) { return /^efficiency-hub-/.test(n); });
     }
-    // 复核：再列一次目录，确认删干净；没删掉的如实报出来。
-    const left = await listCloudFiles();
-    const remain = (left || []).filter(function (n) { return /^efficiency-hub-/.test(n); });
-    return { total: mine.length, deleted: done, remain: remain };
+    return { total: mine.length, deleted: mine.length - remain.length, remain: remain };
   }
 
   async function giteeRead(metaHint) {
