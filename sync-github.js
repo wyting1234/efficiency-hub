@@ -1673,31 +1673,65 @@
 
   async function doDownload() {
     if (!isConnected) { showConfigModal(); return; }
-    progShow('running', '正在从云端下载…', '正在读取远端分片并合并，稍等片刻。');
+    progShow('running', '正在检查云端数据…', '先读一份很小的索引文件。');
     progBusy(true);
     try {
       // 提速：Gist ID 有缓存就直连读，不再先拉一遍全列表
       if (!cachedGistId()) await findOrCreateGist();
-      const remote = await readGist();
-      const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
+      // ★ 顺序与 Gitee 侧严格一致：读索引 → 弹窗定模式 → 再读数据。
+      //   原因是实测出来的：旧顺序下弹窗被压在「读完全部分片」之后
+      //   （350ms/请求下，上传在 0~2 个请求后弹、下载要 6~7 个请求后才弹），
+      //   数据一大弹窗就要等好几秒，用户会以为根本不会弹。
+      let meta0 = null;
+      try {
+        meta0 = await readShardedMeta();
+      } catch (e) {
+        throw new Error('读取云端失败：' + (e && e.message ? e.message : e) + '，请检查网络后重试');
+      }
+      const hasShards = !!(meta0 && meta0.shards && Object.keys(meta0.shards).length);
+      let pre = null;
+      if (!hasShards) {
+        // 没有分片索引：可能是旧的单文件格式，也可能真的空 —— 这时才读全量
+        pre = await readGist();
+      }
+      const cloudHas = hasShards
+        || !!(pre && pre.data && Object.keys(pre.data).length > 0);
       if (!cloudHas) {
         progShow('fail', '云端还没有数据', '请先在一部设备上点「上传到云端」，再来这里下载。');
         progBusy(false);
         return;
       }
+      // 一律问，不再看「本机有没有数据」决定要不要问 —— 与 Gitee 侧同语义，
+      // 面板帮助文案承诺的就是「下载点完会让你选」。
       const localHas = getLocalKeys().length > 0;
+      const choice = await showChoice('下载到本机',
+        (localHas
+          ? '本机已经存有数据。\n'
+          : '本机暂时没有可同步的数据，下面两种方式结果相同。\n') +
+        '「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖本机」用【云端数据】整体替换本机。',
+        '合并到本机', '覆盖本机');
       let mode = 'overwrite';
-      if (localHas) {
-        const choice = await showChoice('下载到本机',
-          '本机已经存有数据。\n「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖本机」用【云端数据】整体替换本机。',
-          '合并到本机', '覆盖本机');
-        if (choice === 'cancel') {
-          updateStatus('已取消下载');
-          progShow('running', '已取消下载', '本机数据未改动。');
-          progBusy(false);
-          return;
-        }
-        mode = choice;
+      if (choice === 'cancel') {
+        updateStatus('已取消下载');
+        progShow('running', '已取消下载', '本机数据未改动。');
+        progBusy(false);
+        return;
+      }
+      mode = choice;
+      // 模式定了才去读数据：进度文案如实反映「现在在读」而不是"正在合并"。
+      progShow('running', '正在读取云端数据…',
+        mode === 'merge' ? '按「合并到本机」处理：两边逐项取较新的。'
+                         : '按「覆盖本机」处理：用云端数据整体替换本机。');
+      const remote = pre ? pre : await readSharded(meta0);
+      setCachedCloudHasData(true);
+      // ⚠️ 顺序调整后必须补的安全闸：索引里记着有分片、实际一个都读不到时，
+      //    若不拦就轮到下面执行「覆盖本机」——而 applyCloudToLocal 会先清光本机
+      //    可同步键，等于把本机数据清空。这里一律中止，本机数据保持不动。
+      if (!remote || !remote.data || !Object.keys(remote.data).length) {
+        progShow('fail', '云端数据读取失败',
+          '索引显示云端有数据，但一个分片都没读回来，已中止（本机数据未改动）。请检查网络后重试。');
+        progBusy(false);
+        return;
       }
       let mergeStats = null;
       if (mode === 'merge') {
@@ -2250,7 +2284,7 @@
   };
 
   window.CloudSync = {
-    build: '2026-09-16-cancel',                 // 回归测试用：确认页面跑的是这一版
+    build: '2026-09-16-dlask',                 // 回归测试用：确认页面跑的是这一版
     upload: doUpload,
     download: doDownload,
     both: doSyncBoth,

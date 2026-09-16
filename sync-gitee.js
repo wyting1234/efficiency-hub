@@ -690,31 +690,67 @@
 
   async function giteeDownload() {
     if (!TOKEN) { showConfigModal(); return; }
-    Core.progShow && Core.progShow('running', '正在从 Gitee 下载…', '正在读取远端分片并合并，稍等片刻。');
+    Core.progShow && Core.progShow('running', '正在检查 Gitee 上的数据…', '先读一份很小的索引文件。');
     Core.progBusy && Core.progBusy(true);
     resetRepoProbe();
     clearFileCache();
     try {
-      const remote = await giteeRead();
-      const cloudHas = remote && remote.data && Object.keys(remote.data).length > 0;
+      await ensureRepo();
+      // ★ 顺序是本函数的核心：读索引 → 弹窗定模式 → 再读数据。
+      //   绝不能把弹窗放在「读完全部分片」之后 —— 分片里是本机全部业务数据
+      //   （实测 118 项、压缩后数百 KB），国内读 Gitee 要好几秒。旧的进度文案是
+      //   「正在读取远端分片并合并」，「正在合并」四个字让人以为模式早定好了、
+      //   根本不会弹，于是用户判定「下载没有弹窗」（而上传只读 1 个索引文件就弹，
+      //   这就是「上传有、下载没有」的全部原因）。
+      //   改到这里还有两个附带好处：① 弹窗耗时与数据量彻底无关；
+      //   ② 选「取消」时一个分片都不读，省流量。
+      const meta = await readShardedMetaSafe();
+      const hasShards = !!(meta && meta.shards && Object.keys(meta.shards).length);
+      let pre = null;
+      if (!hasShards) {
+        // 没有分片索引：可能是从 Gist 搬过来的旧单文件，也可能真的空。
+        // 这时没有更省的办法，才读一次全量。
+        pre = await giteeRead(meta);
+      }
+      const cloudHas = hasShards
+        || !!(pre && pre.data && Object.keys(pre.data).length > 0);
       if (!cloudHas) {
         Core.progShow && Core.progShow('fail', 'Gitee 上还没有数据',
           '请先在一部设备上点「上传到云端」，再来这里下载。');
         Core.progBusy && Core.progBusy(false);
         return;
       }
+      // 一律问，不再看「本机有没有数据」决定要不要问 —— 面板帮助文案承诺的
+      // 就是「下载点完会让你选」，承诺了就该每次都问，否则「这次怎么没弹」
+      // 又会变成新的困惑来源。本机确实没有可同步数据时两种选项结果相同，
+      // 在文案里说明，把判断权留给用户。
       const localHas = Core.getLocalKeys().length > 0;
+      const choice = await Core.showChoice('下载到本机',
+        (localHas
+          ? '本机已经存有数据。\n'
+          : '本机暂时没有可同步的数据，下面两种方式结果相同。\n') +
+        '「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖本机」用【云端数据】整体替换本机。',
+        '合并到本机', '覆盖本机');
       let mode = 'overwrite';
-      if (localHas) {
-        const choice = await Core.showChoice('下载到本机',
-          '本机已经存有数据。\n「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖本机」用【云端数据】整体替换本机。',
-          '合并到本机', '覆盖本机');
-        if (choice === 'cancel') {
-          Core.progShow && Core.progShow('running', '已取消下载', '本机数据未改动。');
-          Core.progBusy && Core.progBusy(false);
-          return;
-        }
-        mode = choice;
+      if (choice === 'cancel') {
+        Core.progShow && Core.progShow('running', '已取消下载', '本机数据未改动。');
+        Core.progBusy && Core.progBusy(false);
+        return;
+      }
+      mode = choice;
+      // 模式定了才去读数据：进度文案也如实反映「现在在读」而不是"正在合并"。
+      Core.progShow && Core.progShow('running', '正在读取 Gitee 上的数据…',
+        mode === 'merge' ? '按「合并到本机」处理：两边逐项取较新的。'
+                         : '按「覆盖本机」处理：用云端数据整体替换本机。');
+      const remote = hasShards ? await giteeRead(meta) : pre;
+      // ⚠️ 顺序调整后必须补的安全闸：索引里记着有分片、实际一个都读不到时，
+      //    若不拦就轮到下面执行「覆盖本机」——而 applyCloudToLocal 会先清光本机
+      //    可同步键，等于把本机数据清空。这里一律中止，本机数据保持不动。
+      if (!remote || !remote.data || !Object.keys(remote.data).length) {
+        Core.progShow && Core.progShow('fail', '云端数据读取失败',
+          '索引显示云端有数据，但一个分片都没读回来，已中止（本机数据未改动）。请检查网络后重试。');
+        Core.progBusy && Core.progBusy(false);
+        return;
       }
       let stats = null;
       if (mode === 'merge') stats = Core.mergeCloudToLocal(remote);
@@ -900,7 +936,7 @@
         if (OWNER) localStorage.setItem('gitee_owner', OWNER);
       } catch (e) {}
     },
-    build: '2026-09-16-cancel',
+    build: '2026-09-16-dlask',
     io: giteeIO,
     read: giteeRead,
     upload: giteeUpload,
