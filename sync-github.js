@@ -483,6 +483,14 @@
   //   于是写回云端的那一份必然就是本机此刻的全集 —— 两端自然收敛。
   async function runBothIO(readFn, writeFn) {
     const remote = await readFn();
+    // ★ 安全闸 —— 必须在动任何数据之前。
+    //   少读一片，后面的 writeFn 就会拿「本机 + 残缺云端」重写全部分片，
+    //   把没读到的那些片的键从云端删掉：不可逆，而且旧代码会报"成功"。
+    //   双向同步语义下这条尤其要紧：它是唯一一个既写云端又写本机的入口。
+    if (remote && remote.shardFail > 0) {
+      throw new Error(shardIncompleteMsg(remote) +
+        '\n本机与云端都没有改动，稍等几秒重试即可。');
+    }
     const hasRemote = !!(remote && remote.data && Object.keys(remote.data).length > 0);
     const beforeCount = getLocalKeys().length;
     // 云端原有的键集合（用来算「本次往云端新增了哪些键」）
@@ -1459,12 +1467,9 @@
     return io.getMeta();
   }
 
-  // 读分片：并发拉取所有片后合并成 {key:{value,timestamp}}
-  async function readShardedWith(io, cloudMeta) {
-    const shardIds = Object.keys(cloudMeta.shards || {});
-    const merged = { data: {}, updatedAt: cloudMeta.updatedAt || 0 };
-
-    const tasks = shardIds.map(async sid => {
+  // 读一个分片；成功返回它包含的 data，失败返回 null
+  function readShardOnce(io, sid) {
+    return (async function () {
       const fname = shardFile(sid);
       let content = null;
       try { content = await io.getFile(fname); } catch (e) { content = null; }
@@ -1474,15 +1479,58 @@
         return (payload && payload.data) || {};
       } catch (e) {
         console.warn('[' + (io.label || 'sync') + '] 分片解析失败 ' + sid + ':', e.message);
-        return null;   // 单片失败不影响其它片
+        return null;
       }
-    });
-    const results = await Promise.all(tasks);
+    })();
+  }
+
+  // 读分片：并发拉取所有片后合并成 {key:{value,timestamp}}
+  //
+  // ⚠️ 必须同时回报「有几片没读回来」（shardFail），这是安全闸的判据。
+  //    旧实现虽然算了 shardOk/shardCount，但**没有任何调用方读它们** ——
+  //    于是单片读失败被静默跳过，上层只看到 remote.data 少了几个键、或干脆为空。
+  //    而 data 变空会让调用方判定「云端没有数据」，接着做「本机 → 云端」的写入，
+  //    用不含云端内容的合并结果重写全部分片 —— 等于**把云端数据删了**，
+  //    整个过程还报"成功"（实测：3 片全丢，同步返回 ok=true）。
+  async function readShardedWith(io, cloudMeta) {
+    const shardIds = Object.keys(cloudMeta.shards || {});
+    const merged = { data: {}, updatedAt: cloudMeta.updatedAt || 0 };
+
+    let results = await Promise.all(shardIds.map(function (sid) { return readShardOnce(io, sid); }));
+
+    // 有片没读回来 → 隔 500ms 只把失败的片重试一次。
+    // 并发读时一次抖动会同时打中多片，而「部分失败」会让整次同步被安全闸拒绝，
+    // 所以这里值得多给一次机会（已读到的片不重复请求）。
+    const failed = [];
+    results.forEach(function (d, i) { if (!d) failed.push(i); });
+    if (failed.length) {
+      await sleep(500);
+      const again = await Promise.all(failed.map(function (i) { return readShardOnce(io, shardIds[i]); }));
+      failed.forEach(function (i, k) { results[i] = again[k]; });
+    }
+
     let okCount = 0;
-    results.forEach(d => { if (d) { okCount++; Object.assign(merged.data, d); } });
+    const failIds = [];
+    results.forEach(function (d, i) {
+      if (d) { okCount++; Object.assign(merged.data, d); }
+      else failIds.push(shardIds[i]);
+    });
     merged.shardCount = shardIds.length;
     merged.shardOk = okCount;
+    merged.shardFail = failIds.length;
+    merged.shardFailIds = failIds;
     return merged;
+  }
+
+  // 「索引列了 N 片、实际只读回 M 片」时统一用这句话中止。
+  // 要点：① 已中止，两端都没动；② 这是可重试的瞬时问题，不是权限/配置问题。
+  function shardIncompleteMsg(remote) {
+    const ids = (remote && remote.shardFailIds) || [];
+    const shown = ids.slice(0, 3).join('、') + (ids.length > 3 ? ' 等 ' + ids.length + ' 片' : '');
+    const n = (remote && remote.shardFail) || 0;
+    const total = (remote && remote.shardCount) || 0;
+    return '云端有 ' + n + ' / ' + total + ' 个数据分片这次没读到（' + shown + '）。\n' +
+      '为避免用不完整的数据覆盖云端（那会把没读到的那些片从云端删掉），本次同步已中止。';
   }
 
   // ============ GitHub（Gist）侧的 io 实现 ============
@@ -1724,12 +1772,14 @@
                          : '按「覆盖本机」处理：用云端数据整体替换本机。');
       const remote = pre ? pre : await readSharded(meta0);
       setCachedCloudHasData(true);
-      // ⚠️ 顺序调整后必须补的安全闸：索引里记着有分片、实际一个都读不到时，
+      // ⚠️ 顺序调整后必须补的安全闸：索引里记着有分片、实际读不回来时，
       //    若不拦就轮到下面执行「覆盖本机」——而 applyCloudToLocal 会先清光本机
       //    可同步键，等于把本机数据清空。这里一律中止，本机数据保持不动。
-      if (!remote || !remote.data || !Object.keys(remote.data).length) {
+      //    ⚠️ 判据不能只看「一片都没读到」：**少读了一片**同样危险 ——
+      //    合并/覆盖之后那一片的键在本机就消失了，用户收不到任何提示。
+      if (!remote || !remote.data || !Object.keys(remote.data).length || remote.shardFail > 0) {
         progShow('fail', '云端数据读取失败',
-          '索引显示云端有数据，但一个分片都没读回来，已中止（本机数据未改动）。请检查网络后重试。');
+          shardIncompleteMsg(remote) + '\n已中止，本机数据未改动。');
         progBusy(false);
         return;
       }
@@ -2284,7 +2334,7 @@
   };
 
   window.CloudSync = {
-    build: '2026-09-16-dlask',                 // 回归测试用：确认页面跑的是这一版
+    build: '2026-09-16-heal',                 // 回归测试用：确认页面跑的是这一版
     upload: doUpload,
     download: doDownload,
     both: doSyncBoth,

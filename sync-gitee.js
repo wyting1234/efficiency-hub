@@ -352,7 +352,17 @@
     if (!retried && fileCache.has(name)) return fileCache.get(name);
     if (!retried && inflight.has(name)) return inflight.get(name);
     const p = readContentsRaw(name, quiet, retried);
-    if (!retried) { inflight.set(name, p); p.finally(() => { if (inflight.get(name) === p) inflight.delete(name); }); }
+    if (!retried) {
+      inflight.set(name, p);
+      // ⚠️ 必须用 then(clear, clear)，不能写 p.finally(clear)：
+      //    finally 会派生一个**新的 promise**，它同样以 p 的失败原因 reject，
+      //    而这里没人接住它 —— 浏览器就会报「Uncaught (in promise)」。
+      //    分片读失败时这会在控制台留下一条吓人的红字（实测一次抖动留下 2 条
+      //    「分支名不正确，且自动修正失败…」），把"已经处理好的错误"伪装成"页面崩了"。
+      //    then 的双参数形式两个分支都有处理函数，不派生 rejected promise。
+      const clear = function () { if (inflight.get(name) === p) inflight.delete(name); };
+      p.then(clear, clear);
+    }
     return p;
   }
 
@@ -379,14 +389,22 @@
         fileCache.set(name, txt);
         return txt;
       }
-      // bad-branch：分支名不对时 Gitee 回 200 + []（不是 404）。这是「静默失败」的来源。
-      // 处理方式：就地重探分支，然后重读一次；而不是把错误抛出去让上层瞎猜。
+      // bad-branch：Gitee 在两种完全不同的情况下都回 HTTP 200 + []：
+      //   ① ref 指向的分支不存在（即真的分支名错了）
+      //   ② 服务端瞬时异常，把内容读取降级成了空结果
+      // 分片是并发读的，所以一次抖动会**同时**打中多片；而单片读不到就会让整片
+      // 被上层静默丢弃 —— 再往下就是用不完整的数据写回云端，代价是全量数据丢失。
+      // 因此这里要**多给几次机会**：自愈 + 最多两次重读（每次都是新请求，不走缓存）。
       if (n.kind === 'bad-branch') {
         if (!retried) {
-          try { await healBranch(); } catch (e) { /* 自愈失败就走下面的兜底 */ }
-          if (BRANCH) return await readContents(name, quiet, true);
+          await healBranch();                    // 已含重试与并发去重，自身不抛错
+          for (let k = 0; BRANCH && k < 2; k++) {
+            if (k) await sleep(400);
+            const again = await readContents(name, quiet, true);
+            if (again !== null && again !== undefined) return again;
+          }
         }
-        if (!quiet) throw new Error('分支名不正确，且自动修正失败（请检查令牌是否有该仓库权限）。');
+        if (!quiet) throw new Error(badBranchMsg(name));
         return null;
       }
       // 「文件不存在」也要缓存：同一轮里对同一个不存在的文件的多次查询
@@ -438,12 +456,21 @@
         return null;
       }
       if (n.kind === 'bad-branch') {
-        // 分支不对：就地重探并重试一次（不要抛错，否则会一路失败到用户面前）
+        // 同 readContentsRaw：先自愈，再给两次重读机会，不要一撞上就抛错 ——
+        // 抛出去的后果是「上传失败」，而真实原因可能只值一次抖动。
         if (!retried) {
           await healBranch();
-          if (BRANCH) return await getSha(name, true);
+          for (let k = 0; BRANCH && k < 2; k++) {
+            if (k) await sleep(400);
+            try {
+              const raw2 = await req('GET', contentsPath(name), { query: { ref: BRANCH }, what: '读取 ' + name });
+              const n2 = normContents(raw2);
+              if (n2.kind === 'file') { shaCache.set(name, n2.sha || null); return n2.sha || null; }
+              if (n2.kind === 'text' || n2.kind === 'dir') return null;
+            } catch (e) { /* 这次也不行，继续下一次 */ }
+          }
         }
-        throw new Error('分支名不正确，且自动修正失败（请检查令牌是否有该仓库权限）。');
+        throw new Error(badBranchMsg(name));
       }
       // 走到这里说明响应里既没有 content 也没有 sha —— 确实不存在。
       // 不写缓存：这类「不存在」判断可能是由响应异常造成的，缓存下来会误导后续调用
@@ -501,18 +528,87 @@
   // 在这里**就地重新探测一次**，而不是把错误抛给上层。
   // 为什么必须就地自愈：BRANCH 一旦是错的，读会得到 []、写会走 POST 撞「文件已存在」，
   // 上层只看到「传不上去」这种毫无线索的现象。就地重探能让绝大多数情况自动恢复。
+  //
+  // ⚠️ 三条硬约束，都是线上踩出来的（2026-09-16 自动同步日志里的
+  //    「分支名不正确，且自动修正失败（请检查令牌是否有该仓库权限）」）：
+  //   ① 自愈**绝不能先销毁**手里已有的分支名。
+  //      旧实现一进来就 BRANCH='' + removeItem('gitee_branch')，一旦紧接着的探测
+  //      也失败（Gitee 瞬时 5xx 时很容易），就把一个「本来正确、只是撞上一次抖动」
+  //      的状态变成了空分支 —— 偶发故障由此升级成持续故障：之后每次 contents 请求
+  //      的 ref 都是空串，Gitee 一律回 200 + []，看起来像"仓库里什么都没有"。
+  //      正确顺序是【先探到新值，再替换；探不到就原样留着】。
+  //   ② 一次同步里多个分片会**同时**撞上 bad-branch（Promise.all 并发读），
+  //      不去重就各探一次（实测 3 个分片放大了 13 次仓库探测请求）。
+  //   ③ 探测本身要重试：Gitee 侧瞬时异常是常态，一次就下结论太急。
+  let healErr = null;          // 最近一次自愈的失败原因（不能丢，报错文案要用它）
+  let healInFlight = null;     // 并发去重：同一时刻只跑一次自愈
+
   async function healBranch() {
-    const before = BRANCH;
-    resetRepoProbe();                      // 分支要重探，缓存必须先失效
-    try { localStorage.removeItem('gitee_branch'); } catch (e) {}
-    BRANCH = '';
-    // getLogin 会用缓存 OWNER；ensureRepo 会建库（若不存在）+ 探测真实分支
-    if (!OWNER) { try { await getLogin(); } catch (e) { /* 下面 ensureRepo 再报错 */ } }
-    const r = await ensureRepo();
-    if (r && r.branch && r.branch !== before) {
-      console.warn('[Gitee] 分支名从 "' + (before || '空') + '" 修正为 "' + r.branch + '"');
-    }
-    return BRANCH;
+    if (healInFlight) return healInFlight;
+    healInFlight = (async function () {
+      const saved = BRANCH;                 // ★ 备份：失败要能原样还回去
+      let lastErr = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt) await sleep(700 * attempt);
+        resetRepoProbe();                   // 分支要重探，缓存必须先失效
+        try {
+          // getLogin 会用缓存 OWNER；ensureRepo 会建库（若不存在）+ 探测真实分支
+          if (!OWNER) { try { await getLogin(); } catch (e) { /* 下面 ensureRepo 再报错 */ } }
+          const r = await ensureRepo();
+          if (r && r.branch) {
+            if (r.branch !== saved) {
+              console.warn('[Gitee] 分支名从 "' + (saved || '空') + '" 修正为 "' + r.branch + '"');
+            }
+            healErr = null;
+            return r.branch;
+          }
+          lastErr = new Error('Gitee 未返回默认分支名');
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      // 自愈失败：回滚。
+      // ensureRepo 有可能在中途把 BRANCH 改成别的值（比如把一次 404 误判成
+      // 「仓库不存在」→ 走新建流程 → waitRepoReady 又探出一个分支名）——
+      // 那是基于错误前提得出的结论，不能采信，一律退回自愈前的值。
+      healErr = lastErr;
+      if (BRANCH !== saved) {
+        BRANCH = '';
+        if (saved) setBranch(saved);
+      }
+      console.warn('[Gitee] 分支自愈失败，保留原值 "' + (BRANCH || '空') + '"。原因：' +
+        ((lastErr && lastErr.message) ? lastErr.message : lastErr));
+      return BRANCH;
+    })();
+    try { return await healInFlight; }
+    finally { healInFlight = null; }
+  }
+
+  // 自愈失败的原因单独附在报错末尾。
+  // 为什么不塞进正文：正文必须能独立读懂 —— 用户只读第一段就知道该干什么
+  //（"已中止、两端没动、稍等重试"）；原始报错是给要刨根问底的人的第二层信息。
+  // 缺了它，用户看到「分片没读到」却不知道底下是 Gitee 503 还是别的，只能来问。
+  function healHint() {
+    if (!healErr || !healErr.message) return '';
+    return '\n（附：分支自愈最后一次核对的结果是「' + healErr.message + '」）';
+  }
+
+  // 把「读到空结果」这件事**如实描述**出来，而不是直接给结论。
+  //
+  // 旧文案「分支名不正确，且自动修正失败（请检查令牌是否有该仓库权限）」把两个
+  // **猜测**写成了结论：既不知道分支名是否真的错了（刚刚才重探过），也不知道是不是
+  // 权限问题（真正的权限问题连分支名都读不到，报的会是别的错）。
+  // 用户拿着这句话去改令牌，而真实原因只是一次服务端瞬时异常 —— 白折腾。
+  function badBranchMsg(name) {
+    const cause = (healErr && healErr.message) ? healErr.message : '';
+    return '读取 Gitee 上的 ' + name + ' 时，接口返回了空结果（HTTP 200，但内容为空）。\n' +
+      '这通常是两种原因之一：\n' +
+      '  ① Gitee 侧瞬时异常 —— 正常内容被降级成了空结果；\n' +
+      '  ② 分支名不对（当前用的分支是 "' + (BRANCH || '空') + '"）。\n' +
+      '已自动重新核对 Gitee 上的默认分支并重试过，仍未读到。\n' +
+      (cause ? '最后一次核对的结果：' + cause + '\n' : '') +
+      '本机数据未改动。稍等几秒再点一次同步通常就能恢复；' +
+      '只有在反复出现时，才需要检查令牌是否勾选了「projects」权限。';
   }
 
   const giteeIO = {
@@ -661,7 +757,7 @@
         '。\n本次写入约 ' + kb + 'KB（已压缩）。');
     } catch (e) {
       console.warn('[Gitee] 上传失败:', e.message);
-      Core.notifyFail('上传 Gitee 失败', (e.message || String(e)) + '\n本机数据未改动。');
+      Core.notifyFail('上传 Gitee 失败', (e.message || String(e)) + healHint() + '\n本机数据未改动。');
     }
   }
 
@@ -743,12 +839,14 @@
         mode === 'merge' ? '按「合并到本机」处理：两边逐项取较新的。'
                          : '按「覆盖本机」处理：用云端数据整体替换本机。');
       const remote = hasShards ? await giteeRead(meta) : pre;
-      // ⚠️ 顺序调整后必须补的安全闸：索引里记着有分片、实际一个都读不到时，
+      // ⚠️ 顺序调整后必须补的安全闸：索引里记着有分片、实际读不回来时，
       //    若不拦就轮到下面执行「覆盖本机」——而 applyCloudToLocal 会先清光本机
       //    可同步键，等于把本机数据清空。这里一律中止，本机数据保持不动。
-      if (!remote || !remote.data || !Object.keys(remote.data).length) {
+      //    ⚠️ 判据不能只看「一片都没读到」：**少读了一片**同样危险 —— 合并/覆盖之后
+      //    那一片的键在本机就消失了，用户不会收到任何提示。索引列了几片就必须读回几片。
+      if (!remote || !remote.data || !Object.keys(remote.data).length || remote.shardFail > 0) {
         Core.progShow && Core.progShow('fail', '云端数据读取失败',
-          '索引显示云端有数据，但一个分片都没读回来，已中止（本机数据未改动）。请检查网络后重试。');
+          Core.shardIncompleteMsg(remote) + '\n已中止，本机数据未改动。');
         Core.progBusy && Core.progBusy(false);
         return;
       }
@@ -764,7 +862,7 @@
           : '云端的 ' + Object.keys(remote.data).length + ' 项数据已写入本机。');
     } catch (e) {
       console.warn('[Gitee] 下载失败:', e.message);
-      Core.notifyFail('从 Gitee 下载失败', (e.message || String(e)) + '\n本机数据未改动。');
+      Core.notifyFail('从 Gitee 下载失败', (e.message || String(e)) + healHint() + '\n本机数据未改动。');
     }
   }
 
@@ -826,7 +924,7 @@
         Core.notifyFail('双向同步（Gitee）失败',
           (e.message || String(e)) + '\n本机与 Gitee 上的数据都未曾被覆盖。');
       }
-      return { error: (e.message || String(e)) };
+      return { error: (e.message || String(e)) + healHint() };
     }
   }
 
@@ -936,7 +1034,7 @@
         if (OWNER) localStorage.setItem('gitee_owner', OWNER);
       } catch (e) {}
     },
-    build: '2026-09-16-dlask',
+    build: '2026-09-16-heal',
     io: giteeIO,
     read: giteeRead,
     upload: giteeUpload,
