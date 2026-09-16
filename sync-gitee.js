@@ -900,7 +900,7 @@
         if (OWNER) localStorage.setItem('gitee_owner', OWNER);
       } catch (e) {}
     },
-    build: '2026-09-16-auto',
+    build: '2026-09-16-cancel',
     io: giteeIO,
     read: giteeRead,
     upload: giteeUpload,

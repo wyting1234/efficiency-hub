@@ -1603,7 +1603,16 @@
         const choice = await showChoice('上传到云端',
           '云端已经存有数据。\n「合并」保留两边较新的数据，不会丢任何一边；\n「覆盖云端」用【本机数据】整体替换云端。',
           '合并到云端', '覆盖云端');
-        if (choice === 'cancel') { updateStatus('已取消上传'); return; }
+        if (choice === 'cancel') {
+          // 必须复位进度区与按钮：doUpload 开头调了 progBusy(true) 禁用两颗按钮，
+          // 这里直接 return 会让按钮永久变灰 —— 用户接着点「下载」毫无反应，
+          // 会把「按钮是灰的」误读成「下载功能坏了 / 下载不弹窗」。
+          // doDownload 的取消分支与 Gitee 侧两处取消都有这段，唯独这里漏了。
+          updateStatus('已取消上传');
+          progShow('running', '已取消上传', '云端数据未改动。');
+          progBusy(false);
+          return;
+        }
         mode = choice;
       }
       let localData;
@@ -2241,7 +2250,7 @@
   };
 
   window.CloudSync = {
-    build: '2026-09-16-auto',                 // 回归测试用：确认页面跑的是这一版
+    build: '2026-09-16-cancel',                 // 回归测试用：确认页面跑的是这一版
     upload: doUpload,
     download: doDownload,
     both: doSyncBoth,
