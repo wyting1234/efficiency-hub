@@ -17,6 +17,12 @@
  *    勾选 projects（仓库读写）即可，只需要这一个。
  * 2. 在「云端同步」面板切到 Gitee，粘贴令牌；仓库不存在会自动建一个私有仓库。
  * 3. v8（2026-09-16）：新增「双向同步」—— 一次点击让两端都变成合并结果，永不覆盖。
+ * 4. v9（2026-09-16 晚）：修正「空结果」的误判。Gitee 的 contents 接口对
+ *    「这个文件不存在」和「分支名不对」返回的都是 200 + `[]`，响应完全一样；
+ *    旧版一律按「分支错」处理 → 自愈分支 + 重试 + 抛错中止整次上传，于是
+ *    **新拆出来的分片第一次写必然失败**（用户看到「上传 Gitee 失败：接口返回了空结果」，
+ *    而分支其实完全正确）。现在先取一次云端文件清单（/git/trees）判定存在性，
+ *    文件不存在就按「新建」走。详见下方 emptyPathNote。
  *
  * ⚠️ 与 Gist 的接口差异（诚实说明）：
  * - Gitee contents 接口一次只能写一个文件，没有 Gist 那种「一次 PATCH 多文件」的批量能力，
@@ -57,14 +63,14 @@
 
   // 把 contents 接口的响应归一化。
   // Gitee 的几种「看起来像成功其实不是」的返回，必须在这里一次性挡掉：
-  //   • []                → 分支不存在（HTTP 200！）
+  //   • []                → 「这个路径上没有东西」——**双义**，见下方 emptyPathNote
   //   • [{...}]           → 目录列表
   //   • "..."             → 纯文本
   //   • {content: "..."}  → 正常文件
   function normContents(j) {
     if (!j) return { kind: 'missing' };
     if (Array.isArray(j)) {
-      if (j.length === 0) return { kind: 'bad-branch' };   // 关键：分支/路径不存在
+      if (j.length === 0) return { kind: 'empty' };   // ★ 双义，交给 isAbsent 判
       return { kind: 'dir', list: j };
     }
     if (typeof j === 'string') return { kind: 'text', text: j };
@@ -81,6 +87,112 @@
       return { kind: 'file', text: null, sha: j.sha, raw: j, needsDownload: !j.content };
     }
     return { kind: 'missing', raw: j };
+  }
+
+  // ★★ emptyPathNote —— 「空结果」到底是什么意思（2026-09-16 实测，可复现）★★
+  //
+  // 对公开仓库匿名实测 GET /repos/:o/:r/contents/{path}?ref={ref}：
+  //     · 存在的文件            → 200 + 文件对象
+  //     · **不存在的文件**        → 200 + `[]`   ← 注意：不是 404
+  //     · ref 指向不存在的分支   → 200 + `[]`
+  //   即 `[]` 有**两种成因，且响应体完全相同、无法区分**。
+  //
+  //   旧实现把它一律判成「分支名不对」，于是：数据变大后新拆出来的分片
+  //   （“这个文件云端还没有”，第一次写必然如此）会被当成故障 → 自愈分支 →
+  //   重试 → 最后抛错中止整次上传。用户看到的正是
+  //   「上传 Gitee 失败：读取 Gitee 上的 efficiency-hub-xxx.json 时，接口返回了空结果
+  //     （HTTP 200，但内容为空）… 当前用的分支是 "master"」——而分支完全正确，
+  //   真正缺的只是那个文件。重试多少次都不会好，因为文件不会因为重试而出现。
+  //
+  //   判定顺序（先零请求，再一个请求）：
+  //     ① 云端文件清单 /git/trees/{ref}?recursive=1（本轮只取一次并缓存）
+  //        命中 → 存在（顺带拿到 sha）；未命中 → 不存在。**最权威的一条**。
+  //     ② 清单取不到时，退一步用事实「本轮 ensureRepo 已核对过 default_branch」——
+  //        分支既然有效，`[]` 就只能是「文件不存在」。
+  //     ③ 两条都拿不到 → 保留旧行为（自愈分支 + 重试 + 报错），不会比现在更差。
+  //
+  //   ⚠️ 这条判定依赖一个前提：*同一个* `[]` 不会在「文件确实存在」时出现。
+  //      实测（多次、多仓库、跨时间）`[]` 是确定性的、可重复的，没有被降级过的迹象；
+  //      而且它只用于「文件在不在」这种可重试的判定 —— 读路径另有安全闸
+  //      （shardFail > 0 一律中止，绝不用不完整的数据回写云端），
+  //      写路径走错（把「存在」当「不存在」）会被 Gitee 的 400「已存在」挡住并重试。
+  //      所以即使前提偶尔不成立，后果也只是「这一次同步失败」，不会丢数据。
+  let branchVerified = false;   // 本轮 ensureRepo 是否拿 /repos/:o/:r 的 default_branch 核过
+  let treeSnap = null;          // null=未取 | { ok:true, map:{path:{sha,size}} } | { ok:false, err }
+  let treeDirty = {};           // 本轮已写入/删除的路径：清单对它们已过期
+  function resetTreeSnap() { treeSnap = null; treeDirty = {}; }
+
+  // 取一次云端文件清单并缓存。失败不抛错 —— 它只是判定依据之一，拿不到就降级。
+  async function getTreeSnap() {
+    if (treeSnap) return treeSnap;
+    if (!OWNER || !REPO || !BRANCH) { treeSnap = { ok: false, err: '分支/账号未确认' }; return treeSnap; }
+    try {
+      const raw = await req('GET',
+        '/repos/' + OWNER + '/' + REPO + '/git/trees/' + encodeURIComponent(BRANCH),
+        { query: { recursive: 1 }, what: '读取云端文件清单' });
+      if (!raw || !Array.isArray(raw.tree)) {
+        treeSnap = { ok: false, err: '清单格式无法识别' };
+      } else if (raw.truncated) {
+        treeSnap = { ok: false, err: '清单被服务端截断' };
+      } else {
+        const map = {};
+        raw.tree.forEach(function (it) {
+          if (it && it.type === 'blob' && it.path) {
+            map[it.path] = { sha: it.sha || '', size: it.size || 0 };
+          }
+        });
+        treeSnap = { ok: true, map: map };
+      }
+    } catch (e) {
+      console.warn('[Gitee] 读取云端文件清单失败（不影响主流程，改走降级判定）:',
+        (e && e.message) || e);
+      treeSnap = { ok: false, err: (e && e.message) || String(e) };
+    }
+    return treeSnap;
+  }
+
+  // 同步版查询（只在清单已就绪时敢下结论，避免流程里到处 await）
+  function treeState(name) {
+    if (treeDirty[name]) return 'unknown';
+    if (!treeSnap || !treeSnap.ok) return 'unknown';
+    return treeSnap.map[name] ? 'exists' : 'absent';
+  }
+
+  // 判定「这个路径在云端确实不存在」。返回 { absent, sha, size, why }
+  // 只有拿到**正向证据**才敢说 absent：要么清单明确没有它，要么分支已被核对过。
+  async function isAbsent(name) {
+    await getTreeSnap();                       // 幂等：本轮只发一次请求
+    const st = treeState(name);
+    if (st === 'exists') {
+      const it = treeSnap.map[name];
+      return { absent: false, sha: it.sha, size: it.size, why: '云端文件清单里有它' };
+    }
+    if (st === 'absent') {
+      return { absent: true, sha: '', size: 0, why: '云端文件清单里没有它' };
+    }
+    if (branchVerified) {
+      return { absent: true, sha: '', size: 0, why: '本轮已核对过默认分支，ref 有效，故只能是路径不存在' };
+    }
+    return { absent: false, unsure: true, sha: '', size: 0, why: '' };
+  }
+
+  // 按 sha 取原文（官方只读的 Git Data 接口）。
+  // 为什么需要它：contents 对 >1MB 的文件不返回 content，只给 download_url；
+  // 而 download_url 走 gitee.com 原始文件通道、受 CORS 限制（实测会失败）。
+  // git/blobs 单文件支持到 100MB，且**没有 contents 那种「空结果」双义**。
+  async function fetchBlob(name, sha) {
+    if (!sha) return null;
+    try {
+      const raw = await req('GET',
+        '/repos/' + OWNER + '/' + REPO + '/git/blobs/' + encodeURIComponent(sha),
+        { what: '读取 ' + name + ' 的内容' });
+      const b64 = raw && raw.content;
+      if (typeof b64 === 'string') return b64ToText(b64);
+      return null;
+    } catch (e) {
+      console.warn('[Gitee] 按 blob 读取 ' + name + ' 失败:', (e && e.message) || e);
+      return null;
+    }
   }
 
   // ============ HTTP 小工具 ============
@@ -263,7 +375,10 @@
   //    白白多花近 2 秒 —— 这就是用户感觉「卡顿」的主因。
   //    因此这里做「同一轮同步内只探一次」的会话级缓存，跨轮自动失效（见 resetRepoProbe）。
   let repoProbed = null;        // { owner, repo, branch } —— 本轮已确认过的结果
-  function resetRepoProbe() { repoProbed = null; }
+  function resetRepoProbe() {
+    repoProbed = null;
+    branchVerified = false;     // 「分支已被核对」这个事实同样只在同一轮内成立
+  }
 
   async function ensureRepo() {
     if (!TOKEN) throw new Error('还没有配置 Gitee 令牌');
@@ -327,6 +442,9 @@
         if (BRANCH) console.warn('[Gitee] 缓存的默认分支 "' + BRANCH + '" 与远端 "' + realBranch + '" 不一致，已纠正');
         setBranch(realBranch);
       }
+      // ★ 记下「分支已被权威核对」这个事实：它是判定「contents 回 []」含义的
+      //   **零成本正向证据**（ref 有效 ⇒ [] 只能是路径不存在）。见 emptyPathNote。
+      branchVerified = true;
     } else if (!BRANCH) {
       // 兜底：连仓库信息都读不到时，也不能让 BRANCH 为空 —— ref='' 会被
       // Gitee 当作「分支不存在」而静默返回 []，那是最难排查的失败方式。
@@ -406,7 +524,10 @@
   // 上传流程和 io 层各读一次 —— 没有这个去重，缓存还没写进去，第二个请求就
   // 已经发出去了，等于白读一遍（实测一次上传里 meta 被读两次）。
   const inflight = new Map();
-  function clearFileCache() { fileCache.clear(); shaCache.clear(); inflight.clear(); }
+  function clearFileCache() {
+    fileCache.clear(); shaCache.clear(); inflight.clear();
+    resetTreeSnap();     // 云端文件清单同理：跨轮必须重取（见 getTreeSnap）
+  }
 
   async function readContents(name, quiet, retried) {
     if (!retried && fileCache.has(name)) return fileCache.get(name);
@@ -427,6 +548,13 @@
   }
 
   async function readContentsRaw(name, quiet, retried) {
+    // 快速通道：清单已经取过、且明确没有这个文件 → 直接按「不存在」返回，
+    // 连 contents 请求都省掉。首次进入时清单还没取，会走下面的正常流程。
+    if (!retried && treeState(name) === 'absent') {
+      console.warn('[Gitee] ' + name + ' 不在云端文件清单里 → 按不存在处理');
+      fileCache.set(name, null);
+      return null;
+    }
     try {
       const raw = await req('GET', contentsPath(name), { query: { ref: BRANCH }, what: '读取 ' + name });
       const n = normContents(raw);
@@ -445,26 +573,53 @@
         // 大文件：响应里没有 content，得另拉一次原文。
         // 缓存里先放 null 占位是不行的（会被误判成「文件不存在」），所以这里
         // 只在真正拿到内容后才写缓存，拿不到就返回 null 让上层跳过这个片。
-        const txt = await fetchRaw(n.raw);
+        // 优先走 git/blobs（官方只读接口，无 CORS 与 1MB 内联限制），失败再退回 download_url。
+        let txt = await fetchBlob(name, n.sha);
+        if (txt === null || txt === undefined) txt = await fetchRaw(n.raw);
+        if (txt === null || txt === undefined) {
+          // 文件确实存在（有 sha）但内容没拉回来 —— 绝不能缓存成 null，
+          // 那会被上层误判成「文件不存在」。不写缓存，让它下次真的去读。
+          console.warn('[Gitee] ' + name + ' 存在但内容未取到（大文件通道失败）');
+          return null;
+        }
         fileCache.set(name, txt);
         return txt;
       }
-      // bad-branch：Gitee 在两种完全不同的情况下都回 HTTP 200 + []：
-      //   ① ref 指向的分支不存在（即真的分支名错了）
-      //   ② 服务端瞬时异常，把内容读取降级成了空结果
-      // 分片是并发读的，所以一次抖动会**同时**打中多片；而单片读不到就会让整片
-      // 被上层静默丢弃 —— 再往下就是用不完整的数据写回云端，代价是全量数据丢失。
-      // 因此这里要**多给几次机会**：自愈 + 最多两次重读（每次都是新请求，不走缓存）。
-      if (n.kind === 'bad-branch') {
+      // empty：Gitee 对「路径不存在」与「ref 无效」都回 HTTP 200 + []，响应无法区分。
+      // 详见上方 emptyPathNote —— 先按证据判定，证据不足才自愈 + 重试 + 报错。
+      //
+      // ⚠️ 这里为什么**不能**像以前那样一律抛错：分片是并发读的，单片读不到会被上层
+      //    记成 shardFail，而「索引列了 N 片、只读回 M 片」的安全闸会中止同步 ——
+      //    这个保护本身是对的，但前提是「确实读不到」。把一个**本来就不存在**的文件
+      //    （比如云端元数据被手动清理过）也报成「读取失败」，用户只会拿着错误的方向去排查。
+      if (n.kind === 'empty') {
         if (!retried) {
+          const a = await isAbsent(name);
+          if (a.absent) {
+            // 权威结论：云端确实没有这个文件。这不是故障。
+            console.warn('[Gitee] ' + name + ' 在云端不存在（' + a.why + '）→ 按「文件不存在」返回');
+            fileCache.set(name, null);
+            return null;
+          }
+          if (a.sha) {
+            // 清单说它存在，这一次却回空 → 这次读取被降级了，用 blob 通道补读
+            shaCache.set(name, a.sha);
+            const txt = await fetchBlob(name, a.sha);
+            if (txt !== null && txt !== undefined) { fileCache.set(name, txt); return txt; }
+          }
+          // 证据不足：保留旧的「自愈 + 两次重读」。
           await healBranch();                    // 已含重试与并发去重，自身不抛错
           for (let k = 0; BRANCH && k < 2; k++) {
-            if (k) await sleep(400);
-            const again = await readContents(name, quiet, true);
-            if (again !== null && again !== undefined) return again;
+            if (k) await sleep(600);
+            // ⚠️ 必须 try/catch：重读走的是 retried=true 分支，它会直接 throw，
+            //    抛出来就把整个循环打断了 —— 于是「两次重读」实际只有一次。
+            try {
+              const again = await readContents(name, quiet, true);
+              if (again !== null && again !== undefined) return again;
+            } catch (e2) { /* 这一轮也没读到，继续下一轮 */ }
           }
         }
-        if (!quiet) throw new Error(badBranchMsg(name));
+        if (!quiet) throw new Error(emptyPathMsg(name));
         return null;
       }
       // 「文件不存在」也要缓存：同一轮里对同一个不存在的文件的多次查询
@@ -495,8 +650,11 @@
   }
 
   // 读 sha（写之前必须拿；文件不存在返回 null）
-  // ⚠️ 要点：不能用 200 判断成功。分支写错时 Gitee 回 200 + []，
-  //    旧代码会拿到 undefined 的 sha → 走 POST 新建 → 对已存在文件必然失败。
+  // ⚠️ 要点：不能用 200 判断成功。Gitee 对「文件不存在」和「分支写错」都回 200 + []，
+  //    旧代码把后者当唯一解释，于是「文件还没有」被当成故障抛错、中止整次上传。
+  //    ★ 本函数遇到 empty 时**一律按「文件不存在」返回 null**（只要证据成立）：
+  //      这是**安全**的 —— 万一它其实存在，POST 会收到「已存在」400，
+  //      putFiles 里的重试分支会清缓存重新取 sha 再 PUT，不会写坏数据。
   async function getSha(name, retried) {
     // 复用缓存：如果这一轮刚读过这个文件，直接把 sha 记下来，不再发请求。
     // 注意缓存存的是「文本内容」，sha 单独用一张表记，避免又读一遍。
@@ -507,6 +665,8 @@
     //    后面 putFiles 一律走 POST 新建 → 对已存在的文件必然 400「文件新建失败」。
     //    所以拿到 null 时必须真的去问一次 Gitee，让结论来自这一次请求。
     if (!retried && shaCache.get(name)) return shaCache.get(name);
+    // 清单已取过且明确没有它 → 不必再发请求
+    if (!retried && treeState(name) === 'absent') return null;
     try {
       const raw = await req('GET', contentsPath(name), { query: { ref: BRANCH }, what: '读取 ' + name });
       const n = normContents(raw);
@@ -515,13 +675,26 @@
         // 纯文本形态拿不到 sha，再取一次元数据（sha 在响应头/结构里）
         return null;
       }
-      if (n.kind === 'bad-branch') {
-        // 同 readContentsRaw：先自愈，再给两次重读机会，不要一撞上就抛错 ——
-        // 抛出去的后果是「上传失败」，而真实原因可能只值一次抖动。
+      if (n.kind === 'empty') {
+        // ★★ 关键修复（2026-09-16）★★
+        // 旧行为：一律 healBranch + 重试 + 抛错 → 上传中止。而真实原因绝大多数只是
+        // 「这个文件云端还没有」（数据变大后新拆出的分片，第一次写必然如此）。
+        // 详见 emptyPathNote。
+        const a = await isAbsent(name);
+        if (a.absent) {
+          console.warn('[Gitee] ' + name + ' 在云端不存在（' + a.why + '）→ 按新建处理');
+          return null;
+        }
+        if (a.sha) {
+          // 清单里有它：sha 直接拿来用（这一步同时省掉了原来的重复 GET）
+          shaCache.set(name, a.sha);
+          return a.sha;
+        }
+        // 证据不足：保留旧的自愈 + 重读，最后仍失败才报错。
         if (!retried) {
           await healBranch();
           for (let k = 0; BRANCH && k < 2; k++) {
-            if (k) await sleep(400);
+            if (k) await sleep(600);
             try {
               const raw2 = await req('GET', contentsPath(name), { query: { ref: BRANCH }, what: '读取 ' + name });
               const n2 = normContents(raw2);
@@ -530,7 +703,7 @@
             } catch (e) { /* 这次也不行，继续下一次 */ }
           }
         }
-        throw new Error(badBranchMsg(name));
+        throw new Error(emptyPathMsg(name));
       }
       // 走到这里说明响应里既没有 content 也没有 sha —— 确实不存在。
       // 不写缓存：这类「不存在」判断可能是由响应异常造成的，缓存下来会误导后续调用
@@ -551,6 +724,21 @@
     //    POST 新建 → 对已存在文件报 400「文件新建失败」。
     //    所以这里取到 null 时必须继续走真正的 getSha，而不是提前返回。
     if (shaCache.get(name)) return shaCache.get(name);
+    // ★ 先取一次云端文件清单（本轮共享，1 个请求），把「所有片的 sha」一次拿回来。
+    //   对比旧路径「每片各发 2 次 GET（读内容 + 读 sha）」，一次上传能省下好几个来回；
+    //   清单里没有的片直接判定为「待新建」，也不再白跑 healBranch。
+    if (!treeSnap) {
+      await getTreeSnap();
+      const st = treeState(name);
+      if (st === 'exists') {
+        const sha = treeSnap.map[name].sha;
+        shaCache.set(name, sha);
+        return sha;
+      }
+      if (st === 'absent') return null;
+    } else if (treeState(name) === 'absent') {
+      return null;
+    }
     await readContents(name, true);
     if (shaCache.get(name)) return shaCache.get(name);
     return getSha(name);
@@ -573,6 +761,7 @@
     // 写成功后本机缓存就过期了：留着会让后续读到旧内容、拿到旧 sha
     fileCache.delete(name);
     shaCache.delete(name);
+    treeDirty[name] = 1;      // 云端文件清单里的 sha 也过期了
   }
 
   async function deleteContents(name, sha, message) {
@@ -582,6 +771,7 @@
     });
     fileCache.set(name, null);      // 已删除：记成「不存在」，避免再发一次注定 404 的请求
     shaCache.set(name, null);
+    treeDirty[name] = 1;
   }
 
   // 分支名失效（Gitee 对不存在的分支返回 200 + [] 而不是 404）时，
@@ -666,30 +856,31 @@
     return '\n（附：分支自愈最后一次核对的结果是「' + healErr.message + '」）';
   }
 
-  // 把「读到空结果」这件事**如实描述**出来，而不是直接给结论。
-  //
-  // 旧文案「分支名不正确，且自动修正失败（请检查令牌是否有该仓库权限）」把两个
-  // **猜测**写成了结论：既不知道分支名是否真的错了（刚刚才重探过），也不知道是不是
-  // 权限问题（真正的权限问题连分支名都读不到，报的会是别的错）。
-  // 用户拿着这句话去改令牌，而真实原因只是一次服务端瞬时异常 —— 白折腾。
-  function badBranchMsg(name) {
+  // 只在**证据不足**时才用这句（详见 emptyPathNote 的判定顺序）。
+  // 事实是：Gitee 对「文件不存在」与「分支名不对」返回的空结果完全一样，
+  // 所以任何把其中一种说成结论的文案都是在骗人 —— 包括旧版
+  // 「分支名不正确，且自动修正失败（请检查令牌是否有该仓库权限）」。
+  // 那两句话把猜测写成了结论：分支刚刚才重探过、而且很可能本来就对；
+  // 权限问题连分支名都读不到，报的会是别的错。用户拿着它去改令牌，白折腾。
+  function emptyPathMsg(name) {
     const cause = (healErr && healErr.message) ? healErr.message : '';
     return '读取 Gitee 上的 ' + name + ' 时，接口返回了空结果（HTTP 200，但内容为空）。\n' +
-      '这通常是两种原因之一：\n' +
-      '  ① Gitee 侧瞬时异常 —— 正常内容被降级成了空结果；\n' +
-      '  ② 分支名不对（当前用的分支是 "' + (BRANCH || '空') + '"）。\n' +
-      '已自动重新核对 Gitee 上的默认分支并重试过，仍未读到。\n' +
+      'Gitee 对「这个文件不存在」和「分支名不对」返回的是**完全相同**的空结果，' +
+      '本次两种判定都没能落实：\n' +
+      '  ① 云端文件清单（/git/trees）没读到 —— 接口异常或被限流；\n' +
+      '  ② 默认分支没能核对成功（当前用的分支是 "' + (BRANCH || '空') + '"）。\n' +
       (cause ? '最后一次核对的结果：' + cause + '\n' : '') +
-      '本机数据未改动。稍等几秒再点一次同步通常就能恢复；' +
-      '只有在反复出现时，才需要检查令牌是否勾选了「projects」权限。';
+      '本机数据未改动。稍等几秒再点一次同步；' +
+      '若反复出现，请检查令牌是否勾选了「projects」权限。';
   }
 
   // ⚠️ Gitee 对「同一时刻大量并发读」非常敏感：实测 43 个分片全并发打出去，
   // 会被成片拒绝（只读回 ~14 片），触发安全闸「29/43 个分片没读到」。
-  // 内核 readShardedWith 已把并发降到 4，这里在 getFile 这一层再压一道闸门，
+  // 内核 readShardedWith 已把并发降到 6，这里在 getFile 这一层再压一道闸门，
   // 把同一时刻在飞的读请求限到 3 —— 这是针对 Gitee 的双保险，
   // 且不碰共享内核、不会影响 GitHub 后端。
-  const GITEE_READ_CONCURRENCY = 5;
+  // ⚠️ 注释与常量必须一致：这里曾写成注释 3、常量 5（并发压力比设计值大一截）。
+  const GITEE_READ_CONCURRENCY = 3;
   let _giteeSlots = GITEE_READ_CONCURRENCY;
   const _giteeWaiters = [];
   function _giteeAcquireSlot() {
@@ -750,8 +941,14 @@
           try {
             sha = await getShaViaRead(name);
           } catch (e) {
-            // 分支名错误会被 getSha 重置掉；重来一次会用新探测到的分支
-            if (attempt < 2) { await sleep(600); continue; }
+            // 分支名错误会被 getSha 重置掉；重来一次会用新探测到的分支。
+            // 这里一并把缓存清掉 —— 失败往往意味着缓存里的判断已经不对。
+            if (attempt < 2) {
+              fileCache.delete(name);
+              shaCache.delete(name);
+              await sleep(600);
+              continue;
+            }
             throw e;
           }
           try {
@@ -759,13 +956,22 @@
             return name;
           } catch (e) {
             const m = e.message || '';
-            // 区分两类失败，重试姿势完全不同：
-            //  A.「已被其它设备改动 / 已存在」——绕过缓存重新取 sha。
-            //  B. 分支名不正确 —— 下一轮 ensureRepo/healBranch 会自愈，同样先清缓存。
-            if (attempt < 2 && (/已被其它设备改动/.test(m) || /已存在/.test(m) || /分支名不正确/.test(m))) {
+            // 统一走「清缓存 + 重取 sha」的重试姿势，触发条件分四类：
+            //  A.「已被其它设备改动 / 已存在」——POST 撞上「已存在」说明我们刚才
+            //     判定的「文件不存在」是错的，必须重新取 sha 改走 PUT。
+            //  B.「空结果」——`[]` 双义性导致的失败（见 emptyPathNote）。
+            //  C.「分支名不正确」——下一轮 ensureRepo/healBranch 会自愈。
+            //  D. 400 —— 新建/更新被 400 拒绝时，绝大多数是手上的 sha 不是最新的，
+            //     重取一次正好能修好；只有重试后仍失败才把原始错误抛给用户。
+            const branchSuspect = /分支名不正确|空结果/.test(m);
+            const retryable = branchSuspect ||
+              /已被其它设备改动|已存在|报错 400/.test(m);
+            if (attempt < 2 && retryable) {
               fileCache.delete(name);
               shaCache.delete(name);
-              resetRepoProbe();
+              delete treeDirty[name];
+              treeSnap = null;               // 清单可能已过期：重取一次，让判定重新基于事实
+              if (branchSuspect) resetRepoProbe();
               await sleep(700 * (attempt + 1));
               continue;
             }
@@ -1350,7 +1556,7 @@
         if (OWNER) localStorage.setItem('gitee_owner', OWNER);
       } catch (e) {}
     },
-    build: '2026-09-16-heal',
+    build: '2026-09-16-empty-fix',
     io: giteeIO,
     read: giteeRead,
     upload: giteeUpload,
