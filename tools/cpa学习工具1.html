@@ -1089,14 +1089,9 @@
         .empty-state p { font-size: 15px; }
 
 
+        /* 学习记录列表：宽屏也保持单列纵向排列（原先是 2 列 grid，卡片左右并排） */
         @media (min-width: 1400px) {
             .main { padding: 28px 44px 48px; }
-            .record-list {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 16px;
-                align-items: start;
-            }
         }
 
         @media (max-width: 1024px) {
@@ -2145,11 +2140,12 @@
            flex 项的 min-width:auto 把每一层父级都撑到 620px，结果是整页横向滚动，
            而不是网格自己滚（手机上尤其难看） */
         .form-row.full > .field { min-width: 0; }
-        .rec-pane { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        /* --rec-ta-min = 初始 3 行的高度：3 x 24.5px 行高 + 20px 上下内距 + 2px 边框 = 95.5 -> 96px。
+           之后由 JS 按内容行数自适应，所以关掉手动 resize（否则两个高度控制会打架） */
+        .rec-pane { display: flex; flex-direction: column; gap: 16px; min-width: 0; --rec-ta-min: 96px; }
         .rec-pane[hidden] { display: none; }
         .rec-pane .field { display: flex; flex-direction: column; min-width: 0; }
-        .rec-pane textarea { width: 100%; min-height: 152px; line-height: 1.75; resize: vertical; }
-        .rec-pane.rec-pane-out textarea { min-height: 216px; }
+        .rec-pane textarea { width: 100%; box-sizing: border-box; min-height: var(--rec-ta-min); line-height: 1.75; resize: none; overflow-y: hidden; }
 
         /* 草稿恢复条 */
         .rec-draft-bar {
@@ -2248,8 +2244,6 @@
 
         @media (max-width: 860px) {
             .rec-tab { padding: 8px 12px; font-size: 13px; }
-            .rec-pane textarea { min-height: 128px; }
-            .rec-pane.rec-pane-out textarea { min-height: 160px; }
             .kp-grid, .kp-grid-add { min-width: 0; }
             /* 4 列在手机上压得太狠（每列 ~85px，「要点」会被拆成竖排），
                保留一个下限让 .kp-grid-wrap 横向滚动，单格仍然可读。
@@ -2523,11 +2517,11 @@
                                     </div>
 
                                     <div class="kp-view" data-kpview="default">
-                                        <textarea id="fKpQuick" rows="6" spellcheck="false" placeholder="例：&#10;1. 交易性金融资产的初始计量&#10;2. 公允价值变动损益的结转"></textarea>
+                                        <textarea id="fKpQuick" rows="3" spellcheck="false" placeholder="例：&#10;1. 交易性金融资产的初始计量&#10;2. 公允价值变动损益的结转"></textarea>
                                     </div>
 
                                     <div class="kp-view" data-kpview="outline" hidden>
-                                        <textarea id="fKpOutline" rows="10" spellcheck="false" placeholder="一行一个节点，用缩进表示层级（Tab 缩进 / Shift+Tab 反缩进）：&#10;第三章 金融资产&#10;  交易性金融资产&#10;    初始计量&#10;  债权投资&#10;    摊余成本"></textarea>
+                                        <textarea id="fKpOutline" rows="3" spellcheck="false" placeholder="一行一个节点，用缩进表示层级（Tab 缩进 / Shift+Tab 反缩进）：&#10;第三章 金融资产&#10;  交易性金融资产&#10;    初始计量&#10;  债权投资&#10;    摊余成本"></textarea>
                                     </div>
 
                                     <div class="kp-view" data-kpview="mind" hidden>
@@ -2543,7 +2537,7 @@
                                     </div>
 
                                     <div class="kp-view" data-kpview="md" hidden>
-                                        <textarea id="fKpMd" rows="10" spellcheck="false" placeholder="# 1. 第三章 金融资产&#10;  - 1.1 交易性金融资产&#10;  - 1.2 债权投资"></textarea>
+                                        <textarea id="fKpMd" rows="3" spellcheck="false" placeholder="# 1. 第三章 金融资产&#10;  - 1.1 交易性金融资产&#10;  - 1.2 债权投资"></textarea>
                                     </div>
 
                                     <div class="kp-bar">
@@ -2558,19 +2552,19 @@
                             <div class="rec-pane rec-pane-out" id="recPaneOther" role="tabpanel" hidden>
                                 <div class="field">
                                     <label>🧠 解题思路 <span style="font-weight:400;color:var(--text-secondary);">(重点)</span></label>
-                                    <textarea id="fProblemSolving" rows="4" spellcheck="false" placeholder="记录你的解题思路、关键步骤、易错点…"></textarea>
+                                    <textarea id="fProblemSolving" rows="3" spellcheck="false" placeholder="记录你的解题思路、关键步骤、易错点…"></textarea>
                                 </div>
                                 <div class="field">
                                     <label>🔗 记忆网络 <span style="font-weight:400;color:var(--text-secondary);">(知识点关联)</span></label>
-                                    <textarea id="fMemoryNetwork" rows="4" spellcheck="false" placeholder="记录知识点之间的关联、对比、框架…"></textarea>
+                                    <textarea id="fMemoryNetwork" rows="3" spellcheck="false" placeholder="记录知识点之间的关联、对比、框架…"></textarea>
                                 </div>
                                 <div class="field">
                                     <label>🤖 AI 问答 <span style="font-weight:400;color:var(--text-secondary);">(学习中的疑问与AI对话)</span></label>
-                                    <textarea id="fAiQA" rows="4" spellcheck="false" placeholder="记录你向AI提出的问题及回答要点…"></textarea>
+                                    <textarea id="fAiQA" rows="3" spellcheck="false" placeholder="记录你向AI提出的问题及回答要点…"></textarea>
                                 </div>
                                 <div class="field">
                                     <label>📌 备注</label>
-                                    <input type="text" id="fNotes" placeholder="其他补充信息…" />
+                                    <textarea id="fNotes" rows="3" spellcheck="false" placeholder="其他补充信息…"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -10246,6 +10240,7 @@
             writeViews();
             renderGrid();
             updateStat();
+            growAll();
         }
         function setMode(next, keepTree) {
             if (VIEWS.indexOf(next) < 0) next = 'default';
@@ -10646,6 +10641,53 @@
             }, 700);
         }
 
+        /* ================= 记录学习：文本框 3 行起 + 随内容自适应高度 ================= */
+        // 高度 = 内容实际需要的高度；不足 3 行时由 CSS 的 --rec-ta-min 兜底（所以这里只管「长高」与「缩回」）。
+        // 全局是 box-sizing:border-box，而 scrollHeight 含 padding 不含 border，
+        // 所以要把上下 border 补回去，否则最后一行会被裁掉几像素。
+        function borderY(ta) {
+            var cs = window.getComputedStyle ? window.getComputedStyle(ta) : null;
+            if (!cs) return 0;
+            return (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+        }
+        function growTa(ta) {
+            if (!ta || ta.tagName !== 'TEXTAREA') return;
+            // 隐藏中的框（别的视角 / 表单折叠着）量不到高度，交回 rows 控制，等它显示时再算
+            if (!ta.offsetParent) { ta.style.height = ''; return; }
+            var by = borderY(ta);
+            // Chromium 的 scrollHeight 会把「多行 placeholder」当成内容算进去（实测 6 行占位 -> 6 行高），
+            // 空框会被占位文本撑高。量高度时先摘掉、量完还原；同一帧内完成，不会闪。
+            var ph = ta.placeholder;
+            if (ph) ta.placeholder = '';
+            ta.style.height = 'auto';                     // 必须先归零，否则内容变少时量到的是旧高度
+            var need = ta.scrollHeight;
+            ta.style.height = (need + by) + 'px';
+            if (ph) ta.placeholder = ph;
+        }
+        function growAll() {
+            eachNode('#recordForm textarea', growTa);
+        }
+        function bindAutoGrow() {
+            var f = el('recordForm');
+            if (f) {
+                // 捕获阶段监听：别的处理器 stopPropagation 也拦不住
+                f.addEventListener('input', function (ev) {
+                    var t = ev.target;
+                    if (t && t.tagName === 'TEXTAREA') growTa(t);
+                }, true);
+                f.addEventListener('reset', function () { window.setTimeout(growAll, 0); });
+            }
+            var fc = el('formContainer');
+            if (fc && window.MutationObserver) {
+                // 表单「折叠」时 .form-body 是 display:none，量不到高度；
+                // 展开有三条路径（点标题 / 点「添加记录」/ 点编辑某条记录），盯 class 比逐个挂监听可靠
+                new MutationObserver(function () {
+                    if (!fc.classList.contains('collapsed')) window.setTimeout(growAll, 0);
+                }).observe(fc, { attributes: true, attributeFilter: ['class'] });
+            }
+            window.addEventListener('resize', growAll);
+        }
+
         /* ================= 初始化 ================= */
         function init() {
             if (!el('fKpQuick')) return;           // 表单不在这台设备上（理论上不会）
@@ -10681,6 +10723,7 @@
             var dd = el('recDraftDrop'); if (dd) dd.addEventListener('click', dropDraftByUser);
             var f = el('recordForm');
             if (f) f.addEventListener('reset', function () { window.setTimeout(clearDraft, 0); });
+            bindAutoGrow();
             setTab(load(REC_TAB_KEY) === 'other' ? 'other' : 'kp');
             applyMode();
             restoreDraft();
@@ -10710,7 +10753,8 @@
             setTab: setTab,
             setMode: setMode,
             setCols: setCols,
-            getCols: function () { return colCount; }
+            getCols: function () { return colCount; },
+            grow: growAll
         };
 
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
