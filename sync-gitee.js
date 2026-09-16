@@ -728,16 +728,27 @@
       // 先单独把 meta 的 sha 取到手，能把它从下面的 getShaViaRead 里摘出去 ——
       // 否则 putFiles 内部又会为 meta 发一次 GET，而它刚刚在 writeShardedWith 里
       // 才被读过一次，纯属重复往返（实测这一下就多花一个 RTT）。
-      let metaSha = null;
-      if (map[Core.META_FILENAME] !== undefined) {
-        try { metaSha = await getShaViaRead(Core.META_FILENAME); } catch (e) { metaSha = null; }
-      }
-      const tasks = names.map(async function (name) {
+      // ★★ 两阶段提交（2026-09-16 孤儿 meta 事故的根修）★★
+      // 旧实现：片 + meta 一起 Promise.all 并发写。Gitee 的 contents 每个文件是
+      // 独立 commit，无法原子批量 —— 任何一片失败会让 Promise.all reject，
+      // 但「已经在飞的 meta PUT 无法取消」，它仍会写成功。云端于是留下：
+      //   「新 meta（引用 N 片）+ 部分或全部片不存在」的孤儿状态。
+      // 之后每次读取都因「meta 引用的片缺失」被安全闸拦下，永远 N/N 读不到，
+      // 且普通重试永远修不好（meta 已是新的，脏片判定认为没东西可写）。
+      // 两阶段后：先写片、全部成功才写 meta —— 片失败则 meta 不动，
+      // 云端保持旧的一致状态，重试即可自愈。
+      const metaInMap = map[Core.META_FILENAME] !== undefined;
+      const dataNames = metaInMap
+        ? names.filter(function (n) { return n !== Core.META_FILENAME; })
+        : names;
+
+      // ---- 第一阶段：写数据片 ----
+      const tasks = dataNames.map(async function (name) {
         // 最多 3 次：① 正常一次；② 重新取 sha 重试（远端被别的设备改过）；③ 兜底
         for (let attempt = 0; attempt < 3; attempt++) {
           let sha = null;
           try {
-            sha = (name === Core.META_FILENAME && attempt === 0) ? metaSha : await getShaViaRead(name);
+            sha = await getShaViaRead(name);
           } catch (e) {
             // 分支名错误会被 getSha 重置掉；重来一次会用新探测到的分支
             if (attempt < 2) { await sleep(600); continue; }
@@ -749,12 +760,7 @@
           } catch (e) {
             const m = e.message || '';
             // 区分两类失败，重试姿势完全不同：
-            //
-            //  A.「已被其它设备改动 / 已存在」——说明我们手里的 sha 是旧的（或漏了）。
-            //     下一次循环必须**绕过缓存**重新问一次 sha，否则 getShaViaRead 会把
-            //     上一轮缓存的旧 sha 再交回来，3 次重试全是同一个错误答案（实测就是
-            //     这样把一次写入放大成 3 个注定失败的请求）。
-            //     做法：把该文件的缓存清掉，让下一轮重新读。
+            //  A.「已被其它设备改动 / 已存在」——绕过缓存重新取 sha。
             //  B. 分支名不正确 —— 下一轮 ensureRepo/healBranch 会自愈，同样先清缓存。
             if (attempt < 2 && (/已被其它设备改动/.test(m) || /已存在/.test(m) || /分支名不正确/.test(m))) {
               fileCache.delete(name);
@@ -769,7 +775,34 @@
         return null;
       });
       const done = await Promise.all(tasks);
-      return done.filter(Boolean);
+      const okData = done.filter(Boolean);
+      if (okData.length !== dataNames.length) {
+        throw new Error('分片写入未全部完成（成功 ' + okData.length + ' / ' + dataNames.length +
+          '）。已中止且云端索引未改动 —— 云端仍是旧的一致状态，直接重试即可。');
+      }
+
+      // ---- 第二阶段：片全部成功后，单独写 meta ----
+      if (metaInMap) {
+        let mSha = null;
+        try { mSha = await getShaViaRead(Core.META_FILENAME); } catch (e) { mSha = null; }
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            await writeContents(Core.META_FILENAME, map[Core.META_FILENAME], mSha);
+            break;
+          } catch (e) {
+            const m = e.message || '';
+            if (attempt < 2 && (/已被其它设备改动/.test(m) || /已存在/.test(m))) {
+              fileCache.delete(Core.META_FILENAME);
+              shaCache.delete(Core.META_FILENAME);
+              try { mSha = await getShaViaRead(Core.META_FILENAME); } catch (e2) { mSha = null; }
+              await sleep(700 * (attempt + 1));
+              continue;
+            }
+            throw e;
+          }
+        }
+      }
+      return names;
     },
     deleteFiles: async function (names) {
       await Promise.all(names.map(async function (name) {
@@ -837,7 +870,11 @@
       let info;
       try {
         Core.progShow && Core.progShow('running', '正在写入分片…', '只重传改动过的数据片。');
-        info = await Core.writeShardedWith(giteeIO, localData);
+        // 「覆盖云端」必须 force 全量重写：脏片判定按「本机键时间戳 vs meta 记录的
+        // 片时间戳」——如果云端 meta 是最近写入的（哪怕它引用的片已丢失，即孤儿
+        // meta），本机键的 ts 必然更旧，所有片都会被判「不脏」而跳过，覆盖就形同
+        // 虚设。force=true 让每一片都真实重写，这才是「覆盖」的语义。
+        info = await Core.writeShardedWith(giteeIO, localData, mode === 'overwrite');
       } catch (e) {
         if (!/不存在/.test(e.message || '')) throw e;
         await ensureRepo();
@@ -862,11 +899,51 @@
   // 读全量远端数据。
   // metaHint：调用方已经拿到 meta 时传进来，避免再读一次（Gitee 每读一个文件
   // 就是一个 HTTP 请求，一次上传总共也就这几个来回，能省的都要省）。
+  // 列出云端根目录的文件名清单（1 个请求）。
+  // 用途：读取分片失败时，核对「meta 引用的片」是否真的存在于云端 ——
+  // 这能把「分支名错 / 瞬时空结果」（目录也列不出来）与「孤儿 meta」
+  //（目录列得出来、但 meta 引用的片不在）区分开，给出准确的恢复指引。
+  async function listCloudFiles() {
+    try {
+      const raw = await req('GET', '/repos/' + OWNER + '/' + REPO + '/contents/',
+        { query: { ref: BRANCH }, what: '列出云端文件清单' });
+      if (!Array.isArray(raw)) return null;
+      return raw.map(function (f) { return f.name || ''; }).filter(Boolean);
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function giteeRead(metaHint) {
     await ensureRepo();
     const meta = metaHint || await readShardedMetaSafe();
     if (meta && meta.shards && Object.keys(meta.shards).length) {
-      return await Core.readShardedWith(giteeIO, meta);
+      const r = await Core.readShardedWith(giteeIO, meta);
+      // ★ 孤儿 meta 检测：有片读不到时，花 1 个请求列目录核对。
+      //   若 meta 引用的片在目录里根本不存在 → 云端元数据已损坏（上次写入
+      //   中途失败的遗迹），重试永远修不好，必须用本机数据覆盖重建。
+      //   这里直接把结论和恢复动作写进错误信息，用户不用再来回猜。
+      if (r && r.shardFail > 0) {
+        const files = await listCloudFiles();
+        if (files && files.length >= 0) {
+          const missing = (r.shardFailIds || []).filter(function (sid) {
+            return files.indexOf(Core.shardFile(sid)) < 0;
+          });
+          if (missing.length) {
+            r.shardErrors = (r.shardErrors || []);
+            r.shardErrors.unshift({
+              sid: missing[0],
+              msg: '【云端元数据已损坏】meta 引用了 ' + missing.length + ' 个实际不存在的分片（' +
+                missing.slice(0, 3).join('、') + (missing.length > 3 ? ' 等' : '') +
+                '）—— 这是之前某次写入中途失败留下的「孤儿索引」。普通重试无法修复。' +
+                '解决方法：点「上传到云端」→ 选「覆盖云端」，用本机完整数据一次性重建。',
+              status: null
+            });
+            r.orphanShards = missing;
+          }
+        }
+      }
+      return r;
     }
     // 回落：仓库里可能有从 Gist 搬过来的旧单文件
     const legacy = await readContents(Core.LEGACY_FILENAME, true);
