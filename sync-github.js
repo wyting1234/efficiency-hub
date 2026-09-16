@@ -11,6 +11,12 @@
  * 1. 生成 GitHub Token（只需一次）：https://github.com/settings/tokens/new?description=efficiency-hub-sync&scopes=gist
  * 2. 在应用里粘贴 Token 连接
  * 3. 想让哪边覆盖哪边，就手动点「上传」或「下载」，每次覆盖前都会弹窗确认
+ *
+ * v8（2026-09-16）新增「双向同步」：
+ * - 一次点击 = 先读云端、把云端合并进本机，再把合并结果写回云端。
+ *   两端最终都等于「本机 ∪ 云端，逐键取较新」，谁都不会被覆盖。
+ * - 「上传 / 下载」两个按钮保留原样：点开仍会让你选「合并 / 覆盖」。
+ *   因为「覆盖」是唯一会整端替换的操作，不适合做成默认值。
  */
 (function () {
   'use strict';
@@ -370,6 +376,20 @@
     return null;   // 交给调用方按「整键取较新」处理
   }
 
+  // mergeKeyValue 给出的结果里，哪些可以直接采用。
+  //
+  // 关键在 'keep' 与 'same'：它们的值就是「本机那一份」，含义是云端的信息本机已经全有。
+  // 若把它们排除在外，调用方就会退回「按时间戳整键取较新」—— 而云端那份的时间戳通常是
+  // 「上次上传那一刻」，比本机内容的编辑时间更新，于是本机独有的条目会被整键冲掉。
+  // 这正是「点下载选合并，本机独有数据却没了」的成因，双向同步同样踩得到。
+  //
+  // 'acc-cloud' / 'acc-local'（累计型取 max）刻意不在列：启用它会让「把计数改小」
+  // 永远同步不出去，属于产品策略，需要单独决策，不混在这次改动里。
+  function isUsableMerge(m) {
+    return !!m && (m.how === 'merge-list' || m.how === 'merge-set' ||
+                   m.how === 'merge-stat' || m.how === 'keep' || m.how === 'same');
+  }
+
   // 合并下载：两边并集；同键两边都有时保留「较新」的一份（时间未知时保留本机）
   function mergeCloudToLocal(serverData) {
     const sdata = (serverData && serverData.data) || {};
@@ -391,7 +411,7 @@
       // 先试领域级合并：两边都有、形状可合并时，合并结果无论新旧都比「整键取一份」更全。
       // 列表要合并成并集，所以不能因为「云端时间更新」就把本机独有的条目丢掉。
       const m = mergeKeyValue(key, cur, entry.value);
-      if (m && (m.how === 'merge-list' || m.how === 'merge-set' || m.how === 'merge-stat')) {
+      if (isUsableMerge(m)) {
         if (m.value !== cur) {
           localStorage.setItem(key, m.value);
           if (entry.timestamp) timestamps[key] = entry.timestamp;
@@ -431,7 +451,7 @@
       // 否则「本机后改」的列表会把云端独有的条目整键抹掉。
       if (merged[key]) {
         const m = mergeKeyValue(key, value, merged[key].value);
-        if (m && (m.how === 'merge-list' || m.how === 'merge-set' || m.how === 'merge-stat')) {
+        if (isUsableMerge(m)) {
           merged[key] = { value: m.value, timestamp: Math.max(lts, cts) };
           continue;
         }
@@ -439,6 +459,33 @@
       if (!merged[key] || lts >= cts) merged[key] = { value: value, timestamp: lts };
     }
     return merged;
+  }
+
+  // ============ 双向同步编排（与后端无关）============
+  // 读云端 → 把云端合并进本机 → 再把合并结果写回云端。
+  // 语义：两端最终都等于「本机 ∪ 云端，逐键取较新」，两端一致，且不丢任何一边。
+  //
+  // ⚠️ 「写回本机」那一步绝不能改用 applyCloudToLocal：
+  //    它是「先清空本机所有可同步键、再写入云端那一批」—— 云端没有的本机独有键会被删掉。
+  //    那是「下载并覆盖」的语义。双向必须走 mergeCloudToLocal（逐键合并，本机较新则保留本机）。
+  //
+  // 顺序：先 mergeCloudToLocal，后 buildMergedUpload。
+  //   前者让本机拿到云端较新的键；后者以云端为底本、遍历本机逐键取新，
+  //   于是写回云端的那一份必然就是本机此刻的全集 —— 两端自然收敛。
+  async function runBothIO(readFn, writeFn) {
+    const remote = await readFn();
+    const hasRemote = !!(remote && remote.data && Object.keys(remote.data).length > 0);
+    const beforeCount = getLocalKeys().length;
+    const localStats = hasRemote ? mergeCloudToLocal(remote) : null;      // ① 云端 → 本机
+    const merged = buildMergedUpload(hasRemote ? remote : { data: {} });  // ② 本机 → 云端
+    const info = await writeFn(merged);
+    return {
+      hasRemote: hasRemote,
+      localStats: localStats,     // null = 云端原本就没有数据
+      beforeCount: beforeCount,
+      nItem: Object.keys(merged).length,
+      info: info
+    };
   }
 
   // 秒表状态：把「已经跑了多久」显示出来，让人能区分「慢」和「卡死」
@@ -658,15 +705,17 @@
 
       <div style="background:#f6f8fa;border-radius:8px;padding:12px;font-size:13px;color:#444;line-height:1.7;margin-bottom:16px">
         <b>怎么用：</b><br>
-        • <b>上传</b>：把这部设备的数据存到云端（覆盖云端）<br>
-        • <b>下载</b>：把云端的数据拉到这部设备（覆盖本机）<br>
-        想让手机和电脑一致，就先在「源头」那端点<b>上传</b>，再到另一端点<b>下载</b>。<br>
-        <span style="color:#7c8aa5">数据上传前会自动 gzip 压缩；并按模块分片，只重传改动过的片，越快越省流量。</span>
+        • <b>双向同步</b>：先把两边合并，再<b>同时</b>更新本机与云端 —— 两个设备都不会被覆盖。平时点这个就够。<br>
+        • <b>上传</b>：点完会让你选「合并到云端」还是「覆盖云端」。<br>
+        • <b>下载</b>：点完会让你选「合并到本机」还是「覆盖本机」。<br>
+        <span style="color:#7c8aa5">双向同步永远只做合并，不会丢任何一边；「覆盖」是唯一会整端替换的操作，所以它从不默认、每次都要单独确认。数据上传前会自动 gzip 压缩，并按模块分片，只重传改动过的片。</span>
       </div>
 
+      <button id="syncBoth" style="display:block;width:100%;box-sizing:border-box;padding:13px;border:none;border-radius:8px;background:#08bd74;color:white;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px">🔁 双向同步（合并两端）</button>
+
       <div style="display:flex;gap:10px;margin-bottom:10px">
-        <button id="syncUpload" style="flex:1;padding:12px;border:none;border-radius:8px;background:#08bd74;color:white;font-size:15px;cursor:pointer">⬆️ 上传到云端</button>
-        <button id="syncDownload" style="flex:1;padding:12px;border:none;border-radius:8px;background:#3b82f6;color:white;font-size:15px;cursor:pointer">⬇️ 从云端下载</button>
+        <button id="syncUpload" style="flex:1;padding:11px;border:1px solid #d8e0ea;border-radius:8px;background:#f7f9fc;color:#33415c;font-size:14px;cursor:pointer">⬆️ 上传到云端</button>
+        <button id="syncDownload" style="flex:1;padding:11px;border:1px solid #d8e0ea;border-radius:8px;background:#f7f9fc;color:#33415c;font-size:14px;cursor:pointer">⬇️ 从云端下载</button>
       </div>
 
       <!-- 同步状态区：常驻显示「进行中 / 成功 / 失败」。
@@ -749,6 +798,15 @@
     // ⚠️ 这里刻意不关面板：后端会异步跑几秒到几十秒，
     //    关掉面板就只剩侧边栏，用户会以为「跳到侧边栏了」而且看不到任何结果。
     //    改为原地显示进度，状态由 progShow/progBusy 驱动（后端内部调用）。
+    q('#syncBoth').onclick = () => {
+      if (!backend) { showConfigModal(); return; }
+      if (!backend.isReady()) { mask.remove(); backend.reconfigure(); return; }
+      if (typeof backend.both !== 'function') {
+        Core_showToastCompat((backend.name || '当前后端') + ' 未提供双向同步');
+        return;
+      }
+      backend.both();
+    };
     q('#syncUpload').onclick = () => {
       if (!backend) { showConfigModal(); return; }
       if (!backend.isReady()) { mask.remove(); backend.reconfigure(); return; }
@@ -1606,6 +1664,47 @@
     }
   }
 
+  // 双向同步：读云端 → 合并进本机 → 合并结果写回云端。
+  // 与上传 / 下载的区别：不弹模式选择 —— 它永远只做合并，两端都不会被覆盖，
+  // 也就没有需要用户决策的分支。这是它敢做成「一键」的前提。
+  async function doSyncBoth() {
+    if (!isConnected) { showConfigModal(); return; }
+    progShow('running', '正在双向同步…', '先读云端，与两端合并后同时更新本机与云端。两端都只会变全，不会丢数据。');
+    progBusy(true);
+    try {
+      if (!cachedGistId()) await findOrCreateGist();
+      // 必须读「此刻」的云端：cloud-has-data 缓存是给上传的「要不要弹模式选择」用的，
+      // 拿它跳过读云端，等于让合并建立在一个陈旧结论上。
+      clearGistCache();
+      const r = await runBothIO(
+        function () { return readGist(); },
+        function (data) { return writeSharded(data); }
+      );
+      setCachedCloudHasData(true);
+      reloadActiveIframe();
+      if (typeof buildCards === 'function') buildCards();
+      lastSyncTime = String(Date.now());
+      localStorage.setItem('sync_last_sync', lastSyncTime);
+      if (window.BackupHub && window.BackupHub.markSync) {
+        try { window.BackupHub.markSync('both', getLocalKeys()); } catch (e) {}
+      }
+      updateStatus('已双向同步 ' + fmtTime(lastSyncTime));
+      const st = r.localStats;
+      notifyOK('已完成双向同步',
+        (r.hasRemote
+          ? '云端 → 本机：新增 ' + st.added + ' 项，更新 ' + st.updated + ' 项，保留本机 ' + st.kept + ' 项' +
+            (st.merged ? '，另有 ' + st.merged + ' 项按内容合并' : '') + '。\n'
+          : '云端原本没有数据，本次已把本机的数据存过去。\n') +
+        '本机 → 云端：已写入 ' + r.nItem + ' 项，约 ' + Math.round(r.info.wroteBytes / 1024) + 'KB（已压缩）。\n' +
+        '两端现在一致，谁都没有被覆盖。');
+    } catch (e) {
+      console.warn('[GitHub] 双向同步失败:', e.message);
+      notifyFail('双向同步失败',
+        (e && e.message ? e.message : String(e)) + '\n请检查网络或 Token 是否有效。本机与云端的数据都未曾被覆盖。');
+      updateStatus('双向同步失败');
+    }
+  }
+
   // ============ 初始化 ============
   async function initSync() {
     const b = activeBackend();
@@ -1661,6 +1760,8 @@
       packCloud, unpackCloud, canCompress,
       // 合并策略
       mergeCloudToLocal, buildMergedUpload,
+      // 双向同步编排（后端只需提供 read / write 两个钩子）
+      runBothIO,
       // 本地数据
       collectLocalData, getLocalKeys, applyCloudToLocal, localMeta,
       // 分片：工具函数
@@ -1704,12 +1805,15 @@
     reconfigure: function () { showConfigModal(); },
     upload: function () { return doUpload(); },
     download: function () { return doDownload(); },
+    both: function () { return doSyncBoth(); },
     health: function () { return doHealth(); }
   };
 
   window.CloudSync = {
+    build: '2026-09-16-both',                 // 回归测试用：确认页面跑的是这一版
     upload: doUpload,
     download: doDownload,
+    both: doSyncBoth,
     openPanel: openSyncPanel,
     health: doHealth,                                   // 云端体检
     reconnect: initSync,                                // 配置 / 换 Token 后重新连接

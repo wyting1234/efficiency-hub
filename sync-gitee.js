@@ -16,6 +16,7 @@
  * 1. 生成 Gitee 私人令牌：https://gitee.com/profile/personal_access_tokens
  *    勾选 projects（仓库读写）即可，只需要这一个。
  * 2. 在「云端同步」面板切到 Gitee，粘贴令牌；仓库不存在会自动建一个私有仓库。
+ * 3. v8（2026-09-16）：新增「双向同步」—— 一次点击让两端都变成合并结果，永不覆盖。
  *
  * ⚠️ 与 Gist 的接口差异（诚实说明）：
  * - Gitee contents 接口一次只能写一个文件，没有 Gist 那种「一次 PATCH 多文件」的批量能力，
@@ -731,6 +732,46 @@
     }
   }
 
+  // 双向同步（Gitee）：与 GitHub 侧同语义 —— 读远端 → 合并进本机 → 合并结果写回远端。
+  // 只做合并、永不覆盖，所以不需要弹窗让用户选模式。
+  async function giteeSyncBoth() {
+    if (!TOKEN) { showConfigModal(); return; }
+    Core.progShow && Core.progShow('running', '正在双向同步（Gitee）…',
+      '先读 Gitee 上的数据，与两端合并后同时更新本机与云端。两端都只会变全，不会丢数据。');
+    Core.progBusy && Core.progBusy(true);
+    resetRepoProbe();
+    clearFileCache();
+    try {
+      await ensureRepo();
+      const readFn = function () { return giteeRead(); };
+      const writeFn = function (data) { return Core.writeShardedWith(giteeIO, data); };
+      let r;
+      try {
+        r = await Core.runBothIO(readFn, writeFn);
+      } catch (e) {
+        // 与上传同款兜底：仓库 / 分支刚建好时首次写入可能报「不存在」，重建后重试一次
+        if (!/不存在/.test(e.message || '')) throw e;
+        await ensureRepo();
+        r = await Core.runBothIO(readFn, writeFn);
+      }
+      Core.reloadActiveIframe();
+      if (typeof buildCards === 'function') buildCards();
+      markSynced('both', Core.getLocalKeys());
+      const st = r.localStats;
+      Core.notifyOK('已完成双向同步（Gitee）',
+        (r.hasRemote
+          ? '云端 → 本机：新增 ' + st.added + ' 项，更新 ' + st.updated + ' 项，保留本机 ' + st.kept + ' 项' +
+            (st.merged ? '，另有 ' + st.merged + ' 项按内容合并' : '') + '。\n'
+          : 'Gitee 上原本没有数据，本次已把本机的数据存过去。\n') +
+        '本机 → 云端：已写入 ' + r.nItem + ' 项，约 ' + Math.round(r.info.wroteBytes / 1024) + 'KB（已压缩）。\n' +
+        '两端现在一致，谁都没有被覆盖。');
+    } catch (e) {
+      console.warn('[Gitee] 双向同步失败:', e.message);
+      Core.notifyFail('双向同步（Gitee）失败',
+        (e.message || String(e)) + '\n本机与 Gitee 上的数据都未曾被覆盖。');
+    }
+  }
+
   function markSynced(dir, keys) {
     const t = String(Date.now());
     localStorage.setItem('sync_last_sync', t);
@@ -815,7 +856,8 @@
     isConnected: function () { return isConnected; },
     reconfigure: showConfigModal,
     upload: giteeUpload,
-    download: giteeDownload
+    download: giteeDownload,
+    both: giteeSyncBoth
   };
 
   // 静默探活：有令牌就标已连接（启动路径不发请求，避免拖慢首屏）
@@ -836,10 +878,12 @@
         if (OWNER) localStorage.setItem('gitee_owner', OWNER);
       } catch (e) {}
     },
+    build: '2026-09-16-both',
     io: giteeIO,
     read: giteeRead,
     upload: giteeUpload,
     download: giteeDownload,
+    both: giteeSyncBoth,
     ensureRepo: ensureRepo
   };
 })();

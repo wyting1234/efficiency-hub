@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.8.1';
+    var VERSION = '1.8.2';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
@@ -1519,7 +1519,7 @@
         markSync: function (dir, keys) {
             var ks = keys || [];
             recordAct('sync', {
-                kind: dir === 'down' ? '云端 → 本机' : '本机 → 云端',
+                kind: dir === 'down' ? '云端 → 本机' : (dir === 'both' ? '双向同步（两端合并）' : '本机 → 云端'),
                 count: ks.length,
                 items: summarizeKeys(ks)
             });
@@ -1530,7 +1530,7 @@
             // 「本机备份」，界面就会显示「⚠️ 备份后有改动 99 项」——可这些数据
             // 云端有、本机也有，用户完全没丢东西，提示纯属噪音。
             // 同步成功意味着「这份数据在云端有一份」，等价于已备份，所以刷新基准。
-            if (dir === 'down') {
+            if (dir === 'down' || dir === 'both') {
                 try {
                     var act0 = getAct();
                     var ts0 = (act0.backup && act0.backup.ts) || 0;
