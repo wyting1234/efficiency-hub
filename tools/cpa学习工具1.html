@@ -2202,7 +2202,6 @@
 .fc-row .fc-dot.due { background: #A6503C; }
 .fc-row .fc-dot.fresh { background: #B08A4A; }
 .fc-row .fc-dot.ok { background: #77805C; }
-.fc-row .fc-main { flex: 1 1 auto; min-width: 0; }
 .fc-row .fc-q { font-size: 13px; color: #3E372E; line-height: 1.55; word-break: break-word; }
 .fc-row .fc-a { font-size: 11.5px; color: #9A8E7C; margin-top: 2px; word-break: break-word;
                 display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
@@ -2219,6 +2218,64 @@
 .fc-tag { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #F2EDE4; color: #6E6355; }
 .fc-tag.auto { background: #EFEAF6; color: #6A5C86; }
 .fc-tag.own { background: #E7EDDD; color: #5C6647; }
+
+/* ===== 需求 6：列表模式 = 类 Excel 表格 =====
+   Tom 原话「列表模式类似 Excel 表格」。卡片式行信息是全的，但每行的
+   「正面 / 反面 / 标签 / 状态」各自换行，没有列的语义，也扫不快 ——
+   表格的价值就在于**逐行对齐的列**。
+   列宽只在 .fc-thead 与 .fc-row 上各写一份、必须是同一串，否则表头与数据错位；
+   故两边都只按顺序摆 span，禁止在行里插额外的包裹层。 */
+.fc-table {
+    border: 1px solid #E6DCCB; border-radius: 10px; background: #FFFDF8;
+    overflow-x: auto; overflow-y: hidden;   /* 列多时横向滚动，不压扁列宽 */
+}
+.fc-thead, .fc-table > .fc-row {
+    display: grid; align-items: center; gap: 0;
+    grid-template-columns:
+        14px                 /* 状态点 */
+        minmax(150px, 1.3fr) /* 正面 */
+        minmax(150px, 1.5fr) /* 反面 */
+        104px                /* 章 */
+        104px                /* 节 */
+        68px                 /* 掌握 */
+        88px                 /* 复习（含 📝 条数） */
+        168px                /* 标签：默认 4 个 chip（科目/章/节/我的）两行放得下 */
+        32px;                /* ✎ */
+    min-width: 878px;
+}
+.fc-thead { background: #F4EEE3; border-bottom: 1px solid #E6DCCB; font-size: 11px; color: #6D6252; }
+.fc-thead > span { padding: 6px 7px; font-weight: 600; letter-spacing: .3px; white-space: nowrap; }
+.fc-thead > span + span { border-left: 1px solid #EBE2D3; }
+.fc-table > .fc-row {
+    border: 0; border-bottom: 1px solid #F1EADE; border-radius: 0; padding: 0; gap: 0;
+    margin-left: 0 !important;                 /* 表格里不做层级缩进，列必须齐 */
+    cursor: pointer; font-size: 12.5px; color: #3E372E;
+}
+.fc-table > .fc-row:nth-child(even) { background: #FCF8F1; }   /* 斑马纹：注意 thead 占第 1 个 child */
+.fc-table > .fc-row:hover { background: #F7F1E5; }
+.fc-table > .fc-row:last-of-type { border-bottom: 0; }
+.fc-table > .fc-row > * { padding: 5px 7px; min-width: 0; }
+.fc-table .fc-dot { margin: 0 auto; }
+.fc-table .fc-c { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-table .fc-c-q { font-weight: 600; }
+.fc-table .fc-c-a, .fc-table .fc-c-dim { color: #8A7F6E; }
+.fc-table .fc-c-dim { font-size: 11.5px; }
+.fc-table .fc-side { text-align: left; white-space: nowrap; }
+.fc-table .fc-mcell { white-space: nowrap; color: #B08A4A; font-size: 10.5px; letter-spacing: -.5px; }
+.fc-table .fc-tagline { margin-top: 0; overflow: hidden; max-height: 36px; line-height: 1.25; }
+.fc-table .fc-tag { font-size: 10px; padding: 1px 5px; }
+.fc-table .fc-editbtn { margin: 0; padding: 3px 5px; }
+.fc-table > .fc-edit { grid-column: 1 / -1; margin: 0; border: 0; border-bottom: 1px solid #F1EADE; border-radius: 0; }
+@media (max-width: 700px) {
+    /* 窄屏保不住 9 列 —— 干脆裁掉「章 / 节 / 标签」，
+       它们的信息在复习界面的标签栏里一字不少 */
+    .fc-thead > .fc-hide-sm, .fc-table > .fc-row > .fc-hide-sm { display: none; }
+    .fc-thead, .fc-table > .fc-row {
+        grid-template-columns: 14px minmax(116px, 1.6fr) minmax(104px, 1.4fr) 60px 74px 30px;
+        min-width: 0;
+    }
+    .fc-table { overflow-x: visible; }
+}
 
 /* —— 编辑面板（卡片行内展开） —— */
 .fc-edit { margin: 4px 0 8px; padding: 10px 11px; border: 1px solid #E2D5BE; border-radius: 9px; background: #FBF7EF; }
@@ -2352,25 +2409,121 @@
 .kt-tierbar span { background: #F2ECE1; border-radius: 6px; padding: 2px 6px; font-size: 11px; color: #6D6252; }
 .kt-body {
     border: 1px solid #EFE7DA; border-radius: 10px; background: #FFFEFB;
-    padding: 8px 10px; max-height: calc(100vh - 340px); min-height: 160px; overflow: auto;
+    padding: 12px 12px 14px; max-height: calc(100vh - 340px); min-height: 160px; overflow: auto;
 }
-.kt-row { display: flex; align-items: center; gap: 8px; padding: 3px 4px; border-radius: 7px; font-size: 13px; color: #3E372E; line-height: 1.5; }
-.kt-row:hover { background: #F7F2E8; }
-.kt-caret { flex: 0 0 auto; width: 16px; text-align: center; color: #A8997F; cursor: pointer; user-select: none; font-size: 11px; }
-.kt-caret.kt-leaf { cursor: default; color: #D6CBB6; }
-.kt-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-.kt-name mark { background: #F4E3B8; color: #5A4A2E; border-radius: 3px; padding: 0 1px; }
-.kt-tier { flex: 0 0 auto; font-size: 10.5px; color: #8A7F6E; background: #F2ECE1; border-radius: 5px; padding: 2px 5px; }
-.kt-kidn { flex: 0 0 auto; font-size: 11px; color: #A8997F; }
+/* ⚠️ .kt-row / .kt-caret / .kt-name / .kt-kidn / .kt-row-extra 的样式**只在下面
+   「🌳 知识树 · 思维导图样式」那一段里定义一份**。上一版在这里还留着一份旧副本，
+   同一个选择器写两遍 —— 改一处忘一处是这类大文件最难查的坑，已清掉。
+   同时删掉了 .kt-tier：模板换成 kt-lv{n} + .kt-lvb 之后它已没有任何元素使用。 */
 .kt-empty { padding: 26px 10px; text-align: center; color: #A8997F; font-size: 13px; line-height: 1.9; }
 
+.kt-extra-badge {
+    flex: 0 0 auto; font-size: 10.5px; color: #8A6B3A; background: #F4E7CE;
+    border-radius: 5px; padding: 2px 6px; white-space: nowrap;
+}
+
+/* ===== 🌳 知识树 · 思维导图样式（需求 2：借鉴参考图） =====
+   参考图的形态逐条落到这里：
+     ① **左→右横向**：节点在左、子级列在右，父节点与子级列**垂直居中**对齐
+        （父 .kt-branch 是 flex + align-items:center）—— 这正是参考图里
+        「中心主题居中于四条分支」的样子，也是与「竖向缩进树」最大的区别；
+     ② **直角折线**：父节点右缘 → 干线是一段横线（.kt-kids::before），
+        每个子分支再有一条「自身中线横臂 + 左侧竖杆」（.kt-branch 的 ::before/::after），
+        首/末两枝的竖杆各截一半，拼起来就是参考图那种折角 —— 不是斜线、不是曲线；
+     ③ **大括号**：子级全是叶子（不再往下分）时整组加 .kt-leaves，
+        改成「左侧竖杆 + 顶底两条横臂」的方括号（对应参考图分支主题右侧那个「⎱⎰」），
+        横臂落在首/末两行的中线上；
+     ④ 分级外观：lv1 中心主题 = 实心深色块（白字）、lv2 分支主题 = 实心次深块、
+        lv3 节 = 描边块、lv4–lv7 知识点 = 纯文字（对应参考图的「子主题」）。
+   整棵树横向撑开不换行，靠 .kt-body 的 overflow:auto 横向滚动。 */
+.kt-tree { min-width: max-content; padding: 4px 2px; }
+.kt-branch { position: relative; display: flex; align-items: center; }
+.kt-branch > .kt-row { flex: 0 0 auto; }
+.kt-branch > .kt-kids {
+    position: relative; flex: 0 0 auto;
+    display: flex; flex-direction: column; justify-content: center;
+    margin-left: 30px;
+}
+/* 父节点 → 干线：一段横线，画在子级列的垂直中心，止于干线（不穿到子行上） */
+.kt-branch > .kt-kids::before {
+    content: ''; position: absolute; left: -30px; top: 50%; width: 15px;
+    border-top: 1px solid #CDBFA6;
+}
+/* 每个子分支：自身中线的横臂 + 左侧竖杆（首/末两枝各截一半，拼成直角折线） */
+.kt-kids > .kt-branch::before {
+    content: ''; position: absolute; left: -15px; top: 50%; width: 15px;
+    border-top: 1px solid #CDBFA6;
+}
+.kt-kids > .kt-branch::after {
+    content: ''; position: absolute; left: -15px; top: 0; bottom: 0;
+    border-left: 1px solid #CDBFA6;
+}
+.kt-kids > .kt-branch:first-child::after { top: 50%; }
+.kt-kids > .kt-branch:last-child::after { bottom: 50%; }
+/* 独子：没有干线，横线一拉到底 */
+.kt-kids > .kt-branch:only-child::before { left: -30px; width: 30px; }
+/* 叶子组：不用折线，改成参考图那样用大括号整组括起 */
+.kt-branch > .kt-kids.kt-leaves { margin-left: 34px; padding-left: 22px; }
+.kt-branch > .kt-kids.kt-leaves::before { left: -34px; width: 34px; }
+.kt-kids.kt-leaves > .kt-branch::before,
+.kt-kids.kt-leaves > .kt-branch::after { display: none; }
+.kt-kids.kt-leaves::after {
+    content: ''; position: absolute; left: 0; top: 13px; bottom: 13px; width: 22px;
+    border: 1px solid #D5C7AE; border-right: 0; border-radius: 8px 0 0 8px;
+}
+.kt-row { display: flex; align-items: center; gap: 7px; padding: 3px 9px; border-radius: 8px;
+    font-size: 13px; color: #3E372E; line-height: 1.55; width: fit-content; max-width: 640px; }
+.kt-row:hover { background: #F7F2E8; }
+.kt-lvb { flex: 0 0 auto; font-size: 10px; color: #A8997F; background: #F2ECE1;
+    border-radius: 5px; padding: 1px 5px; letter-spacing: .2px; }
+.kt-lv1 > .kt-name { font-weight: 700; letter-spacing: .3px; }
+.kt-lv1 { background: #6E6355; color: #FFFDF8; padding: 5px 14px; border-radius: 9px; }
+.kt-lv1 > .kt-name { color: #FFFDF8; }
+.kt-lv1 > .kt-lvb { background: rgba(255, 253, 248, .22); color: #FFFDF8; }
+.kt-lv1 > .kt-kidn { color: rgba(255, 253, 248, .75); }
+.kt-lv1:hover { background: #5C5245; }
+.kt-lv2 { background: #9A8C74; color: #FFFDF8; padding: 4px 12px; border-radius: 9px; }
+.kt-lv2 > .kt-name { color: #FFFDF8; font-weight: 600; }
+.kt-lv2 > .kt-lvb { background: rgba(255, 253, 248, .22); color: #FFFDF8; }
+.kt-lv2 > .kt-kidn { color: rgba(255, 253, 248, .75); }
+.kt-lv2:hover { background: #8A7C65; }
+.kt-lv3 { background: #FAF6EF; border: 1px solid #E6DCCB; padding: 4px 12px; border-radius: 9px; }
+.kt-lv3 > .kt-name { font-weight: 600; color: #4A4238; }
+.kt-lv4 > .kt-name { font-weight: 600; }
+.kt-lv4, .kt-lv5, .kt-lv6, .kt-lv7 { background: transparent; }
+.kt-lv4:hover, .kt-lv5:hover, .kt-lv6:hover, .kt-lv7:hover { background: #F7F2E8; }
+.kt-lv5 > .kt-name { color: #554C41; }
+.kt-lv6 > .kt-name, .kt-lv7 > .kt-name { color: #6D6252; font-weight: 400; }
 /* 「📥 记录补充」节点：来自学习记录、大纲里没有的知识点。
    虚线左边框 + 浅底，与大纲节点一眼可辨 —— 它们是可以被「导入大纲」固化的临时层。 */
 .kt-row-extra { background: #FBF7EE; border-left: 2px dashed #DCC9A6; border-radius: 0 7px 7px 0; }
 .kt-row-extra:hover { background: #F6EFE2; }
-.kt-extra-badge {
-    flex: 0 0 auto; font-size: 10.5px; color: #8A6B3A; background: #F4E7CE;
-    border-radius: 5px; padding: 2px 6px; white-space: nowrap;
+.kt-caret { flex: 0 0 auto; width: 15px; text-align: center; color: #A8997F; cursor: pointer;
+    user-select: none; font-size: 11px; }
+.kt-lv1 > .kt-caret, .kt-lv2 > .kt-caret { color: rgba(255, 253, 248, .8); }
+.kt-caret.kt-leaf { cursor: default; color: #D6CBB6; }
+.kt-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.kt-name mark { background: #F4E3B8; color: #5A4A2E; border-radius: 3px; padding: 0 1px; }
+/* 深底色块（lv1/lv2）上的搜索高亮：mark 的黄底会把继承来的白字吞掉，压回深字 */
+.kt-lv1 .kt-name mark, .kt-lv2 .kt-name mark { color: #5A4A2E; }
+.kt-lvhint { color: #A8997F; }
+.kt-kidn { flex: 0 0 auto; font-size: 11px; color: #A8997F; }
+
+/* 七级链路在窄屏上的间距收紧（每级 30px 会撑到 210px+，手机上只剩半屏） */
+@media (max-width: 700px) {
+    .kt-branch > .kt-kids { margin-left: 16px; }
+    .kt-branch > .kt-kids::before { left: -16px; width: 8px; }
+    .kt-kids > .kt-branch::before { left: -8px; width: 8px; }
+    .kt-kids > .kt-branch::after { left: -8px; }
+    .kt-kids > .kt-branch:only-child::before { left: -16px; width: 16px; }
+    .kt-branch > .kt-kids.kt-leaves { margin-left: 20px; padding-left: 15px; }
+    .kt-branch > .kt-kids.kt-leaves::before { left: -20px; width: 20px; }
+    .kt-kids.kt-leaves::after { width: 15px; top: 12px; bottom: 12px; }
+    .kt-row { max-width: 74vw; font-size: 12.5px; padding: 3px 7px; }
+    .kt-lv1 { padding: 4px 10px; }
+    .kt-lv2 { padding: 4px 9px; }
+    .kt-lv3 { padding: 3px 9px; }
+    .kt-lvb { display: none; }
 }
 
 /* ===== 闪卡翻面：严格互斥（正面屏 / 反面屏二选一） ===== */
@@ -3073,12 +3226,13 @@
                     <label>章 <select id="ktChapter"></select></label>
                     <label>节 <select id="ktSection"></select></label>
                     <span class="fc-spacer"></span>
-                    <label>默认展开 第 <select id="ktFrom"></select> – 第 <select id="ktTo"></select> 级</label>
+                    <label title="七级链路：1科目 2章 3节 4知识点1级 5知识点2级 6知识点3级 7知识点4级">展开 第 <select id="ktFrom"></select> – 第 <select id="ktTo"></select></label>
                     <input type="text" class="kt-search" id="ktSearch" placeholder="搜索节点（Esc 清空）">
                 </div>
                 <div class="kt-legend">
-                    <span>全项目：节点 <b id="ktTotal">0</b> · 叶子 <b id="ktLeaf">0</b> · 最深 <b id="ktDepth">0</b> 级</span>
+                    <span>全项目：节点 <b id="ktTotal">0</b> · 叶子 <b id="ktLeaf">0</b> · 最深 <b id="ktDepth">0</b> / 7 级</span>
                     <span class="kt-tierbar" id="ktTierBar"></span>
+                    <span class="kt-lvhint">七级：科目 › 章 › 节 › 知识点 1–4 级</span>
                 </div>
                 <div class="kt-body" id="ktBody"></div>
             </div>
@@ -9030,6 +9184,11 @@
                         tier: tier, order: i + 1,
                         name: node.name,
                         answers: kids.map(function (c) { return c.name; }),
+                        // fcNodesChildUids ★ 层级修复用（与 fcWalkAll 同义，两处必须都有）
+                        childUids: kids.map(function (c) {
+                            return fcUid({ course: base.course, chapter: base.chapter,
+                                           section: base.section, path: path.concat([c.name]) });
+                        }),
                         path: path
                     });
                     fcWalkNodes(kids, base, tier + 1, path, out);
@@ -9109,6 +9268,12 @@
                                             course: base.course, chapter: base.chapter, section: base.section,
                                             tier: tier, order: i + 1, name: node.name,
                                             answers: kids.map(function (c) { return c.name; }),
+                                            // ★ 层级修复用：每个直接下级的 uid，与 answers 一一对应。
+                                            //   出卡时据此把反面收窄成「本次真的学过的下级」。
+                                            childUids: kids.map(function (c) {
+                                                return fcUid({ course: base.course, chapter: base.chapter,
+                                                               section: base.section, path: path.concat([c.name]) });
+                                            }),
                                             path: path, hasKids: kids.length > 0
                                         });
                                         walk(kids, tier + 1, path);
@@ -9147,6 +9312,36 @@
             return all.filter(function (x) { return x.sig === sig; })[0] || null;
         }
 
+        // ---------- ★ 层级修复：从记录的大纲原文恢复层级 ----------
+        // Tom 报的缺陷：「学习记录的闪卡层级读取错误，所有知识点都取成了平级」。
+        //   写入侧 getKnowledgePoints() 存进 knowledgePoints 的只有 {no,text}，
+        //   而 no 在手动模式下是**流水号**（1,2,3…）、在级联模式下**根本没有** ——
+        //   于是父子关系在落盘那一刻就没了。
+        //   好在 kpQuickRaw 一直保存着完整大纲（toFlat 的输出，带 1.1.1 编号与缩进），
+        //   层级可以从这里恢复，**老数据无需重录**。
+        // 返回 [{ name, lv, parents }]：name / parents 均已归一化（去编号去空白）。
+        // 解析不出来时返回 null，调用方退回旧的名字匹配 —— 宁可多给，不要漏卡。
+        function fcRecOutline(r) {
+            const raw = (r && r.kpQuickRaw) || '';
+            if (!raw || !raw.replace(/\s/g, '')) return null;
+            const parser = (window.CpaKpEditor && typeof window.CpaKpEditor.parseText === 'function')
+                ? window.CpaKpEditor.parseText : null;
+            if (!parser) return null;
+            let roots = [];
+            try { roots = parser(raw) || []; } catch (e) { return null; }
+            if (!roots.length) return null;
+            const out = [];
+            const walk = function (list, lv, parents) {
+                (list || []).forEach(function (node) {
+                    const nm = fcNormText(node && node.t);
+                    if (nm) out.push({ name: nm, lv: lv, parents: parents });
+                    walk((node && node.c) || [], lv + 1, parents.concat([nm]));
+                });
+            };
+            walk(roots, 1, []);
+            return out.length ? out : null;
+        }
+
         // 单条学习记录点亮了哪些节点（uid 集合，只含可以出卡的非叶节点）。
         // ⚠️ 这里必须和 fcBuild 用**同一套**语义，否则会出现
         //    「卡是这条记录生成的，但记录复习面板里看不到这张卡」这种自相矛盾。
@@ -9164,13 +9359,45 @@
             if (!kps.length) {                           // 没登记知识点 → 整节算学过
                 pool.forEach(function (n) { marked[fcUid(n)] = 1; });
             } else {
+                // ★ 有层级就用层级。三级判据，从严到宽，逐级回退：
+                //   ① 精确 —— 同名 + 同层 + **祖先链逐项一致**（真正定位到「这一个」节点）
+                //   ② 同层 —— 同层 + 名字互为包含（容忍用户改写编号 / 漏写某一级）
+                //   ③ 无层级 —— 退回旧的名字包含匹配（老数据没有大纲原文时才走这条）
+                const outline = fcRecOutline(r);
+                const nameOf = function (v) { return fcNormText(v); };
                 pool.forEach(function (n) {
-                    const nm = fcNormText(n.name);
+                    const nm = nameOf(n.name);
                     if (!nm) return;
+                    if (outline) {
+                        const anc = (n.path || []).slice(0, -1).map(nameOf);
+                        let hit = outline.some(function (c) {
+                            if (c.lv !== n.tier || c.name !== nm) return false;
+                            if (c.parents.length !== anc.length) return false;
+                            for (let i = 0; i < anc.length; i++) if (c.parents[i] !== anc[i]) return false;
+                            return true;
+                        });
+                        if (!hit) hit = outline.some(function (c) {
+                            if (c.lv !== n.tier || !c.name) return false;
+                            return c.name === nm || c.name.indexOf(nm) >= 0 || nm.indexOf(c.name) >= 0;
+                        });
+                        if (hit) marked[fcUid(n)] = 1;
+                        return;
+                    }
                     if (kps.some(function (k) { return k === nm || k.indexOf(nm) >= 0 || nm.indexOf(k) >= 0; })) {
                         marked[fcUid(n)] = 1;
                     }
                 });
+                // ★ 同级同名兜底：大纲里某一级**整段没写**（用户只写了「整型」没写「1.1 整型转换」），
+                //   精确匹配会全落空 → 退回「层级对齐的名字包含」，仍然不跨层。
+                if (outline && !Object.keys(marked).length) {
+                    pool.forEach(function (n) {
+                        const nm = nameOf(n.name);
+                        if (!nm) return;
+                        if (outline.some(function (c) { return c.lv === n.tier && c.name === nm; })) {
+                            marked[fcUid(n)] = 1;
+                        }
+                    });
+                }
             }
             pool.forEach(function (n) { if (marked[fcUid(n)]) markedPaths.push(n.path); });
 
@@ -9253,7 +9480,15 @@
                 if (learned && !learned[fcUid(n)]) { skipped++; return; }
                 const id = fcIdOf(sigFix[fcUid(n)] || n.sig);
                 const autoQ = n.name;
-                const autoA = n.answers.join('\n');
+                // ★ 层级修复：反面只列**这条记录真的学过**的下级。
+                //   旧行为把该节点的全部孩子都写进反面 —— 于是「1 整型」的反面里
+                //   会带上与本次学习无关的兄弟分支（1.2 整型提升），答案被污染。
+                //   一个都没学到时退回全部下级（宁可多给，不要给空答案）。
+                let autoA = n.answers.join('\n');
+                if (learned && n.childUids && n.childUids.length) {
+                    const keptKids = n.answers.filter(function (nm2, i2) { return learned[n.childUids[i2]]; });
+                    if (keptKids.length) autoA = keptKids.join('\n');
+                }
                 const srcNow = {
                     course: n.course, chapter: n.chapter, section: n.section,
                     tier: n.tier, order: n.order, path: n.path.slice()
@@ -9714,13 +9949,31 @@
             '</div>';
         }
 
+        // 表头：列数与列序必须与 .fc-table 的 grid-template-columns 一致。
+        // 分组视图（按章节 / 按标签）下每个分组各带一份表头 —— 表格分段就该这样。
+        function fcTableHeadHTML() {
+            return '<div class="fc-thead" aria-hidden="true">' +
+                '<span></span>' +
+                '<span>正面</span>' +
+                '<span>反面</span>' +
+                '<span class="fc-hide-sm">章</span>' +
+                '<span class="fc-hide-sm">节</span>' +
+                '<span>掌握</span>' +
+                '<span>复习</span>' +
+                '<span class="fc-hide-sm">标签</span>' +
+                '<span></span>' +
+            '</div>';
+        }
+
         // 统一出口：按当前样式渲染一组卡片
         function fcCardsHTML(list, opts) {
             opts = opts || {};
             if (fcStyle === 'tile') {
                 return '<div class="fc-tiles">' + list.map(fcTileHTML).join('') + '</div>';
             }
-            return list.map(function (c) { return fcRowHTML(c, opts); }).join('');
+            // 需求 6：列表 = 类 Excel 表格（表头 + 固定列 + 斑马纹）
+            return '<div class="fc-table">' + fcTableHeadHTML() +
+                list.map(function (c) { return fcRowHTML(c, opts); }).join('') + '</div>';
         }
 
         // 点卡片 → 进复习模块（Tom：内容 / 用法 / 数据联动都与记忆曲线一致）
@@ -9742,6 +9995,18 @@
             const kps = rec.knowledgePoints || [];
             const nm = fcNormText(card.q);
             let kpIdx = -1;
+            // ★ 层级修复：先按「层级 + 名字」精确找，再退回名字包含。
+            //   旧写法在名字互为子串时会落到**另一个知识点**上（如「整型提升」落到「整型」）。
+            const ol = fcRecOutline(rec);
+            const tier = (card.src && card.src.tier) || 0;
+            if (ol && tier) {
+                kps.forEach(function (k, i) {
+                    if (kpIdx >= 0) return;
+                    const kt = fcNormText(k && k.text);
+                    if (!kt) return;
+                    if (ol.some(function (c) { return c.lv === tier && c.name === kt; })) kpIdx = i;
+                });
+            }
             kps.forEach(function (k, i) {
                 if (kpIdx >= 0) return;
                 const kt = fcNormText(k && k.text);
@@ -9765,31 +10030,52 @@
         }
 
         // ---------- 卡片行 ----------
+        // 需求 6：一行一卡，按列排。列顺序必须与 .fc-table 的 grid-template-columns 一致。
+        // 契约（别动）：行仍是 .fc-row[data-fcid]；.fc-side 仍带状态 + 📝 条数；
+        // .fc-tag.auto / .fc-tag.own 仍在这行里 —— 三套既有验证套件都盯在这里。
         function fcRowHTML(card, opts) {
             opts = opts || {};
             const status = fcStatusOf(card);
             const tags = fcAllTags(card);
-            const indent = opts.noIndent ? 0 : Math.max(0, ((card.src && card.src.tier) || 1) - 1) * 13;
+            const s = card.src || {};
+            const proj = fcProj() || {};
+            const chName = (proj.chapterNames && proj.chapterNames[s.course] && proj.chapterNames[s.course][s.chapter]) || '';
+            const secArr = (proj.sectionNames && proj.sectionNames[s.course] && proj.sectionNames[s.course][s.chapter]) || [];
+            const secName = secArr[s.section - 1] || '';
+            const ownArr = card.tags || [];
+            const m = fcMasteryOf(card);
             const flags = [];
             if (card.edited) flags.push('<span class="fc-flag edited">已编辑</span>');
             if (card.manual) flags.push('<span class="fc-flag manual">自建</span>');
             if (card.orphan) flags.push('<span class="fc-flag orphan">树中已不存在</span>');
             else if (card.scopeOut) flags.push('<span class="fc-flag scope" title="这个节点还在大纲里，只是本次出卡范围没覆盖到它（没学到 / 层级范围外）">范围外 · 本次未生成</span>');
-            const a1 = String(card.a || '').split('\n').filter(function (s) { return s.trim(); });
+            const a1 = String(card.a || '').split('\n').filter(function (x) { return x.trim(); });
+            const aTxt = a1.join(' · ');
             const noteN = (state.cardNotes[card.id] || []).length;
-            return '<div class="fc-row" data-fcid="' + card.id + '" style="margin-left:' + indent + 'px;">' +
+            // 自己的标签排最前：章/节标签在左边「章 / 节」两列已有一份，重复占位不划算；
+            // 只有「我的标签」是表格里别处看不到的。Array#sort 在 V8 稳定，自动标签内部次序不变。
+            const shownTags = tags.slice().sort(function (x, y) {
+                return (ownArr.indexOf(y) >= 0 ? 1 : 0) - (ownArr.indexOf(x) >= 0 ? 1 : 0);
+            });
+            return '<div class="fc-row" data-fcid="' + card.id + '" title="点击进入复习（与记忆曲线同一套排期）">' +
                 '<span class="fc-dot ' + status.cls + '"></span>' +
-                '<div class="fc-main">' +
-                    '<div class="fc-q">' + kpEsc(card.q) + flags.join('') + '</div>' +
-                    '<div class="fc-a">' + kpEsc(a1.join(' · ').slice(0, 90)) + (a1.length > 1 ? ' …' : '') + '</div>' +
-                    '<div class="fc-tagline">' +
-                        (opts.hideTags ? '' : tags.map(function (t) {
-                            const own = (card.tags || []).indexOf(t) !== -1;
-                            return '<span class="fc-tag ' + (own ? 'own' : 'auto') + '">' + kpEsc(t) + '</span>';
-                        }).join('')) +
-                    '</div>' +
-                '</div>' +
-                '<div class="fc-side">' + status.text + (noteN ? '<br>📝 ' + noteN : '') + '</div>' +
+                '<span class="fc-c fc-q" title="' + kpEsc(card.q) + '">' + kpEsc(card.q) + flags.join('') + '</span>' +
+                '<span class="fc-c fc-a" title="' + kpEsc(aTxt) + '">' +
+                    (aTxt ? kpEsc(aTxt.slice(0, 140)) + (aTxt.length > 140 ? ' …' : '') : '—') + '</span>' +
+                '<span class="fc-c fc-c-dim fc-hide-sm" title="章' + (chName ? ' · ' + kpEsc(chName) : '') + '">' +
+                    (s.chapter ? '第' + s.chapter + '章' + (chName ? ' ' + kpEsc(chName) : '') : '—') + '</span>' +
+                '<span class="fc-c fc-c-dim fc-hide-sm" title="节' + (secName ? ' · ' + kpEsc(secName) : '') + '">' +
+                    (s.section ? '第' + s.section + '节' + (secName ? ' ' + kpEsc(secName) : '') : '—') + '</span>' +
+                '<span class="fc-mcell" title="掌握程度（取自关联学习记录的理解星级）">' +
+                    (m ? fcStarStr(m.u) : '未评') + '</span>' +
+                '<span class="fc-side" title="已完成的复习轮次 / 总轮次' + (noteN ? ' · 复习补充 ' + noteN + ' 条' : '') + '">' +
+                    status.text + (noteN ? '<br>📝 ' + noteN : '') + '</span>' +
+                '<span class="fc-tagline fc-hide-sm" title="' + kpEsc(tags.join(' / ')) + '">' +
+                    (opts.hideTags ? '' : shownTags.map(function (tg) {
+                        const own = ownArr.indexOf(tg) !== -1;
+                        return '<span class="fc-tag ' + (own ? 'own' : 'auto') + '">' + kpEsc(tg) + '</span>';
+                    }).join('')) +
+                '</span>' +
                 '<button type="button" class="fc-btn sm fc-editbtn" data-fcedit="' + card.id + '" title="编辑内容与标签">✎</button>' +
             '</div>' +
             (fcEditing === card.id ? fcEditHTML(card) : '');
@@ -10478,15 +10764,17 @@
         let ktOpen = {};        // sig -> true / false：用户手动覆盖过的展开状态
         let ktBound = false;
 
-        // 「终点层级」的哨兵值：0 = 自动 = 展示到**次级节点，不到最底层**。
+        // 「终点层级」的哨兵值：0 = 自动 = 走 KT_DEF_TO 那一档，不写死数字。
         //
-        // 语义澄清（v50 按 Tom 的口径定死）：
-        //   展开第 t 级 → 它的下一级（t+1）随之可见。所以要「看到第 k 级」，
-        //   必须展开到第 k-1 级。于是：
-        //     看到「次级节点（倒数第二级）」→ 展开到 (最深级 - 2)
-        //   例：4 级树 → 展开到 2 → 屏上出现 1/2/3 级，叶子（第 4 级）不铺开。
-        //       3 级树 → 展开到 1 → 屏上出现 1/2 级，叶子（第 3 级）不铺开。
+        // 语义（v50 立，本轮按七级链路改口径）：
+        //   渲染条件是 expd = (lv >= from && lv < toLv)，也就是「第 toLv 级可见」。
+        //   于是 toLv = 4 ⇔ 屏上出现 1–4 级 = 科目 › 章 › 节 › 知识点1级。
+        //
+        //   ★ 旧口径「最深级 - 2」是给「树里只有知识点」那套算的：现在最深三层固定
+        //     是 科目/章/节，top-2 会把知识点 3–4 级一起铺开；而 a 只到「节」又等于
+        //     默认树里一个知识点都没有。两者都不对，故改成固定档位 KT_DEF_TO。
         const KT_TO_AUTO = 0;
+        const KT_DEF_TO = 4;                  // 默认展开到第 4 级：科目›章›节›知识点1级
 
         function ktProj() {
             try { return (typeof getCurrentProject === 'function') ? getCurrentProject() : null; } catch (e) { return null; }
@@ -10494,6 +10782,12 @@
 
         function ktState() {
             if (!state.ktCfg || typeof state.ktCfg !== 'object') state.ktCfg = {};
+            // ★ 需求 1：默认「全部科目 / 全部章 / 全部节」——
+            //   七级树的默认视图是整条链（科目→章→节→知识点），
+            //   三个下拉退化为**筛选器**（'' / 0 = 不筛），而不是原来的「必须先选一节」。
+            if (state.ktCfg.course === undefined || state.ktCfg.course === null) state.ktCfg.course = '';
+            if (state.ktCfg.chapter === undefined || state.ktCfg.chapter === null) state.ktCfg.chapter = 0;
+            if (state.ktCfg.section === undefined || state.ktCfg.section === null) state.ktCfg.section = 0;
             if (!(state.ktCfg.from > 0)) state.ktCfg.from = 1;
             // 缺失 / null → 自动档（不是 1，也不是 3）
             if (state.ktCfg.to === undefined || state.ktCfg.to === null) state.ktCfg.to = KT_TO_AUTO;
@@ -10505,7 +10799,11 @@
         function ktResolveTo(mxVal) {
             const cfg = ktState();
             const top = Math.max(1, mxVal || 1);
-            if (cfg.to === KT_TO_AUTO) return Math.max(1, top - 2);   // 次级 = 倒数第二级
+            // ★ 需求 1：默认档 = KT_DEF_TO(4) → 科目 › 章 › 节 + 知识点首层。
+            //   为什么不是「top - 2」：七级链路最深那三层固定是 科目/章/节，top-2 会把
+            //   知识点 3–4 级一起铺开；而写成 3 又只到「节」，屏上一个知识点都没有，
+            //   比改造前（看得到知识点 1–2 级）还少 —— 那是功能回退，不是保守设计。
+            if (cfg.to === KT_TO_AUTO) return Math.min(KT_DEF_TO, top);
             return Math.min(cfg.to, top);
         }
 
@@ -10660,57 +10958,78 @@
 
             const sc = document.getElementById('ktCourse');
             if (sc) {
-                if (courses.indexOf(cfg.course) < 0) cfg.course = courses.length ? courses[0] : '';
-                sc.innerHTML = courses.map(function (c) {
-                    return '<option value="' + kpEsc(c) + '"' + (c === cfg.course ? ' selected' : '') + '>' + kpEsc(c) + '</option>';
-                }).join('');
+                // ★ 需求 1：'' = 全部科目。七级树的默认视图是整条链，不是「必须先选一节」。
+                if (cfg.course && courses.indexOf(cfg.course) < 0) cfg.course = '';
+                sc.innerHTML = '<option value=""' + (!cfg.course ? ' selected' : '') + '>全部科目</option>' +
+                    courses.map(function (c) {
+                        return '<option value="' + kpEsc(c) + '"' + (c === cfg.course ? ' selected' : '') + '>' + kpEsc(c) + '</option>';
+                    }).join('');
             }
 
             const chs = [];
+            const chMeta = {};        // 章号 → 它首次出现的科目（"全部科目"时靠它反查章名）
             (all || []).forEach(function (n) {
-                if (n.course !== cfg.course) return;
+                // ★ cfg.course === '' = 「全部科目」= 不限；旧写法 ''!== '会计' 恒真，
+                //   于是「全部科目」下章下拉只剩一行「全部章」，看着像坏了。
+                //   放开后「全部科目 + 第 1 章」= 各科目的第 1 章，本身也是有用的筛选。
+                if (cfg.course && n.course !== cfg.course) return;
                 if (chs.indexOf(n.chapter) < 0) chs.push(n.chapter);
+                if (chMeta[n.chapter] === undefined) chMeta[n.chapter] = n.course;
             });
             chs.sort(function (a, b) { return a - b; });
-            if (chs.indexOf(+cfg.chapter) < 0) cfg.chapter = chs.length ? chs[0] : 0;
+            if (+cfg.chapter && chs.indexOf(+cfg.chapter) < 0) cfg.chapter = 0;
             const sch = document.getElementById('ktChapter');
             if (sch) {
-                sch.innerHTML = chs.map(function (ch) {
-                    const nm = ktChapterName(proj, cfg.course, ch);
-                    return '<option value="' + ch + '"' + (+ch === +cfg.chapter ? ' selected' : '') + '>第 ' + ch + ' 章' + (nm ? ' ' + kpEsc(nm) : '') + '</option>';
-                }).join('');
+                sch.innerHTML = '<option value="0"' + (!+cfg.chapter ? ' selected' : '') + '>全部章</option>' +
+                    chs.map(function (ch) {
+                        // 名字按「这一章真实归属的科目」查：cfg.course 为 '' 时
+                        // ktChapterName(proj, '', ch) 只会得到空串，章名全丢。
+                        const nm = ktChapterName(proj, chMeta[ch] || cfg.course, ch);
+                        return '<option value="' + ch + '"' + (+ch === +cfg.chapter ? ' selected' : '') + '>第 ' + ch + ' 章' + (nm ? ' ' + kpEsc(nm) : '') + '</option>';
+                    }).join('');
             }
 
             const secs = [];
+            const secMeta = {};       // 节号 → { c, h }：节名在 sectionNames[科目][章] 下，必须带真实章号
             (all || []).forEach(function (n) {
-                if (n.course !== cfg.course || +n.chapter !== +cfg.chapter) return;
+                // 同上：'' / 0 皆「不限」
+                if (cfg.course && n.course !== cfg.course) return;
+                if (+cfg.chapter && +n.chapter !== +cfg.chapter) return;
                 if (secs.indexOf(n.section) < 0) secs.push(n.section);
+                if (!secMeta[n.section]) secMeta[n.section] = { c: n.course, h: n.chapter };
             });
             secs.sort(function (a, b) { return a - b; });
-            if (secs.indexOf(+cfg.section) < 0) cfg.section = secs.length ? secs[0] : 0;
+            if (+cfg.section && secs.indexOf(+cfg.section) < 0) cfg.section = 0;
             const sse = document.getElementById('ktSection');
             if (sse) {
-                sse.innerHTML = secs.map(function (sec) {
-                    const nm = ktSectionName(proj, cfg.course, cfg.chapter, sec);
-                    return '<option value="' + sec + '"' + (+sec === +cfg.section ? ' selected' : '') + '>第 ' + sec + ' 节' + (nm ? ' ' + kpEsc(nm) : '') + '</option>';
-                }).join('');
+                sse.innerHTML = '<option value="0"' + (!+cfg.section ? ' selected' : '') + '>全部节</option>' +
+                    secs.map(function (sec) {
+                        // 同理：节名是 sectionNames[科目][章][节-1]，章号填 0 时必然查空。
+                        const sm = secMeta[sec] || {};
+                        const nm = ktSectionName(proj, sm.c || cfg.course, sm.h || cfg.chapter, sec);
+                        return '<option value="' + sec + '"' + (+sec === +cfg.section ? ' selected' : '') + '>第 ' + sec + ' 节' + (nm ? ' ' + kpEsc(nm) : '') + '</option>';
+                    }).join('');
             }
 
-            const mx = Math.max(ktMaxTier(all), 1);
+            // ★ 需求 1：层级选项固定 1..7（科目/章/节 + 知识点 1–4 级），
+            //   不再按「当前这一节最深几级」动态给 —— 七级链路是固定的。
+            const LV_NAME = ['科目', '章', '节', '知识点1级', '知识点2级', '知识点3级', '知识点4级'];
             const opts = function (sel) {
                 let h = '';
-                for (let i = 1; i <= mx; i++) h += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>第 ' + i + ' 级</option>';
+                for (let i = 1; i <= KT_MAX_LV; i++) {
+                    h += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>第 ' + i + ' 级 · ' +
+                        LV_NAME[i - 1] + '</option>';
+                }
                 return h;
             };
             const sf = document.getElementById('ktFrom'), st = document.getElementById('ktTo');
-            if (sf) sf.innerHTML = opts(Math.min(cfg.from, mx));
-            // 终点多给一个「次级（不到最底层）」自动档，且它是默认值 ——
-            // 按 Tom 的要求：默认只铺到次级节点，最底层叶子不铺开。
+            if (sf) sf.innerHTML = opts(Math.min(cfg.from, KT_MAX_LV));
+            // 终点多给一个自动档，且它是默认值（默认看到第 4 级 = 科目/章/节 + 知识点 1 级）
             if (st) {
                 st.innerHTML =
                     '<option value="' + KT_TO_AUTO + '"' + (cfg.to === KT_TO_AUTO ? ' selected' : '') +
-                        '>次级（不到最底层）</option>' +
-                    opts(cfg.to === KT_TO_AUTO ? -1 : Math.min(cfg.to, mx));
+                        '>默认（科目 › 章 › 节 + 知识点首层）</option>' +
+                    opts(cfg.to === KT_TO_AUTO ? -1 : Math.min(cfg.to, KT_MAX_LV));
             }
         }
 
@@ -10722,7 +11041,9 @@
             const leaf = pure.filter(function (n) { return !n.kidN; }).length;
             const mx = ktMaxTier(pure);
             const set = function (id, v) { const el = document.getElementById(id); if (el) el.textContent = String(v); };
-            set('ktTotal', total); set('ktLeaf', leaf); set('ktDepth', total ? mx : 0);
+            // ★ 需求 1：深度按七级链路报（知识点内部第 t 级 → 链路第 t+3 级）
+            set('ktTotal', total); set('ktLeaf', leaf); set('ktDepth', total ? (mx + 3) : 0);
+            const LVN = ['科目', '章', '节', '知识点1级', '知识点2级', '知识点3级', '知识点4级'];
 
             // 层级分布只算大纲节点 —— 「记录补充」不属于任何大纲层级，单列一格
             const byTier = {};
@@ -10730,10 +11051,127 @@
             const bar = document.getElementById('ktTierBar');
             if (bar) {
                 const parts = [];
-                for (let t = 1; t <= mx; t++) parts.push('第' + t + '级 ' + (byTier[t] || 0));
+                for (let t = 1; t <= mx; t++) parts.push('第' + (t + 3) + '级 ' + (LVN[t + 2] || '') + ' ' + (byTier[t] || 0));
                 if (extra) parts.push('📥 记录补充 ' + extra);
                 bar.innerHTML = total ? parts.map(function (s) { return '<span>' + s + '</span>'; }).join('') : '';
             }
+        }
+
+        // ---------- ★ 需求 1：七级树组装 ----------
+        // 层级映射（Tom 的口径：从科目到 4 级知识点共七级）：
+        //     1 科目 · 2 章 · 3 节 · 4 知识点1级 · 5 知识点2级 · 6 知识点3级 · 7 知识点4级
+        // ktAllNodes() 给的是「按节摊平」的扁平表（tier 只数知识点内部层数），
+        // 这里把科目/章/节补成 1/2/3 级，知识点平移到 tier+3。
+        let KT_MAX_LV = 7;
+
+        function ktSevenTree(cfg, all, proj) {
+            const fCourse = cfg.course || '';
+            const fCh = (+cfg.chapter > 0) ? +cfg.chapter : 0;
+            const fSec = (+cfg.section > 0) ? +cfg.section : 0;
+
+            const courses = [];
+            const bc = {};
+            (all || []).forEach(function (n) {
+                if (fCourse && n.course !== fCourse) return;
+                if (fCh && +n.chapter !== fCh) return;
+                if (fSec && +n.section !== fSec) return;
+                if (!bc[n.course]) { bc[n.course] = {}; courses.push(n.course); }
+                const c = bc[n.course];
+                if (!c[n.chapter]) c[n.chapter] = {};
+                if (!c[n.chapter][n.section]) c[n.chapter][n.section] = [];
+                c[n.chapter][n.section].push(n);
+            });
+
+            const mk = function (sig, lv, kind, name, children, raw) {
+                return { sig: sig, lv: lv, kind: kind, name: name, children: children || [], raw: raw || null };
+            };
+            const nest = function (list) {
+                const box = {};
+                list.forEach(function (n) { box[n.sig] = mk(n.sig, n.tier + 3, 'kp', n.name, [], n); });
+                const roots = [];
+                list.forEach(function (n) {
+                    if (n.parent && box[n.parent]) box[n.parent].children.push(box[n.sig]);
+                    else roots.push(box[n.sig]);
+                });
+                return roots;
+            };
+
+            return courses.map(function (course) {
+                const chs = Object.keys(bc[course]).map(Number)
+                    .sort(function (a, b) { return a - b; });
+                const chNodes = chs.map(function (ch) {
+                    const secs = Object.keys(bc[course][ch]).map(Number)
+                        .sort(function (a, b) { return a - b; });
+                    const secNodes = secs.map(function (sec) {
+                        const sn = ktSectionName(proj, course, ch, sec);
+                        return mk('se|' + course + '|' + ch + '|' + sec, 3, 'section',
+                            '第 ' + sec + ' ' + L('section') + (sn ? ' ' + sn : ''),
+                            nest(bc[course][ch][sec]), null);
+                    });
+                    const cn = ktChapterName(proj, course, ch);
+                    return mk('ch|' + course + '|' + ch, 2, 'chapter',
+                        '第 ' + ch + ' ' + L('chapter') + (cn ? ' ' + cn : ''), secNodes, null);
+                });
+                return mk('co|' + course, 1, 'course', course, chNodes, null);
+            });
+        }
+
+        function ktCountTree(list) {
+            let n = 0;
+            (function rec(a) { (a || []).forEach(function (x) { n++; rec(x.children); }); })(list);
+            return n;
+        }
+
+        function ktLabelText(n, q) {
+            const nm = String(n.name || '');
+            if (!q) return kpEsc(nm);
+            const at = nm.toLowerCase().indexOf(q);
+            if (at < 0) return kpEsc(nm);
+            return kpEsc(nm.slice(0, at)) + '<mark>' + kpEsc(nm.slice(at, at + q.length)) + '</mark>' +
+                kpEsc(nm.slice(at + q.length));
+        }
+
+        // 一棵「分支」= 节点本身 + （展开时）它的子级容器。
+        // 结构对齐参考图：kt-row 是色块/文字，kt-kids 是右移一档的下一层，
+        // 连接线由 CSS 的直角折线画（.kt-kids 的左边框 + 每个分支的短横线）。
+        function ktBranchHTML(n, expd, q, matched, keep, stat) {
+            const kids = n.children || [];
+            const open = !!expd[n.sig];
+            const caret = kids.length
+                ? '<span class="kt-caret" data-kt-toggle="' + kpEsc(n.sig) + '" title="展开 / 收拢">' +
+                    (open ? '▾' : '▸') + '</span>'
+                : '<span class="kt-caret kt-leaf">·</span>';
+            const extra = !!(n.raw && n.raw.extra);
+            let h = '<div class="kt-branch">';
+            h += '<div class="kt-row kt-lv' + n.lv + (extra ? ' kt-row-extra' : '') +
+                 '" data-kt-sig="' + kpEsc(n.sig) + '" data-kt-lv="' + n.lv + '"' +
+                 (n.raw && n.raw.crumb ? ' title="' + kpEsc(n.raw.crumb) + '"' : '') + '>' +
+                caret +
+                '<span class="kt-name">' + ktLabelText(n, q) + '</span>' +
+                '<span class="kt-lvb">L' + n.lv + '</span>' +
+                (extra ? '<span class="kt-extra-badge" title="' +
+                    kpEsc(n.raw.recDate ? ('来自 ' + n.raw.recDate + ' 的学习记录') : '来自学习记录') +
+                    '">📥 记录补充</span>' : '') +
+                (kids.length ? '<span class="kt-kidn">' + kids.length + ' 项</span>' : '') +
+                '</div>';
+            if (kids.length && open) {
+                // ★ 需求 2：先按搜索筛出真正要渲染的子级，再判「这一组是不是全叶子」——
+                //   对全部子级判会把「搜索时被滤掉的叶子」也算进来，给空组画出一个秃括号。
+                const vis = kids.filter(function (c) { return !q || keep[c.sig] || matched[c.sig]; });
+                if (vis.length) {
+                    // 子级全是叶子 → 整组用大括号括起（参考图里分支主题右侧那个「⎱⎰」）
+                    const allLeaf = vis.every(function (c) {
+                        return !(c.children && c.children.length);
+                    });
+                    h += '<div class="kt-kids' + (allLeaf ? ' kt-leaves' : '') + '">' +
+                        vis.map(function (c) {
+                            return ktBranchHTML(c, expd, q, matched, keep, stat);
+                        }).join('') + '</div>';
+                }
+            }
+            h += '</div>';
+            stat.n++;
+            return h;
         }
 
         // ---------- 主渲染 ----------
@@ -10756,90 +11194,80 @@
             }
 
             const cfg = ktState();
-            const scope = all.filter(function (n) {
-                return n.course === cfg.course && +n.chapter === +cfg.chapter && +n.section === +cfg.section;
-            }).sort(function (a, b) {
-                // 「记录补充」统一沉底 —— 它们是外加的，不该打断大纲本身的层级顺序
-                if (!!a.extra !== !!b.extra) return a.extra ? 1 : -1;
-                return 0;                            // 其余保持原顺序（Array#sort 是稳定的）
-            });
-            // 终点层级在这里才解析得出来（要知道这一节最深几级）
-            const toTier = ktResolveTo(ktMaxTier(scope));
+            const tree = ktSevenTree(cfg, all, proj);
+            const total = ktCountTree(tree);
+            // 按「知识点最深 tier + 3」夹取：树只有 2 级时，「展开到第 6 级」应当等价于
+            // 「全开」，统计条也不该报出一个超出实际深度的级数（旧写死 KT_MAX_LV）。
+            const toLv = ktResolveTo(ktMaxTier(all) + 3);
+            // 最深可见级 = max(from, toLv)。展开规则里有一条
+            //   `(n.lv < cfg.from && hasChildren)`
+            // —— 起点之上的祖先一律展开；于是把起点设得比终点还深时（from=5 + 默认档
+            //   toLv=4），屏上实际看到的是第 5 级。只印 `from–toLv` 会出现
+            //   「展开 第5–4 级」这种倒挂读数。默认档 max(1,4)=4，文案不变。
+            const visTo = Math.max(cfg.from, toLv);
             ktPaintStats(all);
 
-            const secNm = ktSectionName(proj, cfg.course, cfg.chapter, cfg.section);
             if (statEl) {
-                statEl.textContent = cfg.course + ' · 第 ' + cfg.chapter + ' 章' + (ktChapterName(proj, cfg.course, cfg.chapter) ? ' ' + ktChapterName(proj, cfg.course, cfg.chapter) : '') +
-                    ' · 第 ' + cfg.section + ' 节' + (secNm ? ' ' + secNm : '') + ' —— 本节 ' + scope.length + ' 个节点' +
-                    ' · 展开 第' + cfg.from + '–' + toTier + ' 级' + (cfg.to === KT_TO_AUTO ? '（次级）' : '');
+                const parts = [];
+                parts.push(cfg.course ? cfg.course : '全部科目');
+                if (+cfg.chapter > 0) parts.push('第 ' + cfg.chapter + L('chapter'));
+                if (+cfg.section > 0) parts.push('第 ' + cfg.section + L('section'));
+                statEl.textContent = parts.join(' · ') + ' —— ' + total + ' 个节点' +
+                    ' · 七级链路（科目›章›节›知识点1–4级）' +
+                    ' · 展开 第' + cfg.from + '–' + visTo + ' 级' + (cfg.to === KT_TO_AUTO ? '（默认档）' : '');
             }
 
-            if (!scope.length) {
-                body.innerHTML = '<div class="kt-empty">这一节还没有知识点。</div>';
+            if (!total) {
+                body.innerHTML = '<div class="kt-empty">这个范围内还没有知识点。</div>';
                 return;
             }
 
             // —— 搜索：命中项 + 它的所有祖先保持可见，祖先自动展开 ——
             const q = ktQuery.trim().toLowerCase();
-            const map = {};
-            scope.forEach(function (n) { map[n.sig] = n; });
             const matched = {}, keep = {};
             if (q) {
-                scope.forEach(function (n) {
-                    if (n.name.toLowerCase().indexOf(q) < 0) return;
-                    matched[n.sig] = true; keep[n.sig] = true;
-                    let p = n.parent, guard = 0;
-                    while (p && guard++ < 24) {
-                        if (keep[p]) break;
-                        keep[p] = true;
-                        p = (map[p] && map[p].parent) || '';
-                    }
-                });
+                (function mark(list, anc) {
+                    (list || []).forEach(function (n) {
+                        const hit = String(n.name).toLowerCase().indexOf(q) >= 0;
+                        if (hit) {
+                            matched[n.sig] = true; keep[n.sig] = true;
+                            anc.forEach(function (s) { keep[s] = true; });
+                        }
+                        mark(n.children, anc.concat([n.sig]));
+                    });
+                })(tree, []);
             }
 
-            // —— 可见性 / 展开态 ——
-            const vis = {}, expd = {};
-            scope.forEach(function (n) {
-                vis[n.sig] = n.parent ? (!!vis[n.parent] && !!expd[n.parent]) : true;
-                let e;
-                if (q) e = !!keep[n.sig] && !matched[n.sig];
-                else if (ktOpen[n.sig] !== undefined) e = !!ktOpen[n.sig];
-                else e = (n.tier >= cfg.from && n.tier <= toTier);
-                expd[n.sig] = e && n.kidN > 0;
-            });
+            // —— 展开态：显式覆盖 > 层级范围 ——
+            //   「展开第 t 级」= 第 t 级的下一级可见，故默认打开 lv < toLv 的节点。
+            const expd = {};
+            (function calc(list) {
+                (list || []).forEach(function (n) {
+                    let e;
+                    // ★ 只判 keep，不再 && !matched：命中的节点若还有命中的子孙，
+                    //   它必须继续展开，否则深处的命中永远看不到（搜「转换」只出 1 处）。
+                    //   无关分支在 ktBranchHTML 里已按 keep/matched 滤除，放开是安全的。
+                    if (q) e = !!keep[n.sig];
+                    else if (ktOpen[n.sig] !== undefined) e = !!ktOpen[n.sig];
+                    else e = (n.lv >= cfg.from && n.lv < toLv) ||
+                             (n.lv < cfg.from && !!(n.children && n.children.length));
+                    expd[n.sig] = e && !!(n.children && n.children.length);
+                    calc(n.children);
+                });
+            })(tree);
 
-            const esc = function (s) { return kpEsc(s); };
-            const label = function (n) {
-                if (!q) return esc(n.name);
-                const at = n.name.toLowerCase().indexOf(q);
-                if (at < 0) return esc(n.name);
-                return esc(n.name.slice(0, at)) + '<mark>' + esc(n.name.slice(at, at + q.length)) + '</mark>' + esc(n.name.slice(at + q.length));
-            };
+            const stat = { n: 0 };
+            const html = tree.map(function (n) {
+                if (q && !keep[n.sig] && !matched[n.sig]) return '';
+                return ktBranchHTML(n, expd, q, matched, keep, stat);
+            }).join('');
 
-            let html = '';
-            let shown = 0;
-            scope.forEach(function (n) {
-                if (!vis[n.sig]) return;
-                if (q && !keep[n.sig]) return;
-                shown++;
-                const caret = n.kidN
-                    ? '<span class="kt-caret" data-kt-toggle="' + esc(n.sig) + '" title="展开 / 收拢">' + (expd[n.sig] ? '▾' : '▸') + '</span>'
-                    : '<span class="kt-caret kt-leaf">·</span>';
-                html += '<div class="kt-row' + (n.extra ? ' kt-row-extra' : '') + '" data-kt-sig="' + esc(n.sig) + '" title="' + esc(n.crumb) + '" style="padding-left:' + ((n.tier - 1) * 18) + 'px;">' +
-                    caret +
-                    '<span class="kt-name">' + label(n) + '</span>' +
-                    (n.extra
-                        ? '<span class="kt-extra-badge" title="' + esc(n.recDate ? ('来自 ' + n.recDate + ' 的学习记录') : '来自学习记录') + '">📥 记录补充</span>'
-                        : ('<span class="kt-tier">L' + n.tier + '</span>' +
-                           (n.kidN ? '<span class="kt-kidn">' + n.kidN + ' 个子节点</span>' : '<span class="kt-kidn">叶子</span>'))) +
-                    '</div>';
-            });
-
-            if (q && !shown) {
-                body.innerHTML = '<div class="kt-empty">没有匹配「' + esc(ktQuery.trim()) + '」的节点。</div>';
+            if (q && !stat.n) {
+                body.innerHTML = '<div class="kt-empty">没有匹配「' + kpEsc(ktQuery.trim()) + '」的节点。</div>';
                 return;
             }
-            body.innerHTML = html;
+            // 外层 .kt-tree 承载横向滚动的 min-width: max-content（见 CSS）
+            body.innerHTML = '<div class="kt-tree">' + html + '</div>';
         }
 
         // ---------- 事件（只绑一次） ----------
@@ -10856,10 +11284,16 @@
                     const cfg = ktState();
                     // 首次手动切换时，把「范围默认」固化成显式状态，避免下次算出别的结果
                     if (ktOpen[sig] === undefined) {
+                        // ★ 读行上的 data-kt-lv。旧写法查 .kt-tier 元素 —— 模板重写成
+                        //   kt-lv{n} + .kt-lvb 之后该元素已不存在，tier 恒等于 cfg.from，
+                        //   于是「默认收起」的节级节点首击又被算回收起态，**点不开**。
+                        //   这里用的判据与 ktRender 的 expd 默认规则完全一致，首击必是取反。
                         const row = t.parentNode;
-                        const tierEl = row ? row.querySelector('.kt-tier') : null;
-                        const tier = tierEl ? parseInt(String(tierEl.textContent).replace(/[^\d]/g, ''), 10) : cfg.from;
-                        ktOpen[sig] = (tier >= cfg.from && tier <= ktResolveTo(ktMaxTier(ktAllNodes())));
+                        const raw = (row && row.getAttribute) ? row.getAttribute('data-kt-lv') : null;
+                        const lv = (raw === null || raw === '') ? cfg.from : parseInt(raw, 10);
+                        const lvv = isNaN(lv) ? cfg.from : lv;
+                        const toLv = ktResolveTo(ktMaxTier(ktAllNodes()) + 3);
+                        ktOpen[sig] = (lvv >= cfg.from && lvv < toLv) || (lvv < cfg.from);
                     }
                     ktOpen[sig] = !ktOpen[sig];
                     ktRender();
@@ -10910,11 +11344,14 @@
         // 全部展开 / 收拢只作用于「当前选中的这一节」，避免误伤别的章节的展开状态
         function ktSetAllOpen(open) {
             const cfg = ktState();
-            ktAllNodes().forEach(function (n) {
-                if (n.course !== cfg.course || +n.chapter !== +cfg.chapter || +n.section !== +cfg.section) return;
-                if (!n.kidN) return;
-                ktOpen[n.sig] = !!open;
-            });
+            // ★ 需求 1：作用于**当前筛选范围内**的全部七级节点（含科目/章/节）
+            const tree = ktSevenTree(cfg, ktAllNodes(), ktProj());
+            (function rec(list) {
+                (list || []).forEach(function (n) {
+                    if (n.children && n.children.length) ktOpen[n.sig] = !!open;
+                    rec(n.children);
+                });
+            })(tree);
             ktRender();
         }
         function saveKpReview(recordId, d) {
@@ -13769,7 +14206,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917j</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917l</div>
 <!-- build-tag:end -->
 </body>
 </html>
