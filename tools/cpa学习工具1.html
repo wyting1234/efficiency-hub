@@ -2388,6 +2388,48 @@
 .fct-own { background: #F4E7CE; color: #8A6B3A; }
 .fce-subtitle { margin: 14px 0 7px; font-size: 12px; font-weight: 600; color: #8A7F6E; }
 
+/* ===== ★ 2026-09-18 需求 1/3/4/6 新增 ===== */
+
+/* 需求 6：掌握程度筛选下拉（与搜索框同排，样式对齐 .fc-btn.sm 的高度） */
+.fc-filter { font-family: inherit; font-size: 12px; height: 30px; padding: 0 8px; border: 1px solid #D9CDB8;
+    border-radius: 7px; background: #FFFDF8; color: #4A4238; cursor: pointer; max-width: 100%; }
+.fc-filter:hover { background: #FBF7EF; }
+.fc-filter:focus { outline: none; border-color: #8A7358; box-shadow: 0 0 0 3px rgba(138,115,88,.12); }
+
+/* 需求 3：本次复习掌握程度自评器（复习面板反面屏 / 闪卡编辑界面共用同一套 HTML） */
+.fce-mastery { margin-top: 13px; padding-top: 12px; border-top: 1px dashed #E0D5C2; }
+.fm-head { font-size: 12.5px; font-weight: 600; color: #6F5C45; margin-bottom: 7px; }
+.fm-head .fm-sub { font-weight: 400; font-size: 11px; color: #A99A83; margin-left: 7px; }
+.fm-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.fm-btns .fm-b { flex: 1 1 92px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 7px 5px; border-radius: 8px; border: 1px solid #D9CDB8; background: #FBF7EF; cursor: pointer;
+    font-family: inherit; color: #4A4238; transition: .15s; }
+.fm-btns .fm-b b { font-size: 11px; font-weight: 400; color: #B08A4A; }
+.fm-btns .fm-b span { font-size: 11px; white-space: nowrap; }
+.fm-btns .fm-b:hover { background: #F4EDE0; }
+.fm-btns .fm-b.on { border-color: #8A7358; background: #8A7358; color: #FAF7F1; }
+.fm-btns .fm-b.on b { color: #F0DFC0; }
+.fm-btns .fm-b.m1.on { background: #A6503C; border-color: #A6503C; }
+.fm-btns .fm-b.m2.on { background: #9A7A2E; border-color: #9A7A2E; }
+.fm-btns .fm-b.m3.on { background: #77805C; border-color: #77805C; }
+.fm-btns .fm-b.m4.on { background: #5C6647; border-color: #5C6647; }
+.fm-btns .fm-b.m5.on { background: #4A6B57; border-color: #4A6B57; }
+.fm-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px;
+    font-size: 11.5px; color: #8A7F6E; line-height: 1.6; }
+.fm-foot .fm-now b { color: #6F5C45; }
+
+/* 需求 1：删除按钮（危险色，与「隐藏」并列） */
+.fc-btn.del { color: #A6503C; border-color: #DFC0B6; }
+.fc-btn.del:hover { background: #F7E9E3; }
+.fc-flag.pinned { background: #E6EDE9; color: #4F6A5C; }
+.fc-flag.mine { background: #EAE6F1; color: #5B5470; }
+
+/* 需求 4：复习面板的知识点区默认收起（防复习时直接看答案） */
+.rvp-kp-hint { font-size: 11.5px; color: #8A7F6E; background: #F6F1E8; border: 1px dashed #DFD5C4;
+    border-radius: 8px; padding: 7px 10px; margin: 4px 0 2px; line-height: 1.6; }
+.rvp-kpvbar .lbl { cursor: pointer; user-select: none; }
+.rvp-kpvbar .lbl:hover { color: #6F5C45; }
+
 /* ===== 需求 6：列表 / 平铺 两种展示 ===== */
 .fc-stylegroup { display: inline-flex; gap: 4px; }
 .fc-btn.active { background: #8A7358; color: #FAF7F1; border-color: #8A7358; }
@@ -3412,7 +3454,20 @@
                         <button type="button" class="fc-btn sm" data-fcstyle="list" title="列表模式：一行一张，信息密（类似表格）">☰ 列表</button>
                         <button type="button" class="fc-btn sm" data-fcstyle="tile" title="平铺模式：只看每张卡的正面">▦ 平铺</button>
                     </span>
-                    <button type="button" class="fc-btn sm" id="fcNewBtn" title="手工新建一张不属于知识点树的卡片">➕ 自建卡</button>
+                    <!-- ★ 2026-09-18 需求 6：按「复习掌握程度」筛选。
+                         筛的是复习时自评的值（card.review.mastery），与表格里「掌握」列
+                         （学习记录的理解星级）不是一回事 —— 后者是学习时的自评，
+                         前者是每轮复习后的自评，见闪卡反面的自评器。
+                         ★ 同日需求 5：「➕ 自建卡」按钮已移除（闪卡一律由学习记录派生）。 -->
+                    <select class="fc-filter" id="fcMastery" title="按复习时自评的掌握程度筛选">
+                        <option value="">🎯 全部掌握程度</option>
+                        <option value="none">· 未自评</option>
+                        <option value="5">★★★★★ 脱口而出</option>
+                        <option value="4">★★★★ 基本掌握</option>
+                        <option value="3">★★★ 勉强想起</option>
+                        <option value="2">★★ 印象模糊</option>
+                        <option value="1">★ 完全不记得</option>
+                    </select>
                     <input type="text" class="fc-search" id="fcSearch" placeholder="搜索卡片 / 标签">
                 </div>
                 <div class="fc-body" id="fcBody"></div>
@@ -9163,10 +9218,16 @@
             const kpBar = (window.CpaRecView && typeof window.CpaRecView.viewBar === 'function')
                 ? window.CpaRecView.viewBar('data-rvkp', 'rvp-kpvbar') : '';
             const kpBlk = rvKpBlock(rec);
+            // ★ 2026-09-18 需求 4：知识点清单**默认收起**。
+            //   复习时它就列在闪卡正上方 —— 等于把答案摆在旁边（Tom：「避免复习时候抄袭」）。
+            //   点「📐 展示方式」这行字才展开（收起/展开可反复切）；展开后仍是原有渲染，
+            //   带当前展示方式偏好（默认 / 大纲 / MD / 思维导图），一个字没改。
+            //   ⚠️ 只收内容区，**切换条本身要留着** —— 否则用户找不到那个可点的字样。
+            const kpHint = '<div class="rvp-kp-hint" id="rvpKpHint">🔒 本次知识点已隐藏 —— 点上方「📐 展示方式」展开（避免复习时直接看答案）</div>';
             const kpHtml = kpBlk
-                ? '<div class="rvp-kpblock">' + kpBar + '<div class="rvp-kphtml" data-kparea="1">' + kpBlk + '</div></div>'
+                ? '<div class="rvp-kpblock">' + kpBar + kpHint + '<div class="rvp-kphtml" data-kparea="1" style="display:none;">' + kpBlk + '</div></div>'
                 : (kps.length
-                    ? '<div class="rvp-kpblock">' + kpBar + '<div class="rvp-kp" data-kparea="1">' + kps.map((k, i) => '<span class="kp-chip"' + (i === kpIdx ? ' style="background:#8A7358;color:#FAF7F1;"' : '') + '>' + kpEsc((k.no ? k.no + '. ' : '') + (k.text || '')) + '</span>').join('') + '</div></div>'
+                    ? '<div class="rvp-kpblock">' + kpBar + kpHint + '<div class="rvp-kp" data-kparea="1" style="display:none;">' + kps.map((k, i) => '<span class="kp-chip"' + (i === kpIdx ? ' style="background:#8A7358;color:#FAF7F1;"' : '') + '>' + kpEsc((k.no ? k.no + '. ' : '') + (k.text || '')) + '</span>').join('') + '</div></div>'
                     : '');
             const box = document.createElement('div');
             box.className = 'plan-mask';
@@ -9286,6 +9347,30 @@
                     });
                 });
             })();
+            // ★ 需求 4：点「📐 展示方式」展开 / 收起知识点清单。
+            //   与上面的切换条各管各的：这里只管「显不显示」，切换条管「按哪种方式显示」。
+            //   点具体某个展示方式按钮时顺手展开 —— 都伸手去选方式了，显然是要看内容。
+            (function bindRvKpFold() {
+                const bar = box.querySelector('.rvp-kpvbar');
+                const area = box.querySelector('[data-kparea]');
+                const hint = box.querySelector('#rvpKpHint');
+                if (!bar || !area) return;
+                const lbl = bar.querySelector('.lbl');
+                const setOpen = function (on) {
+                    area.style.display = on ? '' : 'none';
+                    if (hint) hint.style.display = on ? 'none' : '';
+                };
+                setOpen(false);
+                if (lbl) {
+                    lbl.title = '点击展开 / 收起本次知识点（默认隐藏，避免复习时看到答案）';
+                    lbl.addEventListener('click', function () {
+                        setOpen(area.style.display === 'none');
+                    });
+                }
+                bar.querySelectorAll('[data-rvkp]').forEach(function (b) {
+                    b.addEventListener('click', function () { setOpen(true); });
+                });
+            })();
             // 「上期学习内容」的展开 / 收起（默认收起；绑定随面板一起重建）
             (function bindRvFold() {
                 const head = box.querySelector('[data-rvfold]');
@@ -9322,12 +9407,23 @@
              闪卡只是复习内容的另一种呈现形式，**不另立一套排期**。
 
            数据分层 —— 「编辑内容不影响此前学习记录」的落点：
-             state.cards     [id] = {q,a,tags,src,edited,hidden,...}  内容层：随便改
+             state.cards     [id] = {q,a,tags,src,edited,hidden,deleted,
+                                     pinMine,mine,review}              内容层：随便改
              state.cardNotes [id] = [{nid,t,kind,text}]              闪卡笔记层
              state.cardIndex [sig] = id                              结构坐标→id：改名不换 id
              复习历史 = 现有的 state.records / reviewDone /
                         reviewOverrides / reviewDeleted / kpReviews
                         —— 闪卡模块对它们只读，一个字节都不写。
+
+           ★ 2026-09-18 内容层新增的三个字段（都在 state.cards 里，不碰复习历史）：
+             card.deleted  = true     需求 1：已删除。打标记而不是真删 —— ① 误删可恢复；
+                                      ② 真删了下次「生成 / 更新」会由 cardIndex 重建，
+                                      用户会以为删除失效（见 fcDelete 注释）。
+             card.mine     = {q,a,at} 需求 2：用户版本备份。「生成 / 更新」现在按学习记录
+                                      刷新内容，刷新前把用户改过的原值存这里，可一键切回。
+             card.pinMine  = true     需求 2：锁定。置真后该卡的内容不再被学习记录覆盖。
+             card.review   = {...}    需求 3：卡片级独立排期（自评掌握程度 → 下次复习日期）。
+                                      没有它 = 沿用记录级艾宾浩斯节点，行为与改造前一致。
            ============================================================ */
 
         const FC_NOTE_KINDS = [
@@ -9350,6 +9446,9 @@
         //    有了守卫，即使宿主再重复调用也只是空转。
         let fcBound = false;
         let fcEmbedRecord = null;   // 当前复习面板对应的学习记录
+        // ★ 需求 6：按「复习掌握程度」筛选。'' = 全部 ｜ 'none' = 未自评 ｜ '1'..'5' = 自评档位
+        //   与 fcQuery（关键词）是 and 关系，见 fcMatch。
+        let fcMasteryFilter = '';
 
         // ---------- 状态字段兜底 ----------
         function fcState() {
@@ -9795,6 +9894,8 @@
             const learned = null;
             const learnedN = nodes.length;
             let added = 0, kept = 0, refreshed = 0, gone = 0, hiddenKeep = 0, skipped = 0, scopeOutN = 0;
+            // ★ 2026-09-18：删除跳过数（需求 1）/ 用户锁定跳过数（需求 2）
+            let deletedKeep = 0, pinned = 0;
             const seen = {};
             const today = dateToStr(new Date());
             // 撞号消歧：同一 sig 下若有多个不同路径的节点，只让一个用原 sig（见 fcSigFixMap）
@@ -9817,10 +9918,19 @@
                     tier: n.tier, order: n.order, path: n.path.slice()
                 };
                 let card = state.cards[id];
+                // ★ 需求 1/2（2026-09-18）：已隐藏、已删除的卡不参与生成，也不被刷新。
+                //   必须放在最前面 —— 否则会被后面的 orphan 判定当成「还在树上的卡」再算一遍，
+                //   而且已删除的卡会被重建，用户会以为「删除失效」。
+                //   seen[id]=1 是给下面的 orphan 扫描看的：这张卡不是「不在范围」，是「有意跳过」。
+                if (card && (card.hidden || card.deleted)) {
+                    if (card.deleted) deletedKeep++; else hiddenKeep++;
+                    seen[id] = 1;
+                    return;
+                }
                 if (!card) {
                     card = {
                         id: id, q: autoQ, a: autoA, tags: [], src: srcNow,
-                        edited: false, hidden: false, manual: false,
+                        edited: false, hidden: false, deleted: false, pinMine: false, manual: false,
                         createdAt: today, editedAt: ''
                     };
                     state.cards[id] = card;
@@ -9828,8 +9938,22 @@
                 } else {
                     card.src = srcNow;          // 章节坐标是来源信息，始终跟随最新树
                     card.orphan = false;
-                    if (card.hidden) { hiddenKeep++; }
-                    else if (card.edited) { kept++; }        // 用户改过 → 内容一个字都不动
+                    // ★ 需求 2：点「生成 / 更新」= **按学习记录刷新**。
+                    //   旧行为是「用户改过就一个字都不动」，于是记录里的内容变了、卡片还停在
+                    //   旧文字上（Tom 报的就是这一点）。现在改成：学习记录是唯一真源，
+                    //   刷新前把用户版本原样存进 card.mine，卡上出现「↩ 恢复我的改动」；
+                    //   真不想被覆盖的，用编辑面板里的「📌 锁定我的版本」（card.pinMine）。
+                    //   ⚠️ 复习历史与笔记不在此列 —— 它们按 card id 存，刷新内容一个字都不影响。
+                    if (card.pinMine) { pinned++; }
+                    else if (card.edited) {
+                        if (card.q !== autoQ || card.a !== autoA) {
+                            card.mine = { q: card.q, a: card.a, at: card.editedAt || today };
+                            card.q = autoQ; card.a = autoA;
+                            card.edited = false;
+                            card.editedAt = today;
+                            refreshed++;
+                        } else { kept++; }
+                    }
                     else if (card.q !== autoQ || card.a !== autoA) { card.q = autoQ; card.a = autoA; refreshed++; }
                     else { kept++; }
                 }
@@ -9861,14 +9985,17 @@
             state.cardCfg.builtAt = new Date().toISOString();
             state.cardCfg.lastResult = {
                 added: added, kept: kept, refreshed: refreshed,
-                total: Object.keys(seen).length, skipped: skipped, learnedN: learnedN, scopeAll: scopeAll
+                total: Object.keys(seen).length, skipped: skipped, learnedN: learnedN, scopeAll: scopeAll,
+                deletedKeep: deletedKeep, pinned: pinned
             };
             if (!silent) {
                 saveData();
                 fcRender();
                 showToast('🃏 闪卡已更新：新增 ' + added + ' 张，沿用 ' + kept + ' 张' +
-                    (refreshed ? '，刷新 ' + refreshed + ' 张' : '') +
+                    (refreshed ? '，按学习记录刷新 ' + refreshed + ' 张' : '') +
+                    (pinned ? '，锁定未动 ' + pinned + ' 张' : '') +
                     (hiddenKeep ? '，跳过已隐藏 ' + hiddenKeep + ' 张' : '') +
+                    (deletedKeep ? '，跳过已删除 ' + deletedKeep + ' 张' : '') +
                     (skipped ? '，' + skipped + ' 张在第 ' + from + '–' + to + ' 级之外' : '') +
                     (scopeOutN ? '，' + scopeOutN + ' 张本次不在范围（历史保留）' : '') +
                     (gone ? '，' + gone + ' 张已不在学习记录中（历史保留）' : ''));
@@ -9882,7 +10009,8 @@
             const out = [];
             Object.keys(state.cards).forEach(function (id) {
                 const c = state.cards[id];
-                if (c && !c.hidden) out.push(c);
+                // ★ 需求 1：已删除的卡不进任何列表（连带月历 / 清单 / 统计）。
+                if (c && !c.hidden && !c.deleted) out.push(c);
             });
             out.sort(function (a, b) {
                 const sa = a.src || {}, sb = b.src || {};
@@ -9900,6 +10028,96 @@
             let n = 0;
             Object.keys(state.cards).forEach(function (id) { if (state.cards[id] && state.cards[id].hidden) n++; });
             return n;
+        }
+
+        // ---------- ★ 2026-09-18 需求 1：删除卡片 ----------
+        // 为什么是「打标记」而不是 delete state.cards[id]：
+        //   ① 复习历史与笔记是用户一轮轮攒出来的，真删不可逆 —— 打标记后可一键恢复；
+        //   ② 卡片内容是从学习记录派生的，真删了下次点「生成 / 更新」又会被 fcIdOf
+        //      用 cardIndex 里的 id 重建出来，用户会以为「删除失效」。
+        //      打了 deleted 标记后 fcBuild 会跳过它，删掉就是真的不再出现。
+        //   代价是存储里留着条目（几张卡的量级，可忽略），换来可恢复 + 删除可信。
+        function fcDeletedCount() {
+            fcState();
+            let n = 0;
+            Object.keys(state.cards).forEach(function (id) {
+                if (state.cards[id] && state.cards[id].deleted) n++;
+            });
+            return n;
+        }
+
+        function fcDelete(id) {
+            const card = state.cards[id];
+            if (!card) return;
+            if (!confirm('删除这张卡？\n\n' +
+                '· 它会从列表、复习排期与日历分布里消失，再点「⚡ 生成 / 更新」也不会重新生成它；\n' +
+                '· 已积累的复习记录与笔记不会被删除，顶部「🗑 恢复已删除」可以找回。')) return;
+            card.deleted = true;
+            card.deletedAt = dateToStr(new Date());
+            fcEditing = null;
+            if (fcDetailId === id) {
+                fcDetailId = null;
+                const d = document.getElementById('fcDetailDialog');
+                if (d && d.parentNode) d.parentNode.removeChild(d);
+            }
+            // 复习面板里正翻着这张卡 → 从内嵌列表里摘掉，否则会停在一张「已不存在」的卡上
+            try {
+                if (fcEmbedState && Array.isArray(fcEmbedState.ids)) {
+                    const k = fcEmbedState.ids.indexOf(id);
+                    if (k >= 0) {
+                        fcEmbedState.ids.splice(k, 1);
+                        if (fcEmbedState.idx >= fcEmbedState.ids.length) {
+                            fcEmbedState.idx = Math.max(0, fcEmbedState.ids.length - 1);
+                        }
+                        fcEmbedState.flipped = false;
+                        fcEmbedState.editing = false;
+                        fcEmbedRender();
+                    }
+                }
+            } catch (e) {}
+            saveData();
+            fcRefreshViews();
+            showToast('🗑 已删除（顶部「🗑 恢复已删除」可找回）');
+        }
+
+        function fcUnDeleteAll() {
+            fcState();
+            let n = 0;
+            Object.keys(state.cards).forEach(function (id) {
+                if (state.cards[id] && state.cards[id].deleted) { state.cards[id].deleted = false; n++; }
+            });
+            if (!n) { showToast('没有已删除的卡片'); return; }
+            saveData();
+            fcRefreshViews();
+            showToast('🗑 已恢复 ' + n + ' 张卡片（复习历史与笔记原样保留）');
+        }
+
+        // ---------- ★ 需求 2：把「生成 / 更新」覆盖掉的内容换回来 ----------
+        function fcRestoreMine(id) {
+            const card = state.cards[id];
+            if (!card || !card.mine) { showToast('⚠️ 这张卡没有可恢复的版本'); return; }
+            card.q = card.mine.q;
+            card.a = card.mine.a;
+            card.mine = null;
+            card.edited = true;
+            card.editedAt = dateToStr(new Date());
+            // 恢复自己的版本 ≈ 不想再被记录覆盖 → 顺手锁定，否则下次点更新又被刷走，
+            // 用户会觉得「刚恢复的又没了」。要回到跟随，点编辑面板里的「↻ 跟随学习记录」。
+            card.pinMine = true;
+            saveData();
+            fcRefreshViews();
+            showToast('↩ 已恢复你的版本，并锁定不再跟随学习记录（可点「↻ 跟随学习记录」解除）');
+        }
+
+        function fcTogglePin(id) {
+            const card = state.cards[id];
+            if (!card) return;
+            card.pinMine = !card.pinMine;
+            saveData();
+            fcRefreshViews();
+            showToast(card.pinMine
+                ? '📌 已锁定：内容不再跟随学习记录'
+                : '↻ 已解除锁定：下次「⚡ 生成 / 更新」时会按学习记录刷新');
         }
 
         function fcAutoTags(card) {
@@ -9925,6 +10143,14 @@
         }
 
         function fcMatch(card) {
+            // ★ 需求 6：先过「复习掌握程度」这道闸 —— 与关键词是 and 关系，
+            //   于是「★2 + 关键词」这种组合筛得出来。筛的是自评值（card.review.mastery），
+            //   与表格里「掌握」列（学习记录的理解星级）是两个维度，别混。
+            if (fcMasteryFilter) {
+                const m = (card.review && card.review.mastery) || 0;
+                if (fcMasteryFilter === 'none') { if (m) return false; }
+                else if (m !== parseInt(fcMasteryFilter, 10)) return false;
+            }
             if (!fcQuery) return true;
             const q = fcQuery.toLowerCase();
             const parts = [card.q, card.a].concat(card.tags || []).concat(fcAutoTags(card));
@@ -9969,7 +10195,8 @@
                 if (!set[fcUid(n)]) return;
                 const id = state.cardIndex[sigFix[fcUid(n)] || n.sig];
                 const c = id ? state.cards[id] : null;
-                if (c && !c.hidden) out.push(c);
+                // ★ 需求 1：已删除的卡不出现在任何「记录 → 卡」的出口里
+                if (c && !c.hidden && !c.deleted) out.push(c);
             });
             return out;
         }
@@ -10047,11 +10274,157 @@
         }
 
         function fcStatusOf(card) {
+            // ★ 需求 3：自评过掌握程度的卡有**自己的**排期，状态以它为准
+            //   （记录级的轮次进度退居其次 —— 否则一张自评「完全不记得」的卡
+            //    会因为记录那边 5 轮都勾完了而显示「复习完」，自相矛盾）。
+            const rv = fcReviewOf(card);
+            if (rv) {
+                const today = dateToStr(new Date());
+                if (rv.nextAt <= today) return { cls: 'due', text: '⭐ 到期复习' };
+                return { cls: 'ok', text: '下次 ' + rv.nextAt.slice(5) };
+            }
             const p = fcProgressOf(card);
             if (!p.linked) return { cls: 'fresh', text: '未关联记录' };
             if (!p.total) return { cls: 'fresh', text: '无排期' };
             if (p.done >= p.total) return { cls: 'ok', text: '复习完 ' + p.done + '/' + p.total };
             return { cls: 'due', text: '复习 ' + p.done + '/' + p.total };
+        }
+
+        // ============================================================
+        // ★ 2026-09-18 需求 3：卡片级独立排期（自评掌握程度 → 重算复习周期）
+        // ------------------------------------------------------------
+        // 改造前闪卡**不存排期**：完全按来源学习记录的艾宾浩斯节点（1/2/4/7/15 天）
+        // 排期，卡片自己一个日期都不记（见模块头注释「不另立一套排期」）。
+        //
+        // 本轮按 Tom 的口径改成**卡片级**：复习时自评的掌握程度决定这张卡下次
+        // 什么时候再出现 —— 掌握好把间隔拉长，掌握差缩短并回退一轮。
+        //
+        //   card.review = { mastery, lastAt, nextAt, stage, days, base, hist[] }
+        //
+        //   · 没有 review 的卡（从没自评过）→ 完全沿用记录级排期，行为与改造前一致
+        //   · 有 review 的卡 → 按 nextAt 单独出现在月历上（见 fcScheduleByDate），
+        //     且不再参与记录级的轮次计数（见 fcPendingCards / fcCardsForTask 的过滤）
+        //
+        // 于是两套排期并存但语义清晰：记录级管「这一节要复习几轮」，卡片级管
+        // 「这张卡自己下一次什么时候看」。日历分布两边都算进去，不重复计数。
+        //
+        // ⚠️ 自评只写 card.review —— records / reviewDone / reviewOverrides /
+        //    kpReviews / cardNotes 一个字节都不动。撤销自评即回到记录级排期。
+        // ============================================================
+        const FC_MASTERY_LEVELS = [
+            { v: 5, label: '脱口而出',   cls: 'm5', factor: 2.0, step: 1 },
+            { v: 4, label: '基本掌握',   cls: 'm4', factor: 1.5, step: 1 },
+            { v: 3, label: '勉强想起',   cls: 'm3', factor: 1.0, step: 0 },
+            { v: 2, label: '印象模糊',   cls: 'm2', factor: 0.6, step: -1 },
+            { v: 1, label: '完全不记得', cls: 'm1', factor: 0.3, step: -1 }
+        ];
+
+        function fcLevelOf(v) {
+            const n = parseInt(v, 10) || 0;
+            return FC_MASTERY_LEVELS.filter(function (x) { return x.v === n; })[0] || null;
+        }
+
+        // 有排期的卡（自评过）返回 review 对象，否则 null
+        function fcReviewOf(card) {
+            const rv = card && card.review;
+            return (rv && typeof rv === 'object' && rv.nextAt) ? rv : null;
+        }
+
+        // 自评 → 重算这张卡的下次复习日期。
+        // 间隔基数仍取 getReviewIntervals()（与记录级同一套节点，口径不分裂），
+        // stage 由掌握程度推进 / 回退：掌握 ≥4 前进一轮（基数更长），
+        // 掌握 ≤2 回退一轮（基数更短、更密集），掌握 3 原地不动。
+        function fcApplyMastery(card, m) {
+            if (!card) return null;
+            const lv = fcLevelOf(m);
+            if (!lv) return null;
+            fcState();
+            const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [];
+            const base0 = ivs.length ? ivs : [1, 2, 4, 7, 15];
+            const rv = fcReviewOf(card) || {};
+            const prevStage = parseInt(rv.stage, 10);
+            let stage = isFinite(prevStage) ? prevStage : 0;
+            stage = Math.max(0, Math.min(base0.length - 1, stage + lv.step));
+            const base = base0[stage] || base0[base0.length - 1] || 1;
+            const days = Math.max(1, Math.round(base * lv.factor));
+            const today = dateToStr(new Date());
+            const nextAt = memAddDays(today, days);
+            const hist = (Array.isArray(rv.hist) ? rv.hist : []).slice(-29);
+            hist.push({ d: today, m: lv.v, days: days, next: nextAt });
+            card.review = {
+                mastery: lv.v, lastAt: today, nextAt: nextAt,
+                stage: stage, days: days, base: base, hist: hist
+            };
+            return card.review;
+        }
+
+        // 撤销自评 → 回到记录级排期。历史档位留着（只清排期），方便回看。
+        function fcClearMastery(card) {
+            if (!card) return;
+            const rv = fcReviewOf(card);
+            const hist = (rv && Array.isArray(rv.hist)) ? rv.hist : [];
+            if (hist.length) card.review = { mastery: 0, lastAt: '', nextAt: '', stage: 0, days: 0, hist: hist };
+            else delete card.review;
+        }
+
+        // 「下次复习」人话
+        function fcNextText(card) {
+            const rv = fcReviewOf(card);
+            if (!rv) return '';
+            const today = dateToStr(new Date());
+            const gap = daysBetween(today, rv.nextAt);
+            if (rv.nextAt <= today) return '今天到期' + (gap > 0 ? '（已过 ' + gap + ' 天）' : '');
+            return rv.nextAt.slice(5).replace('-', ' 月 ') + ' 日 · ' + gap + ' 天后';
+        }
+
+        // 自评器：复习面板反面屏与闪卡编辑界面共用这一份 HTML（避免两处走样）
+        function fcSelfGradeHTML(card) {
+            if (!card) return '';
+            const rv = fcReviewOf(card);
+            const cur = rv ? rv.mastery : 0;
+            const btns = FC_MASTERY_LEVELS.map(function (lv) {
+                return '<button type="button" class="fm-b ' + lv.cls + (cur === lv.v ? ' on' : '') +
+                    '" data-fcgrade="' + lv.v + '" data-fcgid="' + kpEsc(card.id) + '" title="' + lv.label + '">' +
+                    '<b>' + fcStarStr(lv.v) + '</b><span>' + lv.label + '</span></button>';
+            }).join('');
+            return '<div class="fce-mastery">' +
+                '<div class="fm-head">🎯 本次复习掌握程度<span class="fm-sub">决定这张卡的下次复习时间，并反映到日历分布</span></div>' +
+                '<div class="fm-btns">' + btns + '</div>' +
+                '<div class="fm-foot">' + (rv
+                    ? ('<span class="fm-now">已自评 <b>' + fcStarStr(rv.mastery) + '</b> · ' + kpEsc(rv.lastAt) +
+                       ' · 间隔 ' + rv.days + ' 天 → 下次复习 <b>' + kpEsc(fcNextText(card)) + '</b></span>' +
+                       '<button type="button" class="fc-btn sm" data-fcgrade="0" data-fcgid="' + kpEsc(card.id) + '">撤销自评</button>')
+                    : '<span class="fm-now">还没自评 —— 这张卡当前跟随<b>学习记录</b>的复习节点排期</span>') +
+                '</div>' +
+            '</div>';
+        }
+
+        // 自评的落地动作：写 card.review → 落盘 → 刷新三处视图（闪卡页 / 复习面板 / 日历）
+        function fcGrade(id, v) {
+            const card = state.cards[id];
+            if (!card) return;
+            const n = parseInt(v, 10) || 0;
+            if (!n) {
+                fcClearMastery(card);
+                saveData();
+                fcRefreshViews();
+                showToast('↩ 已撤销自评，这张卡回到跟随学习记录的排期');
+                return;
+            }
+            const rv = fcApplyMastery(card, n);
+            if (!rv) return;
+            saveData();
+            fcRefreshViews();
+            showToast('🎯 已记为 ' + fcStarStr(rv.mastery) + '（间隔 ' + rv.days + ' 天）→ 下次复习 ' + fcNextText(card));
+        }
+
+        // 内容 / 排期一变，受影响的视图有三处：闪卡页、复习面板内嵌闪卡、记忆曲线日历。
+        // 各自 try 一下：任一不在当前 DOM 里（页签没打开）都不该把主流程打断。
+        function fcRefreshViews() {
+            try { fcRender(); } catch (e) {}
+            try { fcEmbedRender(); } catch (e) {}
+            try { if (typeof renderMemoryView === 'function') renderMemoryView(); } catch (e) {}
+            try { fcSyncTabBadge(); } catch (e) {}
         }
 
         // ---------- ★ 需求 5：复习界面的标签栏（章 / 节 / 掌握程度 / 复习次数）----------
@@ -10092,6 +10465,12 @@
                 (m ? fcStarStr(m.u) : '未评') + '</span>');
             chips.push('<span class="fct fct-count" title="已完成的复习轮次 / 总轮次">🔁 复习 ' +
                 (p.linked ? (p.done + '/' + p.total) : '—') + '</span>');
+            // ★ 需求 3：自评过的卡把「自己的」下次复习日期亮出来 —— 这是卡片级排期，
+            //   与上面的记录级轮次不是一回事，所以单独一枚章，不并进 fct-count。
+            if (fcReviewOf(card)) {
+                chips.push('<span class="fct fct-next" title="自评掌握程度后重算出的下次复习日期（卡片级排期）">📅 下次 ' +
+                    kpEsc(fcNextText(card)) + '</span>');
+            }
             if (card.edited) chips.push('<span class="fct fct-edited" title="内容被手工调整过">✏️ 已改过</span>');
             (card.tags || []).forEach(function (t) {
                 chips.push('<span class="fct fct-own" title="我的标签">🏷 ' + kpEsc(t) + '</span>');
@@ -10205,6 +10584,9 @@
             });
             const si = document.getElementById('fcSearch');
             if (si && si.value !== fcQuery) si.value = fcQuery;
+            // ★ 需求 6：掌握程度下拉也要跟着状态回填（例如别处改了筛选条件）
+            const ms = document.getElementById('fcMastery');
+            if (ms && ms.value !== fcMasteryFilter) ms.value = fcMasteryFilter;
 
             if (fcView === 'chapter') body.innerHTML = fcChapterHTML();
             else if (fcView === 'tag') body.innerHTML = fcTagHTML();
@@ -10214,20 +10596,29 @@
             fcBindBody(body);
         }
 
-        function fcSyncUnhideBtn(n) {
+        // 顶部「恢复」按钮的通用实现：数量为 0 时把按钮摘掉，>0 时挂上并更新文案。
+        // 隐藏与删除各要一个，所以抽出来 —— 不然第二份就是复制粘贴（本文件的老毛病）。
+        function fcSyncRestoreBtn(btnId, n, text, handler) {
             const head = document.querySelector('#fcWrap .fc-head');
             if (!head) return;
-            let b = document.getElementById('fcUnhideBtn');
+            let b = document.getElementById(btnId);
             if (!n) { if (b && b.parentNode) b.parentNode.removeChild(b); return; }
             if (!b) {
                 b = document.createElement('button');
                 b.type = 'button';
                 b.className = 'fc-btn';
-                b.id = 'fcUnhideBtn';
-                b.addEventListener('click', fcUnhideAll);
+                b.id = btnId;
+                b.addEventListener('click', handler);
                 head.appendChild(b);
             }
-            b.textContent = '👁 恢复已隐藏 (' + n + ')';
+            b.textContent = text;
+        }
+
+        function fcSyncUnhideBtn(n) {
+            fcSyncRestoreBtn('fcUnhideBtn', n, '👁 恢复已隐藏 (' + n + ')', fcUnhideAll);
+            let dn = 0;
+            try { dn = fcDeletedCount(); } catch (e) { dn = 0; }
+            fcSyncRestoreBtn('fcUnDelBtn', dn, '🗑 恢复已删除 (' + dn + ')', fcUnDeleteAll);
         }
 
         function fcUnhideAll() {
@@ -10372,6 +10763,10 @@
             const flags = [];
             if (card.edited) flags.push('<span class="fc-flag edited">已编辑</span>');
             if (card.manual) flags.push('<span class="fc-flag manual">自建</span>');
+            // ★ 需求 2：两个新标记 —— 「生成 / 更新」现在会按记录刷新，所以要让用户看得见
+            //   「这张卡被我锁定了」和「我改过的版本还留着一份」。
+            if (card.pinMine) flags.push('<span class="fc-flag pinned" title="内容已锁定，不再被学习记录覆盖">📌 已锁定</span>');
+            if (card.mine) flags.push('<span class="fc-flag mine" title="「⚡ 生成 / 更新」覆盖过你改的内容，编辑面板里可一键恢复">↩ 可恢复我的改动</span>');
             if (card.orphan) flags.push('<span class="fc-flag orphan">树中已不存在</span>');
             else if (card.scopeOut) flags.push('<span class="fc-flag scope" title="这个节点还在大纲里，只是本次出卡范围没覆盖到它（没学到 / 层级范围外）">范围外 · 本次未生成</span>');
             const a1 = String(card.a || '').split('\n').filter(function (x) { return x.trim(); });
@@ -10416,13 +10811,24 @@
                 '<div class="pf"><label>我的标签（逗号分隔；章节标签由系统自动带出，无需手填）</label>' +
                     '<input type="text" id="fcEt" value="' + kpEsc(own) + '" placeholder="如：易错, 计算题, 考前必看">' +
                     '<div class="fc-hint">自动标签：' + kpEsc(fcAutoTags(card).join(' / ') || '（无）') + '</div></div>' +
-                '<div class="fc-hint">✏️ 修改只作用于这张卡的文字与标签 —— 不触碰任何已积累的复习记录、轮次完成情况与笔记。</div>' +
+                '<div class="fc-hint">✏️ 修改只作用于这张卡的文字与标签 —— 不触碰任何已积累的复习记录、轮次完成情况与笔记。' +
+                    '点「⚡ 生成 / 更新」时，被记录覆盖前会先把你的版本存一份，可随时用「↩ 恢复我的改动」换回。</div>' +
+                // ★ 需求 3：编辑界面直接给「本次复习掌握程度」——自评后这张卡改用
+                //   卡片级排期（下次复习日期由自评值算出），并同步到日历分布。
+                fcSelfGradeHTML(card) +
                 '<div class="fc-edit-actions">' +
                     '<button type="button" class="fc-btn primary fc-esave" data-fcsave="' + card.id + '">保存</button>' +
                     '<button type="button" class="fc-btn fc-ecancel" data-fccancel="1">取消</button>' +
                     '<span class="fc-spacer"></span>' +
+                    (card.mine ? '<button type="button" class="fc-btn sm" data-fcmine="' + card.id + '" title="把「生成 / 更新」覆盖掉的内容换回来">↩ 恢复我的改动</button>' : '') +
+                    (card.edited || card.pinMine
+                        ? '<button type="button" class="fc-btn sm" data-fcpin="' + card.id + '" title="锁定后这张卡的内容不再被学习记录覆盖">' +
+                          (card.pinMine ? '↻ 跟随学习记录' : '📌 锁定我的版本') + '</button>'
+                        : '') +
                     '<button type="button" class="fc-btn sm fc-ebase" data-fcbase="' + card.id + '">恢复系统原文</button>' +
-                    '<button type="button" class="fc-btn sm danger fc-ehide" data-fchide="' + card.id + '">隐藏此卡</button>' +
+                    '<button type="button" class="fc-btn sm fc-ehide" data-fchide="' + card.id + '">隐藏此卡</button>' +
+                    // ★ 需求 1：删除（与「隐藏」并列；隐藏 = 暂时不看，删除 = 更新也不再生成）
+                    '<button type="button" class="fc-btn sm del fc-edel" data-fcdel="' + card.id + '">🗑 删除此卡</button>' +
                 '</div>' +
             '</div>';
         }
@@ -10562,11 +10968,20 @@
         // ---------- 待复习（与记录复习同一套排期） ----------
         function fcPendingCards() {
             const today = dateToStr(new Date());
-            const items = (typeof getReviewItems === 'function') ? getReviewItems(today).pending : [];
             const ids = {}, out = [];
+            // ★ 需求 3：先收「自评过、且已到期」的卡 —— 它们的到期日由 card.review.nextAt
+            //   决定（与月历 fcScheduleByDate 同源），跟记录级的轮次没关系。
+            fcVisibleCards().forEach(function (c) {
+                const rv = fcReviewOf(c);
+                if (rv && rv.nextAt <= today && !ids[c.id]) { ids[c.id] = 1; out.push(c); }
+            });
+            // 其余卡：仍按记录级复习清单（已完成勾选语义不变）
+            const items = (typeof getReviewItems === 'function') ? getReviewItems(today).pending : [];
             items.forEach(function (it) {
                 fcCardsForRecord(it.record).forEach(function (c) {
-                    if (!ids[c.id]) { ids[c.id] = 1; out.push(c); }
+                    if (ids[c.id]) return;
+                    if (fcReviewOf(c)) return;      // 自评过的卡不再重复跟随记录级排期
+                    ids[c.id] = 1; out.push(c);
                 });
             });
             return out;
@@ -10576,6 +10991,7 @@
         function fcUnScheduledCards() {
             const out = [];
             fcVisibleCards().forEach(function (c) {
+                if (fcReviewOf(c)) return;      // ★ 需求 3：自评过就有自己的排期了
                 const p = fcProgressOf(c);
                 if (!p.linked) { out.push(c); return; }
                 if (p.total === 0) out.push(c);
@@ -10591,8 +11007,9 @@
             const uns = fcUnScheduledCards().filter(fcMatch);
             const today = dateToStr(new Date());
             let h = '<div class="fc-progress" style="margin:2px 0 8px;">' +
-                '闪卡的复习排期与上方「复习清单 / 月历」<b>完全共用</b>同一套艾宾浩斯节点（' +
-                getReviewIntervals().join(' / ') + ' 天）。这里按内容形式再列一次。</div>';
+                '没有自评过的卡，排期与上方「复习清单 / 月历」<b>共用</b>同一套艾宾浩斯节点（' +
+                getReviewIntervals().join(' / ') + ' 天）；' +
+                '<b>自评过掌握程度</b>的卡改用<b>卡片级排期</b>（下次复习日期由自评值算出，见卡片反面）。</div>';
             if (pend.length) {
                 h += fcGroupHTML('fcpending', '⏰ 今天该复习的闪卡',
                     '<span class="fc-gmeta">' + pend.length + ' 张 · 来自 ' + today + ' 的复习清单</span>',
@@ -10643,6 +11060,15 @@
                 if (base) { e.stopPropagation(); fcEditRestore(base.dataset.fcbase); return; }
                 const hide = t.closest ? t.closest('[data-fchide]') : null;
                 if (hide) { e.stopPropagation(); fcHide(hide.dataset.fchide); return; }
+                // ★ 2026-09-18 新增四件事：删除（需求 1）/ 恢复我的改动 / 锁定 / 自评（需求 2、3）
+                const del = t.closest ? t.closest('[data-fcdel]') : null;
+                if (del) { e.stopPropagation(); fcDelete(del.dataset.fcdel); return; }
+                const mine = t.closest ? t.closest('[data-fcmine]') : null;
+                if (mine) { e.stopPropagation(); fcRestoreMine(mine.dataset.fcmine); return; }
+                const pinb = t.closest ? t.closest('[data-fcpin]') : null;
+                if (pinb) { e.stopPropagation(); fcTogglePin(pinb.dataset.fcpin); return; }
+                const mg = t.closest ? t.closest('[data-fcgrade]') : null;
+                if (mg) { e.stopPropagation(); fcGrade(mg.dataset.fcgid, mg.dataset.fcgrade); return; }
                 const eb = t.closest ? t.closest('[data-fcedit]') : null;
                 if (eb) { e.stopPropagation(); fcEditing = (fcEditing === eb.dataset.fcedit) ? null : eb.dataset.fcedit; fcRender(); return; }
                 // ★ 需求 6：点卡片本身 → 直接进复习模块（与记忆曲线同一套排期与统计）
@@ -10705,20 +11131,13 @@
             showToast('🙈 已隐藏');
         }
 
-        function fcNewCard() {
-            fcState();
-            const id = fcNewId();
-            state.cards[id] = {
-                id: id, q: '（新卡片：点 ✎ 写正面）', a: '', tags: [], src: null,
-                edited: true, hidden: false, manual: true,
-                createdAt: dateToStr(new Date()), editedAt: dateToStr(new Date())
-            };
-            fcEditing = id;
-            fcView = 'chapter';
-            saveData();
-            fcRender();
-            showToast('➕ 已新建一张自建卡，请点 ✎ 填写内容');
-        }
+        // ★ 2026-09-18 需求 5：`fcNewCard()` 已删除 —— 自建卡功能下线。
+        //   闪卡一律由「学习记录 · 知识点速记」派生（fcBuild），内容层的第二个入口
+        //   会让「卡片 ↔ 记录」的对齐关系出现无源之水，也让「生成 / 更新」的语义
+        //   说不清（记录里没有对应节点的卡，更新时该保留还是该清？）。
+        //   ⚠️ 历史上已建的自建卡数据不动：它们仍留在 state.cards 里（manual:true），
+        //      照常显示、可编辑、可删除，只是不再有新的入口。
+        //      按钮 `#fcNewBtn` 同时从 HTML 里移除，见本文件闪卡筛选条。
 
         // ---------- 卡片详情（浏览 / 编辑 / 看笔记） ----------
         function fcDetail(id, keep) {
@@ -10755,6 +11174,8 @@
                 fcNoteSectionsHTML(card, notes, 'fcdNote') +
                 '<div class="pd-actions">' +
                     '<button type="button" class="fc-btn ghost" id="fcdClose">关闭</button>' +
+                    // ★ 需求 1：详情弹窗也放删除 —— 从列表点进来的人不该为了删卡再折回编辑面板
+                    '<button type="button" class="fc-btn del" id="fcdDel">🗑 删除此卡</button>' +
                     '<button type="button" class="fc-btn" id="fcdEdit">✎ 编辑内容与标签</button>' +
                 '</div>' +
             '</div>';
@@ -10762,6 +11183,7 @@
             const close = function () { if (box.parentNode) box.parentNode.removeChild(box); fcDetailId = null; };
             box.onclick = function (e) { if (e.target === box) close(); };
             box.querySelector('#fcdClose').onclick = close;
+            box.querySelector('#fcdDel').onclick = function () { fcDelete(id); };
             box.querySelector('#fcdEdit').onclick = function () {
                 close(); fcEditing = id; fcView = 'chapter'; fcRender();
                 const row = document.querySelector('#fcBody .fc-row[data-fcid="' + id + '"]');
@@ -10898,11 +11320,18 @@
                         '<div class="pf"><label>我的标签（逗号分隔；章节标签系统自动带出，无需手填）</label>' +
                             '<input type="text" id="fceEt" value="' + kpEsc((card.tags || []).join(', ')) + '">' +
                             '<div class="fc-hint">自动标签：' + kpEsc(fcAutoTags(card).join(' / ') || '（无）') + '</div></div>' +
-                        '<div class="fc-hint">✏️ 修改只作用于这张卡的文字与标签 —— 不触碰已积累的复习记录、轮次完成情况与笔记。保存后下次打开可继续补充。</div>' +
+                        '<div class="fc-hint">✏️ 修改只作用于这张卡的文字与标签 —— 不触碰已积累的复习记录、轮次完成情况与笔记。保存后下次打开可继续补充。' +
+                            '点「⚡ 生成 / 更新」时，被记录覆盖前会先把你的版本存一份。</div>' +
+                        // ★ 需求 3：闪卡编辑界面里的「本次复习掌握程度」
+                        fcSelfGradeHTML(card) +
                         '<div class="fc-edit-actions">' +
                             '<button type="button" class="fc-btn primary" data-fce-save="1">保存</button>' +
                             '<span class="fc-spacer"></span>' +
+                            (card.mine ? '<button type="button" class="fc-btn sm" data-fcmine="' + kpEsc(card.id) + '">↩ 恢复我的改动</button>' : '') +
+                            '<button type="button" class="fc-btn sm" data-fcpin="' + kpEsc(card.id) + '">' +
+                                (card.pinMine ? '↻ 跟随学习记录' : '📌 锁定我的版本') + '</button>' +
                             '<button type="button" class="fc-btn sm" data-fce-restore="1">恢复系统原文</button>' +
+                            '<button type="button" class="fc-btn sm del" data-fce-del="1">🗑 删除此卡</button>' +
                         '</div>' +
                     '</div>';
                 return;
@@ -10932,6 +11361,8 @@
                     '<div class="fc-face-a">' + kpEsc(card.a || '（无）') + '</div>' +
                     // 标签栏：章 / 节 / 掌握程度 / 复习次数（另起一栏，在答案下方）
                     fcTagStripHTML(card) +
+                    // ★ 需求 3：看完答案顺手自评 —— 自评值决定这张卡下次什么时候再出现
+                    fcSelfGradeHTML(card) +
                     '<div class="fce-subtitle">📝 复习补充（本轮新学到 / 联想到的，可一直加）</div>' +
                     fcNoteSectionsHTML(card, notes, 'fceNote') +
                 '</div>';
@@ -10959,6 +11390,20 @@
                     if (c && fcEmbedSave(c)) { fcEmbedState.editing = false; fcEmbedRender(); fcRender(); }
                     return;
                 }
+                // ★ 需求 1：复习面板里直接删除这张卡（fcDelete 内部会把 id 从内嵌列表摘掉）
+                if (pick('data-fce-del') && fcEmbedState) {
+                    const c = curCard();
+                    if (c) fcDelete(c.id);
+                    return;
+                }
+                // ★ 需求 2：恢复我的改动 / 锁定（两者都只改内容层，不碰复习历史）
+                const mineBtn = pick('data-fcmine');
+                if (mineBtn) { fcRestoreMine(mineBtn.getAttribute('data-fcmine')); return; }
+                const pinBtn = pick('data-fcpin');
+                if (pinBtn) { fcTogglePin(pinBtn.getAttribute('data-fcpin')); return; }
+                // ★ 需求 3：自评掌握程度（fcGrade 内部会重绘本面板与月历）
+                const gradeBtn = pick('data-fcgrade');
+                if (gradeBtn) { fcGrade(gradeBtn.getAttribute('data-fcgid'), gradeBtn.getAttribute('data-fcgrade')); return; }
                 if (pick('data-fce-restore') && fcEmbedState) {
                     const c = curCard();
                     if (c) { fcEmbedRestore(c); fcEmbedRender(); fcRender(); }
@@ -11047,6 +11492,14 @@
                     fcQuery = s.value.trim();
                     clearTimeout(s._fcT);
                     s._fcT = setTimeout(fcRender, 160);
+                });
+            }
+            // ★ 需求 6：复习掌握程度筛选。即时生效（下拉没有输入中间态，不需要防抖）。
+            const msel = document.getElementById('fcMastery');
+            if (msel) {
+                msel.addEventListener('change', function () {
+                    fcMasteryFilter = msel.value || '';
+                    fcRender();
                 });
             }
             fcRender();
@@ -11810,16 +12263,34 @@
             const rvOv = state.reviewOverrides || {};
             const rvDel = state.reviewDeleted || {};
             const ivs = getReviewIntervals();
+            // slot 取用即建：卡片级排期与记录级排期是两遍扫描，谁先写到哪一天都可能
+            const slotOf = function (ds) { return out[ds] || (out[ds] = { total: 0, done: 0, src: {} }); };
+
+            // ---------- ① 卡片级排期（★ 需求 3）----------
+            // 自评过掌握程度的卡不跟记录轮次走，只出现在自己的 nextAt 那天。
+            // 「已完成」不需要额外勾选：用户当天自评后 nextAt 自动前移，它就从那天消失了。
+            const ownSched = {};
+            fcVisibleCards().forEach(function (c) {
+                const rv = fcReviewOf(c);
+                if (!rv) return;
+                ownSched[c.id] = 1;
+                const slot = slotOf(rv.nextAt);
+                const rec = slot.src[c.id] || (slot.src[c.id] = { card: c, pend: 0 });
+                rec.pend++;
+            });
+
+            // ---------- ② 记录级排期（原有口径，跳过已有自己排期的卡）----------
             (state.records || []).forEach(r => {
                 if (r.addToMemory === false) return;                  // 未加入记忆曲线 → 不排期
-                const cards = fcCardsForTask({ record: r }).filter(c => c && !c.hidden);
+                const cards = fcCardsForTask({ record: r })
+                    .filter(c => c && !c.hidden && !c.deleted && !ownSched[c.id]);
                 if (!cards.length) return;                            // 闪卡还没生成 → 这天不出现标记
                 ivs.forEach((iv, i) => {
                     const round = i + 1;
                     const key = r.id + '#' + round;
                     if (rvDel[key]) return;
                     const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
-                    const slot = out[sched] || (out[sched] = { total: 0, done: 0, src: {} });
+                    const slot = slotOf(sched);
                     const isDone = doneKeys.has(key);
                     cards.forEach(c => {
                         const rec = slot.src[c.id] || (slot.src[c.id] = { card: c, pend: 0 });
@@ -14817,7 +15288,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917z</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917aa</div>
 <!-- build-tag:end -->
 </body>
 </html>
