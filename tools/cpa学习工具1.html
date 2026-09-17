@@ -2072,6 +2072,167 @@
 .rv-dialog textarea { line-height: 1.55; resize: vertical; }
 .rv-dialog textarea[readonly] { background: #F5F1E8; color: #6E6355; }
 @media (max-width: 560px) { .rv-dialog .pf-row { flex-direction: column; gap: 0; } }
+/* ===== 闪卡模块（自动生成 · 按章节/标签归类 · 内容可编辑） ===== */
+.fc-wrap { margin-top: 14px; background: #FFFDF8; border: 1px solid #E6DCCB; border-radius: 12px; padding: 14px 15px 16px; }
+.fc-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.fc-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: #3E372E; letter-spacing: .3px; }
+.fc-sub { font-size: 12px; color: #8A7F6E; }
+.fc-spacer { flex: 1 1 auto; }
+.fc-btn { border: 1px solid #D9CDB8; background: #FBF7EF; color: #6F5C45; border-radius: 8px;
+          padding: 5px 11px; font-size: 12.5px; cursor: pointer; transition: .15s; font-family: inherit; }
+.fc-btn:hover { background: #F1E9DA; border-color: #C7B79C; }
+.fc-btn.primary { background: #8A7358; border-color: #8A7358; color: #FAF7F1; font-weight: 600; }
+.fc-btn.primary:hover { background: #7A6449; }
+.fc-btn.sm { padding: 3px 8px; font-size: 11.5px; }
+.fc-btn.danger { color: #A6503C; border-color: #E3C7BE; background: #FDF7F4; }
+.fc-btn.danger:hover { background: #F7E9E3; }
+
+.fc-range { margin: 8px 0 2px; padding: 9px 11px; background: #FBF7EF; border: 1px dashed #DCCFB8;
+            border-radius: 9px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: #6F5C45; }
+.fc-range label { display: inline-flex; align-items: center; gap: 5px; }
+.fc-range select { font-family: inherit; font-size: 12.5px; border: 1px solid #D9CDB8; border-radius: 6px;
+                   background: #FFFDF8; color: #4A4238; padding: 3px 6px; }
+.fc-range-hint { flex: 1 1 220px; font-size: 11.5px; color: #9A8E7C; line-height: 1.5; }
+
+.fc-tabs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 11px 0 10px; }
+.fc-tab { border: 1px solid #E0D5C2; background: #FFFDF8; color: #7A6A56; border-radius: 999px;
+          padding: 4px 12px; font-size: 12.5px; cursor: pointer; font-family: inherit; transition: .15s;
+          display: inline-flex; align-items: center; gap: 5px; }
+.fc-tab:hover { background: #F4EDE0; }
+.fc-tab.active { background: #8A7358; border-color: #8A7358; color: #FAF7F1; font-weight: 600; }
+.fc-badge { background: #E8DECB; color: #6F5C45; font-size: 10.5px; line-height: 1; padding: 3px 6px;
+            border-radius: 999px; font-weight: 700; }
+.fc-tab.active .fc-badge { background: rgba(255,255,255,.28); color: #FAF7F1; }
+.fc-badge.hot { background: #A6503C; color: #FBF3EF; }
+.fc-search { font-family: inherit; font-size: 12.5px; border: 1px solid #E0D5C2; border-radius: 8px;
+             background: #FFFDF8; color: #4A4238; padding: 4px 10px; min-width: 150px; }
+.fc-search::placeholder { color: #B3A896; }
+
+.fc-empty { color: #9A8E7C; font-size: 13px; padding: 18px 6px; text-align: center; line-height: 1.7; }
+.fc-empty b { color: #6F5C45; }
+
+/* —— 树 / 分组 —— */
+.fc-group { margin-bottom: 7px; border: 1px solid #EDE4D5; border-radius: 9px; background: #FFFDF8; overflow: hidden; }
+.fc-group > .fc-ghead { display: flex; align-items: center; gap: 7px; padding: 7px 10px; cursor: pointer;
+                        background: #FBF7EF; font-size: 13px; color: #4A4238; user-select: none; }
+.fc-group > .fc-ghead:hover { background: #F4EDE0; }
+.fc-group .fc-caret { width: 12px; color: #A99A83; font-size: 11px; transition: transform .15s; }
+.fc-group.closed .fc-caret { transform: rotate(-90deg); }
+.fc-group.closed > .fc-gbody { display: none; }
+.fc-gbody { padding: 4px 6px 7px; }
+.fc-gname { font-weight: 600; color: #3E372E; }
+.fc-gmeta { font-size: 11.5px; color: #9A8E7C; }
+.fc-gbody .fc-group { margin: 5px 0 5px 12px; }
+.fc-gbody .fc-group:last-child { margin-bottom: 0; }
+.fc-indent { margin-left: 12px; }
+
+/* —— 卡片行 —— */
+.fc-row { display: flex; align-items: flex-start; gap: 9px; padding: 7px 9px; border-radius: 8px;
+          border: 1px solid #F0E8DA; background: #FFFEFB; margin: 4px 0; cursor: pointer; transition: .13s; }
+.fc-row:hover { background: #FBF6EC; border-color: #E2D5BE; }
+.fc-row .fc-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: #C9BDA6; }
+.fc-row .fc-dot.due { background: #A6503C; }
+.fc-row .fc-dot.fresh { background: #B08A4A; }
+.fc-row .fc-dot.ok { background: #77805C; }
+.fc-row .fc-main { flex: 1 1 auto; min-width: 0; }
+.fc-row .fc-q { font-size: 13px; color: #3E372E; line-height: 1.55; word-break: break-word; }
+.fc-row .fc-a { font-size: 11.5px; color: #9A8E7C; margin-top: 2px; word-break: break-word;
+                display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.fc-row .fc-side { flex: 0 0 auto; text-align: right; font-size: 11px; color: #A99A83; line-height: 1.6; }
+.fc-row .fc-flag { display: inline-block; font-size: 10.5px; padding: 2px 6px; border-radius: 999px;
+                   background: #F1E9DA; color: #7A6A56; margin-left: 4px; }
+.fc-row .fc-flag.edited { background: #E7EDDD; color: #5C6647; }
+.fc-row .fc-flag.orphan { background: #F3E3DC; color: #A6503C; }
+.fc-row .fc-flag.manual { background: #E4E9F0; color: #55647A; }
+
+.fc-tagline { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.fc-tag { font-size: 10.5px; padding: 2px 7px; border-radius: 999px; background: #F2EDE4; color: #6E6355; }
+.fc-tag.auto { background: #EFEAF6; color: #6A5C86; }
+.fc-tag.own { background: #E7EDDD; color: #5C6647; }
+
+/* —— 编辑面板（卡片行内展开） —— */
+.fc-edit { margin: 4px 0 8px; padding: 10px 11px; border: 1px solid #E2D5BE; border-radius: 9px; background: #FBF7EF; }
+.fc-edit .pf { margin-bottom: 7px; }
+.fc-edit .pf:last-child { margin-bottom: 0; }
+.fc-edit textarea, .fc-edit input[type=text] { width: 100%; box-sizing: border-box; font-family: inherit;
+    font-size: 12.5px; border: 1px solid #D9CDB8; border-radius: 7px; background: #FFFDF8; color: #3E372E;
+    padding: 6px 8px; resize: vertical; line-height: 1.6; }
+.fc-edit label { display: block; font-size: 11.5px; color: #7A6A56; margin-bottom: 3px; font-weight: 600; }
+.fc-edit .fc-hint { font-size: 11px; color: #A99A83; margin-top: 3px; line-height: 1.5; }
+.fc-edit-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+
+/* —— 复习面板 —— */
+.fc-panel .plan-dialog { max-width: 620px; }
+.fc-card-box { border: 1px solid #E6DCCB; border-radius: 11px; background: #FFFDF8; padding: 16px 17px; margin: 10px 0; }
+.fc-face-label { font-size: 11.5px; color: #A99A83; letter-spacing: 1px; margin-bottom: 6px; font-weight: 600; }
+.fc-face-q { font-size: 18px; line-height: 1.65; color: #2F2820; font-weight: 600; word-break: break-word; }
+.fc-face-a { font-size: 14.5px; line-height: 1.85; color: #3E372E; white-space: pre-wrap; word-break: break-word; }
+.fc-flip { display: block; width: 100%; margin-top: 14px; padding: 10px; border-radius: 9px;
+           border: 1px dashed #CBB99C; background: #FBF7EF; color: #6F5C45; font-size: 13.5px;
+           cursor: pointer; font-family: inherit; }
+.fc-flip:hover { background: #F4EDE0; }
+.fc-notes { margin-top: 14px; border-top: 1px dashed #E0D5C2; padding-top: 10px; }
+.fc-note-sec { margin-bottom: 9px; }
+.fc-note-sec > .fc-ns-head { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #6F5C45;
+                             font-weight: 600; margin-bottom: 5px; }
+.fc-note-sec > .fc-ns-head .fc-btn { margin-left: auto; }
+.fc-note { font-size: 12.5px; color: #4A4238; line-height: 1.7; background: #FBF7EF; border-left: 3px solid #DCCFB8;
+           border-radius: 0 7px 7px 0; padding: 6px 9px; margin: 4px 0; white-space: pre-wrap; word-break: break-word; }
+.fc-note .fc-note-t { font-size: 10.5px; color: #A99A83; display: block; margin-bottom: 2px; }
+.fc-note.c-supplement { border-left-color: #8A9A62; }
+.fc-note.c-assoc { border-left-color: #8C7BA6; }
+.fc-note.c-tip { border-left-color: #C29A46; }
+.fc-note-empty { font-size: 11.5px; color: #B3A896; padding: 2px 0 2px 3px; }
+.fc-note-add { display: flex; gap: 6px; margin-top: 5px; }
+.fc-note-add textarea { flex: 1 1 auto; font-family: inherit; font-size: 12.5px; border: 1px solid #D9CDB8;
+    border-radius: 7px; background: #FFFDF8; color: #3E372E; padding: 6px 8px; resize: vertical; line-height: 1.6; }
+.fc-grade { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.fc-grade button { flex: 1 1 100px; padding: 10px 6px; border-radius: 9px; border: 1px solid #D9CDB8;
+                   background: #FBF7EF; color: #4A4238; font-size: 13px; cursor: pointer; font-family: inherit;
+                   font-weight: 600; transition: .15s; }
+.fc-grade button:hover { background: #F1E9DA; }
+.fc-grade button.g-forgot { border-color: #DFC0B6; color: #A6503C; }
+.fc-grade button.g-forgot:hover { background: #F7E9E3; }
+.fc-grade button.g-blur { border-color: #E0CFA8; color: #9A7A2E; }
+.fc-grade button.g-blur:hover { background: #F7F0DF; }
+.fc-grade button.g-know { border-color: #C3CDAB; color: #5C6647; }
+.fc-grade button.g-know:hover { background: #EDF2E4; }
+.fc-panel-foot { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-top: 11px;
+                 font-size: 11.5px; color: #9A8E7C; }
+.fc-progress { font-size: 11.5px; color: #8A7F6E; }
+
+@media (max-width: 640px) {
+    .fc-wrap { padding: 11px 11px 13px; }
+    .fc-head h3 { font-size: 15px; }
+    .fc-face-q { font-size: 16px; }
+    .fc-search { min-width: 0; flex: 1 1 100%; }
+    .fc-range-hint { flex-basis: 100%; }
+    .fc-row .fc-side { display: none; }
+}
+
+/* ===== 复习面板里的闪卡区（记录复习 · 学习笔记即闪卡） ===== */
+.fce-wrap { border: 1px solid #E6DCCB; border-radius: 11px; background: #FBF7EF; padding: 12px 13px; margin: 6px 0 12px; }
+.fce-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 9px; }
+.fce-title { font-size: 13.5px; font-weight: 700; color: #3E372E; }
+.fce-count { font-size: 11.5px; color: #8A7F6E; }
+.fce-count b { color: #6F5C45; font-size: 13px; }
+.fce-box { background: #FFFDF8; border: 1px solid #E6DCCB; border-radius: 10px; padding: 15px 16px; }
+.fce-flip { display: block; width: 100%; margin-top: 14px; padding: 11px; border-radius: 9px;
+            border: 1px dashed #CBB99C; background: #F6F1E6; color: #6F5C45; font-size: 14px;
+            cursor: pointer; font-family: inherit; font-weight: 600; }
+.fce-flip:hover { background: #EFE7D7; }
+.fce-div { margin: 13px 0 11px; border-top: 1px dashed #E0D5C2; }
+.fce-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 11px; }
+
+/* ===== 卡片详情 ===== */
+.fc-detail-box { border: 1px solid #E6DCCB; border-radius: 11px; background: #FFFDF8; padding: 15px 16px; margin: 10px 0; }
+
+/* ===== 复习 / 详情弹窗放大（闪卡内容放得下） ===== */
+.plan-dialog.rv-dialog { max-width: 820px; }
+@media (max-width: 700px) {
+    .plan-dialog.rv-dialog { max-width: 100%; padding: 15px; }
+    .fce-box { padding: 12px 12px; }
+}
     </style>
     <style>
         /* 「✎ 标题」章/节标题编辑弹窗 */
@@ -2768,6 +2929,33 @@
             </div>
             <div class="mem-detail" id="memDetail">
                 <div class="mem-detail-empty">点击日历中的任意一天，查看当天学习内容与记忆保持曲线</div>
+            </div>
+            <!-- ===== 🃏 闪卡模块（放在月历 / 复习清单 / 当日详情之后） =====
+                 数据来源：项目的知识点树（kpTree）—— 一个「还有下级」的节点 = 一张卡，
+                 正面 = 节点名，反面 = 直接下级。内容可编辑，且编辑不影响任何复习历史。 -->
+            <div class="fc-wrap" id="fcWrap">
+                <div class="fc-head">
+                    <h3>🃏 闪卡</h3>
+                    <span class="fc-sub" id="fcStat">尚未生成</span>
+                    <span class="fc-spacer"></span>
+                    <button type="button" class="fc-btn" id="fcRangeBtn" title="设置出题 / 展开的层级范围">⚙️ 层级范围</button>
+                    <button type="button" class="fc-btn primary" id="fcBuildBtn">⚡ 生成 / 更新</button>
+                </div>
+                <div class="fc-range" id="fcRange" style="display:none;">
+                    <label>起点 <select id="fcFrom"></select></label>
+                    <label>终点 <select id="fcTo"></select></label>
+                    <button type="button" class="fc-btn sm" id="fcRangeOk">应用</button>
+                    <span class="fc-range-hint">只对范围内「还有下一级」的知识点出卡；最末一级（叶子）不出题。改范围不会删除已有卡片和复习记录。</span>
+                </div>
+                <div class="fc-tabs" id="fcTabs">
+                    <button type="button" class="fc-tab active" data-fcmode="chapter">🌳 按章节</button>
+                    <button type="button" class="fc-tab" data-fcmode="tag">🏷 按标签</button>
+                    <button type="button" class="fc-tab" data-fcmode="due">⏰ 待复习<span class="fc-badge" id="fcDueBadge">0</span></button>
+                    <span class="fc-spacer"></span>
+                    <button type="button" class="fc-btn sm" id="fcNewBtn" title="手工新建一张不属于知识点树的卡片">➕ 自建卡</button>
+                    <input type="text" class="fc-search" id="fcSearch" placeholder="搜索卡片 / 标签">
+                </div>
+                <div class="fc-body" id="fcBody"></div>
             </div>
         </div>
 
@@ -3575,6 +3763,8 @@
             ACTIVE_CHAPTER_NAMES = proj.chapterNames || {};
             GUIDE_DATA = buildGuideData(proj);
             try{ window.dispatchEvent(new CustomEvent('cpaProjectApplied')); }catch(e){}
+            // 闪卡跟随项目切换刷新（延后一拍：此刻 loadData 尚未执行）
+            try { setTimeout(function () { try { fcState(); fcRender(); } catch (e) {} }, 0); } catch (e) {}
             if (!COURSES.includes(state.currentCourse)) {
                 state.currentCourse = COURSES[0] || '';
             }
@@ -3681,6 +3871,12 @@
             resourceTypes: null,   // null = 用默认值；数组则覆盖（含改名/删除）
             sources: null,
             kpReviews: {},   // 复习界面落盘：{ '<记录id>#<轮次>': {date,round,start,end,hours,tomatoes,note,newKp,nextTips} }
+            // ---- 闪卡（🃏）：内容层 + 闪卡笔记层。复习周期与统计不另立一套，
+            //      完全复用上面的 reviewDone / reviewOverrides / kpReviews。
+            cards: {},        // [id] = {q,a,tags,src,edited,hidden,manual,createdAt,editedAt}
+            cardNotes: {},    // [id] = [{nid,t,kind,text}]  kind: supplement|assoc|tip
+            cardIndex: {},    // ['科目|章|节|层级|序号'] = cardId  —— 节点改名也不换 id
+            cardCfg: { from: 1, to: 4, builtAt: '' },   // 出题层级范围
             currentCourse: '会计',
             editingId: null,
             filterStar: 'all',
@@ -3767,6 +3963,12 @@
                     state.reviewOverrides = (data.reviewOverrides && typeof data.reviewOverrides === 'object') ? data.reviewOverrides : {};
                     state.reviewDeleted = (data.reviewDeleted && typeof data.reviewDeleted === 'object') ? data.reviewDeleted : {};
                     state.kpReviews = (data.kpReviews && typeof data.kpReviews === 'object') ? data.kpReviews : {};
+                    state.cards = (data.cards && typeof data.cards === 'object') ? data.cards : {};
+                    state.cardNotes = (data.cardNotes && typeof data.cardNotes === 'object') ? data.cardNotes : {};
+                    state.cardIndex = (data.cardIndex && typeof data.cardIndex === 'object') ? data.cardIndex : {};
+                    state.cardCfg = (data.cardCfg && typeof data.cardCfg === 'object') ? data.cardCfg : { from: 1, to: 4, builtAt: '' };
+                    if (!(state.cardCfg.from > 0)) state.cardCfg.from = 1;
+                    if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
                     if (data.tomato) {
                         state.tomato.count = data.tomato.count || 0;
                         const _tc = data.tomato.cfg;
@@ -3837,6 +4039,10 @@
                 reviewOverrides: state.reviewOverrides || {},
                 reviewDeleted: state.reviewDeleted || {},
                 kpReviews: state.kpReviews || {},
+                cards: state.cards || {},
+                cardNotes: state.cardNotes || {},
+                cardIndex: state.cardIndex || {},
+                cardCfg: state.cardCfg || { from: 1, to: 4, builtAt: '' },
                 resourceTypes: Array.isArray(state.resourceTypes) ? state.resourceTypes : null,
                 sources: Array.isArray(state.sources) ? state.sources : null,
                 tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
@@ -7860,6 +8066,7 @@
         function renderMemoryView() {
             const projectRecords = state.records;
             const todayStr = dateToStr(new Date());
+            try { fcRender(); } catch (e) {}   // 闪卡模块与月历 / 复习清单同屏刷新
 
             // ---- 汇总卡片 ----
             const rets = projectRecords.map(r => recordRetention(r, todayStr));
@@ -8425,9 +8632,11 @@
                     '<div class="pf"><label>番茄个数</label><input type="number" min="0" id="rvPomo" value="' + (parseInt(saved.tomatoes, 10) || 0) + '"></div>' +
                     '<div class="pf"><label>第几轮复习</label><select id="rvRound">' + opts + '</select></div>' +
                 '</div>' +
-                '<div class="pf"><label>学习笔记（系统默认带入上期学习内容，不修改）</label>' +
-                    '<textarea id="rvNote" rows="3" readonly>' + kpEsc(rvPrevText(recordId, rd)) + '</textarea>' +
-                    '<div class="pf-hint">这里是上一轮留下的内容，系统自动带入、不需要改；要补充请写在下面。</div></div>' +
+                '<div class="pf"><label>上期学习内容（系统带入，只读）</label>' +
+                    '<textarea id="rvNote" rows="2" readonly>' + kpEsc(rvPrevText(recordId, rd)) + '</textarea>' +
+                    '<div class="pf-hint">上一轮留下的内容，系统自动带入、不需要改。</div></div>' +
+                // 🃏 闪卡区：同一套复习周期与统计，只是把内容换成「正面 → 点击看反面」的形式
+                fcEmbedHTML(rec) +
                 '<div class="pf"><label>新知识点补充</label>' +
                     '<textarea id="rvNew" rows="3" placeholder="本轮新学到 / 新发现的知识点，下轮会作为「上期学习内容」带出来">' + kpEsc(saved.newKp || '') + '</textarea></div>' +
                 '<div class="pf"><label>下轮复习注意事项</label>' +
@@ -8477,6 +8686,1005 @@
             box.querySelector('#rvSaveBtn').onclick = function () { doSave(false); };
             box.querySelector('#rvSkipBtn').onclick = function () { doSave(true); };
             rvTimerRender();
+            try { fcBindEmbed(box); } catch (e) {}
+        }
+        /* ============================================================
+           🃏 闪卡模块（Flash Cards）
+           ------------------------------------------------------------
+           定位：把项目里那棵知识点树（project.kpTree[科目][章][节]）
+                 做一次「视图变换」——不新增数据源，只把树上的
+                 「还有下一级」的节点变成卡片。
+
+           出题规则（= 「知识点拆解只到倒数第二格层级」）
+             一个「还有下一级」的节点  →  一张卡
+               正面 = 该节点名
+               反面 = 它的直接下级（逐行）
+             最末一级（叶子）不出题。
+
+           ⚠️ 与「记录复习」的关系 = 复用，不是并存：
+             复习周期 = 同一套艾宾浩斯节点（getReviewIntervals()）
+             复习统计 = 同一套（复习清单 / 月历 / 汇总卡片）
+             复习入口 = 同一个面板（openReviewPanel）——面板里的
+                       「学习笔记」区就是闪卡：先显示正面，点击翻成
+                       反面（答案 + 标签 + 补充 / 联想子栏）。
+             闪卡只是复习内容的另一种呈现形式，**不另立一套排期**。
+
+           数据分层 —— 「编辑内容不影响此前学习记录」的落点：
+             state.cards     [id] = {q,a,tags,src,edited,hidden,...}  内容层：随便改
+             state.cardNotes [id] = [{nid,t,kind,text}]              闪卡笔记层
+             state.cardIndex [sig] = id                              结构坐标→id：改名不换 id
+             复习历史 = 现有的 state.records / reviewDone /
+                        reviewOverrides / reviewDeleted / kpReviews
+                        —— 闪卡模块对它们只读，一个字节都不写。
+           ============================================================ */
+
+        const FC_NOTE_KINDS = [
+            { k: 'supplement', icon: '📎', label: '知识点补充', cls: 'c-supplement', ph: '这轮新学到 / 需要补充的' },
+            { k: 'assoc',      icon: '🔗', label: '联想延伸',   cls: 'c-assoc',      ph: '联想到的相关内容、易混点、口诀' },
+            { k: 'tip',        icon: '💡', label: '下轮提示',   cls: 'c-tip',        ph: '给下一轮复习的自己留个提示' }
+        ];
+
+        let fcView = 'chapter';     // chapter | tag | due
+        let fcQuery = '';
+        let fcEditing = null;       // 正在行内编辑的卡片 id
+        let fcCollapsed = {};       // 分组折叠状态
+        let fcDetailId = null;      // 卡片详情弹窗当前卡片
+        let fcEmbedState = null;    // 复习面板内嵌闪卡的{idx, flipped}
+        let fcEmbedRecord = null;   // 当前复习面板对应的学习记录
+
+        // ---------- 状态字段兜底 ----------
+        function fcState() {
+            if (!state.cards || typeof state.cards !== 'object') state.cards = {};
+            if (!state.cardNotes || typeof state.cardNotes !== 'object') state.cardNotes = {};
+            if (!state.cardIndex || typeof state.cardIndex !== 'object') state.cardIndex = {};
+            if (!state.cardCfg || typeof state.cardCfg !== 'object') state.cardCfg = { from: 1, to: 4, builtAt: '' };
+            if (!(state.cardCfg.from > 0)) state.cardCfg.from = 1;
+            if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
+            return state;
+        }
+
+        function fcProj() {
+            try { return (typeof getCurrentProject === 'function') ? getCurrentProject() : null; } catch (e) { return null; }
+        }
+
+        function fcNewId() {
+            return 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+        }
+
+        // 结构坐标（科目 | 章 | 节 | 层级 | 同级序号）——不含节点文字，
+        // 所以「一键重编号」改了节点名的序号前缀，也不会把卡片判成新卡。
+        function fcSig(course, ch, sec, tier, order) {
+            return [course, ch, sec, tier, order].join('|');
+        }
+
+        // 坐标 → 卡片 id（已有就复用，复习历史留在原卡上）
+        function fcIdOf(sig) {
+            fcState();
+            const id = state.cardIndex[sig];
+            if (id && state.cards[id]) return id;
+            const nid = id ? id : fcNewId();
+            state.cardIndex[sig] = nid;
+            return nid;
+        }
+
+        // ---------- 遍历知识点树，收集「还有下一级」的节点 ----------
+        function fcWalkNodes(arr, base, tier, parentPath, out) {
+            (arr || []).forEach(function (node, i) {
+                if (!node || typeof node.name !== 'string' || !node.name.trim()) return;
+                const path = parentPath.concat([node.name]);
+                const kids = (Array.isArray(node.children) ? node.children : [])
+                    .filter(function (c) { return c && typeof c.name === 'string' && c.name.trim(); });
+                if (kids.length) {
+                    out.push({
+                        sig: fcSig(base.course, base.chapter, base.section, tier, i + 1),
+                        course: base.course, chapter: base.chapter, section: base.section,
+                        tier: tier, order: i + 1,
+                        name: node.name,
+                        answers: kids.map(function (c) { return c.name; }),
+                        path: path
+                    });
+                    fcWalkNodes(kids, base, tier + 1, path, out);
+                }
+            });
+        }
+
+        function fcWalkTree() {
+            const out = [];
+            const proj = fcProj();
+            if (!proj || !proj.kpTree || typeof proj.kpTree !== 'object') return out;
+            const courses = (Array.isArray(proj.courses) && proj.courses.length) ? proj.courses : Object.keys(proj.kpTree);
+            courses.forEach(function (course) {
+                const byCh = proj.kpTree[course];
+                if (!byCh || typeof byCh !== 'object') return;
+                Object.keys(byCh).map(Number).filter(function (n) { return !isNaN(n); })
+                    .sort(function (a, b) { return a - b; }).forEach(function (ch) {
+                    const bySec = byCh[ch];
+                    if (!bySec || typeof bySec !== 'object') return;
+                    Object.keys(bySec).map(Number).filter(function (n) { return !isNaN(n); })
+                        .sort(function (a, b) { return a - b; }).forEach(function (sec) {
+                        const arr = bySec[sec];
+                        if (!Array.isArray(arr) || !arr.length) return;
+                        fcWalkNodes(arr, { course: course, chapter: ch, section: sec }, 1, [], out);
+                    });
+                });
+            });
+            return out;
+        }
+
+        function fcMaxTier() {
+            let mx = 1;
+            fcWalkTree().forEach(function (n) { if (n.tier > mx) mx = n.tier; });
+            return mx;
+        }
+
+        // ---------- 生成 / 更新 ----------
+        function fcBuild(silent) {
+            fcState();
+            const nodes = fcWalkTree();
+            const from = Math.max(1, parseInt(state.cardCfg.from, 10) || 1);
+            const to = Math.max(from, parseInt(state.cardCfg.to, 10) || 99);
+            let added = 0, kept = 0, refreshed = 0, gone = 0, hiddenKeep = 0;
+            const seen = {};
+            const today = dateToStr(new Date());
+
+            nodes.forEach(function (n) {
+                if (n.tier < from || n.tier > to) return;
+                const id = fcIdOf(n.sig);
+                const autoQ = n.name;
+                const autoA = n.answers.join('\n');
+                const srcNow = {
+                    course: n.course, chapter: n.chapter, section: n.section,
+                    tier: n.tier, order: n.order, path: n.path.slice()
+                };
+                let card = state.cards[id];
+                if (!card) {
+                    card = {
+                        id: id, q: autoQ, a: autoA, tags: [], src: srcNow,
+                        edited: false, hidden: false, manual: false,
+                        createdAt: today, editedAt: ''
+                    };
+                    state.cards[id] = card;
+                    added++;
+                } else {
+                    card.src = srcNow;          // 章节坐标是来源信息，始终跟随最新树
+                    card.orphan = false;
+                    if (card.hidden) { hiddenKeep++; }
+                    else if (card.edited) { kept++; }        // 用户改过 → 内容一个字都不动
+                    else if (card.q !== autoQ || card.a !== autoA) { card.q = autoQ; card.a = autoA; refreshed++; }
+                    else { kept++; }
+                }
+                seen[id] = 1;
+            });
+
+            // 树里已消失的卡：只打标记，不删（复习历史必须留着）
+            Object.keys(state.cards).forEach(function (id) {
+                const c = state.cards[id];
+                if (c && !c.manual && !seen[id] && !c.orphan) { c.orphan = true; gone++; }
+            });
+
+            state.cardCfg.builtAt = new Date().toISOString();
+            state.cardCfg.lastResult = { added: added, kept: kept, refreshed: refreshed, total: Object.keys(seen).length };
+            if (!silent) {
+                saveData();
+                fcRender();
+                showToast('🃏 闪卡已更新：新增 ' + added + ' 张，沿用 ' + kept + ' 张' +
+                    (refreshed ? '，刷新 ' + refreshed + ' 张' : '') +
+                    (hiddenKeep ? '，跳过已隐藏 ' + hiddenKeep + ' 张' : '') +
+                    (gone ? '，' + gone + ' 张已不在树中（历史保留）' : ''));
+            }
+            return state.cardCfg.lastResult;
+        }
+
+        // ---------- 读取 ----------
+        function fcVisibleCards() {
+            fcState();
+            const out = [];
+            Object.keys(state.cards).forEach(function (id) {
+                const c = state.cards[id];
+                if (c && !c.hidden) out.push(c);
+            });
+            out.sort(function (a, b) {
+                const sa = a.src || {}, sb = b.src || {};
+                return String(sa.course || '～').localeCompare(String(sb.course || '～'))
+                    || ((sa.chapter || 0) - (sb.chapter || 0))
+                    || ((sa.section || 0) - (sb.section || 0))
+                    || ((sa.tier || 0) - (sb.tier || 0))
+                    || ((sa.order || 0) - (sb.order || 0));
+            });
+            return out;
+        }
+
+        function fcHiddenCount() {
+            fcState();
+            let n = 0;
+            Object.keys(state.cards).forEach(function (id) { if (state.cards[id] && state.cards[id].hidden) n++; });
+            return n;
+        }
+
+        function fcAutoTags(card) {
+            if (!card || !card.src) return [];
+            const proj = fcProj() || {};
+            const s = card.src, out = [];
+            if (s.course) out.push(String(s.course));
+            const chName = (proj.chapterNames && proj.chapterNames[s.course] && proj.chapterNames[s.course][s.chapter]) || '';
+            out.push('第' + s.chapter + L('chapter') + (chName ? ' ' + chName : ''));
+            const secArr = (proj.sectionNames && proj.sectionNames[s.course] && proj.sectionNames[s.course][s.chapter]) || [];
+            const secName = secArr[s.section - 1] || '';
+            out.push('第' + s.section + L('section') + (secName ? ' ' + secName : ''));
+            return out;
+        }
+
+        function fcAllTags(card) {
+            return fcAutoTags(card).concat((card && card.tags) ? card.tags : []);
+        }
+
+        function fcPathText(card) {
+            if (!card || !card.src) return '自建卡 · 未归类';
+            return fcAutoTags(card).join(' · ');
+        }
+
+        function fcMatch(card) {
+            if (!fcQuery) return true;
+            const q = fcQuery.toLowerCase();
+            const parts = [card.q, card.a].concat(card.tags || []).concat(fcAutoTags(card));
+            return parts.join('\n').toLowerCase().indexOf(q) !== -1;
+        }
+
+        // ---------- 卡片 ↔ 学习记录 ----------
+        // 记录写的是科目 / 章 / 节 → 同一节下的卡片都是这次学习的内容。
+        function fcSourceRecords(card) {
+            if (!card || !card.src) return [];
+            const s = card.src;
+            return (state.records || []).filter(function (r) {
+                return r && r.course === s.course
+                    && (+r.chapter === +s.chapter)
+                    && (+r.section === +s.section);
+            });
+        }
+
+        function fcNormText(s) {
+            return stripKpNo(String(s || '')).replace(/\s+/g, '').toLowerCase();
+        }
+
+        // 一次学习（记录）对应哪些卡：先按记录里写的知识点文本精确匹配树节点，
+        // 匹配不上就退化为「该节的全部卡片」——宁可多给，不要漏掉。
+        function fcCardsForRecord(r) {
+            fcState();
+            if (!r) return [];
+            const nodes = fcWalkTree().filter(function (n) {
+                return n.course === r.course && (+n.chapter === +r.chapter) && (+n.section === +r.section);
+            });
+            if (!nodes.length) return [];
+            const kps = (r.knowledgePoints || []).map(function (k) { return fcNormText(k && k.text); }).filter(Boolean);
+            let picked = nodes;
+            if (kps.length) {
+                const hit = nodes.filter(function (n) {
+                    const nm = fcNormText(n.name);
+                    return nm && kps.some(function (k) {
+                        return k === nm || k.indexOf(nm) >= 0 || nm.indexOf(k) >= 0;
+                    });
+                });
+                if (hit.length) picked = hit;
+            }
+            const out = [];
+            picked.forEach(function (n) {
+                const id = state.cardIndex[n.sig];
+                const c = id ? state.cards[id] : null;
+                if (c && !c.hidden) out.push(c);
+            });
+            return out;
+        }
+
+        // ---------- 笔记子栏的数据源 ----------
+        // ① 「记录复习」界面里写下的新知识点 / 下轮提示（state.kpReviews，按记录×轮次落盘）
+        // ② 闪卡复习时现场补充的（state.cardNotes，按卡片落盘）
+        function fcNotes(card) {
+            fcState();
+            const out = { supplement: [], assoc: [], tip: [] };
+            const krs = state.kpReviews || {};
+            fcSourceRecords(card).forEach(function (r) {
+                getReviewIntervals().forEach(function (iv, i) {
+                    const kr = krs[r.id + '#' + (i + 1)];
+                    if (!kr) return;
+                    const rn = roundName(i + 1);
+                    const t = kr.date || r.date || '';
+                    if (kr.newKp) out.supplement.push({ t: t, text: kr.newKp, from: '记录复习 · ' + rn });
+                    if (kr.nextTips) out.tip.push({ t: t, text: kr.nextTips, from: '记录复习 · ' + rn });
+                });
+            });
+            (state.cardNotes[card.id] || []).forEach(function (n) {
+                const k = out[n.kind] ? n.kind : 'assoc';
+                out[k].push({ nid: n.nid, t: n.t || '', text: n.text || '', from: n.from || '闪卡笔记' });
+            });
+            ['supplement', 'assoc', 'tip'].forEach(function (k) {
+                out[k].sort(function (a, b) { return String(b.t).localeCompare(String(a.t)); });
+            });
+            return out;
+        }
+
+        function fcAddNote(id, kind, text) {
+            text = String(text || '').trim();
+            if (!text) return;
+            fcState();
+            if (!state.cardNotes[id]) state.cardNotes[id] = [];
+            state.cardNotes[id].push({
+                nid: 'n_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
+                t: dateToStr(new Date()), kind: kind, text: text, from: '闪卡笔记'
+            });
+            saveData();
+        }
+
+        // 按 nid 删 —— 子栏里混着「来自记录复习」的条目，用下标会错位
+        function fcDelNote(id, nid) {
+            const arr = state.cardNotes[id];
+            if (!arr) return;
+            const at = arr.findIndex(function (n) { return n && n.nid === nid; });
+            if (at < 0) return;
+            arr.splice(at, 1);
+            saveData();
+            fcRender();
+            fcEmbedRender();
+            if (fcDetailId === id) fcDetail(id, true);
+        }
+
+        // ---------- 统计：与记录复习同源 ----------
+        function fcProgressOf(card) {
+            const recs = fcSourceRecords(card);
+            if (!recs.length) return { done: 0, total: 0, linked: false };
+            const doneKeys = new Set((state.reviewDone || []).map(function (x) { return x.recordId + '#' + x.round; }));
+            const rvDel = state.reviewDeleted || {};
+            let total = 0, done = 0;
+            recs.forEach(function (r) {
+                getReviewIntervals().forEach(function (iv, i) {
+                    const key = r.id + '#' + (i + 1);
+                    if (rvDel[key]) return;
+                    total++;
+                    if (doneKeys.has(key)) done++;
+                });
+            });
+            return { done: done, total: total, linked: true };
+        }
+
+        function fcStatusOf(card) {
+            const p = fcProgressOf(card);
+            if (!p.linked) return { cls: 'fresh', text: '未关联记录' };
+            if (!p.total) return { cls: 'fresh', text: '无排期' };
+            if (p.done >= p.total) return { cls: 'ok', text: '复习完 ' + p.done + '/' + p.total };
+            return { cls: 'due', text: '复习 ' + p.done + '/' + p.total };
+        }
+
+        // 「时间未知」的卡 —— 没有任何复习排期的卡片，按难度从高到低排。
+        // 难度 = 历史遗忘/模糊次数（有复习过的），否则用「答案条数 + 树深」估初始难度，可解释、不引黑盒。
+        function fcDifficulty(card) {
+            const recs = fcSourceRecords(card);
+            let lapses = 0, blur = 0, reps = 0;
+            const krs = state.kpReviews || {};
+            recs.forEach(function (r) {
+                getReviewIntervals().forEach(function (iv, i) {
+                    const kr = krs[r.id + '#' + (i + 1)];
+                    if (!kr) return;
+                    reps++;
+                    if (kr.skipped) lapses++;
+                    if (kr.hours && kr.hours < 0.2) blur++;
+                });
+            });
+            if (reps > 0) return Math.round((lapses * 2 + blur * 1 + Math.max(0, 3 - reps) * 0.5) * 100) / 100;
+            const ans = String(card.a || '').split('\n').filter(function (s) { return s.trim(); }).length;
+            const depth = (card.src && card.src.tier) || 1;
+            return Math.round((1 + ans * 0.3 + depth * 0.2) * 100) / 100;
+        }
+
+        // ---------- 渲染：主入口 ----------
+        function fcRender() {
+            fcState();
+            const body = document.getElementById('fcBody');
+            if (!body) return;
+            const all = fcVisibleCards();
+            const cfg = state.cardCfg;
+            const from = Math.max(1, parseInt(cfg.from, 10) || 1);
+            const to = Math.max(from, parseInt(cfg.to, 10) || 99);
+            const statEl = document.getElementById('fcStat');
+            if (statEl) {
+                statEl.textContent = all.length
+                    ? ('共 ' + all.length + ' 张 · 出题层级 第' + from + '–' + to + ' 级 · 复习周期与上方记录复习共用')
+                    : '尚未生成';
+            }
+            const hiddenN = fcHiddenCount();
+            fcSyncUnhideBtn(hiddenN);
+            const badge = document.getElementById('fcDueBadge');
+            if (badge) {
+                const n = fcPendingCards().length;
+                badge.textContent = String(n);
+                badge.className = 'fc-badge' + (n ? ' hot' : '');
+            }
+            document.querySelectorAll('#fcTabs .fc-tab').forEach(function (b) {
+                b.classList.toggle('active', b.dataset.fcmode === fcView);
+            });
+            const si = document.getElementById('fcSearch');
+            if (si && si.value !== fcQuery) si.value = fcQuery;
+
+            if (fcView === 'chapter') body.innerHTML = fcChapterHTML();
+            else if (fcView === 'tag') body.innerHTML = fcTagHTML();
+            else body.innerHTML = fcDueHTML();
+
+            fcBindBody(body);
+        }
+
+        function fcSyncUnhideBtn(n) {
+            const head = document.querySelector('#fcWrap .fc-head');
+            if (!head) return;
+            let b = document.getElementById('fcUnhideBtn');
+            if (!n) { if (b && b.parentNode) b.parentNode.removeChild(b); return; }
+            if (!b) {
+                b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'fc-btn';
+                b.id = 'fcUnhideBtn';
+                b.addEventListener('click', fcUnhideAll);
+                head.appendChild(b);
+            }
+            b.textContent = '👁 恢复已隐藏 (' + n + ')';
+        }
+
+        function fcUnhideAll() {
+            fcState();
+            let n = 0;
+            Object.keys(state.cards).forEach(function (id) {
+                if (state.cards[id] && state.cards[id].hidden) { state.cards[id].hidden = false; n++; }
+            });
+            if (!n) { showToast('没有已隐藏的卡片'); return; }
+            saveData();
+            fcRender();
+            showToast('👁 已恢复 ' + n + ' 张卡片（复习历史原样保留）');
+        }
+
+        function fcEmptyHTML(msg) {
+            return '<div class="fc-empty">' + msg + '</div>';
+        }
+
+        function fcNoCardsHTML() {
+            const proj = fcProj();
+            const hasTree = !!(proj && proj.kpTree && Object.keys(proj.kpTree).length);
+            if (!hasTree) {
+                return '还没有知识点树。<br>先到 <b>⚙️ 设置 → 导入大纲</b> 把「科目 / 章 / 节 / 知识点」的缩进文本粘进去，<br>再回到这里点 <b>⚡ 生成 / 更新</b>。';
+            }
+            return '这棵树里还没有可出题的层级。<br>闪卡只对「还有下一级」的知识点出卡，请点 <b>⚡ 生成 / 更新</b> 或调整 <b>⚙️ 层级范围</b>。';
+        }
+
+        // ---------- 卡片行 ----------
+        function fcRowHTML(card, opts) {
+            opts = opts || {};
+            const status = fcStatusOf(card);
+            const tags = fcAllTags(card);
+            const indent = opts.noIndent ? 0 : Math.max(0, ((card.src && card.src.tier) || 1) - 1) * 13;
+            const flags = [];
+            if (card.edited) flags.push('<span class="fc-flag edited">已编辑</span>');
+            if (card.manual) flags.push('<span class="fc-flag manual">自建</span>');
+            if (card.orphan) flags.push('<span class="fc-flag orphan">树中已不存在</span>');
+            const a1 = String(card.a || '').split('\n').filter(function (s) { return s.trim(); });
+            const noteN = (state.cardNotes[card.id] || []).length;
+            return '<div class="fc-row" data-fcid="' + card.id + '" style="margin-left:' + indent + 'px;">' +
+                '<span class="fc-dot ' + status.cls + '"></span>' +
+                '<div class="fc-main">' +
+                    '<div class="fc-q">' + kpEsc(card.q) + flags.join('') + '</div>' +
+                    '<div class="fc-a">' + kpEsc(a1.join(' · ').slice(0, 90)) + (a1.length > 1 ? ' …' : '') + '</div>' +
+                    '<div class="fc-tagline">' +
+                        (opts.hideTags ? '' : tags.map(function (t) {
+                            const own = (card.tags || []).indexOf(t) !== -1;
+                            return '<span class="fc-tag ' + (own ? 'own' : 'auto') + '">' + kpEsc(t) + '</span>';
+                        }).join('')) +
+                    '</div>' +
+                '</div>' +
+                '<div class="fc-side">' + status.text + (noteN ? '<br>📝 ' + noteN : '') + '</div>' +
+                '<button type="button" class="fc-btn sm fc-editbtn" data-fcedit="' + card.id + '" title="编辑内容与标签">✎</button>' +
+            '</div>' +
+            (fcEditing === card.id ? fcEditHTML(card) : '');
+        }
+
+        function fcEditHTML(card) {
+            const own = (card.tags || []).join(', ');
+            return '<div class="fc-edit" data-fceditbox="' + card.id + '">' +
+                '<div class="pf"><label>正面（问题 / 提示）</label>' +
+                    '<textarea rows="2" id="fcEq">' + kpEsc(card.q) + '</textarea></div>' +
+                '<div class="pf"><label>反面（答案，可多行）</label>' +
+                    '<textarea rows="4" id="fcEa">' + kpEsc(card.a) + '</textarea></div>' +
+                '<div class="pf"><label>我的标签（逗号分隔；章节标签由系统自动带出，无需手填）</label>' +
+                    '<input type="text" id="fcEt" value="' + kpEsc(own) + '" placeholder="如：易错, 计算题, 考前必看">' +
+                    '<div class="fc-hint">自动标签：' + kpEsc(fcAutoTags(card).join(' / ') || '（无）') + '</div></div>' +
+                '<div class="fc-hint">✏️ 修改只作用于这张卡的文字与标签 —— 不触碰任何已积累的复习记录、轮次完成情况与笔记。</div>' +
+                '<div class="fc-edit-actions">' +
+                    '<button type="button" class="fc-btn primary fc-esave" data-fcsave="' + card.id + '">保存</button>' +
+                    '<button type="button" class="fc-btn fc-ecancel" data-fccancel="1">取消</button>' +
+                    '<span class="fc-spacer"></span>' +
+                    '<button type="button" class="fc-btn sm fc-ebase" data-fcbase="' + card.id + '">恢复系统原文</button>' +
+                    '<button type="button" class="fc-btn sm danger fc-ehide" data-fchide="' + card.id + '">隐藏此卡</button>' +
+                '</div>' +
+            '</div>';
+        }
+
+        // ---------- 按章节 ----------
+        function fcGroupHTML(key, name, meta, inner) {
+            const closed = !!fcCollapsed[key];
+            return '<div class="fc-group' + (closed ? ' closed' : '') + '" data-fckey="' + key + '">' +
+                '<div class="fc-ghead"><span class="fc-caret">▼</span>' +
+                    '<span class="fc-gname">' + kpEsc(name) + '</span>' +
+                    (meta ? '<span class="fc-gmeta">' + meta + '</span>' : '') +
+                '</div>' +
+                '<div class="fc-gbody">' + inner + '</div>' +
+            '</div>';
+        }
+
+        function fcChapterHTML() {
+            const all = fcVisibleCards();
+            const cards = all.filter(fcMatch);
+            if (!cards.length) {
+                return all.length
+                    ? fcEmptyHTML('没有匹配「' + kpEsc(fcQuery) + '」的卡片。')
+                    : fcEmptyHTML(fcNoCardsHTML());
+            }
+            const proj = fcProj() || {};
+            const byCourse = {};
+            cards.forEach(function (c) {
+                const s = c.src || {};
+                const course = s.course || '～ 自建卡（未归类）';
+                const ch = s.chapter || 0;
+                const sec = s.section || 0;
+                byCourse[course] = byCourse[course] || {};
+                byCourse[course][ch] = byCourse[course][ch] || {};
+                (byCourse[course][ch][sec] = byCourse[course][ch][sec] || []).push(c);
+            });
+            const out = [];
+            Object.keys(byCourse).sort().forEach(function (course) {
+                const chKeys = Object.keys(byCourse[course]).map(Number).sort(function (a, b) { return a - b; });
+                let nCourse = 0, chBlock = '';
+                chKeys.forEach(function (ch) {
+                    const secKeys = Object.keys(byCourse[course][ch]).map(Number).sort(function (a, b) { return a - b; });
+                    let nCh = 0, secBlock = '';
+                    secKeys.forEach(function (sec) {
+                        const list = byCourse[course][ch][sec];
+                        nCh += list.length;
+                        const secArr = (proj.sectionNames && proj.sectionNames[course] && proj.sectionNames[course][ch]) || [];
+                        const secName = sec ? (secArr[sec - 1] || '') : '';
+                        secBlock += fcGroupHTML(
+                            'sec|' + course + '|' + ch + '|' + sec,
+                            sec ? ('第' + sec + L('section') + (secName ? ' ' + secName : '')) : '未指定小节',
+                            '<span class="fc-gmeta">' + list.length + ' 张</span>',
+                            list.map(function (c) { return fcRowHTML(c); }).join('')
+                        );
+                    });
+                    nCourse += nCh;
+                    const chName = (proj.chapterNames && proj.chapterNames[course] && proj.chapterNames[course][ch]) || '';
+                    chBlock += fcGroupHTML(
+                        'ch|' + course + '|' + ch,
+                        ch ? ('第' + ch + L('chapter') + (chName ? ' ' + chName : '')) : '未指定章',
+                        '<span class="fc-gmeta">' + nCh + ' 张</span>',
+                        secBlock
+                    );
+                });
+                out.push(fcGroupHTML('co|' + course, course,
+                    '<span class="fc-gmeta">' + nCourse + ' 张</span>', chBlock));
+            });
+            return out.join('');
+        }
+
+        // ---------- 按标签 ----------
+        function fcTagHTML() {
+            const all = fcVisibleCards();
+            const cards = all.filter(fcMatch);
+            if (!cards.length) {
+                return all.length
+                    ? fcEmptyHTML('没有匹配「' + kpEsc(fcQuery) + '」的卡片。')
+                    : fcEmptyHTML(fcNoCardsHTML());
+            }
+            const own = {}, auto = {};
+            cards.forEach(function (c) {
+                (c.tags || []).forEach(function (t) { if (t) (own[t] = own[t] || []).push(c); });
+                fcAutoTags(c).forEach(function (t) { if (t) (auto[t] = auto[t] || []).push(c); });
+            });
+            const out = [];
+            const ownKeys = Object.keys(own).sort();
+            out.push(fcGroupHTML('ownsec', '🏷 我的标签',
+                '<span class="fc-gmeta">' + ownKeys.length + ' 个</span>',
+                ownKeys.length
+                    ? ownKeys.map(function (t) {
+                        return fcGroupHTML('own|' + t, t, '<span class="fc-gmeta">' + own[t].length + ' 张</span>',
+                            own[t].map(function (c) { return fcRowHTML(c, { noIndent: true }); }).join(''));
+                    }).join('')
+                    : '<div class="fc-empty" style="padding:8px 4px;">还没有自定义标签。点任意卡片右侧的 ✎ ，在「我的标签」里用逗号分隔添加。</div>'
+            ));
+            const autoKeys = Object.keys(auto).sort();
+            out.push(fcGroupHTML('autosec', '📚 章节标签（系统自动）',
+                '<span class="fc-gmeta">' + autoKeys.length + ' 个</span>',
+                autoKeys.map(function (t) {
+                    return fcGroupHTML('auto|' + t, t, '<span class="fc-gmeta">' + auto[t].length + ' 张</span>',
+                        auto[t].map(function (c) { return fcRowHTML(c, { noIndent: true }); }).join(''));
+                }).join('')
+            ));
+            return out.join('');
+        }
+
+        // ---------- 待复习（与记录复习同一套排期） ----------
+        function fcPendingCards() {
+            const today = dateToStr(new Date());
+            const items = (typeof getReviewItems === 'function') ? getReviewItems(today).pending : [];
+            const ids = {}, out = [];
+            items.forEach(function (it) {
+                fcCardsForRecord(it.record).forEach(function (c) {
+                    if (!ids[c.id]) { ids[c.id] = 1; out.push(c); }
+                });
+            });
+            return out;
+        }
+
+        // 「时间未知」= 该卡的来源记录没有任何复习排期（没有待复习、也没有已完成轮次）
+        function fcUnScheduledCards() {
+            const out = [];
+            fcVisibleCards().forEach(function (c) {
+                const p = fcProgressOf(c);
+                if (!p.linked) { out.push(c); return; }
+                if (p.total === 0) out.push(c);
+            });
+            out.sort(function (a, b) { return fcDifficulty(b) - fcDifficulty(a); });
+            return out;
+        }
+
+        function fcDueHTML() {
+            const all = fcVisibleCards();
+            if (!all.length) return fcEmptyHTML(fcNoCardsHTML());
+            const pend = fcPendingCards().filter(fcMatch);
+            const uns = fcUnScheduledCards().filter(fcMatch);
+            const today = dateToStr(new Date());
+            let h = '<div class="fc-progress" style="margin:2px 0 8px;">' +
+                '闪卡的复习排期与上方「复习清单 / 月历」<b>完全共用</b>同一套艾宾浩斯节点（' +
+                getReviewIntervals().join(' / ') + ' 天）。这里按内容形式再列一次。</div>';
+            if (pend.length) {
+                h += fcGroupHTML('fcpending', '⏰ 今天该复习的闪卡',
+                    '<span class="fc-gmeta">' + pend.length + ' 张 · 来自 ' + today + ' 的复习清单</span>',
+                    pend.map(function (c) { return fcRowHTML(c, { noIndent: true }); }).join(''));
+            } else {
+                h += '<div class="fc-empty" style="padding:10px 4px;">今天没有到期的复习任务 —— 到上方「📋 复习清单」或月历里安排。</div>';
+            }
+            if (uns.length) {
+                h += fcGroupHTML('fcuns', '🕐 还没有复习排期的卡（时间未知 → 难度高的排前面）',
+                    '<span class="fc-gmeta">' + uns.length + ' 张</span>',
+                    uns.map(function (c) {
+                        return fcRowHTML(c, { noIndent: true })
+                            .replace('<div class="fc-side">', '<div class="fc-side">难度 ' + fcDifficulty(c) + '<br>');
+                    }).join(''));
+            }
+            return h;
+        }
+
+        // ---------- 事件绑定（委托，避免重绑） ----------
+        function fcBindBody(body) {
+            if (body.dataset.fcbound === '1') return;
+            body.dataset.fcbound = '1';
+            body.addEventListener('click', function (e) {
+                const t = e.target;
+                const ghead = t.closest ? t.closest('.fc-ghead') : null;
+                if (ghead && ghead.parentNode && ghead.parentNode.dataset.fckey
+                    && ghead.parentNode.dataset.fckey !== 'fcpending'
+                    && ghead.parentNode.dataset.fckey !== 'fcuns') {
+                    const k = ghead.parentNode.dataset.fckey;
+                    fcCollapsed[k] = !fcCollapsed[k];
+                    ghead.parentNode.classList.toggle('closed', !!fcCollapsed[k]);
+                    return;
+                }
+                const save = t.closest ? t.closest('[data-fcsave]') : null;
+                if (save) { e.stopPropagation(); fcEditSave(save.dataset.fcsave, save); return; }
+                if (t.closest && t.closest('[data-fccancel]')) { e.stopPropagation(); fcEditing = null; fcRender(); return; }
+                const base = t.closest ? t.closest('[data-fcbase]') : null;
+                if (base) { e.stopPropagation(); fcEditRestore(base.dataset.fcbase); return; }
+                const hide = t.closest ? t.closest('[data-fchide]') : null;
+                if (hide) { e.stopPropagation(); fcHide(hide.dataset.fchide); return; }
+                const eb = t.closest ? t.closest('[data-fcedit]') : null;
+                if (eb) { e.stopPropagation(); fcEditing = (fcEditing === eb.dataset.fcedit) ? null : eb.dataset.fcedit; fcRender(); return; }
+                const row = t.closest ? t.closest('.fc-row') : null;
+                if (row && row.dataset.fcid) { fcDetail(row.dataset.fcid); }
+            });
+        }
+
+        // ---------- 编辑 ----------
+        function fcEditSave(id, btn) {
+            const box = btn.closest('[data-fceditbox]');
+            if (!box) return;
+            const card = state.cards[id];
+            if (!card) return;
+            const q = box.querySelector('#fcEq').value;
+            const a = box.querySelector('#fcEa').value;
+            const raw = box.querySelector('#fcEt').value.split(/[,，;；]/).map(function (s) { return s.trim(); }).filter(Boolean);
+            const auto = fcAutoTags(card);
+            const seen = {};
+            card.tags = raw.filter(function (t) {
+                if (seen[t] || auto.indexOf(t) !== -1) return false;
+                seen[t] = 1; return true;
+            });
+            if (!q.trim()) { showToast('⚠️ 正面内容不能为空'); return; }
+            card.q = q;
+            card.a = a;
+            card.edited = true;
+            card.editedAt = dateToStr(new Date());
+            fcEditing = null;
+            saveData();                 // 只落内容层：records / reviewDone / kpReviews / cardNotes 一个字都没动
+            fcRender();
+            showToast('✏️ 已保存（复习进度与笔记不受影响）');
+        }
+
+        function fcEditRestore(id) {
+            const card = state.cards[id];
+            if (!card || !card.src) { showToast('⚠️ 自建卡片没有系统原文'); return; }
+            const sig = fcSig(card.src.course, card.src.chapter, card.src.section, card.src.tier, card.src.order);
+            const n = fcWalkTree().find(function (x) { return x.sig === sig; });
+            if (!n) { showToast('⚠️ 树里已找不到这个节点，无法恢复原文'); return; }
+            card.q = n.name;
+            card.a = n.answers.join('\n');
+            card.edited = false;
+            card.editedAt = dateToStr(new Date());
+            saveData();
+            fcRender();
+            showToast('↩️ 已恢复为系统原文');
+        }
+
+        function fcHide(id) {
+            const card = state.cards[id];
+            if (!card) return;
+            if (!confirm('隐藏这张卡？\n\n它会从列表和复习内容中消失，但已积累的复习记录与笔记会保留（可用「👁 恢复已隐藏」找回）。')) return;
+            card.hidden = true;
+            fcEditing = null;
+            if (fcDetailId === id) { fcDetailId = null; const d = document.getElementById('fcDetailDialog'); if (d && d.parentNode) d.parentNode.removeChild(d); }
+            saveData();
+            fcRender();
+            showToast('🙈 已隐藏');
+        }
+
+        function fcNewCard() {
+            fcState();
+            const id = fcNewId();
+            state.cards[id] = {
+                id: id, q: '（新卡片：点 ✎ 写正面）', a: '', tags: [], src: null,
+                edited: true, hidden: false, manual: true,
+                createdAt: dateToStr(new Date()), editedAt: dateToStr(new Date())
+            };
+            fcEditing = id;
+            fcView = 'chapter';
+            saveData();
+            fcRender();
+            showToast('➕ 已新建一张自建卡，请点 ✎ 填写内容');
+        }
+
+        // ---------- 卡片详情（浏览 / 编辑 / 看笔记） ----------
+        function fcDetail(id, keep) {
+            fcState();
+            const card = state.cards[id];
+            if (!card) return;
+            const old = document.getElementById('fcDetailDialog');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            fcDetailId = id;
+            const st = fcStatusOf(card);
+            const p = fcProgressOf(card);
+            const notes = fcNotes(card);
+            const recs = fcSourceRecords(card);
+            const box = document.createElement('div');
+            box.className = 'plan-mask fc-panel';
+            box.id = 'fcDetailDialog';
+            box.innerHTML = '<div class="plan-dialog rv-dialog">' +
+                '<h3>🃏 闪卡详情</h3>' +
+                '<div class="pd-hint">' + kpEsc(fcPathText(card)) + '<br>' +
+                    '复习进度（与记录复习同源）：<b>' + st.text + '</b>' +
+                    (recs.length ? ' ｜ 关联 ' + recs.length + ' 条学习记录' : ' ｜ 暂无关联学习记录') + '</div>' +
+                '<div class="fc-detail-box">' +
+                    '<div class="fc-face-label">正面</div>' +
+                    '<div class="fc-face-q">' + kpEsc(card.q) + '</div>' +
+                    '<div style="margin-top:12px;border-top:1px dashed #E0D5C2;padding-top:11px;">' +
+                        '<div class="fc-face-label">反面</div>' +
+                        '<div class="fc-face-a">' + kpEsc(card.a || '（无）') + '</div>' +
+                    '</div>' +
+                    '<div class="fce-tags">' + fcAllTags(card).map(function (t) {
+                        const own = (card.tags || []).indexOf(t) !== -1;
+                        return '<span class="fc-tag ' + (own ? 'own' : 'auto') + '">' + kpEsc(t) + '</span>';
+                    }).join('') + '</div>' +
+                '</div>' +
+                fcNoteSectionsHTML(card, notes, 'fcdNote') +
+                '<div class="pd-actions">' +
+                    '<button type="button" class="fc-btn ghost" id="fcdClose">关闭</button>' +
+                    '<button type="button" class="fc-btn" id="fcdEdit">✎ 编辑内容与标签</button>' +
+                '</div>' +
+            '</div>';
+            document.body.appendChild(box);
+            const close = function () { if (box.parentNode) box.parentNode.removeChild(box); fcDetailId = null; };
+            box.onclick = function (e) { if (e.target === box) close(); };
+            box.querySelector('#fcdClose').onclick = close;
+            box.querySelector('#fcdEdit').onclick = function () {
+                close(); fcEditing = id; fcView = 'chapter'; fcRender();
+                const row = document.querySelector('#fcBody .fc-row[data-fcid="' + id + '"]');
+                if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
+            };
+            fcBindNotes(box, card, 'fcdNote');
+        }
+
+        // ---------- 笔记子栏（浏览面板与复习面板共用） ----------
+        function fcNoteSectionsHTML(card, notes, prefix) {
+            const pre = prefix || 'fcn';
+            let h = '<div class="fc-notes">';
+            FC_NOTE_KINDS.forEach(function (kind) {
+                const list = notes[kind.k] || [];
+                h += '<div class="fc-note-sec">' +
+                    '<div class="fc-ns-head"><span>' + kind.icon + ' ' + kind.label + '</span>' +
+                        '<span class="fc-gmeta">' + list.length + '</span></div>';
+                if (list.length) {
+                    list.forEach(function (n) {
+                        const own = !!n.nid;
+                        h += '<div class="fc-note ' + kind.cls + '">' +
+                            '<span class="fc-note-t">' + kpEsc(n.from || '') + (n.t ? ' · ' + kpEsc(n.t) : '') + '</span>' +
+                            kpEsc(n.text) +
+                            (own ? '<button type="button" class="fc-btn sm fc-notedel" style="float:right;margin-left:8px;" ' +
+                                'data-fcnotedel="' + kpEsc(n.nid) + '">✕</button>' : '') +
+                        '</div>';
+                    });
+                } else {
+                    h += '<div class="fc-note-empty">暂无</div>';
+                }
+                h += '<div class="fc-note-add"><textarea rows="2" data-fcnotekind="' + kind.k + '" ' +
+                    'placeholder="' + kind.ph + '"></textarea>' +
+                    '<button type="button" class="fc-btn" data-fcnoteadd="' + kind.k + '">加入</button></div>' +
+                '</div>';
+            });
+            h += '</div>';
+            return h;
+        }
+
+        function fcBindNotes(scope, card, prefix) {
+            scope.querySelectorAll('[data-fcnoteadd]').forEach(function (b) {
+                b.onclick = function () {
+                    const kind = b.dataset.fcnoteadd;
+                    const inp = scope.querySelector('[data-fcnotekind="' + kind + '"]');
+                    if (!inp || !inp.value.trim()) { showToast('请先写点内容'); return; }
+                    fcAddNote(card.id, kind, inp.value);
+                    inp.value = '';
+                    fcRender();
+                    fcEmbedRender();
+                    if (fcDetailId === card.id) fcDetail(card.id, true);
+                };
+            });
+            scope.querySelectorAll('[data-fcnotedel]').forEach(function (b) {
+                b.onclick = function () { fcDelNote(card.id, b.dataset.fcnotedel); };
+            });
+        }
+
+        // ---------- 复习面板内嵌的闪卡区 ----------
+        // 记录复习面板里的「学习笔记」就是它：先看正面，点击翻到反面
+        // （答案 + 标签 + 补充 / 联想 / 提示子栏）。
+        function fcEmbedHTML(rec) {
+            fcState();
+            const cards = fcCardsForRecord(rec);
+            fcEmbedRecord = rec;
+            if (!cards.length) {
+                fcEmbedState = null;
+                return '<div class="fce-wrap">' +
+                    '<div class="fce-head"><span class="fce-title">🃏 本次闪卡</span><span class="fce-count">0 张</span></div>' +
+                    '<div class="fc-empty" style="padding:10px 4px;">这一节还没有可用的闪卡。到 <b>🧠 记忆曲线 → 🃏 闪卡</b> 点 <b>⚡ 生成 / 更新</b>。</div>' +
+                '</div>';
+            }
+            fcEmbedState = { idx: 0, flipped: false, ids: cards.map(function (c) { return c.id; }) };
+            return '<div class="fce-wrap" id="fceWrap">' +
+                '<div class="fce-head">' +
+                    '<span class="fce-title">🃏 本次闪卡</span>' +
+                    '<span class="fce-count"><b id="fcePos">1</b> / ' + cards.length + ' 张</span>' +
+                    '<span class="fc-spacer"></span>' +
+                    '<button type="button" class="fc-btn sm" data-fce-nav="-1">‹ 上一张</button>' +
+                    '<button type="button" class="fc-btn sm" data-fce-nav="1">下一张 ›</button>' +
+                '</div>' +
+                '<div class="fce-stage" id="fceStage"></div>' +
+            '</div>';
+        }
+
+        function fcEmbedRender() {
+            const stage = document.getElementById('fceStage');
+            if (!stage || !fcEmbedState) return;
+            const id = fcEmbedState.ids[fcEmbedState.idx];
+            const card = state.cards[id];
+            const pos = document.getElementById('fcePos');
+            if (pos) pos.textContent = String(fcEmbedState.idx + 1);
+            if (!card) { stage.innerHTML = '<div class="fc-empty">卡片已不存在</div>'; return; }
+            const head = '<div class="fce-box">' +
+                '<div class="fc-face-label">正面 · 问题</div>' +
+                '<div class="fc-face-q"' + (fcEmbedState.flipped ? ' style="font-size:15px;"' : '') + '>' + kpEsc(card.q) + '</div>';
+            if (!fcEmbedState.flipped) {
+                stage.innerHTML = head +
+                    '<button type="button" class="fce-flip" data-fce-flip="1">👆 点击显示答案</button></div>';
+                return;
+            }
+            const notes = fcNotes(card);
+            stage.innerHTML = head +
+                '<div class="fce-div"></div>' +
+                '<div class="fc-face-label">反面 · 答案</div>' +
+                '<div class="fc-face-a">' + kpEsc(card.a || '（无）') + '</div>' +
+                '<div class="fce-tags">' + fcAllTags(card).map(function (t) {
+                    const own = (card.tags || []).indexOf(t) !== -1;
+                    return '<span class="fc-tag ' + (own ? 'own' : 'auto') + '">' + kpEsc(t) + '</span>';
+                }).join('') + '</div>' +
+                fcNoteSectionsHTML(card, notes, 'fceNote') +
+                '</div>';
+            fcBindNotes(stage, card, 'fceNote');
+        }
+
+        function fcBindEmbed(box) {
+            const wrap = box.querySelector('#fceWrap');
+            if (!wrap || wrap.dataset.fcebound === '1') return;
+            wrap.dataset.fcebound = '1';
+            wrap.addEventListener('click', function (e) {
+                const flip = e.target.closest ? e.target.closest('[data-fce-flip]') : null;
+                if (flip) {
+                    if (fcEmbedState) { fcEmbedState.flipped = true; fcEmbedRender(); }
+                    return;
+                }
+                const nav = e.target.closest ? e.target.closest('[data-fce-nav]') : null;
+                if (nav && fcEmbedState) {
+                    const n = parseInt(nav.dataset.fceNav, 10) || 0;
+                    const len = fcEmbedState.ids.length;
+                    fcEmbedState.idx = ((fcEmbedState.idx + n) % len + len) % len;
+                    fcEmbedState.flipped = false;
+                    fcEmbedRender();
+                }
+            });
+            fcEmbedRender();
+        }
+
+        // ---------- 初始化（Tab 上的按钮只绑一次） ----------
+        function initCardModule() {
+            const build = document.getElementById('fcBuildBtn');
+            if (build) build.addEventListener('click', function () { fcBuild(false); });
+            const rbtn = document.getElementById('fcRangeBtn');
+            const rbox = document.getElementById('fcRange');
+            if (rbtn && rbox) {
+                rbtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    rbox.style.display = rbox.style.display === 'none' ? '' : 'none';
+                    if (rbox.style.display !== 'none') fcFillRangeSelects();
+                });
+            }
+            const rok = document.getElementById('fcRangeOk');
+            if (rok) rok.addEventListener('click', function () {
+                const f = document.getElementById('fcFrom'), t = document.getElementById('fcTo');
+                if (!f || !t) return;
+                let a = parseInt(f.value, 10) || 1, b = parseInt(t.value, 10) || 1;
+                if (b < a) { const tmp = a; a = b; b = tmp; }
+                fcState();
+                state.cardCfg.from = a;
+                state.cardCfg.to = b;
+                saveData();
+                fcBuild(false);
+            });
+            document.querySelectorAll('#fcTabs .fc-tab').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    fcView = b.dataset.fcmode || 'chapter';
+                    fcEditing = null;
+                    fcRender();
+                });
+            });
+            const s = document.getElementById('fcSearch');
+            if (s) {
+                s.addEventListener('input', function () {
+                    fcQuery = s.value.trim();
+                    clearTimeout(s._fcT);
+                    s._fcT = setTimeout(fcRender, 160);
+                });
+            }
+            fcRender();
+        }
+
+        function fcFillRangeSelects() {
+            const mx = Math.max(2, fcMaxTier());
+            const f = document.getElementById('fcFrom'), t = document.getElementById('fcTo');
+            if (!f || !t) return;
+            fcState();
+            const opts = function (sel) {
+                let h = '';
+                for (let i = 1; i <= mx; i++) h += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>第 ' + i + ' 级</option>';
+                return h;
+            };
+            f.innerHTML = opts(Math.min(state.cardCfg.from || 1, mx));
+            t.innerHTML = opts(Math.min(state.cardCfg.to || mx, mx));
         }
         function saveKpReview(recordId, d) {
             const todayStr = dateToStr(new Date());
@@ -8693,6 +9901,7 @@
             initViewTabs();
             initMemoryView();
             renderProjectSelect();
+            try { initCardModule(); } catch (e) { console.warn('闪卡模块初始化失败：', e); }
 
             if (state.records.length > 0) {
                 const most = state.records.reduce((a, b) => {
@@ -11172,7 +12381,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917d</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917f</div>
 <!-- build-tag:end -->
 </body>
 </html>
