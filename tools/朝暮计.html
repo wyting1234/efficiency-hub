@@ -5371,7 +5371,14 @@
     }
     /* 防丢兜底：有未保存更改时关闭/刷新页面先询问 */
     window.addEventListener('beforeunload', e => {
-        if (_dirty) { e.preventDefault(); e.returnValue = '有未保存的更改，确定离开？'; return e.returnValue; }
+        if (!_dirty) return;
+        /* v49：嵌在效率中心的 iframe 里时不弹窗 —— 外层页面一跳走（比如去看外部
+           网页），这个弹窗会挂在别人的页面上，用户还以为是那个网站的问题，而且
+           它拦不住任何东西。改成静默落盘：同样不丢数据，但不打扰。 */
+        if (window.self !== window.top) { try { commitSave(true); } catch (err) {} return; }
+        e.preventDefault();
+        e.returnValue = '有未保存的更改，确定离开？';
+        return e.returnValue;
     });
     const uid = () => Date.now() + '' + Math.floor(Math.random() * 999);
 
@@ -19962,7 +19969,16 @@
         S.habits[1].records = recWater;
 
         normalizeTimerCfgs();   // 种子数据没带 timerCfg，补一次
-        save();
+        /* v49 修 bug：种子数据是程序自己写的，本来就不该走「用户未保存更改」那条路。
+           原来这里调 save()，会把 _dirty 永久置真，后果有两个：
+             ① 首次打开 💾 按钮就一直亮着（用户什么都没改）；
+             ② beforeunload 从第 0 秒起就武装好了 —— 用户一个字没改、只是点了个
+                外部链接，也会弹「有未保存的更改，确定离开？」。
+           改成直接落盘，与导入 / 清空数据的既有写法保持一致。 */
+        try { localStorage.setItem(DKEY, JSON.stringify(S)); } catch (e) {}
+        _dirty = false;
+        invalidateDateCache();
+        updateSaveFab();
     }
     applyBg();
     /* v48：背景图实体在 IndexedDB，启动时要把它们取回来。
@@ -19998,5 +20014,26 @@
 
 
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
+<!-- build-tag:begin（技能 §21/§22：由推送脚本维护，勿手改） -->
+<style>
+html.embedded #buildTag{display:none}
+#buildTag{position:fixed;left:8px;bottom:8px;z-index:30;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;padding:4px 7px;border-radius:6px;background:rgba(15,23,42,.5);color:#fff;opacity:.62;pointer-events:none;user-select:none;white-space:nowrap}
+@media print{#buildTag{display:none}}
+</style>
+<script>/* ① 嵌在 iframe 里时隐藏自己的徽标（否则与导航徽标同位置叠字）② 把页面内
+   标了 data-build-ver 的位置同步成同一个版本串 —— 版本只有一个字面量，就是下面那个 div */
+(function(){
+  try{ if(window.self!==window.top) document.documentElement.className += ' embedded'; }catch(e){}
+  function sync(){
+    var el=document.getElementById('buildTag'); if(!el) return;
+    var v=el.textContent.trim();
+    var n=document.querySelectorAll('[data-build-ver]');
+    for(var i=0;i<n.length;i++) if(n[i].textContent.trim()!==v) n[i].textContent=v;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+})();
+</script>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917g</div>
+<!-- build-tag:end -->
 </body>
 </html>
