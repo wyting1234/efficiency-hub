@@ -239,7 +239,7 @@
 
   .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:12px;padding-bottom:28px;border-top:1px solid rgba(255,255,255,.07)}
   /* 构建标记（技能 §21）：每次推送改为 V+YYYYMMDD+字母，同日 a→b→c */
-  #buildTag{position:fixed;left:8px;bottom:8px;z-index:30;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;padding:4px 7px;border-radius:6px;background:rgba(15,23,42,.5);color:#fff;opacity:.62;pointer-events:none;user-select:none}
+  #buildTag{position:fixed;left:8px;bottom:8px;z-index:30;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;padding:4px 7px;border-radius:6px;background:rgba(15,23,42,.5);color:#fff;opacity:.62;pointer-events:none;user-select:none;white-space:nowrap}
   @media print{ #buildTag{display:none} }
 
 
@@ -1144,7 +1144,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260916a';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260917b';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -2465,7 +2465,68 @@ document.addEventListener('pointerdown', e => {
 <script src="tools/backup-hub.js?v=54"></script>
 
 
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260917a</div>
+<script>
+/* 版本联动（技能 §21/§22）：本页版本 = 项目最新推送版本；打开工具时追加该工具自己的版本。
+   versions.json 由推送脚本维护。读不到就退回上次缓存，再读不到就只显示本页版本 —— 绝不阻塞渲染。 */
+(function(){
+  var NAV_VER = 'V20260917b';
+  var CACHE_KEY = 'hub_versions_cache_v1';
+  var FILES = {};
+  function badge(){ return document.getElementById('buildTag'); }
+  function lastMod(){
+    try{ return JSON.parse(localStorage.getItem('hub_lastModule') || '{}') || {}; }catch(e){ return {}; }
+  }
+  function fileOf(id){
+    try{
+      if(typeof MODULES !== 'undefined'){
+        var m = MODULES.find(function(x){ return x.id === id; });
+        if(m) return m.file || '';
+      }
+    }catch(e){}
+    return '';
+  }
+  function paint(){
+    var el = badge(); if(!el) return;
+    var cur = lastMod(), tv = '';
+    if(cur && cur.type === 'tool'){
+      var f = fileOf(cur.id);
+      if(f && FILES[f]) tv = FILES[f];
+    }
+    if(tv && tv !== NAV_VER){
+      el.textContent = NAV_VER + ' · 本工具 ' + tv;
+      el.title = '项目最新版本 ' + NAV_VER + '；当前打开的工具版本 ' + tv;
+    }else{
+      el.textContent = NAV_VER;
+      el.title = '构建版本（确认本设备加载的是哪一版）：' + NAV_VER;
+    }
+  }
+  try{
+    var c = localStorage.getItem(CACHE_KEY);
+    if(c){ var o = JSON.parse(c); if(o && o.files) FILES = o.files; }
+  }catch(e){}
+  paint();
+  try{
+    fetch('versions.json', { cache: 'no-cache' }).then(function(r){
+      return r.ok ? r.json() : null;
+    }).then(function(j){
+      if(j && j.files){
+        FILES = j.files;
+        try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ files: j.files, at: Date.now() })); }catch(e){}
+        paint();
+      }
+    }).catch(function(){});
+  }catch(e){}
+  try{
+    if(typeof openModule === 'function'){
+      var _orig = openModule;
+      openModule = function(t, i){ _orig(t, i); setTimeout(paint, 0); };
+    }
+  }catch(e){}
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint);
+  else paint();
+})();
+</script>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260917b</div>
 </body>
 
 
