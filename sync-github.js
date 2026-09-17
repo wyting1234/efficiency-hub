@@ -1832,6 +1832,167 @@
     });
   }
 
+  // ============ 后台同步不打断正在编辑的工具（v9）============
+  // 背景：doDownload / doSyncBoth 过去每次成功都调 reloadActiveIframe() —— 给【所有】
+  //   iframe 换 src。那是为了防「iframe 内存里是旧数据，用户一保存就把刚合并进来的
+  //   新数据覆盖掉」。代价是：自动同步在后台跑一次，用户正在填的表就被清空、界面自己跳。
+  // 所以拆成三步，任何一步都能独立降级：
+  //   ① 没变就不刷 —— 只有本次真的往本机写了键才考虑重载。自动同步绝大多数是
+  //      「两端已一致」，于是「什么都没变也把工具页刷一遍」的打扰直接消失。
+  //   ② 只刷相关的 —— 按 shardOfKey 把变化键归到模块，只重载「数据真被改过」的那些工具。
+  //   ③ 不刷正在用的 —— 后台（silent）同步时，当前打开的那个工具登记为「待重载」，
+  //      等用户切走 / 页面隐藏 / 点「立即刷新」时才真正执行。用户看到的界面永不自己跳。
+  //   已知残留窗口（不掩盖）：待重载期间若用户刚好在该工具里保存，保存的是旧内存态。
+  //   窗口由 ③ 的三个触发点压到最小 —— 它们都发生在用户离开该工具的瞬间。
+  const pendingReload = Object.create(null);   // moduleId -> 1
+  let reloadHintEl = null;
+
+  function moduleIds() {
+    try {
+      if (typeof MODULES !== 'undefined' && Array.isArray(MODULES)) {
+        return MODULES.map(function (m) { return m.id; });
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  // 当前真正显示在屏幕上的工具，以 DOM 为准而不是靠 localStorage 推断 ——
+  // 用户可能打开工具后又切回仪表盘，此时那个 iframe 是隐藏的，刷它无害。
+  function activeFrameId() {
+    const b = document.querySelector('#toolContainer .tool-container.active');
+    return b && b.id && b.id.indexOf('frame-') === 0 ? b.id.slice(6) : '';
+  }
+
+  // 只统计「真的加载过」的帧：没 src 的是懒加载还没触发，切过去自然会新加载。
+  function loadedFrameIds() {
+    const out = [];
+    document.querySelectorAll('#toolContainer .tool-container').forEach(function (b) {
+      if (!b.id || b.id.indexOf('frame-') !== 0) return;
+      const f = b.querySelector('iframe');
+      if (f && f.getAttribute('src')) out.push(b.id.slice(6));
+    });
+    return out;
+  }
+
+  function reloadModule(id) {
+    const b = document.getElementById('frame-' + id);
+    const f = b && b.querySelector('iframe');
+    if (!f || !f.getAttribute('src')) return false;
+    if (typeof window.reloadFrame === 'function') {
+      try { window.reloadFrame(id); return true; } catch (e) {}
+    }
+    f.src = f.src;                       // 兜底：reloadFrame 不在时直接换 src
+    return true;
+  }
+
+  // 变化键 → 该刷哪些模块。返回 null 表示「认不出来，全刷」（保守）。
+  function modulesOfKeys(keys) {
+    const ids = moduleIds();
+    if (!ids.length) return null;
+    const hit = Object.create(null);
+    for (let i = 0; i < keys.length; i++) {
+      const id = shardOfKey(keys[i]);
+      if (ids.indexOf(id) < 0) return null;       // 有一个键不属于任何模块 → 全刷
+      hit[id] = 1;
+    }
+    return Object.keys(hit);
+  }
+
+  // 侧栏那行「云端有新数据 · 立即刷新」提示。只在有待重载时出现，不进弹窗、不打断。
+  function ensureReloadHint() {
+    if (reloadHintEl && reloadHintEl.isConnected) return reloadHintEl;
+    const foot = document.querySelector('.sidebar .side-foot') || document.querySelector('.side-foot');
+    if (!foot) return null;
+    reloadHintEl = document.createElement('div');
+    reloadHintEl.id = 'reloadHint';
+    reloadHintEl.style.cssText = 'display:none;font-size:11px;line-height:1.7;color:#8ea2c0;padding:2px 8px';
+    reloadHintEl.innerHTML = '☁️ 云端有新数据，切走本工具后生效 ' +
+      '<a href="#" id="reloadHintBtn" style="color:#4ea1ff;text-decoration:none;white-space:nowrap">立即刷新</a>';
+    const syncRow = document.getElementById('syncStatusBtn');
+    if (syncRow && syncRow.nextSibling) foot.insertBefore(reloadHintEl, syncRow.nextSibling);
+    else foot.appendChild(reloadHintEl);
+    reloadHintEl.querySelector('#reloadHintBtn').addEventListener('click', function (e) {
+      e.preventDefault();
+      flushPendingReload();
+    });
+    return reloadHintEl;
+  }
+
+  function renderReloadHint() {
+    const el = ensureReloadHint();
+    if (!el) return;
+    el.style.display = Object.keys(pendingReload).length ? 'block' : 'none';
+  }
+
+  // 真正执行重载。keepId = 刚切过去的那个模块，跳过它
+  // （否则用户在同一个工具里点了两下导航，页面就被刷了）。
+  function flushPendingReload(keepId) {
+    const ids = Object.keys(pendingReload);
+    let n = 0;
+    ids.forEach(function (id) {
+      delete pendingReload[id];
+      if (id === keepId) { pendingReload[id] = 1; return; }   // 还得留着，等下次时机
+      if (reloadModule(id)) n++;
+    });
+    renderReloadHint();
+    return n;
+  }
+
+  // 统一入口：把「同步写进了本机哪些键」翻译成「该刷哪几个工具页」。
+  //   opts.silent  true = 这次是后台自动同步 → 绝不刷用户当前正开着的工具
+  //   opts.keys    本次真正写入本机的键（[] = 什么都没写 → 一个都不刷）
+  //   opts.all     true = 覆盖式（云端整体替换本机）→ 全部刷
+  function refreshToolData(opts) {
+    opts = opts || {};
+    const silent = !!opts.silent;
+    const loaded = loadedFrameIds();
+    if (!loaded.length) { renderReloadHint(); return { reloaded: [], deferred: [] }; }
+    let targets;
+    if (opts.all) {
+      targets = loaded.slice();
+    } else if (!Array.isArray(opts.keys)) {
+      targets = loaded.slice();                          // 调用方没说改了啥 → 全刷
+    } else if (!opts.keys.length) {
+      targets = [];                                      // 一个键都没写 → 不刷
+    } else {
+      const mods = modulesOfKeys(opts.keys);
+      targets = mods === null ? loaded.slice() : loaded.filter(function (id) {
+        return mods.indexOf(id) >= 0;
+      });
+    }
+    const active = activeFrameId();
+    const reloaded = [], deferred = [];
+    targets.forEach(function (id) {
+      if (silent && id === active) { pendingReload[id] = 1; deferred.push(id); return; }
+      if (reloadModule(id)) reloaded.push(id);
+    });
+    renderReloadHint();
+    return { reloaded: reloaded, deferred: deferred };
+  }
+
+  // 三个「可以安全动手」的时机：切工具（切走的那个已不可见）、页面切走（用户不在看）、
+  // 用户自己点「立即刷新」。除这三处，待重载就一直等着 —— 宁可晚合并，不可丢输入。
+  (function installReloadFlush() {
+    try {
+      if (typeof window.openModule === 'function' && !window.openModule.__reloadWrapped) {
+        const orig = window.openModule;
+        const wrapped = function (t, i) {
+          orig(t, i);
+          if (Object.keys(pendingReload).length) {
+            setTimeout(function () { flushPendingReload(t === 'tool' ? i : ''); }, 80);
+          }
+        };
+        wrapped.__reloadWrapped = true;
+        window.openModule = wrapped;
+      }
+    } catch (e) {}
+    try {
+      document.addEventListener('visibilitychange', function () {
+        if (document.hidden) flushPendingReload();
+      });
+    } catch (e) {}
+  })();
+
   // ============ 动作：上传 / 下载 ============
   async function doUpload() {
     if (!isConnected) { showConfigModal(); return; }
@@ -1990,7 +2151,11 @@
       } else {
         applyCloudToLocal(remote);
       }
-      reloadActiveIframe();
+      // 手动操作：用户刚点了按钮，期望马上看到结果 → 立刻刷新受影响的工具页（不延迟）。
+      // 覆盖式（applyCloudToLocal）动了全部键，只能全刷；合并式只刷数据真被改过的那些。
+      refreshToolData(mode === 'merge' && mergeStats
+        ? { keys: mergeStats.keys || [] }
+        : { all: true });
       if (typeof buildCards === 'function') buildCards();
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
@@ -2003,9 +2168,9 @@
       notifyOK(mode === 'merge' ? '已合并云端数据到本机' : '已从云端同步到本机',
         mode === 'merge'
           ? `合并完成：新增 ${mergeStats.added} 项，更新 ${mergeStats.updated} 项（云端较新），保留本机 ${mergeStats.kept} 项。\n` +
-            '当前打开的工具页已自动刷新，看到的是合并后的最新数据。'
+            '数据有变动的工具页已刷新，其余工具页保持原状（避免打断正在填写的表单）。'
           : `云端的 ${Object.keys(remote.data).length} 项数据已写入本机。\n` +
-            '当前打开的工具页已自动刷新，看到的是最新数据。');
+            '数据有变动的工具页已刷新，其余工具页保持原状（避免打断正在填写的表单）。');
     } catch (e) {
       console.warn('[GitHub] 下载失败:', e.message);
       notifyFail('从云端下载失败',
@@ -2038,7 +2203,10 @@
         function (data) { return writeSharded(data); }
       );
       setCachedCloudHasData(true);
-      reloadActiveIframe();
+      // 只有真的往本机写了键才重载相关工具页；silent（后台自动同步）时当前正开着的那个
+      // 只登记不重载 —— 这就是「后台同步不再把已填好的内容冲掉」的落点。
+      const changedKeys = (r.localStats && r.localStats.keys) || [];
+      const reloadInfo = refreshToolData({ silent: silent, keys: changedKeys });
       if (typeof buildCards === 'function') buildCards();
       lastSyncTime = String(Date.now());
       localStorage.setItem('sync_last_sync', lastSyncTime);
@@ -2063,6 +2231,7 @@
       }
       return {
         mode: 'both', at: Date.now(), ms: Date.now() - t0, hasRemote: r.hasRemote,
+        reload: reloadInfo,
         local: st
           ? { added: st.added, updated: st.updated, merged: st.merged, kept: st.kept, keys: st.keys || [] }
           : { added: 0, updated: 0, merged: 0, kept: 0, keys: [] },
@@ -2196,9 +2365,15 @@
     // 而小改动（改一条待办）恰恰是自动同步最常见的场景。
     const bytes = c.bytes || 0;
     const sizeTxt = bytes < 1024 ? (bytes + 'B') : (Math.round(bytes / 1024) + 'KB');
-    return head + ' · 用时 ' + sec + ' 秒 · ' + parts.join('、') +
+    const base = head + ' · 用时 ' + sec + ' 秒 · ' + parts.join('、') +
       ' · 云端共 ' + (c.wrote || 0) + ' 项 / ' + sizeTxt + ' · 涉及：' +
       names.join('、') + (more > 0 ? ' 等 ' + more + ' 项' : '');
+    // 后台同步不主动刷用户正开着的工具页：把这件事写进留痕，
+    // 否则用户会看到「记录变了、页面没变」，误以为同步没生效。
+    if (sum.reload && sum.reload.deferred && sum.reload.deferred.length) {
+      return base + ' · 当前工具已暂缓刷新（切走该工具后自动生效）';
+    }
+    return base;
   }
 
   function autoRecord(desc, ok) {
@@ -2517,8 +2692,10 @@
       showChoice, showConfirm, showAlert, notifyOK, notifyFail, fmtTime,
       // 进度反馈（多后端共用：面板内常驻状态区）
       progShow, progBusy, progHide,
-      // 刷新
-      reloadActiveIframe,
+      // 刷新（v9）
+      //   reloadActiveIframe = 无脑全刷（保留给测试与兜底）
+      //   refreshToolData    = 按变化键挑工具；silent 时不动当前正开着的那个
+      reloadActiveIframe, refreshToolData, flushPendingReload, activeFrameId,
       // 常量
       EXCLUDE_KEYS, EXCLUDE_PREFIXES
     };
@@ -2567,7 +2744,10 @@
       runNow: () => runAutoSync('manual'),
       isBusy: () => autoBusy,
       dirty: () => autoDirtyAt,
-      hookOk: () => autoHookOk
+      hookOk: () => autoHookOk,
+      // 延迟重载的观测口子：自动化测试靠它确认「后台同步没刷当前工具」
+      pendingReload: () => Object.keys(pendingReload),
+      flushReload: () => flushPendingReload()
     }
   };
 })();
