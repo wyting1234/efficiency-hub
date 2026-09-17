@@ -442,30 +442,6 @@
             font-weight: 500;
             margin-top: 2px;
         }
-        /* ===== 知识点（序号 + 知识点） ===== */
-        .kp-list { display: flex; flex-direction: column; gap: 8px; }
-        .kp-row { display: flex; align-items: center; gap: 8px; }
-        .kp-no {
-            flex: 0 0 auto; min-width: 28px; height: 28px; padding: 0 7px;
-            border-radius: 8px; background: var(--primary-bg); color: var(--primary-dark);
-            font-size: 12px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .kp-row .kp-input { flex: 1; min-width: 0; padding: 9px 12px; font-size: 16px; }
-        .kp-del {
-            flex: 0 0 auto; width: 32px; height: 32px; border-radius: 8px;
-            border: 1px solid var(--border); background: var(--card-bg);
-            color: var(--text-secondary); font-size: 13px; line-height: 1;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .kp-del:hover { background: #F9EAE5; color: var(--red); border-color: #EFC9BD; }
-        .kp-add {
-            align-self: flex-start; margin-top: 10px; padding: 8px 14px;
-            border-radius: var(--radius-sm); border: 1px dashed var(--primary-light);
-            background: var(--primary-bg); color: var(--primary-dark);
-            font-size: 13px; font-weight: 600;
-        }
-        .kp-add:hover { background: #EFE8DC; }
         .mini-add-btn {
             margin-left: 8px; padding: 2px 8px; font-size: 11.5px; font-weight: 600;
             border-radius: 10px; border: 1px solid var(--primary-light, #C9B79B);
@@ -2946,13 +2922,6 @@
                     </div>
                     <div class="form-row full">
                         <div class="field">
-                            <label>📌 知识点 <span id="kpModeLabel" style="font-weight:400;color:var(--text-secondary);"></span></label>
-                            <div class="kp-cascade" id="kpCascade"></div>
-                            <span class="kp-hint" id="kpBaseHint" style="display:block;margin:6px 0 2px;font-weight:600;color:var(--primary,#8A7358);"></span>
-                        </div>
-                    </div>
-                    <div class="form-row full">
-                        <div class="field">
                             <label class="mem-switch on" id="memSwitchLabel" for="fAddToMemory">
                                 <input type="checkbox" id="fAddToMemory" checked />
                                 <span>
@@ -3367,8 +3336,9 @@
                     </div>
                     <div class="goal-result" id="goalResult"></div>
                     <div class="goal-colhint">
-                        模板列（7 级标准）：<code>项目</code> · <code>科目</code> · <code data-lv="chapter">章</code> · <code><span data-lv="chapter">章</span>名称</code> · <code data-lv="section">节</code> · <code><span data-lv="section">节</span>名称</code> · <code>一级</code> · <code>二级</code> · <code>三级</code> · <code>四级</code> · <code>建议学时(h)</code> · <code>学习目标</code> · <code>重点难点</code> · <code>掌握程度</code>
-                        <br>其中 <code>项目</code> 列填了值 → 导入到该指定项目（结构从该列后面的<code>科目</code>开始建）；<code>项目</code> 列留空 → 导入到当前项目。<code><span data-lv="chapter">章</span>名称</code> 填写后会覆盖系统内置<span data-lv="chapter">章</span>名；<code>一级~四级</code> 一行填一个知识点末级路径，同一<span data-lv="section">节</span>可有多行（每行一个末级知识点），导入时自动拼回该<span data-lv="section">节</span>的知识点树。
+                        模板列：<code>项目</code> · <code>科目</code> · <code data-lv="chapter">章</code> · <code><span data-lv="chapter">章</span>名称</code> · <code data-lv="section">节</code> · <code><span data-lv="section">节</span>名称</code> · <code>建议学时(h)</code> · <code>学习目标</code> · <code>重点难点</code> · <code>掌握程度</code>
+                        <br>其中 <code>项目</code> 列填了值 → 导入到该指定项目（结构从该列后面的<code>科目</code>开始建）；<code>项目</code> 列留空 → 导入到当前项目。<code><span data-lv="chapter">章</span>名称</code> 填写后会覆盖系统内置<span data-lv="chapter">章</span>名。
+                        <br><b>注意</b>：科目设计只建到<b>节</b>（第 1–3 级）。知识点请在学习记录的「📝 知识点速记」里写 —— 那部分自动占第 4–7 级。
                     </div>
                 </div>
             </div>
@@ -3881,6 +3851,27 @@
         const DEFAULT_LEVEL_LABELS = { course: '科目', chapter: '章', section: '节', l1: '一级', l2: '二级', l3: '三级', l4: '四级' };
         const DEFAULT_REVIEW_INTERVALS = [1, 2, 4, 7, 15];
 
+        // ---------- ★ 层级契约常量：知识点的层级偏移 ----------
+        // 三层架构（本轮定型）：
+        //     1 科目 · 2 章 · 3 节   ← 科目设计（kpTree）只负责这三层，**不出卡**
+        //     4 知识点1级 · 5 知识点2级 · 6 知识点3级 · 7 知识点4级
+        //                            ↑ 学习记录「知识点速记」写的就是这一段
+        //
+        // 学习记录的大纲在内部是**从 1 数起**的（第 1 层 = 最外层知识点），
+        // 换算成链路绝对层级就是 +3。需要绝对层级的地方自己加 KT_KP_OFFSET。
+        // 列数即层级契约（由 kpCols 落盘，见 handleFormSubmit）：
+        //     速记 3 列 → 占第 4–6 级（知识点 1/2/3 层）
+        //     速记 4 列 → 占第 4–7 级（知识点 1/2/3/4 层）
+        //
+        // ⚠️ 位置很关键：这两个常量**必须声明在 loadData 之前**。
+        //    loadData 尾部会调 migrateTierV2 → fcRepairCardPaths，后者要读 KT_KP_OFFSET。
+        //    原先声明在闪卡模块里（loadData 之后约 5000 行），首开时取值撞上
+        //    const 的暂时性死区（TDZ）→ ReferenceError 打断整个 loadData，
+        //    页面下半截全渲染不出来。教训：**跨模块共用的契约常量要放在最前面**，
+        //    不能因为「只有这个模块用」就摆在模块里 —— 迁移/初始化代码会先跑到。
+        const KT_KP_OFFSET = 3;          // 知识点内部第 1 层 = 链路第 4 级
+        const KT_KP_MAXLV  = 4;          // 知识点内部最深 4 层（速记 4 列）
+
         const DEFAULT_PROJECTS = [{
             id: 'cpa',
             name: '注册会计师（CPA）',
@@ -4136,7 +4127,6 @@
                     el.textContent = pre + L(key) + suf;
                 });
             } catch (e) {}
-            try { if (typeof updateKpBaseHint === 'function') updateKpBaseHint(); } catch (e) {}
             try {
                 const ms = document.getElementById('msSubMemory');
                 if (ms) {
@@ -4230,10 +4220,12 @@
             cards: {},        // [id] = {q,a,tags,src,edited,hidden,manual,createdAt,editedAt}
             cardNotes: {},    // [id] = [{nid,t,kind,text}]  kind: supplement|assoc|tip
             cardIndex: {},    // ['科目|章|节|层级|序号'] = cardId  —— 节点改名也不换 id
-            cardCfg: { from: 1, to: 4, builtAt: '' },   // 出题层级范围
-            cardCfg: { from: 1, to: 4, builtAt: '' },   // 出题层级范围
+            cardCfg: { from: 4, to: 7, builtAt: '' },   // 出题层级范围（链路绝对层级 4-7）
+            cardCfg: { from: 4, to: 7, builtAt: '' },   // 出题层级范围（链路绝对层级 4-7）
             // ---- 知识树页的视图偏好（独立体系，与闪卡互不相干）----
             ktCfg: { from: 1, to: 0, course: '', chapter: 0, section: 0 },
+            kpMigrated: false,     // 一次性迁移闸门：老「自由输入」知识点 → 知识点速记（见 migrateKpQuickRaw）
+            tierV2: false,         // 一次性迁移闸门：闪卡层级口径 1-4 → 4-7（见 migrateTierV2）
             currentCourse: '会计',
             editingId: null,
             filterStar: 'all',
@@ -4323,10 +4315,12 @@
                     state.cards = (data.cards && typeof data.cards === 'object') ? data.cards : {};
                     state.cardNotes = (data.cardNotes && typeof data.cardNotes === 'object') ? data.cardNotes : {};
                     state.cardIndex = (data.cardIndex && typeof data.cardIndex === 'object') ? data.cardIndex : {};
-                    state.cardCfg = (data.cardCfg && typeof data.cardCfg === 'object') ? data.cardCfg : { from: 1, to: 4, builtAt: '' };
-                    if (!(state.cardCfg.from > 0)) state.cardCfg.from = 1;
-                    if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
-                    if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
+                    state.cardCfg = (data.cardCfg && typeof data.cardCfg === 'object') ? data.cardCfg : { from: 4, to: 7, builtAt: '' };
+                    // ⚠️ 这里**不做**层级钳制：老存档的 {from:1,to:4} 要原样留着，
+                    //    交给 migrateTierV2() 判断「这是旧口径」再统一改 ——
+                    //    在这里钳会把「还没来得及迁移」这个信号抹掉，
+                    //    导致口径换了但范围还是 1-4，一张卡都出不来。
+                    if (typeof state.cardCfg.builtAt !== 'string') state.cardCfg.builtAt = '';
                     state.ktCfg = (data.ktCfg && typeof data.ktCfg === 'object') ? data.ktCfg : { from: 1, to: 0, course: '', chapter: 0, section: 0 };
                     if (data.tomato) {
                         state.tomato.count = data.tomato.count || 0;
@@ -4342,6 +4336,9 @@
                         }
                     }
                     state.progressMode = (data.progressMode === 'tomato') ? 'tomato' : 'hours';
+                    // 一次性迁移闸门（见 migrateKpQuickRaw）。老存档没有该字段 = 还没迁移过。
+                    state.kpMigrated = (data.kpMigrated === true);
+                    state.tierV2 = (data.tierV2 === true);
                     // 分类配置：老存档没有该字段时为 null → getClassify 回落默认
                     state.resourceTypes = Array.isArray(data.resourceTypes) ? cloneClassify(data.resourceTypes) : null;
                     state.sources = Array.isArray(data.sources) ? cloneClassify(data.sources) : null;
@@ -4387,8 +4384,237 @@
                 if (r.chapter > 30) r.chapter = 30;
                 if (r.section > 12) r.section = 12;
                 r.understanding = r.understanding || 0;
+                // 层级契约：这条记录的大纲是几列写的（3 → 链路第 4–6 级 / 4 → 第 4–7 级）。
+                // 缺失时补 3 —— 也是 CpaKpEditor 的默认列数，与「没设置过就按默认来」一致。
+                if (r.kpCols !== 3 && r.kpCols !== 4) r.kpCols = 3;
             });
+            // ⚠️ 顺序有讲究，三步都不能换位：
+            //   ① kpQuickRaw 先补齐 —— ②③ 都要读大纲原文（fcRepairCardPaths → fcAncestorPath
+            //      与 fcWalkAll 都依赖记录大纲），原文没补出来的记录在它们眼里等于空。
+            migrateKpQuickRaw();
+            //   ② 闪卡层级口径迁移 + 老卡 path 修复（两者都在 migrateTierV2 里，见其注释）。
+            //      ★ 用 try 包起来：这一步内部要读 KT_KP_OFFSET 这类**同块 const**，
+            //        而 const 有暂时性死区（TDZ）——一旦取值发生在声明之前，
+            //        抛出的 ReferenceError 会把整个 loadData 打断，后面所有渲染全部不执行。
+            //        首次上线时正是踩了这个：tier 迁移与出题范围都已生效（它们只写不读），
+            //        唯独 fcRepairCardPaths 读常量那行炸掉，于是 path 一张都没修上。
+            //        这里兜住它 —— 迁移是**增强**，不该有能力拖垮整页加载；
+            //        真出问题也只是这次不迁移，闸门没置位，下次打开还会再来一遍。
+            try { migrateTierV2(); } catch (e) {
+                if (window.console && console.warn) console.warn('[loadData] migrateTierV2 未完成：', e);
+            }
             try { saveData(); } catch (e) {}
+        }
+
+        // ---------- 一次性迁移：老「自由输入」知识点 → 知识点速记原文 ----------
+        // 背景：记录表单里原来有一套「知识点自由输入行」（无预置树时出现，序号自动生成），
+        // 它把知识点写成 {no, text} 流水号落盘，**父子层级在写入那一刻就丢了**；
+        // 它的行首序号语义也和「科目设计」kpTree 的 7 级编码结构不是一套，
+        // 于是同一份知识点在记录侧与树侧层级对不上，闪卡配对与知识树层级筛选双双失准。
+        // 该输入区已删除，知识点统一由「📝 知识点速记」承担（kpQuickRaw 是唯一数据源）。
+        //
+        // 迁移只做一件事：给「kpQuickRaw 为空、但 knowledgePoints 里有内容」的老记录
+        // 补一份大纲原文，让这些老数据也能参与闪卡出卡与知识树构建。
+        //   · 只填空 —— 已有 kpQuickRaw 的记录一个字都不动；
+        //   · 不删不改 knowledgePoints —— 记录卡片的展示照旧；
+        //   · 幂等 —— state.kpMigrated 做闸门，重复打开不反复跑。
+        // 单条 r.kpMigrated = true 是审计标记，日后可据此查出哪些记录是迁移来的。
+        function migrateKpQuickRaw() {
+            if (state.kpMigrated) return 0;
+            let n = 0;
+            (state.records || []).forEach(function (r) {
+                if (!r) return;
+                if (String(r.kpQuickRaw || '').trim()) return;          // 已有大纲原文 → 不动
+                const kps = (r.knowledgePoints || [])
+                    .map(function (k) { return stripKpNo(String((k && k.text) || '').trim()); })
+                    .filter(Boolean);
+                if (!kps.length) return;
+                r.kpQuickRaw = kps.map(function (t, i) { return (i + 1) + '. ' + t; }).join('\n');
+                // 老自由输入是**平铺的一串**，没有父子层级 → 结构上等价于 4 列里的第 1 列。
+                // 标成 4 是保守选择：不虚构深层级，只声明「占第 4 级起」。
+                // ⚠️ 必须写死 4：loadData 的兜底归一化会把缺省值填成 3，
+                //    那条「补默认」不该覆盖迁移对这份数据的判断。
+                r.kpCols = 4;
+                r.kpMigrated = true;
+                n++;
+            });
+            state.kpMigrated = true;
+            if (n) { try { saveData(); } catch (e) {} }
+            return n;
+        }
+
+        // ---------- ★ 闪卡层级口径迁移（1–4 → 4–7）----------
+        // 背景：闪卡的坐标系原本是「知识点内部层级」（1..4），本轮统一成
+        //       「链路绝对层级」（4..7），以对齐知识树与用户口径。
+        //       fcSig = [科目, 章, 节, tier, order] —— **tier 存在 sig 里**，
+        //       所以不迁移的话 state.cardIndex 里的老 sig 全部失配：
+        //       老卡会被判成 orphan（明明还在，却被标「已不在学习记录中」），
+        //       而且新旧两张卡会各占一个 id，同一知识点凭空多出一张。
+        //
+        // ⚠️ 不受影响的部分（先说清，免得误伤）：
+        //   · 复习历史**不在卡片上**。本模块不另立排期，复习状态复用
+        //     state.reviewDone / reviewOverrides / reviewDeleted（键是 recordId#round，
+        //     挂的是**学习记录**），以及 kpReviews。闪卡模块对它们只读。
+        //     所以迁移根本碰不到复习历史 —— 它们本来就不随 sig 走。
+        //   · 闪卡笔记 state.cardNotes[id] 按**卡片 id** 存，id 在迁移中不变 → 自动保留。
+        //   · 编辑过的内容 / 隐藏状态 / 手动卡：都挂在 card 对象上，同样不受影响。
+        //
+        // 迁移做三件事，一个字节的**内容**都不改：
+        //   ① 卡片 src.tier：1–4 → 4–7（+KT_KP_OFFSET）
+        //   ② cardIndex 的键（sig）：用卡片自己的 src 反推新 sig，旧键删掉
+        //   ③ 老卡的 src.path（旧格式，只有知识点段）→ 补上 1–3 级祖先（见 fcRepairCardPaths）
+        //
+        // 幂等：state.tierV2 做闸门。老存档没有该字段 = 还没迁移过。
+        // 兜底：卡片 src.tier 若已经是 4–7（迁移过 / 新建的），按已迁移处理不再加。
+        //       ⚠️ 但兜底**不能提前 return** —— 否则「tier 已迁移、path 还没修」的存档
+        //          （例如本轮先上线了 ①② 之后再补 ③）永远停在中途，path 修不上。
+        // ---------- ★ 卡片路径修复：老卡的 src.path 补上 1–3 级祖先 ----------
+        // 背景：本轮之前 src.path **只装知识点那几段**（如 ["货币资金"]），
+        //   1–3 级是这一轮才进 path 的（fcAncestorPath）。
+        //   老卡片的 path 因此是旧格式，会带来两个问题：
+        //     ① fcUid() 用 path 参与节点身份 —— 老卡对上不任何节点 → 被误判成 orphan；
+        //     ② fcNodeOfCard() 路径优先，老 path 失配后回退 sig 匹配 —— sig 会撞号，
+        //        「恢复为系统原文」可能把卡恢复成**另一个节点**的原文。
+        //
+        // ⚠️ 时机很关键：必须在 fcWalkAll() **之前**修，否则本次 fcBuild 里
+        //    inTree / fcUid 一律按旧 path 算，orphan 判定当场就是错的。
+        //    所以它由 migrateTierV2() 在 loadData 尾部调用，而所有渲染都在其后。
+        //
+        // 层级：先按 tier 反推（tier 是权威，且此刻已被 migrateTierV2 改成 4–7），
+        //   反推不出再退回旧口径的按段数估 —— 这个分支专治
+        //   「只迁移过一半的老存档」（path 已含 1–3 级但 tier 还是 1–4）。
+        //   tier 明确落在 1–3 说明这卡本来就不该存在（1–3 级不出卡），不动它。
+        //
+        // 名字：前缀用 fcAncestorPath(r) —— **与下拉同一套取名函数**
+        //   （getChapterName / getSectionName），保证和新建卡片生成的 path 逐字一致，
+        //   否则两批卡的 path 看着像却对不上 uid，等于白修。
+        //   传入的 r 只要 { course, chapter, section } 就够，fcAncestorPath 不读别的字段。
+        //
+        // 安全：k = path.length - (tier - KT_KP_OFFSET)。
+        //   自检 0 <= k < path.length 才改；任何越界（层级比路径还短 / path 空缺）
+        //   一律**原样留着**，交给 orphan 标记去暴露问题，绝不猜着改。
+        function fcRepairCardPaths() {
+            const cache = {};
+            let fixed = 0, orphanTry = 0;
+            const ancCache = function (s) {
+                const key = [s.course, s.chapter, s.section].join('|');
+                if (!(key in cache)) {
+                    cache[key] = fcAncestorPath({ course: s.course, chapter: s.chapter, section: s.section });
+                }
+                return cache[key];
+            };
+            Object.keys(state.cards || {}).forEach(function (id) {
+                const c = state.cards[id];
+                if (!c || !c.src) return;
+                const s = c.src;
+                if (!s.course) return;                       // 坐标不全 → 修不了，别乱猜
+                const path = s.path;
+                if (!Array.isArray(path) || !path.length) return;
+                const anc = ancCache(s);
+                if (!anc.length) return;                     // 拿不到 1–3 级名 → 放弃
+
+                // ① path 语义只有两种，互斥且完备（判据统一放在下面 hasPrefix 一处）：
+                //      旧格式 = 只装知识点段，缺的 1–3 级要**加在头上**
+                //      新格式 = 已经带了 1–3 级前缀，幂等跳过
+
+                // ② 是否已经带完整前缀？带就跳过；不带就整条接到前缀后面。
+                const hasPrefix = anc.length <= path.length &&
+                    anc.every(function (nm, i) { return path[i] === nm; });
+                if (hasPrefix) return;                           // 已是新格式 → 幂等跳过
+                //    2）否则 path 就是纯知识点段（旧格式的本义：只装知识点），
+                //       接在整个 1–3 级前缀后面即可。
+                //    ★ 这里曾经绕了一大圈：我先后写了两版「按 tier 反推切点」的公式，
+                //      又写了一版「旧 path 是新 path 的后缀 → 找重叠段」的判据，全都错。
+                //      根因是我把 path 的语义想复杂了 —— 它从来就只是**自己那一段链**：
+                //        旧格式：只有知识点段，缺的 1–3 级要**加在头上**
+                //        新格式：已经带了 1–3 级，幂等跳过
+                //      这两种情况互斥且完备，`hasPrefix` 一个判据就够，
+                //      根本不需要把 tier 扯进来（tier 是「自己的绝对层级」，
+                //      和「path 里有几段祖先」是两回事，拿它定切点必然错）。
+                const kp = path;
+                if (!kp.length) return;
+                // ④ id 一致性：这张卡是不是**真的**由「旧 path 所在的这个 sig」指过来的？
+                //    ⚠️ 判据只能是「旧 key → 本卡 id」这一条。
+                //       本轮第一版写成「旧 key 与新 key 解出同一个 id」，是错的：
+                //       fcUid 把 path 也算进 uid，改了 path 就等于改了 uid，
+                //       新旧 id **必然不同** —— 那个判据永远不成立，等于一张卡都不修。
+                //       （讽刺的是我当时还在注释里写了「不能拿旧 uid 当标准去比」，
+                //        然后 바로下面就这么比了。教训：自检条件要拿证过的例子跑一遍，
+                //        不能看着「逻辑上说得通」就收工。）
+                //
+                //    语义：同一 sig 撞号时 fcIdOf 只认第一个占位者，所以
+                //    「旧 key 解出的就是这张卡」说明这个 sig 确实归它所有，可以安全改写。
+                //    解析不出 / 解到别的卡 → 说明这张卡在索引里没站稳（撞号落败之类），
+                //    原样留着，交给 orphan 标记去暴露问题，绝不猜着改。
+                const idx = state.cardIndex || {};
+                const oldKey = fcUid({ course: s.course, chapter: s.chapter, section: s.section, path: path });
+                const occupant = idx[oldKey];
+                if (occupant && occupant !== id) return;     // 这个 sig 已被别的卡占着 → 不冒险
+                s.path = anc.concat(kp);
+                fixed++;
+            });
+            return { fixed: fixed, orphanTry: orphanTry };
+        }
+
+        function migrateTierV2() {
+            // ⚠️ 闸门只管 ①②（tier 与 cardIndex 键）——那两件事做过了就不能再做第二遍，
+            //    否则 tier 会被 +3 两次（4 变 7），sig 也会被改烂。
+            //    但 ③ 路径修复**不能**被这个闸门挡住：
+            //      它自己有「path[0] === 科目名 → 跳过」的幂等判据，重复跑是安全的；
+            //      而它必须能补救「上一轮只上线了 ①②、③ 是后补的」这类存档
+            //      （那样的存档 tierV2 已经是 true，一旦被闸门挡在外面，path 永远修不上）。
+            //    所以顺序是：闸门放行 ①②，③ 无条件执行。
+            const needTier = !state.tierV2;
+            let n = 0;
+            const cards = state.cards || {};
+            const idx = state.cardIndex || {};
+            // ① 改 src.tier，并登记「旧 sig → 新 sig」
+            const remap = {};
+            if (needTier) Object.keys(cards).forEach(function (id) {
+                const c = cards[id];
+                if (!c || !c.src) return;
+                const t = +c.src.tier;
+                if (!(t > 0) || t > KT_KP_OFFSET) return;      // 已经是 4–7 → 跳过
+                const oldSig = fcSig(c.src.course, c.src.chapter, c.src.section, t, c.src.order);
+                c.src.tier = t + KT_KP_OFFSET;
+                const newSig = fcSig(c.src.course, c.src.chapter, c.src.section, c.src.tier, c.src.order);
+                if (oldSig !== newSig) remap[oldSig] = newSig;
+                n++;
+            });
+            // ② cardIndex 换键：只动「键确实在旧 sig 里」的那些，避免误伤
+            if (needTier) Object.keys(idx).forEach(function (k) {
+                const nk = remap[k];
+                if (!nk) return;
+                const id = idx[k];
+                delete idx[k];
+                if (!idx[nk]) idx[nk] = id;      // 新键已被占用则不覆盖（撞号消歧的下游会处理）
+            });
+            // ③ 出题范围：老默认值 1–4 属于旧口径，一并挪到 4–7。
+            //    ⚠️ 判据必须看 **from**，不能只看 to：老默认值是 {from:1, to:4}，
+            //    而新口径的下界就是 4 —— 若用「to < 4」当判据，{1,4} 恰好卡在边界上，
+            //    判定为「已经是对的」，范围永远修不过来（本轮踩到的坑）。
+            //    新口径的合法 from 最小是 4，所以「from < 4」= 铁定是旧口径。
+            //    认定是旧口径后，from/to **一起**重置成 4/7 —— 只挪一半会得到
+            //    {4,4} 这种「只出第 4 级」的畸形范围，一张配对卡都出不来。
+            const cfg = state.cardCfg || (state.cardCfg = {});
+            if (needTier && !(+cfg.from >= KT_KP_OFFSET + 1)) {
+                cfg.from = KT_KP_OFFSET + 1;                 // 4
+                cfg.to = KT_KP_OFFSET + KT_KP_MAXLV;         // 7
+                n++;                                         // 范围被改过 → 也算一次迁移
+            }
+            // ④ 卡片路径修复：老卡的 src.path 补上 1–3 级（详见 fcRepairCardPaths）。
+            //    ⚠️ 放在 tier 改完之后：它要按 tier 反推知识点切片的起点。
+            //    ⚠️ 必须**先于** fcWalkAll 的任何调用 —— 本次迁移之后紧接着就是渲染，
+            //       path 不修好的话 orphan 判定当场按旧 path 算错。
+            //    ⚠️ 不受闸门约束（见函数头注释）：它自带幂等，且要修补「只迁移过一半」的存档。
+            const rp = fcRepairCardPaths();
+            n += rp.fixed;
+            state.tierV2 = true;
+            // ⚠️ 落盘条件是「有任何改动」，不能只看卡片数 ——
+            //    cardCfg 的改写同样是状态变更，不落盘的话下次打开又从旧值读回来，
+            //    闸门却已置位 → 永远修不好。这正是本轮踩到的坑。
+            if (n) { try { saveData(); } catch (e) {} }
+            return n;
         }
 
         function saveData() {
@@ -4401,13 +4627,14 @@
                 cards: state.cards || {},
                 cardNotes: state.cardNotes || {},
                 cardIndex: state.cardIndex || {},
-                cardCfg: state.cardCfg || { from: 1, to: 4, builtAt: '' },
-                cardCfg: state.cardCfg || { from: 1, to: 4, builtAt: '' },
+                cardCfg: state.cardCfg || { from: 4, to: 7, builtAt: '' },
                 ktCfg: state.ktCfg || { from: 1, to: 0, course: '', chapter: 0, section: 0 },
                 resourceTypes: Array.isArray(state.resourceTypes) ? state.resourceTypes : null,
                 sources: Array.isArray(state.sources) ? state.sources : null,
                 tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
-                progressMode: (state.progressMode === 'tomato' ? 'tomato' : 'hours')
+                progressMode: (state.progressMode === 'tomato' ? 'tomato' : 'hours'),
+                kpMigrated: state.kpMigrated === true,
+                tierV2: state.tierV2 === true
             };
             try {
                 localStorage.setItem(getStorageKey(), JSON.stringify(data));
@@ -5402,8 +5629,6 @@
             if (sections.includes(currentVal)) sectionSelect.value = currentVal;
             else sectionSelect.value = sections.length > 0 ? sections[0] : 1;
             updateGuide(course, parseInt(document.getElementById('fChapter').value), parseInt(sectionSelect.value));
-            // 切换章/节后重建知识点输入区（双模式：有预置树→下拉，无→自由输入）
-            if (typeof updateKpSelects === 'function') updateKpSelects(course, parseInt(document.getElementById('fChapter').value), parseInt(sectionSelect.value));
         }
 
         // ---------- 更新学习指南 ----------
@@ -5478,7 +5703,6 @@
                 const course = document.getElementById('fCourse').value;
                 const chapter = parseInt(document.getElementById('fChapter').value);
                 updateSectionSelect(course, chapter);
-                if (typeof renumberKpRows === 'function') renumberKpRows();
             });
 
             document.getElementById('fSection').addEventListener('change', () => {
@@ -5486,11 +5710,6 @@
                 const chapter = parseInt(document.getElementById('fChapter').value);
                 const section = parseInt(document.getElementById('fSection').value);
                 updateGuide(course, chapter, section);
-                if (typeof updateKpSelects === 'function') updateKpSelects(course, chapter, section);
-            });
-
-            document.getElementById('fCourse').addEventListener('change', () => {
-                if (typeof renumberKpRows === 'function') renumberKpRows();
             });
 
             // 星星
@@ -5572,9 +5791,6 @@
 
             document.getElementById('fDate').value = getToday();
 
-            // 知识点输入区初始化
-            resetKnowledgePoints();
-            bindKpList();
             const memSw = document.getElementById('fAddToMemory');
             if (memSw) {
                 memSw.addEventListener('change', () => {
@@ -5723,6 +5939,9 @@
         // 去掉粘贴文本自带的序号：1. / 1、/ 1) / （1）/ 1 空格
         function stripKpNo(s) {
             return String(s || '')
+                // ★ 先剥 Markdown 列表符：用户写大纲习惯「- （一）xxx」，
+                //   不剥掉的话「- 」会顶在最前面，后面的编号规则全都匹配不上。
+                .replace(/^\s*[-*+\u2022\u00b7]\s+/, '')
                 .replace(/^\s*[0-9]{1,3}(?:\.[0-9]{1,3}){1,3}\s*/, '')
                 .replace(/^\s*[0-9]{1,3}\s*[.、．)）:：]\s*/, '')
                 .replace(/^\s*第[0-9]{1,3}\s*(?:部分|章|节|讲|篇|单元)\s*/, '')
@@ -5734,291 +5953,38 @@
                 .trim();
         }
 
-        function kpRowHTML(no, text) {
-            return '<div class="kp-row">' +
-                '<span class="kp-no">' + no + '</span>' +
-                '<input type="text" class="kp-input" value="' + kpEsc(text) + '" placeholder="输入知识点，如：存货的初始计量" />' +
-                '<button type="button" class="kp-del" title="删除该条">✕</button>' +
-                '</div>';
-        }
+        // ---------- 知识点：唯一入口是「📝 知识点速记」大纲文本框 ----------
+        // 历史说明：这里原来还有一套「双模式」——有预置树时给 4 级联动下拉（fL1~fL4）、
+        // 没有预置树时给自由输入行（kpList，序号自动生成）。
+        // 后来确认那套自由输入是**干扰源**：
+        //   · 它把知识点写成 {no, text} 流水号落盘，父子关系在写入那一刻就丢了；
+        //   · 它的行首序号语义（1,2,3…）与「科目设计」kpTree 的 7 级编码结构完全不是一套；
+        //   · 于是同一份知识点在记录侧与树侧的层级对不上，闪卡配对与知识树层级筛选双双失准。
+        // 现在收敛成一条路：知识点一律走「知识点速记」（#fKpQuick），由 CpaKpEditor 解析，
+        // 保证记录侧与 kpTree 用同一套层级坐标。
 
-        // ---------- 本节已保存知识点数（新序号从这里继续） ----------
-        function getSectionKpBase(course, chapter, section, excludeId) {
-            let n = 0;
-            (state.records || []).forEach(r => {
-                if (excludeId && r.id === excludeId) return;
-                if (r.course !== course) return;
-                if (Number(r.chapter) !== Number(chapter)) return;
-                if (Number(r.section) !== Number(section)) return;
-                n += (r.knowledgePoints || []).filter(k => k && String(k.text || '').trim()).length;
-            });
-            return n;
-        }
-
-        // 当前表单所选「科目-章-节」已有的知识点数量
-        function currentKpBase() {
-            const courseEl = document.getElementById('fCourse');
-            const chEl = document.getElementById('fChapter');
-            const secEl = document.getElementById('fSection');
-            if (!courseEl || !chEl || !secEl) return 0;
-            return getSectionKpBase(courseEl.value, parseInt(chEl.value), parseInt(secEl.value), state.editingId);
-        }
-
-        // ---------- 知识点层级（一级 → 二级 → 三级 → 四级） ----------
-        // 取当前所选「科目-章-节」的知识点树（来自 GUIDE_DATA 的 section.kp）
-        function getKpTreeForSection(course, chapter, section) {
-            const c = GUIDE_DATA[course];
-            if (!c) return [];
-            const ch = c.chapters[chapter];
-            if (!ch) return [];
-            const sec = ch.sections[section];
-            if (!sec) return [];
-            return Array.isArray(sec.kp) ? sec.kp : [];
-        }
-        // 根据已选路径 path（前 level 级名称）返回第 level 级（0=一级）的可选项
-        function kpChildrenAt(tree, level, path) {
-            let nodes = tree || [];
-            for (let i = 0; i < level; i++) {
-                const node = nodes.find(function (n) { return n.name === path[i]; });
-                if (!node) return [];
-                nodes = node.children || [];
-            }
-            return nodes;
-        }
-        function countKpLeaves(tree) {
-            let n = 0;
-            (function walk(ns) { (ns || []).forEach(function (x) { if (!x.children || !x.children.length) n++; else walk(x.children); }); })(tree);
-            return n;
-        }
-        function kpOption(name) {
-            const o = document.createElement('option');
-            o.value = name; o.textContent = name;
-            return o;
-        }
-        // ---------- 知识点双模式：有预置树 → 4级联动下拉；无预置树 → 自由文本输入 ----------
-        let kpMode = 'cascade';               // 'cascade' | 'manual'
-        let kpModeCtx = '';                   // 当前渲染上下文（course|chapter|section），防止误重建丢输入
-
-        function kpRowHTML(no, text) {
-            return '<div class="kp-row">' +
-                '<span class="kp-no">' + no + '</span>' +
-                '<input type="text" class="kp-input" value="' + kpEsc(text) + '" placeholder="输入知识点，如：存货的初始计量" />' +
-                '<button type="button" class="kp-del" title="删除该条">✕</button>' +
-                '</div>';
-        }
-
-        function renderManualKpList(list) {
-            const wrap = document.getElementById('kpCascade');
-            if (!wrap) return;
-            const arr = (Array.isArray(list) && list.length) ? list : [{ text: '' }];
-            wrap.innerHTML = '<div class="kp-list" id="kpList">' +
-                arr.map(function (k, i) { return kpRowHTML(i + 1, (k && k.text) || (typeof k === 'string' ? k : '')); }).join('') +
-                '</div>' +
-                '<button type="button" class="kp-add" id="addKpBtn">➕ 添加知识点</button>' +
-                '<span class="kp-hint">序号自动生成，回车快速新增下一条；支持整段粘贴，按换行 / ；/ 、自动拆条重新编号。</span>';
-            const lab = document.getElementById('kpModeLabel');
-            if (lab) lab.textContent = '（本节未预置知识点树，直接输入，一行一条）';
-            bindKpList();
-        }
-
-        // 恢复自由输入：添加一行（追加到列表末尾并聚焦）
-        function addKpRow(text) {
-            const box = document.getElementById('kpList');
-            if (!box) return;
-            const row = document.createElement('div');
-            row.className = 'kp-row';
-            row.innerHTML = '<span class="kp-no"></span>' +
-                '<input type="text" class="kp-input" placeholder="输入知识点，如：存货的初始计量" />' +
-                '<button type="button" class="kp-del" title="删除该条">✕</button>';
-            box.appendChild(row);
-            if (text) row.querySelector('.kp-input').value = text;
-            renumberKpRows();
-            const inp = row.querySelector('.kp-input');
-            if (inp) inp.focus();
-        }
-
-        // 事件委托（只绑定一次）：删行 / 回车加行 / 整段粘贴拆条
-        function bindKpList() {
-            const box = document.getElementById('kpList');
-            const addBtn = document.getElementById('addKpBtn');
-            if (!box || box.dataset.bound === '1') return;
-            box.dataset.bound = '1';
-
-            box.addEventListener('click', (e) => {
-                const del = e.target.closest ? e.target.closest('.kp-del') : null;
-                if (!del) return;
-                const rows = box.querySelectorAll('.kp-row');
-                if (rows.length <= 1) {
-                    const only = del.closest('.kp-row').querySelector('.kp-input');
-                    if (only) { only.value = ''; only.focus(); }
-                } else {
-                    del.closest('.kp-row').remove();
-                    renumberKpRows();
-                }
-            });
-
-            box.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('kp-input')) {
-                    e.preventDefault();
-                    addKpRow('');
-                }
-            });
-
-            box.addEventListener('paste', (e) => {
-                const txt = (e.clipboardData || window.clipboardData).getData('text') || '';
-                if (!/[\n\r\uff1b;\u3001]/.test(txt)) return;   // 单行粘贴走默认行为
-                e.preventDefault();
-                // 先按换行分段、去序号前缀，再按分号/顿号拆条——避免 "2、规划过程组" 被顿号误拆出纯序号
-                const parts = txt.split(/[\n\r]+/)
-                    .map(stripKpNo)
-                    .flatMap(line => line.split(/[\uff1b;\u3001]+/))
-                    .map(t => t.trim())
-                    .filter(t => t && !/^[0-9]{1,3}[.、．)）:：]?$/.test(t));
-                if (!parts.length) return;
-                const rows = Array.prototype.slice.call(box.querySelectorAll('.kp-row'));
-                const cur = e.target.closest ? e.target.closest('.kp-row') : null;
-                const idx = cur ? rows.indexOf(cur) : rows.length - 1;
-                const before = rows.slice(0, idx).map(r => r.querySelector('.kp-input').value.trim());
-                const after = rows.slice(idx + 1).map(r => r.querySelector('.kp-input').value.trim());
-                const cleaned = parts.map(stripKpNo).filter(Boolean);
-                const merged = before.concat(cleaned, after).map(t => ({ text: t }));
-                renderKnowledgePoints(merged);
-                const inputs = box.querySelectorAll('.kp-input');
-                const focusIdx = Math.min(before.length + cleaned.length - 1, inputs.length - 1);
-                if (inputs[focusIdx]) inputs[focusIdx].focus();
-            });
-
-            if (addBtn) addBtn.addEventListener('click', () => addKpRow(''));
-        }
-
-        // 切换章/节后重建知识点输入区（双模式）
-        function updateKpSelects(course, chapter, section) {
-            const wrap = document.getElementById('kpCascade');
-            if (!wrap) return;
-            const tree = getKpTreeForSection(course, chapter, section);
-            const cnt = countKpLeaves(tree);
-            // ctx 指纹：项目+章节+树的叶子数与首节点名——kpTree 更新后指纹变化，强制重建
-            const treeSig = cnt + '|' + (tree && tree[0] ? (tree[0].name || '') : '');
-            const ctx = (typeof currentProjectId !== 'undefined' ? currentProjectId : '') + '|' + course + '|' + chapter + '|' + section + '|' + treeSig;
-
-            // 手动模式且上下文未变：只刷新编号，不重建（保护正在输入的内容）
-            if (kpMode === 'manual' && kpModeCtx === ctx && document.getElementById('kpList')) {
-                renumberKpOnly();
-                return;
-            }
-            kpModeCtx = ctx;
-            kpMode = cnt > 0 ? 'cascade' : 'manual';
-
-            const guide = getGuide(course, chapter, section);
-            const hint = document.getElementById('kpBaseHint');
-            const _sl = L('section');
-            const plan = (guide && guide.duration) ? guide.duration : '—';
-
-            if (kpMode === 'manual') {
-                renderManualKpList([]);
-                if (hint) hint.textContent = `本${_sl}计划学时 ${plan}，暂无预置知识点——直接在下方输入本次学到的知识点（可不填）`;
-                return;
-            }
-
-            // 有预置树：4 级联动下拉
-            wrap.innerHTML =
-                '<div class="field"><label>' + L('l1') + ' <span class="kp-opt">(选填)</span></label><select id="fL1"><option value="">— 不指定 —</option></select></div>' +
-                '<div class="field"><label>' + L('l2') + ' <span class="kp-opt">(选填)</span></label><select id="fL2"><option value="">— 不指定 —</option></select></div>' +
-                '<div class="field"><label>' + L('l3') + ' <span class="kp-opt">(选填)</span></label><select id="fL3"><option value="">— 不指定 —</option></select></div>' +
-                '<div class="field"><label>' + L('l4') + ' <span class="kp-opt">(选填)</span></label><select id="fL4"><option value="">— 不指定 —</option></select></div>';
-            const lab = document.getElementById('kpModeLabel');
-            if (lab) lab.textContent = '（已预置 ' + cnt + ' 个，按层级选，可只选到某一层）';
-            const fL1 = document.getElementById('fL1'), fL2 = document.getElementById('fL2'),
-                  fL3 = document.getElementById('fL3'), fL4 = document.getElementById('fL4');
-            const fill = function (sel, nodes) {
-                const prev = sel.value;
-                sel.innerHTML = '<option value="">— 不指定 —</option>';
-                (nodes || []).forEach(function (n) { sel.appendChild(kpOption(n.name)); });
-                // 重建选项后，若原先已选的值仍在可选范围内则保留（避免联动把自己清空）
-                if (prev && Array.from(sel.options).some(function (o) { return o.value === prev; })) sel.value = prev;
-            };
-            fill(fL1, tree);
-            const cascade = function () {
-                fill(fL2, kpChildrenAt(tree, 1, [fL1.value]));
-                fill(fL3, kpChildrenAt(tree, 2, [fL1.value, fL2.value]));
-                fill(fL4, kpChildrenAt(tree, 3, [fL1.value, fL2.value, fL3.value]));
-                if (!fL1.value) { fL2.value = ''; fL3.value = ''; fL4.value = ''; }
-                else if (!fL2.value) { fL3.value = ''; fL4.value = ''; }
-                else if (!fL3.value) { fL4.value = ''; }
-            };
-            fL1.onchange = cascade; fL2.onchange = cascade; fL3.onchange = cascade; fL4.onchange = cascade;
-            if (hint) hint.textContent = `本${_sl}计划学时 ${plan}，已预置 ${cnt} 个知识点（末级）`;
-        }
-        function bindKpSelects() {}
-
-        // 仅重编号（手动模式），不重建 DOM
-        function renumberKpOnly() {
-            const box = document.getElementById('kpList');
-            if (!box) return;
-            box.querySelectorAll('.kp-row').forEach((r, i) => {
-                const no = r.querySelector('.kp-no');
-                if (no) no.textContent = i + 1;
-            });
-        }
-
-        // 刷新「本节」提示（兼容旧调用点 applyLevelLabels / renumberKpRows）
-        function updateKpBaseHint() {
-            const c = document.getElementById('fCourse'), ch = document.getElementById('fChapter'), s = document.getElementById('fSection');
-            if (c && ch && s) updateKpSelects(c.value, parseInt(ch.value), parseInt(s.value));
-        }
-
-        // 编辑回填（双模式）：cascade 模式按层级回填下拉；manual 模式渲染多行文本
-        function renderKnowledgePoints(list) {
-            const arr = (Array.isArray(list) && list.length) ? list : [];
-            if (kpMode === 'manual') {
-                const rows = arr.map(function (k) { return (k && k.text) || (typeof k === 'string' ? k : ''); }).filter(Boolean);
-                renderManualKpList(rows.length ? rows.map(t => ({ text: t })) : [{ text: '' }]);
-                return;
-            }
-            const path = arr.map(function (k) { return (k && k.text) || (typeof k === 'string' ? k : ''); }).filter(Boolean);
-            ['fL1', 'fL2', 'fL3', 'fL4'].forEach(function (id, i) {
-                const el = document.getElementById(id);
-                if (el && path[i]) el.value = path[i];
-            });
-        }
-
-        function renumberKpRows() {
-            if (kpMode === 'manual') { renumberKpOnly(); return; }
-            const c = document.getElementById('fCourse'), ch = document.getElementById('fChapter'), s = document.getElementById('fSection');
-            if (c && ch && s) updateKpSelects(c.value, parseInt(ch.value), parseInt(s.value));
-        }
-
-        // 双模式收集：手动模式从输入行收集 {no,text}；下拉模式从 4 级收集 {text}
+        // 收集本次记录的知识点：只从知识点速记的原文解析。
+        // 产出 {no, text} 流水号用于展示；层级坐标由 kpQuickRaw 承担（见 fcRecOutline）。
         function getKnowledgePoints() {
             const out = [];
-            if (kpMode === 'manual') {
-                const box = document.getElementById('kpList');
-                if (box) box.querySelectorAll('.kp-row').forEach((r) => {
-                    const inp = r.querySelector('.kp-input');
-                    const t = stripKpNo((inp && inp.value) || '');
-                    if (t) out.push({ no: out.length + 1, text: t });
-                });
-                return out;
-            }
-            ['fL1', 'fL2', 'fL3', 'fL4'].forEach(function (id) {
-                const el = document.getElementById(id);
-                if (el && el.value) out.push({ text: el.value });
+            const q = document.getElementById('fKpQuick');
+            const raw = (q && q.value) || '';
+            raw.split(/[；;\n、]+/).forEach(function (s) {
+                const tok = stripKpNo(String(s || '').trim());
+                // 「一、」这类一级标记会被顿号切开，留下一个孤零零的「一」；
+                // 纯编号残渣不是知识点，丢掉（否则每行一级都会多出一个假知识点）
+                const residue = /^(?:[0-9]{1,3}|[一二三四五六七八九十]{1,3}|[\u2460-\u2473])[.、．)）:：]?$/;
+                if (tok && !residue.test(tok)) out.push({ text: tok });
             });
+            out.forEach(function (k, i) { k.no = i + 1; });
             return out;
         }
 
+        // 重置「加入记忆曲线」开关（默认勾上）。
+        // 历史上这里还负责清空知识点输入区（4 级下拉 / 自由输入行）；
+        // 那套输入区已删除，知识点统一由「📝 知识点速记」承担 ——
+        // 清空它的动作由调用点紧随其后的 CpaKpEditor.clearAll() 完成。
         function resetKnowledgePoints() {
-            // 双模式清空：下拉全归「不指定」，手动列表重置为单个空行
-            ['fL1', 'fL2', 'fL3', 'fL4'].forEach(function (id) {
-                const el = document.getElementById(id);
-                if (el) el.value = '';
-            });
-            const box = document.getElementById('kpList');
-            if (box) {
-                box.innerHTML = kpRowHTML(1, '');
-                box.dataset.bound = '';
-                bindKpList();
-            }
             const cb = document.getElementById('fAddToMemory');
             if (cb) {
                 cb.checked = true;
@@ -6301,17 +6267,13 @@
             const memoryNetwork = document.getElementById('fMemoryNetwork').value.trim();
             const aiQA = document.getElementById('fAiQA').value.trim();
             const notes = document.getElementById('fNotes').value.trim();
+            // 知识点只有一个来源：getKnowledgePoints() 从「📝 知识点速记」解析。
+            // ⚠️ 这里曾经在 getKnowledgePoints() 之外**又**遍历了一遍 fKpQuick 并 push ——
+            //    旧双模式下 getKnowledgePoints() 走的是另一条路（下拉 / 自由输入行），
+            //    所以不重复；收敛到单一路径后必须删掉，否则每条知识点会被 push 两遍。
             const knowledgePoints = getKnowledgePoints();
             const kpQuickEl = document.getElementById('fKpQuick');
             const kpQuickRaw = kpQuickEl ? kpQuickEl.value : '';
-            (kpQuickEl ? kpQuickEl.value : '').split(/[；;\n、]+/).forEach(s => {
-                const tok = stripKpNo(s.trim());
-                // 「一、」这类一级标记会被上面的顿号切开，留下一个孤零零的「一」；
-                // 纯编号残渣不是知识点，丢掉（否则每行一级都会多出一个假知识点）
-                const residue = /^(?:[0-9]{1,3}|[一二三四五六七八九十]{1,3}|[\u2460-\u2473])[.、．)）:：]?$/;
-                if (tok && !residue.test(tok)) knowledgePoints.push({ text: tok });
-            });
-            knowledgePoints.forEach((k, i) => { k.no = i + 1; });
             const addToMemory = !!(document.getElementById('fAddToMemory') && document.getElementById('fAddToMemory').checked);
 
             // ---- 必填校验：一次性收集所有缺失项，统一提示并高亮定位 ----
@@ -6388,6 +6350,13 @@
                 notes: notes || '',
                 knowledgePoints: knowledgePoints,
                 kpQuickRaw: kpQuickRaw,
+                // ★ 记录这份大纲是几列写的 —— 这是层级契约，必须落盘。
+                //   「知识点速记」的列数直接决定大纲占哪几级：
+                //       3 列 = 总标题/子标题/细节   → 链路第 4–6 级（知识点 1/2/3 级）
+                //       4 列 = 总标题/子标题/细节/要点 → 链路第 4–7 级（知识点 1/2/3/4 级）
+                //   不存的话事后只能猜，闪卡出卡与知识树层级筛选就会与写入时的意图错位。
+                kpCols: (window.CpaKpEditor && typeof window.CpaKpEditor.getCols === 'function')
+                    ? window.CpaKpEditor.getCols() : 3,
                 addToMemory: addToMemory,
             };
 
@@ -6629,7 +6598,6 @@
             document.getElementById('fNotes').value = record.notes || '';
             { const kpq = document.getElementById('fKpQuick'); if (kpq) kpq.value = record.kpQuickRaw || ''; }
             if (window.CpaKpEditor) window.CpaKpEditor.onRecordLoad(record);
-            renderKnowledgePoints(record.knowledgePoints && record.knowledgePoints.length ? record.knowledgePoints : [{ text: '' }]);
             const memCb = document.getElementById('fAddToMemory');
             if (memCb) {
                 memCb.checked = record.addToMemory !== false;
@@ -7180,16 +7148,14 @@
             if (badge) badge.textContent = getCurrentProject().name + ' · 精进版';
         }
 
-        // ---------- 大纲文本解析：缩进层级 → 三层结构 ----------
-        // 把一条知识点路径 [一级,二级,三级,四级]（非空部分）挂到节的 kpTree 数组上，逐级去重合并
-        function addKpPath(arr, path) {
-            let cur = arr;
-            path.forEach(function (name) {
-                let node = cur.find(function (n) { return n.name === name; });
-                if (!node) { node = { name: name, children: [] }; cur.push(node); }
-                cur = node.children;
-            });
-        }
+        // ---------- 科目设计大纲解析（编辑项目时的粘贴入口） ----------
+        // ★ 层级契约（三层架构定型）：科目设计**只负责第 1–3 级**
+        //       1 科目 · 2 章 · 3 节
+        //   第 4–7 级的知识点不归它管 —— 那是「学习记录 → 知识点速记」写的，
+        //   两者在知识树里拼接成完整链路（见 ktSevenTree / fcRecOutline）。
+        //
+        //   所以这里只取**前 3 个缩进层级**：更深的内容（= 学习记录才负责的知识点）
+        //   **直接忽略**——不报错、也不并进「节」，免得节名里混进知识点文本。
         function parseOutline(text) {
             const items = [];
             String(text || '').split(/\r?\n/).forEach(l => {
@@ -7200,20 +7166,18 @@
                 if (name) items.push({ ind: ind, name: name });
             });
             if (!items.length) return null;
-            // 7 个缩进层级：0 科目 / 1 章 / 2 节 / 3 一级 / 4 二级 / 5 三级 / 6 四级
-            const levels = Array.from(new Set(items.map(i => i.ind))).sort(function (a, b) { return a - b; }).slice(0, 7);
+            // 只取 3 个缩进层级：0 科目 / 1 章 / 2 节。更深的内容**直接忽略**（知识点归学习记录）。
+            const levels = Array.from(new Set(items.map(i => i.ind))).sort(function (a, b) { return a - b; }).slice(0, 3);
             const courses = [], chapterNames = {}, sectionNames = {}, kpTree = {};
             let cur = null, curCh = 0, curSec = 0;
-            const last = [null, null, null, null, null, null, null];
             items.forEach(function (it) {
                 let tier = levels.indexOf(it.ind);
-                if (tier < 0) tier = 6;
+                // 比已识别的最深层（节）还深 = 知识点子树 → 忽略，绝不并进「节」
+                if (tier < 0) return;
                 // 只有章 / 节两层剥掉行首编号（UI 会自己拼「第N章 / 第N节」），
                 // 否则粘「第一章 总论」会显示成「第1章 第一章 总论」。
-                // 科目名与知识点名保留原文 —— 知识点常自带「1.1 / 一、」这类编号，剥了反而错。
+                // 科目名保留原文。
                 if (tier === 1 || tier === 2) it.name = stripOutlineNo(it.name);
-                last[tier] = it.name;
-                for (let k = tier + 1; k < 7; k++) last[k] = null;
                 if (tier === 0) {
                     cur = it.name;
                     courses.push(cur);
@@ -7228,10 +7192,8 @@
                 } else if (tier === 2 && cur && curCh) {
                     curSec++;
                     sectionNames[cur][curCh].push(it.name);
+                    // 空数组 = 该节没有预置知识点（知识点改由学习记录写入）
                     kpTree[cur][curCh][curSec] = [];
-                } else if (cur && curCh && curSec && tier >= 3) {
-                    const path = last.slice(3, tier + 1).filter(Boolean);
-                    if (path.length) addKpPath(kpTree[cur][curCh][curSec], path);
                 }
             });
             return { courses: courses, chapterNames: chapterNames, sectionNames: sectionNames, kpTree: kpTree };
@@ -7261,7 +7223,7 @@
                 '<div class="pf"><label>类型</label><select id="pdType">' +
                 '<option value="exam">考试型（有考期，显示倒计时）</option>' +
                 '<option value="skill">技能型（无固定考期）</option></select></div>' +
-                '<div class="pf-hint" style="background:#f6f1e8;border:1px dashed #d8c9ad;padding:8px 10px;border-radius:8px;line-height:1.7;">层级固定为 7 级：<b>项目 → 科目 → 章 → 节 → 一级 → 二级 → 三级 → 四级</b>。下方「大纲结构」一次性填好整棵结构；计划学时在此或「目标管理」模板里提前规划。</div>' +
+                '<div class="pf-hint" style="background:#f6f1e8;border:1px dashed #d8c9ad;padding:8px 10px;border-radius:8px;line-height:1.7;">科目设计只到<b>第 3 级（科目 → 章 → 节）</b>。下方「大纲结构」一次性填好这三层；知识点在<b>学习记录 → 知识点速记</b>里写，那部分自动占第 4–7 级。</div>' +
                 '<div class="pf"><label>默认每节计划学时 (h，可留空)</label><input id="pdPlan" type="number" min="0" step="0.5" placeholder="如 2.5（留空则按知识点数自动估算）"></div>' +
                 '<div class="pf"><label>考试 / 目标日期（可留空）</label><input id="pdExam" type="date"></div>' +
                 '<div class="pf"><label>' + (ll.course || '科目') + '清单（一行一个，可留空）</label>' +
@@ -7269,9 +7231,9 @@
                 '<div class="pf-hint"><b>保存后以本框为准</b>：框里留什么就存什么，删掉的行会移除该' + (ll.course || '科目') + '（学习记录不会删，重新加回同名即可恢复）；改写一行等于改名，想让记录跟着走请写「旧名=>新名」。留空 = 不动现有' + (ll.course || '科目') + '。若下方填了「大纲结构」，大纲里出现的' + (ll.course || '科目') + '会一并保留。</div></div>' +
                 '<div class="pf"><label>复习间隔（天，逗号分隔）</label><input id="pdIv" type="text" placeholder="1,2,4,7,15">' +
                 '<div class="pf-hint">考试型建议 1,2,4,7,15；技能型建议 1,3,7,14,30</div></div>' +
-                '<div class="pf"><label>大纲结构（建议一次性填好整棵 7 级结构）</label>' +
-                '<textarea id="pdOutline" rows="8" placeholder="财管&#10;  第一章 存货&#10;    第1节 存货的确认&#10;      存货的初始计量&#10;        外购存货成本&#10;        加工成本&#10;      存货的期末计量&#10;        成本与可变现净值孰低"></textarea>' +
-                '<div class="pf-hint">缩进表示层级：不缩进=科目，缩进1=章，缩进2=节，缩进3=一级，缩进4=二级，缩进5=三级，缩进6=四级。留空则保留现有结构（之后可在「目标管理」用模板补齐）。</div></div>' +
+                '<div class="pf"><label>大纲结构（只填 科目 / 章 / 节 三层）</label>' +
+                '<textarea id="pdOutline" rows="8" placeholder="财管&#10;  第一章 存货&#10;    第1节 存货的确认&#10;    第2节 存货的计量&#10;  第二章 固定资产&#10;    第1节 初始计量"></textarea>' +
+                '<div class="pf-hint">缩进表示层级：不缩进=科目，缩进1=章，缩进2=节。<b>再深的缩进会被忽略</b>（知识点不属于科目设计，请在「学习记录 → 知识点速记」里写，那里占第 4–7 级）。留空则保留现有结构。</div></div>' +
                 '<div class="pf-actions">' +
                 (isEdit ? '<button id="pdDel" class="pd-btn danger">删除项目</button>' : '') +
                 '<button id="pdCancel" class="pd-btn">取消</button>' +
@@ -7467,9 +7429,10 @@
             let ch = 0;
             items.forEach(function (it) {
                 let tier = levels.indexOf(it.ind);
-                if (tier < 0) tier = 1;
+                // 比已识别的最深一层（节）还深 = 知识点文本 → 忽略（知识点归学习记录）
+                if (tier < 0) return;
                 if (tier === 0) { ch++; chapterNames[ch] = it.name; sectionNames[ch] = []; }
-                else if (ch) { sectionNames[ch].push(it.name); }
+                else if (tier === 1 && ch) { sectionNames[ch].push(it.name); }
             });
             if (!ch) return null;
             return { chapterNames: chapterNames, sectionNames: sectionNames, maxChapter: ch };
@@ -7934,7 +7897,6 @@
                         updateSectionSelect(course, curCh);
                         if (sSel) sSel.value = nextNo;
                     }
-                    if (typeof renumberKpRows === 'function') { try { renumberKpRows(); } catch (e) {} }
                     // 直接改 select.value 不触发 change，这里显式刷新学习指南
                     const _c = parseInt((chSel && chSel.value) || '1', 10);
                     const _s = parseInt((sSel && sSel.value) || '1', 10);
@@ -7947,17 +7909,9 @@
         // ============================================================
         //  科目目标：模板导出 / 导入
         // ============================================================
-        // 7 级标准表头：项目 → 科目 → 章 → 节 → 一级 → 二级 → 三级 → 四级（后 4 列为知识点层级）
-        const GOAL_HEADERS = ['项目', '科目', '章', '章名称', '节', '节名称', '一级', '二级', '三级', '四级', '建议学时(h)', '学习目标', '重点难点', '掌握程度'];
-
-        // 把知识点树拍平成「末级路径」数组（每条约 1~4 级）
-        function flattenKpLeaves(tree, prefix, out) {
-            (tree || []).forEach(function (node) {
-                const p = prefix.concat([node.name]);
-                if (node.children && node.children.length) flattenKpLeaves(node.children, p, out);
-                else out.push(p);
-            });
-        }
+        // 表头：项目 → 科目 → 章 → 节（科目设计只到第 3 级；知识点归学习记录）
+        // 保留「一级~四级」列仅为兼容**老模板文件**：导入时读进来直接忽略，不再写 kpTree。
+        const GOAL_HEADERS = ['项目', '科目', '章', '章名称', '节', '节名称', '建议学时(h)', '学习目标', '重点难点', '掌握程度'];
 
         function getGoalRows(scope) {
             const list = (scope === 'all') ? projects : [getCurrentProject()];
@@ -7971,7 +7925,7 @@
                 if (maxCh === 0) {
                     // 结构为空的项目：生成骨架行，方便用户直接填写
                     for (let s = 1; s <= 3; s++) {
-                        rows.push([proj.name, course, 1, '', s, '', '', '', '', '', 1.5, '待补充', '待补充', '掌握']);
+                        rows.push([proj.name, course, 1, '', s, '', 1.5, '待补充', '待补充', '掌握']);
                     }
                     return;
                 }
@@ -7984,37 +7938,21 @@
                     if (!chData) continue;
                     const secs = Object.keys(chData.sections || {}).map(Number).sort((a, b) => a - b);
                     if (secs.length === 0) {
-                        rows.push([proj.name, course, ch, chNameOf(course, ch), 1, '', '', '', '', '', 1.5, '待补充', '待补充', '掌握']);
+                        rows.push([proj.name, course, ch, chNameOf(course, ch), 1, '', 1.5, '待补充', '待补充', '掌握']);
                         continue;
                     }
                     secs.forEach(sec => {
                         const sd = chData.sections[sec] || {};
-                        const leaves = [];
-                        flattenKpLeaves(sd.kp || [], [], leaves);
-                        if (leaves.length === 0) {
-                            // 该节暂无预置知识点：仍导出一行（一级~四级 留空），便于直接维护本节目标
-                            rows.push([
-                                proj.name, course, ch, chNameOf(course, ch), sec,
-                                sd.name || '', '', '', '', '',
-                                parseFloat(sd.duration) || 0,
-                                sd.objective || '待补充',
-                                sd.keypoints || '待补充',
-                                sd.mastery || '掌握'
-                            ]);
-                        } else {
-                            // 同一节按末级知识点分行：每行承载完整的一级~四级路径
-                            leaves.forEach(function (leaf) {
-                                rows.push([
-                                    proj.name, course, ch, chNameOf(course, ch), sec,
-                                    sd.name || '',
-                                    leaf[0] || '', leaf[1] || '', leaf[2] || '', leaf[3] || '',
-                                    parseFloat(sd.duration) || 0,
-                                    sd.objective || '待补充',
-                                    sd.keypoints || '待补充',
-                                    sd.mastery || '掌握'
-                                ]);
-                            });
-                        }
+                        // 科目设计只到「节」—— 一行一节，不再按知识点末级路径分行。
+                        // （知识点归学习记录的「知识点速记」，不在这张表里。）
+                        rows.push([
+                            proj.name, course, ch, chNameOf(course, ch), sec,
+                            sd.name || '',
+                            parseFloat(sd.duration) || 0,
+                            sd.objective || '待补充',
+                            sd.keypoints || '待补充',
+                            sd.mastery || '掌握'
+                        ]);
                     });
                 }
             });
@@ -8117,7 +8055,7 @@
             // 还没有科目时导出「空白模板」：仅表头 + 一行带项目名的空行，填好科目 / 章 / 节后导入即可建立结构
             const isBlank = rows.length === 0;
             const data = [GOAL_HEADERS].concat(rows);
-            if (isBlank) data.push([(sc === 'all' ? '' : (proj.name || '')), '', '', '', '', '', '', '', '', '', '', '', '', '']);
+            if (isBlank) data.push([(sc === 'all' ? '' : (proj.name || '')), '', '', '', '', '', '', '', '', '']);
             const stamp = new Date().toISOString().slice(0, 10);
             const projSet = new Set(), courseSet = new Set();
             rows.forEach(r => { if (r[0]) projSet.add(r[0]); if (r[1]) courseSet.add(r[1]); });
@@ -8206,7 +8144,6 @@
             const iProj = col('项目'), iCourse = col('科目'), iCh = col('章'), iChName = col('章名称');
             const iSec = col('节'), iSecName = col('节名称'), iDur = col('建议学时(h)');
             const iObj = col('学习目标'), iKey = col('重点难点'), iMas = col('掌握程度');
-            const iL1 = col('一级'), iL2 = col('二级'), iL3 = col('三级'), iL4 = col('四级');
             if (iCourse === -1 || iCh === -1 || iSec === -1) {
                 throw new Error('表头缺少必需列：科目 / 章 / 节。');
             }
@@ -8272,15 +8209,8 @@
                 }
                 touched.add(target.id);
                 count++;
-                // 知识点树：一级~四级 拼回该节的知识点结构（一行一个末级路径，多行同节自动合并去重）
-                const kpPath = [get(iL1), get(iL2), get(iL3), get(iL4)].filter(Boolean);
-                if (kpPath.length) {
-                    target.kpTree = target.kpTree || {};
-                    if (!target.kpTree[course]) target.kpTree[course] = {};
-                    if (!target.kpTree[course][ch]) target.kpTree[course][ch] = {};
-                    if (!target.kpTree[course][ch][sec]) target.kpTree[course][ch][sec] = [];
-                    addKpPath(target.kpTree[course][ch][sec], kpPath);
-                }
+                // 知识点（一级~四级）：科目设计不再承载知识点 —— 那部分归「学习记录 → 知识点速记」。
+                // 老模板里这几列读进来直接忽略，不再写 kpTree（避免与记录侧层级打架）。
             }
 
             if (count === 0) {
@@ -9145,9 +9075,9 @@
             if (!state.cards || typeof state.cards !== 'object') state.cards = {};
             if (!state.cardNotes || typeof state.cardNotes !== 'object') state.cardNotes = {};
             if (!state.cardIndex || typeof state.cardIndex !== 'object') state.cardIndex = {};
-            if (!state.cardCfg || typeof state.cardCfg !== 'object') state.cardCfg = { from: 1, to: 4, builtAt: '', scopeAll: false };
-            if (!(state.cardCfg.from > 0)) state.cardCfg.from = 1;
-            if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
+            if (!state.cardCfg || typeof state.cardCfg !== 'object') state.cardCfg = { from: 4, to: 7, builtAt: '', scopeAll: false };
+            if (!(state.cardCfg.from > 0)) state.cardCfg.from = 4;
+            if (!(state.cardCfg.to > 0)) state.cardCfg.to = 7;
             // 需求 2：默认「只出学习记录碰过的节点」；true = 把整棵树都铺开
             if (state.cardCfg.scopeAll === undefined) state.cardCfg.scopeAll = false;
             return state;
@@ -9203,94 +9133,145 @@
             });
         }
 
-        function fcWalkTree() {
-            const out = [];
-            const proj = fcProj();
-            if (!proj || !proj.kpTree || typeof proj.kpTree !== 'object') return out;
-            const courses = (Array.isArray(proj.courses) && proj.courses.length) ? proj.courses : Object.keys(proj.kpTree);
-            courses.forEach(function (course) {
-                const byCh = proj.kpTree[course];
-                if (!byCh || typeof byCh !== 'object') return;
-                Object.keys(byCh).map(Number).filter(function (n) { return !isNaN(n); })
-                    .sort(function (a, b) { return a - b; }).forEach(function (ch) {
-                    const bySec = byCh[ch];
-                    if (!bySec || typeof bySec !== 'object') return;
-                    Object.keys(bySec).map(Number).filter(function (n) { return !isNaN(n); })
-                        .sort(function (a, b) { return a - b; }).forEach(function (sec) {
-                        const arr = bySec[sec];
-                        if (!Array.isArray(arr) || !arr.length) return;
-                        fcWalkNodes(arr, { course: course, chapter: ch, section: sec }, 1, [], out);
+        // ---------- ★ 闪卡的唯一生成路径 = 学习记录的「知识点速记」 ----------
+        // 三层架构定型后的口径（本轮改写）：
+        //     1 科目 · 2 章 · 3 节        ← 科目设计（kpTree）只负责这三层，**不出卡**
+        //     4~6 / 4~7 知识点层级        ← 学习记录的知识点速记，**闪卡只吃这一段**
+        //
+        // ★ 1–3 级从哪来：学习记录表单里**已经选好了科目 / 章 / 节**，
+        //   所以链路的前三级是现成的（见 fcAncestorPath）。速记只写第 4 级往下。
+        //   两者按「记录选定的三级」天然挂接 —— 这就是联动，不需要用户再录一遍。
+        //
+        // 出卡规则（相邻两级配对）：
+        //   一条记录的大纲里，每一对**相邻层级**的「上级 → 直接下级」构成一张卡：
+        //       正面 = 上一级节点名，反面 = 它的直接下级（可能多个，一行一个）
+        //   所以「出卡」与「相邻两级配对」是同一件事，不需要另写配对逻辑。
+        //   叶子节点（没有下级）不出卡 —— 没有反面可背。
+        //
+        // ⚠️ 层级是**链路绝对层级**（4..7），已加过 KT_KP_OFFSET。
+        //    原因：这是用户明确的口径「闪卡的层级是 1-7 级，知识点1-4 依次是第 4-7 级」，
+        //    也是知识树 ktSevenTree 一直在用的口径 —— 两边必须一致，否则
+        //    「闪卡第 5 级」和「知识树 L5」讲的不是一回事。
+        //    老卡片存的是旧的 1-4 口径，由 migrateTierV2() 一次性迁移过来。
+        //
+        // 同一节可能被多条记录写到：按 (科目, 章, 节) 归组，
+        //   同名同层的节点**按路径合并**（后写的并入先写的，下级取并集）。
+        function fcWalkAll() {
+            const rows = [];
+            const groups = {};      // key = course|ch|sec → { base, list: [] }
+            const order = [];       // 保持节的出现顺序（按记录时间先后）
+
+            (state.records || []).forEach(function (r) {
+                if (!r || !r.course) return;
+                const ch = +(r.chapter || 0), sec = +(r.section || 0);
+                const outline = fcRecOutline(r);
+                if (!outline || !outline.length) return;
+                const key = [r.course, ch, sec].join('|');
+                if (!groups[key]) {
+                    groups[key] = { base: { course: r.course, chapter: ch, section: sec }, list: [] };
+                    order.push(key);
+                }
+                // ancestors 存在每一行上（fcRecOutline 注入），取第一行的即可
+                groups[key].list.push({ outline: outline, anc: outline[0].ancestors || [] });
+            });
+
+            order.forEach(function (key) {
+                const g = groups[key];
+                const base = g.base;
+                // 把所有记录的大纲行按「祖先链 → 自己」建树。
+                // ★ 路径 = 1–3 级祖先前缀（科目/章/节，见 fcAncestorPath）
+                //        + 速记内部的祖先链 + 自己。
+                //   加上前缀的意义：同一科目不同节里的同名知识点**不会再撞成一个节点**，
+                //   而且知识树/闪卡的上溯链路从此是完整七级。
+                const nodes = {};      // pathKey → node
+                const roots = [];
+                const pathKey = function (anc, parents, name) {
+                    return anc.join(' > ') + '||' + parents.join(' > ') + ' > ' + name;
+                };
+
+                g.list.forEach(function (item) {
+                    const anc = item.anc || [];
+                    (item.outline || []).forEach(function (c) {
+                        if (!c || !c.name) return;
+                        const lvAbs = c.lv + KT_KP_OFFSET;          // 内部 1..4 → 绝对 4..7
+                        const pkey = pathKey(anc, c.parents, c.name);
+                        if (!nodes[pkey]) {
+                            const node = {
+                                course: base.course, chapter: base.chapter, section: base.section,
+                                tier: lvAbs, name: c.name,
+                                path: anc.concat(c.parents).concat([c.name]),
+                                kids: [], answers: [], childUids: []
+                            };
+                            nodes[pkey] = node;
+                            // 挂到父节点下：
+                            //   ① 速记内部有父级 → 挂父级
+                            //   ② 没有父级（= 记录里的顶层，链路第 4 级）→ 挂到虚拟「节」下，
+                            //      让 1–3 级也进祖先链（虚拟节点 tier=3，出卡范围 4–7 天然过滤掉它）
+                            let parent = null;
+                            if (c.parents.length) {
+                                parent = nodes[pathKey(anc, c.parents.slice(0, -1), c.parents[c.parents.length - 1])];
+                            } else {
+                                const skey = '__SEC__' + anc.join(' > ');
+                                if (!nodes[skey]) {
+                                    nodes[skey] = {
+                                        course: base.course, chapter: base.chapter, section: base.section,
+                                        tier: KT_KP_OFFSET,       // = 3，第 3 级「节」
+                                        name: anc.length ? anc[anc.length - 1] : String(base.course),
+                                        path: anc.length ? anc.slice() : [String(base.course)],
+                                        kids: [], answers: [], childUids: [], virtual: true
+                                    };
+                                    roots.push(nodes[skey]);
+                                }
+                                parent = nodes[skey];
+                            }
+                            if (parent) parent.kids.push(node); else roots.push(node);
+                        } else if (lvAbs < nodes[pkey].tier) {
+                            // 同一路径在不同记录里被写成了不同层级（用户改过列数）→ 取浅的那层
+                            nodes[pkey].tier = lvAbs;
+                        }
+                    });
+                });
+
+                // 汇总每个节点的直接下级（去重，保持出现顺序），并算出 order
+                const flat = [];
+                const walk = function (list) {
+                    list.forEach(function (node, i) {
+                        node.order = i + 1;
+                        (node.kids || []).forEach(function (k) { node.answers.push(k.name); });
+                        flat.push(node);
+                        walk(node.kids || []);
+                    });
+                };
+                walk(roots);
+                flat.forEach(function (node) {
+                    const seen = {};
+                    node.answers = node.answers.filter(function (nm) {
+                        if (seen[nm]) return false;
+                        seen[nm] = 1; return true;
+                    });
+                    node.childUids = (node.kids || []).map(function (k) { return fcUid(k); });
+                    rows.push({
+                        sig: fcSig(node.course, node.chapter, node.section, node.tier, node.order),
+                        course: node.course, chapter: node.chapter, section: node.section,
+                        tier: node.tier, order: node.order, name: node.name,
+                        answers: node.answers,
+                        childUids: node.childUids,
+                        path: node.path.slice(),
+                        virtual: !!node.virtual,
+                        hasKids: (node.kids || []).length > 0
                     });
                 });
             });
-            return out;
+            return rows;
         }
+
+        // 兼容别名：数据源统一为「学习记录」，见上面 fcWalkAll。
+        function fcWalkTree() { return fcWalkAll(); }
 
         function fcMaxTier() {
-            let mx = 1;
-            fcWalkTree().forEach(function (n) { if (n.tier > mx) mx = n.tier; });
+            let mx = 4;
+            fcWalkAll().forEach(function (n) { if (n.tier > mx) mx = n.tier; });
             return mx;
-        }
-
-        // ---------- ★ 需求 2：闪卡的唯一生成路径 = 每次的学习记录 ----------
-        // 规则（Tom 原话）：「按照 1-2-3-4 四级或者三级知识记录体系，相邻的两级生成闪卡」。
-        //   一次学习记录选定了某节下的知识点路径（cascade 模式是 L1→L2→L3→L4 四级联动，
-        //   manual 模式是一串自由文本）。这条路径上的每一对**相邻两级**构成一张卡：
-        //       正面 = 上一级节点名，反面 = 它的直接下级（恰好就是下一级那一批）
-        //   所以「出卡」与「相邻两级配对」是同一件事，不需要另写配对逻辑。
-        //
-        // 与旧版的差别只有一个：**范围**。
-        //   旧版对整棵树的每个「还有下一级」的节点都出卡 —— 没学过的章节也铺一堆卡，
-        //   清单里全是看不懂的内容。新版只对「学习记录碰过的节点」出卡。
-        //   判据：该节点自己命中，**或它的子树里有命中的节点**（这样上级才会作为
-        //   相邻两级里的上一级出现）。
-        //   「命中」= 记录的知识点文本与节点名归一化后互为包含。
-        //
-        // 记录一条知识点都没登记时 → 视为整节都学过（宁可多出，不可漏掉）。
-        function fcWalkAll() {
-            const rows = [];
-            const proj = fcProj();
-            if (!proj || !proj.kpTree || typeof proj.kpTree !== 'object') return rows;
-            const courses = (Array.isArray(proj.courses) && proj.courses.length) ? proj.courses : Object.keys(proj.kpTree);
-            courses.forEach(function (course) {
-                const byCh = proj.kpTree[course];
-                if (!byCh || typeof byCh !== 'object') return;
-                Object.keys(byCh).map(Number).filter(function (n) { return !isNaN(n); })
-                    .sort(function (a, b) { return a - b; }).forEach(function (ch) {
-                        const bySec = byCh[ch];
-                        if (!bySec || typeof bySec !== 'object') return;
-                        Object.keys(bySec).map(Number).filter(function (n) { return !isNaN(n); })
-                            .sort(function (a, b) { return a - b; }).forEach(function (sec) {
-                                const arr = bySec[sec];
-                                if (!Array.isArray(arr) || !arr.length) return;
-                                const base = { course: course, chapter: ch, section: sec };
-                                const walk = function (list, tier, parentPath) {
-                                    (list || []).forEach(function (node, i) {
-                                        if (!node || typeof node.name !== 'string' || !node.name.trim()) return;
-                                        const path = parentPath.concat([node.name]);
-                                        const kids = (Array.isArray(node.children) ? node.children : [])
-                                            .filter(function (c) { return c && typeof c.name === 'string' && c.name.trim(); });
-                                        rows.push({
-                                            sig: fcSig(base.course, base.chapter, base.section, tier, i + 1),
-                                            course: base.course, chapter: base.chapter, section: base.section,
-                                            tier: tier, order: i + 1, name: node.name,
-                                            answers: kids.map(function (c) { return c.name; }),
-                                            // ★ 层级修复用：每个直接下级的 uid，与 answers 一一对应。
-                                            //   出卡时据此把反面收窄成「本次真的学过的下级」。
-                                            childUids: kids.map(function (c) {
-                                                return fcUid({ course: base.course, chapter: base.chapter,
-                                                               section: base.section, path: path.concat([c.name]) });
-                                            }),
-                                            path: path, hasKids: kids.length > 0
-                                        });
-                                        walk(kids, tier + 1, path);
-                                    });
-                                };
-                                walk(arr, 1, []);
-                            });
-                    });
-            });
-            return rows;
         }
 
         // ⚠️ 节点身份**必须**用路径，不能用 fcSig。
@@ -9319,6 +9300,60 @@
             return all.filter(function (x) { return x.sig === sig; })[0] || null;
         }
 
+        // ---------- ★ 层级契约：学习记录写的是第 4–7 级 ----------
+        // 三层架构（v 本轮定型）：
+        //     1 科目 · 2 章 · 3 节   ← 科目设计（kpTree）只负责这三层
+        //     4 知识点1级 · 5 知识点2级 · 6 知识点3级 · 7 知识点4级
+        //                            ↑ 学习记录「知识点速记」写的就是这一段
+        //
+        // 列数即层级契约（由 kpCols 落盘，见 handleFormSubmit）：
+        //     速记 3 列（总标题/子标题/细节）    → 占第 4–6 级（知识点的 1/2/3 层）
+        //     速记 4 列（总标题/子标题/细节/要点）→ 占第 4–7 级（知识点的 1/2/3/4 层）
+        //
+        // ⚠️ 本函数返回的 lv **保持「知识点内部层级」口径（1..kpCols）**，不是链路绝对层级。
+        //    原因：全模块（fcWalkAll 的 tier / fcSig / 卡片 src.tier / ktSevenTree 的 +3）
+        //    一直用这个口径，改口径会让所有既有闪卡失配（sig 里含 tier）。
+        //    需要链路绝对层级的地方，自己加 KT_KP_OFFSET 即可（见 ktSevenTree）。
+        // ⚠️ 常量声明在本文件常量区（DEFAULT_LEVEL_LABELS 附近），**远在 loadData 之前**，
+        //    所以在 loadData → migrateTierV2 里读它们是安全的 —— 不会踩 const 的暂时性死区。
+
+        // ---------- ★ 1–3 级祖先前缀：学习记录已选好的 科目 / 章 / 节 ----------
+        // ★ 关键事实（用户澄清）：科目设计的 1–3 级**就是**学习记录表单里
+        //   科目 / 章 / 节这三个下拉的选项来源 —— 同一个数据源，不是两份。
+        //     科目设计 proj.courses          → #fCourse 的选项
+        //    科目设计 proj.chapterNames      → #fChapter 的选项（getChapterName）
+        //    科目设计 proj.sectionNames      → #fSection 的选项（getSectionName）
+        //   用户在下拉里选完，记录就把 course / chapter / section 三项落盘。
+        //   所以链路前三级**不需要重新拼**，直接用记录里已存的那三个坐标，
+        //   再用**与下拉同一套**取名函数还原显示文字 —— 两边永远一致。
+        //
+        // 返回 ['会计', '第1章 总论', '第1节 会计概述']（名字缺失时退化为「第N章」）。
+        //   这三级进 path 的后果：闪卡的 uid 与知识树的祖先链从此包含 1–3 级，
+        //   同一科目不同节里的同名知识点不会再被当成同一个节点。
+        function fcAncestorPath(r) {
+            if (!r || !r.course) return [];
+            const out = [String(r.course)];
+            const ch = +(r.chapter || 0);
+            if (ch > 0) {
+                // 与 #fChapter 下拉同一套取名（updateChapterSelect 用的就是它）
+                const cn = (typeof getChapterName === 'function') ? getChapterName(r.course, ch) : '';
+                out.push('第' + ch + L('chapter') + (cn ? ' ' + cn : ''));
+                const sec = +(r.section || 0);
+                if (sec > 0) {
+                    // 与 #fSection 下拉同一套取名
+                    const sn = (typeof getSectionName === 'function') ? getSectionName(r.course, ch, sec) : '';
+                    out.push('第' + sec + L('section') + (sn ? ' ' + sn : ''));
+                }
+            }
+            return out;
+        }
+
+        // 这条记录的大纲占几列（= 知识点内部几层）。缺省 3，与 CpaKpEditor 默认列数一致。
+        function fcRecCols(r) {
+            const n = r && r.kpCols;
+            return (n === 4) ? 4 : 3;
+        }
+
         // ---------- ★ 层级修复：从记录的大纲原文恢复层级 ----------
         // Tom 报的缺陷：「学习记录的闪卡层级读取错误，所有知识点都取成了平级」。
         //   写入侧 getKnowledgePoints() 存进 knowledgePoints 的只有 {no,text}，
@@ -9326,7 +9361,11 @@
         //   于是父子关系在落盘那一刻就没了。
         //   好在 kpQuickRaw 一直保存着完整大纲（toFlat 的输出，带 1.1.1 编号与缩进），
         //   层级可以从这里恢复，**老数据无需重录**。
-        // 返回 [{ name, lv, parents }]：name / parents 均已归一化（去编号去空白）。
+        // 返回 [{ name, lv, parents, ancestors }]：
+        //   name / parents 已归一化（去编号去空白）；
+        //   ⚠️ lv 是「知识点内部层级」（1..kpCols），不是链路绝对层级 —— 见上面 KT_KP_OFFSET 注释。
+        //   ancestors = 1–3 级祖先链（科目 / 章 / 节），来自**记录表单已选好的三级**，
+        //               见 fcAncestorPath。parents 仍是速记内部的祖先链，不含这三级。
         // 解析不出来时返回 null，调用方退回旧的名字匹配 —— 宁可多给，不要漏卡。
         function fcRecOutline(r) {
             const raw = (r && r.kpQuickRaw) || '';
@@ -9337,11 +9376,18 @@
             let roots = [];
             try { roots = parser(raw) || []; } catch (e) { return null; }
             if (!roots.length) return null;
+            // ★ 列数即层级契约：3 列的记录只认 3 层。
+            //   历史遗留 / 手改过的第 4 层「折叠进第 3 层」而**不是丢弃** ——
+            //   宁可多给（少一层）也不要漏掉整条知识点。
+            const maxLv = fcRecCols(r);
+            const anc = fcAncestorPath(r);       // ★ 1–3 级：记录已选好的 科目/章/节
             const out = [];
             const walk = function (list, lv, parents) {
                 (list || []).forEach(function (node) {
                     const nm = fcNormText(node && node.t);
-                    if (nm) out.push({ name: nm, lv: lv, parents: parents });
+                    // 超出该记录契约层数的节点：折叠到最深层（保持与父级的归属，不丢内容）
+                    const useLv = Math.min(lv, maxLv);
+                    if (nm) out.push({ name: nm, lv: useLv, parents: parents, ancestors: anc });
                     walk((node && node.c) || [], lv + 1, parents.concat([nm]));
                 });
             };
@@ -9350,76 +9396,21 @@
         }
 
         // 单条学习记录点亮了哪些节点（uid 集合，只含可以出卡的非叶节点）。
-        // ⚠️ 这里必须和 fcBuild 用**同一套**语义，否则会出现
-        //    「卡是这条记录生成的，但记录复习面板里看不到这张卡」这种自相矛盾。
-        //    （旧版 fcCardsForRecord 只按节点**名字**命中筛选，漏掉了祖先链 ——
-        //      于是 1.1 这条记录生成出来的卡「1. 教育的本质」在面板里消失。）
+        // ★ 数据源换成学习记录后，这个函数**大幅简化**：
+        //   旧版要在 kpTree 里靠「名字包含」猜哪些节点被这条记录碰过（还不时猜错，
+        //   需要三级判据层层回退）。现在闪卡的节点本来就是从记录大纲长出来的，
+        //   直接按 (科目, 章, 节) 圈出这条记录对应的那一组即可 —— 不再需要猜测。
         function fcLearnedSetForRecord(r) {
             const out = {};
-            if (!r) return out;
-            const pool = fcWalkAll().filter(function (n) {
-                return n.course === r.course && (+n.chapter === +r.chapter) && (+n.section === +r.section);
-            });
-            if (!pool.length) return out;
-            const marked = {}, markedPaths = [];
-            const kps = (r.knowledgePoints || []).map(function (k) { return fcNormText(k && k.text); }).filter(Boolean);
-            if (!kps.length) {                           // 没登记知识点 → 整节算学过
-                pool.forEach(function (n) { marked[fcUid(n)] = 1; });
-            } else {
-                // ★ 有层级就用层级。三级判据，从严到宽，逐级回退：
-                //   ① 精确 —— 同名 + 同层 + **祖先链逐项一致**（真正定位到「这一个」节点）
-                //   ② 同层 —— 同层 + 名字互为包含（容忍用户改写编号 / 漏写某一级）
-                //   ③ 无层级 —— 退回旧的名字包含匹配（老数据没有大纲原文时才走这条）
-                const outline = fcRecOutline(r);
-                const nameOf = function (v) { return fcNormText(v); };
-                pool.forEach(function (n) {
-                    const nm = nameOf(n.name);
-                    if (!nm) return;
-                    if (outline) {
-                        const anc = (n.path || []).slice(0, -1).map(nameOf);
-                        let hit = outline.some(function (c) {
-                            if (c.lv !== n.tier || c.name !== nm) return false;
-                            if (c.parents.length !== anc.length) return false;
-                            for (let i = 0; i < anc.length; i++) if (c.parents[i] !== anc[i]) return false;
-                            return true;
-                        });
-                        if (!hit) hit = outline.some(function (c) {
-                            if (c.lv !== n.tier || !c.name) return false;
-                            return c.name === nm || c.name.indexOf(nm) >= 0 || nm.indexOf(c.name) >= 0;
-                        });
-                        if (hit) marked[fcUid(n)] = 1;
-                        return;
-                    }
-                    if (kps.some(function (k) { return k === nm || k.indexOf(nm) >= 0 || nm.indexOf(k) >= 0; })) {
-                        marked[fcUid(n)] = 1;
-                    }
-                });
-                // ★ 同级同名兜底：大纲里某一级**整段没写**（用户只写了「整型」没写「1.1 整型转换」），
-                //   精确匹配会全落空 → 退回「层级对齐的名字包含」，仍然不跨层。
-                if (outline && !Object.keys(marked).length) {
-                    pool.forEach(function (n) {
-                        const nm = nameOf(n.name);
-                        if (!nm) return;
-                        if (outline.some(function (c) { return c.lv === n.tier && c.name === nm; })) {
-                            marked[fcUid(n)] = 1;
-                        }
-                    });
-                }
-            }
-            pool.forEach(function (n) { if (marked[fcUid(n)]) markedPaths.push(n.path); });
-
-            const isPrefix = function (shortP, longP) {
-                if (longP.length <= shortP.length) return false;
-                for (let i = 0; i < shortP.length; i++) if (longP[i] !== shortP[i]) return false;
-                return true;
-            };
-            pool.forEach(function (n) {
+            if (!r || !r.course) return out;
+            const outline = fcRecOutline(r);
+            if (!outline || !outline.length) return out;
+            const ch = +(r.chapter || 0), sec = +(r.section || 0);
+            fcWalkAll().forEach(function (n) {
+                if (n.course !== r.course) return;
+                if (+n.chapter !== ch || +n.section !== sec) return;
                 if (!n.hasKids) return;                  // 叶子不出卡
-                if (marked[fcUid(n)]) { out[fcUid(n)] = 1; return; }
-                // 子树里有命中的 → 这个上级也要出卡（相邻两级配对的另一头）
-                for (let i = 0; i < markedPaths.length; i++) {
-                    if (isPrefix(n.path, markedPaths[i])) { out[fcUid(n)] = 1; return; }
-                }
+                out[fcUid(n)] = 1;
             });
             return out;
         }
@@ -9470,12 +9461,15 @@
         function fcBuild(silent) {
             fcState();
             const nodes = fcWalkTree();
-            const from = Math.max(1, parseInt(state.cardCfg.from, 10) || 1);
-            const to = Math.max(from, parseInt(state.cardCfg.to, 10) || 99);
-            // ★ 需求 2：默认只对「学习记录碰过的节点」出卡；scopeAll 时才铺整棵树
+            // ★ 层级口径 = 链路绝对层级（4–7），与知识树 / 用户原话一致
+            const from = Math.max(KT_KP_OFFSET + 1, parseInt(state.cardCfg.from, 10) || (KT_KP_OFFSET + 1));
+            const to = Math.max(from, parseInt(state.cardCfg.to, 10) || (KT_KP_OFFSET + KT_KP_MAXLV));
+            // ★ 数据源换成学习记录后，「只出学过的」过滤已由数据源本身保证 ——
+            //    fcWalkAll 的节点全部长自学习记录大纲，不存在「没学过却出卡」的情况。
+            //    scopeAll 因此失去意义，此处保留字段只做历史兼容，不再参与过滤。
             const scopeAll = (state.cardCfg.scopeAll === true);
-            const learned = scopeAll ? null : fcLearnedSigSet();
-            const learnedN = learned ? Object.keys(learned).length : 0;
+            const learned = null;
+            const learnedN = nodes.length;
             let added = 0, kept = 0, refreshed = 0, gone = 0, hiddenKeep = 0, skipped = 0, scopeOutN = 0;
             const seen = {};
             const today = dateToStr(new Date());
@@ -9483,19 +9477,17 @@
             const sigFix = fcSigFixMap(nodes);
 
             nodes.forEach(function (n) {
-                if (n.tier < from || n.tier > to) return;
-                if (learned && !learned[fcUid(n)]) { skipped++; return; }
+                if (n.tier < from || n.tier > to) { skipped++; return; }
+                // ★ 叶子不出卡：没有下级 = 反面是空的，背不出东西。
+                //   闪卡的出卡方式是「相邻两级配对」，叶子只有正面没有配对对象。
+                //   （虚拟的「节」节点 tier=3 已被上面的范围过滤挡掉，这里再兜一层
+                //     是防 range 被放宽到含 1–3 级时它漏进来 —— 它是容器，不是知识点。）
+                if (n.virtual || !n.hasKids || !String(n.answers.join('')).trim()) { skipped++; return; }
                 const id = fcIdOf(sigFix[fcUid(n)] || n.sig);
                 const autoQ = n.name;
-                // ★ 层级修复：反面只列**这条记录真的学过**的下级。
-                //   旧行为把该节点的全部孩子都写进反面 —— 于是「1 整型」的反面里
-                //   会带上与本次学习无关的兄弟分支（1.2 整型提升），答案被污染。
-                //   一个都没学到时退回全部下级（宁可多给，不要给空答案）。
+                // 反面 = 该节点的直接下级。数据源已是学习记录，这里的下级天然就是
+                // 「这条学习路径上真的遇到过的下一级」，无需再收窄。
                 let autoA = n.answers.join('\n');
-                if (learned && n.childUids && n.childUids.length) {
-                    const keptKids = n.answers.filter(function (nm2, i2) { return learned[n.childUids[i2]]; });
-                    if (keptKids.length) autoA = keptKids.join('\n');
-                }
                 const srcNow = {
                     course: n.course, chapter: n.chapter, section: n.section,
                     tier: n.tier, order: n.order, path: n.path.slice()
@@ -9553,9 +9545,9 @@
                 showToast('🃏 闪卡已更新：新增 ' + added + ' 张，沿用 ' + kept + ' 张' +
                     (refreshed ? '，刷新 ' + refreshed + ' 张' : '') +
                     (hiddenKeep ? '，跳过已隐藏 ' + hiddenKeep + ' 张' : '') +
-                    (!scopeAll && skipped ? '，' + skipped + ' 张未学到（不生成）' : '') +
+                    (skipped ? '，' + skipped + ' 张在第 ' + from + '–' + to + ' 级之外' : '') +
                     (scopeOutN ? '，' + scopeOutN + ' 张本次不在范围（历史保留）' : '') +
-                    (gone ? '，' + gone + ' 张已不在树中（历史保留）' : ''));
+                    (gone ? '，' + gone + ' 张已不在学习记录中（历史保留）' : ''));
             }
             return state.cardCfg.lastResult;
         }
@@ -10734,18 +10726,28 @@
             fcRender();
         }
 
+        // ★ 闪卡层级下拉：只允许 4–7 级（链路绝对层级）。
+        //   1–3 级是 科目/章/节，那是科目设计的地盘，闪卡不吃这一段（用户明确要求「限制在 4-7」）。
+        //   上限取「数据源里实际出现过的最深层」，但不低于 4 —— 一条记录都没有时
+        //   下拉也不能是空的，否则用户没法设范围。
         function fcFillRangeSelects() {
-            const mx = Math.max(2, fcMaxTier());
+            const LV_LO = KT_KP_OFFSET + 1;                                   // 4
+            const LV_HI = Math.max(LV_LO, Math.min(KT_KP_OFFSET + KT_KP_MAXLV, fcMaxTier()));  // 4..7
             const f = document.getElementById('fcFrom'), t = document.getElementById('fcTo');
             if (!f || !t) return;
             fcState();
+            const clamp = function (v) { return Math.max(LV_LO, Math.min(LV_HI, v)); };
             const opts = function (sel) {
                 let h = '';
-                for (let i = 1; i <= mx; i++) h += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>第 ' + i + ' 级</option>';
+                for (let i = LV_LO; i <= LV_HI; i++) {
+                    h += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>第 ' + i + ' 级</option>';
+                }
                 return h;
             };
-            f.innerHTML = opts(Math.min(state.cardCfg.from || 1, mx));
-            t.innerHTML = opts(Math.min(state.cardCfg.to || mx, mx));
+            const a = clamp(parseInt(state.cardCfg.from, 10) || LV_LO);
+            const b = clamp(parseInt(state.cardCfg.to, 10) || LV_HI);
+            f.innerHTML = opts(a);
+            t.innerHTML = opts(Math.max(a, b));
         }
 
         /* ============================================================
@@ -10775,13 +10777,13 @@
         //
         // 语义（v50 立，本轮按七级链路改口径）：
         //   渲染条件是 expd = (lv >= from && lv < toLv)，也就是「第 toLv 级可见」。
-        //   于是 toLv = 4 ⇔ 屏上出现 1–4 级 = 科目 › 章 › 节 › 知识点1级。
+        //   于是 toLv = 5 ⇔ 屏上出现 1–5 级 = 科目 › 章 › 节 › 知识点1级 › 知识点2级。
         //
-        //   ★ 旧口径「最深级 - 2」是给「树里只有知识点」那套算的：现在最深三层固定
-        //     是 科目/章/节，top-2 会把知识点 3–4 级一起铺开；而 a 只到「节」又等于
-        //     默认树里一个知识点都没有。两者都不对，故改成固定档位 KT_DEF_TO。
+        //   ★ 为什么默认是 5 而不是 4：知识点来源已收敛为学习记录，屏上默认就该
+        //     看得到「某一级 + 它的下一级」这一对 —— 那正是闪卡的配对方式。
+        //     只到 4 级的话，看到的全是第 4 级顶层，一个父子配对都显示不出来。
         const KT_TO_AUTO = 0;
-        const KT_DEF_TO = 4;                  // 默认展开到第 4 级：科目›章›节›知识点1级
+        const KT_DEF_TO = 5;                  // 默认展开到第 5 级：科目›章›节›知识点1级›知识点2级
 
         function ktProj() {
             try { return (typeof getCurrentProject === 'function') ? getCurrentProject() : null; } catch (e) { return null; }
@@ -10882,13 +10884,22 @@
             return out;
         }
 
-        // 整棵项目树摊平（所有科目 / 章 / 节），并并入学习记录补充的节点
+        // 整棵项目树摊平（科目 › 章 › 节 › 知识点 4–7 级）。
+        //
+        // ★ 三层架构定型后的数据源（本轮改写）：
+        //     1–3 级（科目/章/节） ← 科目设计 kpTree ∪ 学习记录里出现过的组合
+        //     4–7 级（知识点）      ← **只来自学习记录**（fcWalkAll，与闪卡同一份数据）
+        //   旧版从 kpTree 取知识点、再把「记录里多出来的」当作 📥 补充挂在顶层 ——
+        //   现在知识点本来就归学习记录，不再需要「补充」这个概念，
+        //   两边（知识树 / 闪卡）读同一份 fcWalkAll，天然一致，不会各说各话。
+        //
+        //   注意：本模块仍是**只读**的 —— 合并在内存里完成，一个字节都不写回 kpTree。
         function ktAllNodes() {
             const out = [];
             const proj = ktProj();
             const tree = (proj && proj.kpTree && typeof proj.kpTree === 'object') ? proj.kpTree : {};
 
-            // ① 「科目 / 章 / 节」的全集 = 树里有的 ∪ 记录里出现过的
+            // ① 「科目 / 章 / 节」的全集 = 科目设计里有的 ∪ 学习记录里出现过的
             const seen = {}, combos = [];
             const push = function (course, ch, sec) {
                 if (!course) return;
@@ -10912,31 +10923,50 @@
             });
             (state.records || []).forEach(function (r) {
                 if (!r || !r.course) return;
-                const kps = (r.knowledgePoints || []).filter(function (k) { return k && String(k.text || '').trim(); });
-                if (kps.length) push(r.course, r.chapter || 0, r.section || 0);
+                if (!fcRecOutline(r)) return;                 // 没写大纲的记录不占位
+                push(r.course, r.chapter || 0, r.section || 0);
             });
             combos.sort(function (a, b) {
                 return String(a.course).localeCompare(String(b.course))
                     || (a.chapter - b.chapter) || (a.section - b.section);
             });
 
-            // ② 逐个组合摊平：树节点在前，「记录补充」追加在后
+            // ② 知识点：与闪卡同源（fcWalkAll），已是 4–7 绝对层级 + 含 1–3 级祖先链
+            const byKey = {};
+            fcWalkAll().forEach(function (n) {
+                const k = n.course + '|' + n.chapter + '|' + n.section;
+                (byKey[k] = byKey[k] || []).push(n);
+            });
+
             combos.forEach(function (c) {
-                const base = { course: c.course, chapter: c.chapter, section: c.section };
-                const local = [];
-                ktFlatten(ktTreeNodeAt(tree, c.course, c.chapter, c.section), base, 0, [], [], local);
-                ktRecordExtras(c.course, c.chapter, c.section, local).forEach(function (x, i) {
-                    local.push({
-                        // 虚拟下标路径 9xxx：与真实节点的 i.j.k 不可能撞号
-                        sig: ktSig(c.course, c.chapter, c.section, [9000 + i]),
-                        parent: '',
+                const key = c.course + '|' + c.chapter + '|' + c.section;
+                const list = byKey[key] || [];
+                // 用 fcWalkAll 的绝对层级直接铺平。
+                // parent 用「本节点路径的父级」定位，让 kids 正确挂到上级下；
+                // 顶层（第 4 级）的 parent 指向「节」——但节由 ktSevenTree 单独渲染，
+                // 这里留空，ktSevenTree 会把它们挂到对应的节节点下。
+                const sigs = {};
+                list.forEach(function (n) { sigs[n.path.join(' > ')] = ktSig(c.course, c.chapter, c.section, [9000].concat(n.path)); });
+                list.forEach(function (n) {
+                    // ★ 虚拟「节」节点不进树：它只是 fcWalkAll 用来把 1–3 级拼进祖先链的中间产物，
+                    //   「节」这一行由 ktSevenTree 自己渲染（带「第 N 节」格式与展开状态），
+                    //   放它进来会出现两行「第 1 节 会计概述」（格式还不一致）。
+                    if (n.virtual) return;
+                    const self = n.path.join(' > ');
+                    const parPath = n.path.slice(0, -1).join(' > ');
+                    const isTop = n.path.length <= (fcAncestorPath({ course: c.course, chapter: c.chapter, section: c.section }).length + 1);
+                    out.push({
+                        sig: sigs[self],
+                        parent: (!isTop && sigs[parPath]) ? sigs[parPath] : '',
                         course: c.course, chapter: c.chapter, section: c.section,
-                        tier: 1, order: 9000 + i, name: x.name, kidN: 0,
-                        crumb: x.name + '（来自学习记录）',
-                        extra: true, recId: x.recId, recDate: x.recDate
+                        tier: n.tier,                       // ★ 4–7 绝对层级
+                        order: n.order, name: n.name, kidN: n.hasKids ? n.answers.length : 0,
+                        crumb: n.path.join(' › '),
+                        extra: true,                        // 视觉上仍标「来自学习记录」
+                        fromRecord: true,
+                        virtual: !!n.virtual
                     });
                 });
-                local.forEach(function (n) { out.push(n); });
             });
             return out;
         }
@@ -11031,11 +11061,11 @@
             };
             const sf = document.getElementById('ktFrom'), st = document.getElementById('ktTo');
             if (sf) sf.innerHTML = opts(Math.min(cfg.from, KT_MAX_LV));
-            // 终点多给一个自动档，且它是默认值（默认看到第 4 级 = 科目/章/节 + 知识点 1 级）
+            // 终点多给一个自动档，且它是默认值（默认看到第 5 级 = 科目/章/节 + 知识点 1–2 级）
             if (st) {
                 st.innerHTML =
                     '<option value="' + KT_TO_AUTO + '"' + (cfg.to === KT_TO_AUTO ? ' selected' : '') +
-                        '>默认（科目 › 章 › 节 + 知识点首层）</option>' +
+                        '>默认（科目 › 章 › 节 + 知识点 1–2 级）</option>' +
                     opts(cfg.to === KT_TO_AUTO ? -1 : Math.min(cfg.to, KT_MAX_LV));
             }
         }
@@ -11043,23 +11073,19 @@
         // ---------- 统计条 ----------
         function ktPaintStats(scope) {
             const total = scope.length;
-            const extra = scope.filter(function (n) { return n.extra; }).length;
-            const pure = scope.filter(function (n) { return !n.extra; });
-            const leaf = pure.filter(function (n) { return !n.kidN; }).length;
-            const mx = ktMaxTier(pure);
+            // ★ tier 已是链路绝对层级（1 科目 / 2 章 / 3 节 / 4–7 知识点），不再需要换算
+            const leaf = scope.filter(function (n) { return !n.kidN; }).length;
+            const mx = Math.max(1, ktMaxTier(scope));
             const set = function (id, v) { const el = document.getElementById(id); if (el) el.textContent = String(v); };
-            // ★ 需求 1：深度按七级链路报（知识点内部第 t 级 → 链路第 t+3 级）
-            set('ktTotal', total); set('ktLeaf', leaf); set('ktDepth', total ? (mx + 3) : 0);
+            set('ktTotal', total); set('ktLeaf', leaf); set('ktDepth', total ? mx : 0);
             const LVN = ['科目', '章', '节', '知识点1级', '知识点2级', '知识点3级', '知识点4级'];
 
-            // 层级分布只算大纲节点 —— 「记录补充」不属于任何大纲层级，单列一格
             const byTier = {};
-            pure.forEach(function (n) { byTier[n.tier] = (byTier[n.tier] || 0) + 1; });
+            scope.forEach(function (n) { byTier[n.tier] = (byTier[n.tier] || 0) + 1; });
             const bar = document.getElementById('ktTierBar');
             if (bar) {
                 const parts = [];
-                for (let t = 1; t <= mx; t++) parts.push('第' + (t + 3) + '级 ' + (LVN[t + 2] || '') + ' ' + (byTier[t] || 0));
-                if (extra) parts.push('📥 记录补充 ' + extra);
+                for (let t = 1; t <= mx; t++) parts.push('第' + t + '级 ' + (LVN[t - 1] || '') + ' ' + (byTier[t] || 0));
                 bar.innerHTML = total ? parts.map(function (s) { return '<span>' + s + '</span>'; }).join('') : '';
             }
         }
@@ -11067,8 +11093,8 @@
         // ---------- ★ 需求 1：七级树组装 ----------
         // 层级映射（Tom 的口径：从科目到 4 级知识点共七级）：
         //     1 科目 · 2 章 · 3 节 · 4 知识点1级 · 5 知识点2级 · 6 知识点3级 · 7 知识点4级
-        // ktAllNodes() 给的是「按节摊平」的扁平表（tier 只数知识点内部层数），
-        // 这里把科目/章/节补成 1/2/3 级，知识点平移到 tier+3。
+        // ktAllNodes() 给的 tier 已经是**链路绝对层级**（1 科目 / 2 章 / 3 节 / 4–7 知识点），
+        // 这里只负责把科目/章/节补成 1/2/3 级节点并把知识点挂到对应节下。
         let KT_MAX_LV = 7;
 
         function ktSevenTree(cfg, all, proj) {
@@ -11092,9 +11118,10 @@
             const mk = function (sig, lv, kind, name, children, raw) {
                 return { sig: sig, lv: lv, kind: kind, name: name, children: children || [], raw: raw || null };
             };
+            // ★ nest：ktAllNodes 给的 tier 已经是**链路绝对层级 4–7**，直接用，不再 +3。
             const nest = function (list) {
                 const box = {};
-                list.forEach(function (n) { box[n.sig] = mk(n.sig, n.tier + 3, 'kp', n.name, [], n); });
+                list.forEach(function (n) { box[n.sig] = mk(n.sig, n.tier, 'kp', n.name, [], n); });
                 const roots = [];
                 list.forEach(function (n) {
                     if (n.parent && box[n.parent]) box[n.parent].children.push(box[n.sig]);
@@ -11299,7 +11326,7 @@
                         const raw = (row && row.getAttribute) ? row.getAttribute('data-kt-lv') : null;
                         const lv = (raw === null || raw === '') ? cfg.from : parseInt(raw, 10);
                         const lvv = isNaN(lv) ? cfg.from : lv;
-                        const toLv = ktResolveTo(ktMaxTier(ktAllNodes()) + 3);
+                        const toLv = ktResolveTo(ktMaxTier(ktAllNodes()) + KT_KP_OFFSET);
                         ktOpen[sig] = (lvv >= cfg.from && lvv < toLv) || (lvv < cfg.from);
                     }
                     ktOpen[sig] = !ktOpen[sig];
@@ -13295,32 +13322,90 @@
                 .trim();
         }
         // 一个解析器吃下四种视角：层级编号 / 缩进 / Markdown 标题与列表
+        // ---- 序号体系探测：一篇大纲里用户常常混用几套编号 ----
+        // 返回该行的「序号体系 id」和「体系内深度」，都不含缩进信息。
+        //   num   阿拉伯数字（1. / 1.1 / 1.1.1 /（1））→ 体系内深度 = 点数
+        //   cn    中文数字（一、/ 一.）        → 单个体系，深度 1
+        //   pcn   括号中文（（一）/ (一)）      → 单个体系，深度 1
+        //   circ  圆圈数字（①②③）            → 单个体系，深度 1
+        // 返回 null = 这一行没有编号。
+        function seqKind(body) {
+            if (/^[（(【\[]\s*[0-9]{1,3}(?:\.[0-9]{1,3}){0,3}\s*[）)】\]]/.test(body)) {
+                var g1 = body.match(/^[（(【\[]\s*([0-9]{1,3}(?:\.[0-9]{1,3}){0,3})\s*[）)】\]]/);
+                return { id: 'num', d: Math.min(g1[1].split('.').length, MAXD) };
+            }
+            var g2 = body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,3})\s*[.、．)）:：](\s|$)/);
+            if (g2) return { id: 'num', d: Math.min(g2[1].split('.').length, MAXD) };
+            var g3 = body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,3})\s*[.、．)）:：]?\s+(?=\S)/);
+            if (g3) return { id: 'num', d: Math.min(g3[1].split('.').length, MAXD) };
+            if (/^[一二三四五六七八九十]{1,3}\s*[、.．]/.test(body)) return { id: 'cn', d: 1 };
+            if (/^[（(【\[]\s*[一二三四五六七八九十]{1,3}\s*[）)】\]]/.test(body)) return { id: 'pcn', d: 1 };
+            if (/^[①-⑳⑴-⒇❶-❿]/.test(body)) return { id: 'circ', d: 1 };
+            return null;
+        }
+        // 剥掉行首编号（含中文 / 括号 / 圆圈），交给后面的 stripNoInner 兜底
+        function cutSeqNo(body) {
+            return String(body || '')
+                .replace(/^[（(【\[]\s*[0-9]{1,3}(?:\.[0-9]{1,3}){0,3}\s*[）)】\]]\s*/, '')
+                .replace(/^[（(【\[]\s*[一二三四五六七八九十]{1,3}\s*[）)】\]]\s*/, '')
+                .replace(/^[一二三四五六七八九十]{1,3}\s*[、.．]\s*/, '')
+                .replace(/^[①-⑳⑴-⒇❶-❿]\s*/, '')
+                .replace(/^[0-9]{1,3}(?:\.[0-9]{1,3}){0,3}\s*[.、．)）:：]?\s+(?=\S)/, '');
+        }
+
+        // 一个解析器吃下四种视角：层级编号 / 缩进 / Markdown 标题与列表
         function parse(text) {
             var roots = [], lv = [], k;
             for (k = 0; k < MAXD; k++) lv.push(null);
-            var headingDepth = 0;
+
+            // ---- 第 1 遍：拆行 + 预扫描序号体系 ----
+            // 为什么要预扫描？因为「1.」到底是第 1 级还是第 3 级，取决于本文档里
+            // 有没有出现「一、」和「（一）」——只有整篇看完才知道。
+            // 用户的心智模型是「一、→（一）→ 1.」依次为第 1/2/3 级，
+            // 所以这里把出现过的体系按「中文 → 括号中文 → 阿拉伯数字」的
+            // 自然嵌套顺序排定它们的基准层级。
+            var rows = [];
             String(text || '').split(/\r?\n/).forEach(function (raw) {
                 var line = raw.replace(/\s+$/, '');
                 if (!line.trim()) return;
                 var indent = (line.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '  ').length;
-                var indentLvl = Math.min(Math.floor(indent / 2) + 1, MAXD);
                 var body = line.trim();
-                var lvl = 0, numLvl = 0, isHeading = false, isList = false;
-                var h = body.match(/^(#{1,6})\s+(.*)$/);
-                if (h) { isHeading = true; lvl = Math.min(h[1].length, MAXD); body = h[2]; }
+                var isHeading = false, isList = false;
+                var hm = body.match(/^(#{1,6})\s+(.*)$/);
+                if (hm) { isHeading = true; body = hm[2]; }
                 var lm = body.match(/^[-*+\u2022\u00b7]\s+(.*)$/);
                 if (lm) { isList = true; body = lm[1]; }
-                // 带内容的编号行
-                var n = body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,3})\s*[.、．)）:：]?\s+(?=\S)(.*)$/);
-                // 只有编号没有内容：这是刚加出来还没填的空格子，保留它（否则层级会塌）
-                var only = n ? null : body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,3})\s*[.、．)）:：]?$/);
-                if (n) { numLvl = Math.min(n[1].split('.').length, MAXD); body = n[2]; }
-                else if (only) { numLvl = Math.min(only[1].split('.').length, MAXD); body = ''; }
+                rows.push({
+                    indent: indent, isHeading: isHeading, isList: isList,
+                    head: hm ? Math.min(hm[1].length, MAXD) : 0,
+                    body: body, seq: seqKind(body)
+                });
+            });
+            if (!rows.length) return roots;
 
-                if (isHeading) {
-                    /* 标题行层级已定 */
-                } else if (numLvl) {
-                    lvl = Math.max(numLvl, indentLvl);          // 编号与缩进取更深的一层
+            // 体系基准层级：中文=1，括号中文=2，阿拉伯/圆圈=3（只在该体系确实出现过时才占位）
+            var seen = { cn: false, pcn: false, circ: false, num: false };
+            rows.forEach(function (r) { if (r.seq) seen[r.seq.id] = true; });
+            var base = {}, cur = 0;
+            if (seen.cn)   base.cn = ++cur;
+            if (seen.pcn)  base.pcn = ++cur;
+            if (seen.circ) base.circ = ++cur;
+            if (seen.num)  base.num = ++cur;
+            // 一个体系都没探测到（纯缩进 / 纯 Markdown）→ base 为空，走缩进分支
+
+            var headingDepth = 0;
+            rows.forEach(function (r) {
+                var indent = r.indent;
+                var indentLvl = Math.min(Math.floor(indent / 2) + 1, MAXD);
+                var body = r.body;
+                var lvl = 0;
+
+                if (r.isHeading) {
+                    lvl = r.head;
+                } else if (r.seq) {
+                    // 体系基准层 + 体系内深度 - 1
+                    lvl = base[r.seq.id] + r.seq.d - 1;
+                    body = cutSeqNo(body);
                 } else {
                     // 没有编号时靠缩进；若上文出现过标题，整体下沉一级（手写 MD 的常见写法）
                     lvl = indentLvl + headingDepth;
@@ -13328,12 +13413,14 @@
                 if (lvl > MAXD) lvl = MAXD;
                 if (lvl < 1) lvl = 1;
 
+                // 只有编号没有内容的空行（模版的「第一章」「一、」「(1)」）必须保留，
+                // 否则层级会塌；纯标点残渣才丢。
                 if (body) {
                     body = stripNoInner(body).trim();
-                    // 剥完变空串 = 整行都是编号。模版的「第一章」「一、」「(1)」「①」正好长这样，
-                    // 那是刚加出来还没填的空格子：必须留着，丢了层级会塌（父格的合并也会错）。
-                    if (body && !/[\u4e00-\u9fa5A-Za-z0-9]/.test(body)) return;   // 纯标点/残渣才丢
-                } else if (!numLvl) {
+                    if (body && !/[\u4e00-\u9fa5A-Za-z0-9]/.test(body)) return;
+                } else if (!r.seq && !r.isHeading) {
+                    return;
+                } else if (!r.seq) {
                     return;
                 }
 
@@ -13347,7 +13434,7 @@
                     for (k = 0; k < MAXD; k++) lv[k] = null;
                     lv[0] = node;
                 }
-                if (isHeading) headingDepth = lvl;
+                if (r.isHeading) headingDepth = lvl;
             });
             return roots;
         }
@@ -14164,6 +14251,14 @@
                 var q = el('fKpQuick');
                 if (q) q.value = (rec && rec.kpQuickRaw) || '';
                 tree = parse(q ? q.value : '');
+                // ★ 恢复这条记录写入时的列数：列数是层级契约
+                //   （3 列 = 链路第 4–6 级 / 4 列 = 第 4–7 级），
+                //   不还原的话重新编辑再保存会把层级契约改掉。
+                //   老记录没有 kpCols 字段 → 不覆盖用户当前设置（保持现状，不瞎猜）。
+                if (rec && (rec.kpCols === 3 || rec.kpCols === 4) && colCount !== rec.kpCols) {
+                    colCount = rec.kpCols;
+                    store(COL_KEY, String(colCount));
+                }
                 resetDirty();
                 applyMode();
             },
@@ -14213,7 +14308,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917n</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917s</div>
 <!-- build-tag:end -->
 </body>
 </html>
