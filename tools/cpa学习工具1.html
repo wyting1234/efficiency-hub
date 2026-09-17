@@ -2547,11 +2547,14 @@
     .kt-branch > .kt-kids.kt-leaves { margin-left: 20px; padding-left: 15px; }
     .kt-branch > .kt-kids.kt-leaves::before { left: -20px; width: 20px; }
     .kt-kids.kt-leaves::after { width: 15px; top: 12px; bottom: 12px; }
-    .kt-row { max-width: 74vw; font-size: 12.5px; padding: 3px 7px; }
+    .kt-row { max-width: 86vw; font-size: 12.5px; padding: 3px 7px; }
     .kt-lv1 { padding: 4px 10px; }
     .kt-lv2 { padding: 4px 9px; }
     .kt-lv3 { padding: 3px 9px; }
-    .kt-lvb { display: none; }
+    /* ★ 窄屏**更要**看得见层级：「这一行是第几级」是判断「到底是同级还是父子」的
+       唯一线索。藏掉它，整棵树就只剩一列名字，读起来全是同级 —— 而窄屏正是
+       效率中心 iframe 里的常态宽度。这里只收紧字号与内边距，不再 display:none。 */
+    .kt-lvb { font-size: 9.5px; padding: 0 4px; }
 }
 
 /* ===== 闪卡翻面：严格互斥（正面屏 / 反面屏二选一） ===== */
@@ -6066,7 +6069,10 @@
                 .replace(/^\s*[一二三四五六七八九十]{1,3}\s*[、.．]\s*/, '')
                 .replace(/^\s*[(\uff08\u3010]\s*(?:[一二三四五六七八九十]|[0-9]){1,3}\s*[)\uff09\u3011]\s*/, '')
                 .replace(/^\s*[\u2460-\u2473\u24EA\u2776-\u277F\u2780-\u2789\u278A-\u2793]\s*/, '')
-                .replace(/^\s*[(\uff08\u3010]?\s*[0-9]{1,3}\s*[)\uff09\u3011]?\s*[.、．:：]?\s+(?=\S)/, '')
+                // ★ 这里曾经还有一条「裸数字 + 空格」剥离规则，与 stripNoInner 同源缺陷：
+                //   它把「3 个要点」削成「个要点」—— 内容被静默吃掉一格。
+                //   真正的序号一定带分隔符（3. / 3、/ 3：）或括号（(3)），
+                //   而这两种上面第 4、6 条已经处理，所以直接删掉这条。
                 .trim();
         }
 
@@ -6414,6 +6420,14 @@
             // ⚠️ 这里曾经在 getKnowledgePoints() 之外**又**遍历了一遍 fKpQuick 并 push ——
             //    旧双模式下 getKnowledgePoints() 走的是另一条路（下拉 / 自由输入行），
             //    所以不重复；收敛到单一路径后必须删掉，否则每条知识点会被 push 两遍。
+            // ★ 先「回读当前视角 → 回写三个文本框」，再往下读 —— 否则下面两行拿到的是
+            //   #fKpQuick 里**上一次**的内容：用户在大纲视角 / 思维导图视角 / MD 视角里
+            //   编好的层级会在保存这一刻被静默丢弃（详见 CpaKpEditor.syncNow 的注释）。
+            try {
+                if (window.CpaKpEditor && typeof window.CpaKpEditor.syncNow === 'function') {
+                    window.CpaKpEditor.syncNow();
+                }
+            } catch (e) {}
             const knowledgePoints = getKnowledgePoints();
             const kpQuickEl = document.getElementById('fKpQuick');
             const kpQuickRaw = kpQuickEl ? kpQuickEl.value : '';
@@ -9141,10 +9155,11 @@
                     '</div></div>' +
                 // 🃏 闪卡区：同一套复习周期与统计，只是把内容换成「正面 → 点击看反面」的形式
                 fcEmbedHTML(rec, kpIdx) +
-                '<div class="pf"><label>新知识点补充</label>' +
-                    '<textarea id="rvNew" rows="3" placeholder="本轮新学到 / 新发现的知识点，下轮会作为「上期学习内容」带出来">' + kpEsc(saved.newKp || '') + '</textarea></div>' +
-                '<div class="pf"><label>下轮复习注意事项</label>' +
-                    '<textarea id="rvTips" rows="2" placeholder="给下一轮复习的自己留个提示，如：重点复习 XX 的边界条件">' + kpEsc(saved.nextTips || '') + '</textarea></div>' +
+                // ★ 2026-09-17 删除「新知识点补充 / 下轮复习注意事项」两个输入框：
+                //   它们写入 kpReviews.newKp / nextTips，而 fcNotes() 把这两个字段与闪卡自己的
+                //   cardNotes 渲染进**同一栏**（闪卡背面的「📎 知识点补充 / 💡 下轮提示」）——
+                //   同一栏位两个输入源，属真重复。记录改在闪卡反面直接写（fcAddNote 入口仍在）。
+                //   ⚠️ 历史数据不丢：rvPrevText() 与 fcNotes() 仍照常读 kpReviews 里的旧值。
                 '<div class="pd-actions">' +
                     '<button class="pd-btn ghost" id="rvCancelBtn">取消</button>' +
                     '<button class="pd-btn" id="rvSkipBtn">仅标记已完成</button>' +
@@ -9181,8 +9196,9 @@
                     start: start, end: end, hours: hours,
                     tomatoes: Math.max(0, parseInt(p.value, 10) || 0),
                     note: box.querySelector('#rvNote').value || '',
-                    newKp: skip ? '' : (box.querySelector('#rvNew').value || ''),
-                    nextTips: skip ? '' : (box.querySelector('#rvTips').value || ''),
+                    // 输入框已移除 → 保留已存值，避免编辑旧记录时把历史内容清掉
+                    newKp: skip ? '' : (saved.newKp || ''),
+                    nextTips: skip ? '' : (saved.nextTips || ''),
                     skipped: !!skip
                 });
                 close();
@@ -9892,8 +9908,10 @@
         }
 
         // ---------- 笔记子栏的数据源 ----------
-        // ① 「记录复习」界面里写下的新知识点 / 下轮提示（state.kpReviews，按记录×轮次落盘）
-        // ② 闪卡复习时现场补充的（state.cardNotes，按卡片落盘）
+        // ① 历史遗留：早期「记录复习」面板底部那两个输入框写下的新知识点 / 下轮提示
+        //    （state.kpReviews，按记录×轮次落盘）。该输入框已于 2026-09-17 移除（与闪卡背面重复），
+        //    这里保留读取只为不让老数据失踪 —— 不会再有新数据从这条路进来。
+        // ② 现在唯一入口：闪卡复习时在反面「📎 知识点补充 / 💡 下轮提示」现场写（state.cardNotes）
         function fcNotes(card) {
             fcState();
             const out = { supplement: [], assoc: [], tip: [] };
@@ -11430,6 +11448,14 @@
                 kpEsc(nm.slice(at + q.length));
         }
 
+        // 层级角标里写什么：用工具栏 / 统计条同一套词汇（第 4 级 · 知识点1级 …）。
+        // ★ 不再写 L4 / L5 / L6 ——「L6 是第几级」要用户在脑子里换算一遍，
+        //   画在行尾就只是几个看不出含义的字母，等于没说。
+        function ktLvName(lv) {
+            return ['科目', '章', '节', '知识点1级', '知识点2级', '知识点3级', '知识点4级'][lv - 1]
+                || ('第 ' + lv + ' 级');
+        }
+
         // 一棵「分支」= 节点本身 + （展开时）它的子级容器。
         // 结构对齐参考图：kt-row 是色块/文字，kt-kids 是右移一档的下一层，
         // 连接线由 CSS 的直角折线画（.kt-kids 的左边框 + 每个分支的短横线）。
@@ -11440,17 +11466,19 @@
                 ? '<span class="kt-caret" data-kt-toggle="' + kpEsc(n.sig) + '" title="展开 / 收拢">' +
                     (open ? '▾' : '▸') + '</span>'
                 : '<span class="kt-caret kt-leaf">·</span>';
-            const extra = !!(n.raw && n.raw.extra);
+            // ★ 不再渲染「📥 记录补充」角标：三层架构定型后，知识点**全部**来自学习记录，
+            //   这个角标对每一个节点都成立 ⇒ 零信息量；更糟的是它把每一行刷成同一副样子，
+            //   一眼扫过去「全是一伙的」（用户反复反馈的「不是平级 / 怎么又放在一起了」，
+            //   观感上有很大一部分来自它）。
+            //   层级改由两样东西表达：颜色与缩进（父子关系）+ 行尾层级角标（第几级）。
             let h = '<div class="kt-branch">';
-            h += '<div class="kt-row kt-lv' + n.lv + (extra ? ' kt-row-extra' : '') +
+            h += '<div class="kt-row kt-lv' + n.lv +
                  '" data-kt-sig="' + kpEsc(n.sig) + '" data-kt-lv="' + n.lv + '"' +
                  (n.raw && n.raw.crumb ? ' title="' + kpEsc(n.raw.crumb) + '"' : '') + '>' +
                 caret +
                 '<span class="kt-name">' + ktLabelText(n, q) + '</span>' +
-                '<span class="kt-lvb">L' + n.lv + '</span>' +
-                (extra ? '<span class="kt-extra-badge" title="' +
-                    kpEsc(n.raw.recDate ? ('来自 ' + n.raw.recDate + ' 的学习记录') : '来自学习记录') +
-                    '">📥 记录补充</span>' : '') +
+                '<span class="kt-lvb" title="第 ' + n.lv + ' 级 · ' + kpEsc(ktLvName(n.lv)) + '">' +
+                    kpEsc(ktLvName(n.lv)) + '</span>' +
                 (kids.length ? '<span class="kt-kidn">' + kids.length + ' 项</span>' : '') +
                 '</div>';
             if (kids.length && open) {
@@ -13589,7 +13617,9 @@
                 .replace(/^[一二三四五六七八九十]{1,3}\s*[、.．]\s*/, '')                        // 一、 二.
                 .replace(/^[\uff08(\u3010\[]\s*(?:[一二三四五六七八九十]|[0-9]){1,3}\s*[\uff09)\u3011\]]\s*/, '')  // （一）(1)
                 .replace(/^[\u2460-\u2473\u24EA\u2776-\u277F\u2780-\u2789\u278A-\u2793]\s*/, '')   // ①②③ ⑴ ❶
-                .replace(/^[(\uff08\u3010]?\s*[0-9]{1,3}\s*[)\uff09\u3011]?\s*[.、．:：]?\s+(?=\S)/, '')
+                // ★ 旧写法最后一条把**裸「数字 + 空格」**也剥掉：`3 个要点` → `个要点`，
+                //   内容被静默吃掉一格。真正的序号一定带分隔符（3. / 3、/ 3：）或括号（(3)），
+                //   而括号形式上面 13590 那条已经处理，所以这里直接删掉这条规则。
                 .trim();
         }
         // 一个解析器吃下四种视角：层级编号 / 缩进 / Markdown 标题与列表
@@ -13607,7 +13637,12 @@
             }
             var g2 = body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,3})\s*[.、．)）:：](\s|$)/);
             if (g2) return { id: 'num', d: Math.min(g2[1].split('.').length, MAXD) };
-            var g3 = body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){0,3})\s*[.、．)）:：]?\s+(?=\S)/);
+            // ★ 十进制路径（1.1 / 1.1.1 / 1.1.1.1）：编号本身就是层级，后面跟空白即可。
+            //   旧写法是 `[0-9]{1,3}(?:\.[0-9]{1,3}){0,3}` + **可选**分隔符，于是把
+            //   「数字 + 空格」也算成编号 —— `3 个要点` 会被当成序号：数字被剥掉、
+            //   lvl 算成 1，这个节点从第 3 级被弹成**顶层根**（实测 Case L）。
+            //   收紧后必须「带点」才算，内容行不再被误判。
+            var g3 = body.match(/^([0-9]{1,3}(?:\.[0-9]{1,3}){1,3})(?=\s|$)/);
             if (g3) return { id: 'num', d: Math.min(g3[1].split('.').length, MAXD) };
             if (/^[一二三四五六七八九十]{1,3}\s*[、.．]/.test(body)) return { id: 'cn', d: 1 };
             if (/^[（(【\[]\s*[一二三四五六七八九十]{1,3}\s*[）)】\]]/.test(body)) return { id: 'pcn', d: 1 };
@@ -13639,7 +13674,10 @@
             String(text || '').split(/\r?\n/).forEach(function (raw) {
                 var line = raw.replace(/\s+$/, '');
                 if (!line.trim()) return;
-                var indent = (line.match(/^[ \t]*/) || [''])[0].replace(/\t/g, '  ').length;
+                // ★ Tab / 全角空格先折成 2 个半角空格：不折的话 /^[ \t]*/ 匹配不到 U+3000，
+                //   全角缩进的整篇文档 indent 会一律算成 0，层级全塌（实测 Case C）。
+                var indent = (line.match(/^[ \t\u3000]*/) || [''])[0]
+                    .replace(/\t/g, '  ').replace(/\u3000/g, '  ').length;
                 var body = line.trim();
                 var isHeading = false, isList = false;
                 var hm = body.match(/^(#{1,6})\s+(.*)$/);
@@ -13654,6 +13692,25 @@
             });
             if (!rows.length) return roots;
 
+            // ---- 缩进层级：只看**相对**关系，不假设「每级 2 个空格」----
+            //   ⚠️ 旧写法 indentLvl = floor(indent / 2) + 1 把「每级 2 空格」当硬约定：
+            //      · 每级 4 空格（中文文档 / Markdown 最常见的写法）→ 0/4/8/12 算成
+            //        1/3/5/7，夹到 1/3/4/4；而 lv[1] 永远是空的 → 每一行都走
+            //        「没有父级 → 当根节点」分支 ⇒ **整份大纲塌成同级根节点**，
+            //        层级信息 100% 丢失（实测：8 行嵌套大纲出来 8 个平级节点）；
+            //      · 每级 1 个全角空格 → 匹配不到 → indent 恒 0 → 同样全塌。
+            //   新写法维护一个「缩进宽度栈」：比栈顶更深 → 入栈（层级 +1），更浅 → 弹栈。
+            //   只比较相对大小，所以 2/3/4 空格、Tab、全角空格、混用都能正确分层。
+            var indLv = [];
+            (function () {
+                var st = [];
+                rows.forEach(function (r) {
+                    while (st.length && r.indent < st[st.length - 1]) st.pop();
+                    if (!st.length || r.indent > st[st.length - 1]) st.push(r.indent);
+                    indLv.push(st.length);
+                });
+            })();
+
             // 体系基准层级：中文=1，括号中文=2，阿拉伯/圆圈=3（只在该体系确实出现过时才占位）
             var seen = { cn: false, pcn: false, circ: false, num: false };
             rows.forEach(function (r) { if (r.seq) seen[r.seq.id] = true; });
@@ -13665,9 +13722,9 @@
             // 一个体系都没探测到（纯缩进 / 纯 Markdown）→ base 为空，走缩进分支
 
             var headingDepth = 0;
-            rows.forEach(function (r) {
-                var indent = r.indent;
-                var indentLvl = Math.min(Math.floor(indent / 2) + 1, MAXD);
+            rows.forEach(function (r, ri) {
+                // ★ 层级来自上面的「缩进栈」，不再 floor(indent / 2) + 1（见那段注释）
+                var indentLvl = Math.min(indLv[ri] || 1, MAXD);
                 var body = r.body;
                 var lvl = 0;
 
@@ -13846,6 +13903,17 @@
         function syncFlatOnly() {
             if (el('fKpQuick')) el('fKpQuick').value = toFlat(tree);
         }
+        // ★★ 保存前必调：把**当前视角**的编辑回读进 tree，再把 tree 回写到三个文本框。
+        //
+        //   为什么非有它不可（本轮的根因）：保存路径读的是 #fKpQuick ——
+        //     handleFormSubmit → getKnowledgePoints() 取 #fKpQuick.value，
+        //                        kpQuickRaw 也取 #fKpQuick.value；
+        //   而 #fKpQuick 只在**切换视角**（applyMode → writeViews）和**网格编辑**
+        //   （grid input → syncFlatOnly）时才刷新。用户在「大纲视角 / 思维导图视角 /
+        //   MD 视角」里输入时，onTextInput 只更新内存里的 tree，不碰 #fKpQuick。
+        //   ⇒ 缩进出来的父子关系，一按保存就被丢掉，存回去的还是上一次的平级文本。
+        //   这正是「不是平级，怎么又放在一起了」——用户没做错，是保存读错了框。
+        function syncNow() { syncFromView(); writeViews(); }
         function updateStat() {
             var s = el('kpStat');
             if (!s) return;
@@ -14573,6 +14641,7 @@
                 applyMode();
             },
             syncFromView: syncFromView,
+            syncNow: syncNow,
             clearDraft: clearDraft,
             saveDraft: saveDraft,
             setTab: setTab,
@@ -14636,7 +14705,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917w</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917x</div>
 <!-- build-tag:end -->
 </body>
 </html>
