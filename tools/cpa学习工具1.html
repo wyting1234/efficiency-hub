@@ -2807,6 +2807,86 @@
             .kp-bar .kp-bar-stat { margin-left: 0; }
         }
 
+        /* ===== ★ 2026-09-17 v20260917ab（5 项需求）===== */
+
+        /* 需求 1：跨零点 / 番茄实时回填的提示着色（沿用 .auto-calc 的字号与间距） */
+        .auto-calc.is-cross { color: var(--orange); }
+
+        /* 需求 3：复习面板「上期学习内容」→ 只读 excel 网格（与记录学时模块同一形态） */
+        .rvp-prev { display: flex; flex-direction: column; gap: 8px; }
+        .rvp-prev-note {
+            font-size: 13px; line-height: 1.65; color: #4A4238; white-space: pre-wrap;
+            background: #FBF6EC; border: 1px solid #E6DCCB; border-left: 3px solid var(--orange);
+            border-radius: 8px; padding: 9px 11px;
+        }
+        .rvp-prev-plain {
+            font-size: 13px; line-height: 1.7; color: var(--text-secondary); white-space: pre-wrap;
+            background: #F7F3EB; border: 1px solid #E6DCCB; border-radius: 8px; padding: 9px 11px;
+        }
+        /* 只读网格：复用 .kp-grid / .kp-cell 全套皮肤，只把「最小宽度」和「可编辑感」去掉 ——
+           复习面板在弹窗里，绝不能因为 620px 的下限把弹窗撑出横向滚动条 */
+        .kp-grid.rvp-kpgrid { min-width: 0; padding: 7px; gap: 5px; background: #FFFDF8; }
+        .rvp-kpgrid .kp-cell-in.rvp-ro { cursor: default; }
+        .rvp-kpgrid .kp-cell-in.rvp-ro:focus { background: transparent; }
+        .rvp-kpgrid-cap { font-size: 11.5px; color: #9A8E7C; margin-top: 6px; }
+
+        /* 需求 4：掌握程度筛选下拉改为「按内容宽度」。
+           全局规则 input/select/textarea{width:100%} 会把它撑满一整行，
+           于是 tab 行被挤成三行、右侧空出一大块（用户截图圈的就是这块）。 */
+        .fc-filter { width: auto; flex: 0 0 auto; }
+
+        /* ===== 需求 5：自检热力图 ===== */
+        .heat-card {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow);
+        }
+        .heat-toolbar { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin: 14px 0 12px; }
+        .heat-toolbar > .heat-lab { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
+        .heat-toolbar select { width: auto; min-width: 130px; padding: 6px 10px; font-size: 13px; }
+        .heat-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+        .heat-seg-b {
+            padding: 6px 14px; font-size: 12.5px; font-family: inherit; background: #FFFDF8;
+            color: var(--text-secondary); transition: .15s;
+        }
+        .heat-seg-b + .heat-seg-b { border-left: 1px solid var(--border); }
+        .heat-seg-b:hover { background: var(--primary-bg); }
+        .heat-seg-b.active { background: var(--primary); color: #FAF7F1; font-weight: 600; }
+        .heat-sum { display: flex; gap: 20px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-secondary); margin: 4px 0 14px; }
+        .heat-sum b { color: var(--primary-dark); font-size: 16px; margin-right: 3px; font-weight: 700; }
+        .heat-scroll { overflow-x: auto; padding-bottom: 4px; }
+        table.heat-tbl { border-collapse: separate; border-spacing: 5px; }
+        .heat-tbl th { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); padding: 0 2px 4px; text-align: center; white-space: nowrap; }
+        .heat-tbl th.heat-corner { text-align: right; padding-right: 10px; font-size: 11px; color: #A99A83; }
+        .heat-tbl th.heat-rowhead { text-align: right; padding-right: 10px; color: #7A6A56; white-space: nowrap; }
+        .heat-tbl td.heat-cell {
+            width: 58px; height: 42px; border-radius: 8px; text-align: center; vertical-align: middle;
+            font-size: 12.5px; font-weight: 700; border: 1px solid transparent; cursor: default;
+        }
+        .heat-cell.hc-off { background: #F6F2EA; color: #C6BCAA; border: 1px dashed #E7DFD0; font-weight: 400; }
+        /* 掌握程度 5 档：由红（薄弱）到深绿（熟练）—— 与工作台里「了解/熟悉/掌握/通过」同一语义方向 */
+        .hc-m1 { background: #C4705C; color: #FBF3EF; }
+        .hc-m2 { background: #DCA06A; color: #5A3413; }
+        .hc-m3 { background: #D8C48C; color: #54491F; }
+        .hc-m4 { background: #9AA579; color: #2F3520; }
+        .hc-m5 { background: #6E7A50; color: #F7F4EA; }
+        /* 学习时长 5 档：主题色赭石单色梯度，由浅到深（相对该科目最大值分档） */
+        .hc-t1 { background: #EFE6D6; color: #6F5C45; }
+        .hc-t2 { background: #DCCCAF; color: #5A4A33; }
+        .hc-t3 { background: #C0A87F; color: #43361F; }
+        .hc-t4 { background: #9A7F5A; color: #FBF7EF; }
+        .hc-t5 { background: #6F5C45; color: #FBF7EF; }
+        .heat-legend { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-secondary); margin-top: 14px; }
+        .heat-legend .lg-cap { font-weight: 600; color: #7A6A56; }
+        .heat-legend .lg-item { display: inline-flex; align-items: center; gap: 4px; }
+        .heat-legend .sw { width: 20px; height: 14px; border-radius: 4px; border: 1px solid rgba(70, 58, 46, .12); display: inline-block; }
+        .heat-legend .sw.hc-off { border-style: dashed; }
+        .heat-note {
+            margin-top: 15px; font-size: 12.5px; line-height: 1.85; color: var(--text-secondary);
+            background: #FBF7EF; border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px;
+        }
+        .heat-note b { color: var(--primary-dark); }
+        .heat-empty { padding: 44px 16px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.8; }
+
         /* ===== 记录学习表单：八项内容 4 列表展示（开始时间 → 学习状态自评） =====
            注意：原样式块里 @media (max-width:1024px) 的 .form-row{1fr} 只有 (0,1,0)，
            .form-row.four 是 (0,2,0)，特异性更高会盖掉它 —— 所以断点必须自带 */
@@ -3052,6 +3132,7 @@
             <button type="button" class="vtab" data-view="scsec" title="小节精简自检">📝 小节自检</button>
             <button type="button" class="vtab" data-view="scchap" title="整章综合复盘">🗂 整章复盘</button>
             <button type="button" class="vtab" data-view="scboard" title="自检看板">📊 自检看板<span class="sc-tab-badge" id="sc-recCount">0</span></button>
+            <button type="button" class="vtab" data-view="scheat" title="自检热力图：横轴=章，纵轴=节；可切换掌握程度 / 学习时长">🔥 热力图</button>
             <button type="button" class="vtab" data-view="scwrong" title="错题登记与复习">❌ 错题本<span class="sc-tab-badge" id="sc-wrongCount">0</span></button>
             <button type="button" class="vtab vtab-small" data-view="goal" title="科目目标 / 外观设置">⚙️ 设置</button>
         </div>
@@ -3449,16 +3530,9 @@
                     <button type="button" class="fc-tab" data-fcmode="tag">🏷 按标签</button>
                     <button type="button" class="fc-tab" data-fcmode="mastery">🎯 按掌握程度</button>
                     <button type="button" class="fc-tab" data-fcmode="due">⏰ 待复习<span class="fc-badge" id="fcDueBadge">0</span></button>
-                    <span class="fc-spacer"></span>
-                    <span class="fc-stylegroup" title="切换展示方式">
-                        <button type="button" class="fc-btn sm" data-fcstyle="list" title="列表模式：一行一张，信息密（类似表格）">☰ 列表</button>
-                        <button type="button" class="fc-btn sm" data-fcstyle="tile" title="平铺模式：只看每张卡的正面">▦ 平铺</button>
-                    </span>
-                    <!-- ★ 2026-09-18 需求 6：按「复习掌握程度」筛选。
+                    <!-- ★ 2026-09-17 需求 4：按「复习掌握程度」筛选 —— 挪到 tab 行右侧（原来占一整行）。
                          筛的是复习时自评的值（card.review.mastery），与表格里「掌握」列
-                         （学习记录的理解星级）不是一回事 —— 后者是学习时的自评，
-                         前者是每轮复习后的自评，见闪卡反面的自评器。
-                         ★ 同日需求 5：「➕ 自建卡」按钮已移除（闪卡一律由学习记录派生）。 -->
+                         （学习记录的理解星级）不是一回事：后者是学习时自评，前者是每轮复习后自评。 -->
                     <select class="fc-filter" id="fcMastery" title="按复习时自评的掌握程度筛选">
                         <option value="">🎯 全部掌握程度</option>
                         <option value="none">· 未自评</option>
@@ -3468,6 +3542,12 @@
                         <option value="2">★★ 印象模糊</option>
                         <option value="1">★ 完全不记得</option>
                     </select>
+                    <span class="fc-spacer"></span>
+                    <span class="fc-stylegroup" title="切换展示方式">
+                        <button type="button" class="fc-btn sm" data-fcstyle="list" title="列表模式：一行一张，信息密（类似表格）">☰ 列表</button>
+                        <button type="button" class="fc-btn sm" data-fcstyle="tile" title="平铺模式：只看每张卡的正面">▦ 平铺</button>
+                    </span>
+                    <!-- 「➕ 自建卡」按钮已移除（闪卡一律由学习记录派生）；掌握程度下拉已上移到 tab 行。 -->
                     <input type="text" class="fc-search" id="fcSearch" placeholder="搜索卡片 / 标签">
                 </div>
                 <div class="fc-body" id="fcBody"></div>
@@ -3688,6 +3768,37 @@
         </div>
       </div>
     </div>
+        </div>
+
+        <!-- ★ 补丁 H（2026-09-17）：补上 #view-scchap 真正的收口 </div>。
+             它内部「本次性质」那行的 .sc-grid-3 少了一个 </div>，导致其后两个 grid 嵌进第一个、
+             #view-scchap 永不闭合，把 #view-scheat / #view-scboard / #view-scwrong 三个面板
+             全吞进一个 display:none 的祖先里 —— 表现就是「点页签画面全空」。
+             既存问题（线上 aa 版同样如此，自检看板/错题本本来就是死的），顺手在这里闭合。
+             刻意不动 #view-scchap 内部任何一行，保证「整章复盘」渲染零变化。 -->
+        </div>
+
+        <!-- ===== 🔥 自检热力图（需求 5）===== -->
+        <div class="view-pane" id="view-scheat" style="display:none;">
+            <div class="heat-card">
+                <h2 style="font-size:17px;margin:0 0 2px;">
+                    🔥 自检热力图
+                    <span style="font-size:12.5px;font-weight:400;color:var(--text-secondary);">横轴 = 章 · 纵轴 = 节 · 格子 = 该「章 · 节」的汇总</span>
+                </h2>
+                <div class="heat-toolbar">
+                    <span class="heat-lab">科目</span>
+                    <select id="heatCourse"></select>
+                    <span class="heat-lab" style="margin-left:10px;">指标</span>
+                    <span class="heat-seg" id="heatMetric">
+                        <button type="button" class="heat-seg-b active" data-heatmetric="mastery">🎯 掌握程度</button>
+                        <button type="button" class="heat-seg-b" data-heatmetric="hours">⏱ 学习时长</button>
+                    </span>
+                </div>
+                <div class="heat-sum" id="heatSum"></div>
+                <div class="heat-scroll" id="heatBody"></div>
+                <div class="heat-legend" id="heatLegend"></div>
+                <div class="heat-note" id="heatNote"></div>
+            </div>
         </div>
 
         <div class="view-pane sc-app" id="view-scboard" style="display:none;">
@@ -4976,15 +5087,27 @@
             return '';
         }
 
-        function calcDuration(startTime, endTime) {
+        // ★ 2026-09-17 需求 1：起止时间 → 时长，**允许跨零点**。
+        //   旧版 `if (endMin <= startMin) return null;` 把「23:06 学到次日 01:06」判成非法，
+        //   用户看到的是红字「结束时间需晚于开始时间」+ 时长框空着 ——
+        //   即「学习时长无法自动计算」。跨零点在备考场景里是常态（尤其深夜），
+        //   结束早于开始 ⇒ 视为跨天：+24h 再作差；起止**完全相同** ⇒ 0 分钟，仍判非法。
+        function calcDurationInfo(startTime, endTime) {
             if (!startTime || !endTime) return null;
-            const [sh, sm] = startTime.split(':').map(Number);
-            const [eh, em] = endTime.split(':').map(Number);
+            const [sh, sm] = String(startTime).split(':').map(Number);
+            const [eh, em] = String(endTime).split(':').map(Number);
+            if (!isFinite(sh) || !isFinite(sm) || !isFinite(eh) || !isFinite(em)) return null;
             const startMin = sh * 60 + sm;
             const endMin = eh * 60 + em;
-            if (endMin <= startMin) return null;
-            const diff = (endMin - startMin) / 60;
-            return Math.round(diff * 10) / 10;
+            if (endMin === startMin) return null;
+            const cross = endMin < startMin;
+            const diffMin = cross ? (endMin + 1440 - startMin) : (endMin - startMin);
+            return { hours: Math.round((diffMin / 60) * 10) / 10, cross: cross, minutes: diffMin };
+        }
+        // 保持原签名与返回值（4 处调用点一个字都不用改）：算不出来 / 0 分钟 → null
+        function calcDuration(startTime, endTime) {
+            const info = calcDurationInfo(startTime, endTime);
+            return info ? info.hours : null;
         }
 
         // ---------- 统计函数 ----------
@@ -5896,6 +6019,9 @@
         // ---------- 表单初始化 ----------
         let selectedStar = 0;
         let durationManual = false;   // 手动改过时长后，起止时间不再自动覆盖（清空时长即恢复）
+        // ★ 2026-09-17 需求 1：番茄钟 ↔ 记录表单的实时联动用状态
+        let endManual = false;        // 用户手动改过「结束时间」→ 番茄的实时刷新不再覆盖它
+        let tomatoLiveTick = 0;       // 专注进行中的秒计数（第 1 秒先刷一次，之后每 15 秒）
 
         function initForm() {
             const courseSelect = document.getElementById('fCourse');
@@ -5963,6 +6089,7 @@
             const autoHint = document.getElementById('autoCalcHint');
 
             function autoCalcDuration() {
+                autoHint.classList.remove('is-cross');
                 if (durationManual && durationInput.value) {
                     autoHint.textContent = '✏️ 手动模式：以输入的时长为准（清空时长可恢复自动计算）';
                     autoHint.style.color = 'var(--orange)';
@@ -5971,17 +6098,21 @@
                 const st = startTime.value;
                 const et = endTime.value;
                 if (st && et) {
-                    const d = calcDuration(st, et);
-                    if (d !== null && d > 0) {
-                        durationInput.value = d;
+                    const info = calcDurationInfo(st, et);
+                    if (info && info.hours > 0) {
+                        durationInput.value = info.hours;
                         durationInput.readOnly = true;
-                        autoHint.textContent = '✅ 已自动计算: ' + d.toFixed(1) + ' 小时';
+                        // 跨零点要**说清楚**：否则用户看到 23:06 → 01:06 算出 2.0 会怀疑算错
+                        autoHint.textContent = '✅ 已自动计算: ' + info.hours.toFixed(1) + ' 小时' +
+                            (info.cross ? '（跨零点，按次日计）' : '');
                         autoHint.style.color = 'var(--green)';
+                        autoHint.classList.toggle('is-cross', !!info.cross);
                         return;
-                    } else {
-                        autoHint.textContent = '⚠️ 结束时间需晚于开始时间';
-                        autoHint.style.color = 'var(--red)';
                     }
+                    autoHint.textContent = (st === et)
+                        ? '⚠️ 开始时间与结束时间不能相同'
+                        : '⚠️ 无法计算，请检查起止时间';
+                    autoHint.style.color = 'var(--red)';
                 } else {
                     durationInput.readOnly = false;
                     autoHint.textContent = '⏱️ 填写起止时间自动计算';
@@ -6025,10 +6156,25 @@
             // 番茄开始时把开始时间填进来；每个番茄完成时更新结束时间、重算时长、累计个数
             const tCountEl = document.getElementById('fTomatoCount');
             const tHintEl = document.getElementById('tomatoLinkHint');
+            // ★ 2026-09-17 需求 1：判定「用户亲手改过结束时间」。
+            //   只认 input 事件 —— 程序化赋值（value = …）不会触发它，
+            //   所以番茄的实时刷新可以从容地写值而不必担心把自己锁死。
+            //   加 dataset 哨兵：initForm 若被调用多次也不会重复绑监听。
+            if (endTime && !endTime.dataset.manualBound) {
+                endTime.dataset.manualBound = '1';
+                endTime.addEventListener('input', function () { endManual = true; });
+            }
+            document.querySelectorAll('.now-btn[data-target="fEndTime"]').forEach(function (b) {
+                if (b.dataset.manualBound) return;
+                b.dataset.manualBound = '1';
+                b.addEventListener('click', function () { endManual = true; });
+            });
             window.CPATomatoLink = {
                 begin: function (startHM) {
                     if (startTime) startTime.value = startHM;
                     if (endTime) endTime.value = '';
+                    endManual = false;
+                    tomatoLiveTick = 0;
                     const dEl = document.getElementById('fDate');
                     if (dEl) dEl.value = getToday();
                     const cEl = document.getElementById('fCourse');
@@ -6045,6 +6191,50 @@
                     if (tCountEl) tCountEl.value = n;
                     autoCalcDuration();   // 依据起止时间自动算出时长
                     if (tHintEl) { tHintEl.textContent = '🍅 本次已累计 ' + n + ' 个番茄（结束 ' + endHM + '）'; tHintEl.style.color = 'var(--green)'; }
+                },
+                // ★ 2026-09-17 需求 1：专注**进行中**的实时回填（由 tickTomatoTimer 每 15 秒调一次）。
+                //   旧版只有「一个番茄完成」才写一次结束时间与时长 ⇒ 用户看着番茄在跑，
+                //   表单里那两栏一直是空的，「番茄时间不会自动实时计算和更新」。
+                live: function (endHM) {
+                    if (endManual) return;              // 用户亲手填过结束时间 → 尊重他，不覆盖
+                    if (endTime) endTime.value = endHM;
+                    // ★ 不满 1 分钟护栏：刚点「开始」时起止落在同一分钟，会被判成「相同」→ 0 分钟，
+                    //   照常算就会闪出红字「开始时间与结束时间不能相同」。那是过渡态、不是错误，
+                    //   所以这一拍只改口提示，不碰时长框。
+                    const sv = startTime ? startTime.value : '';
+                    if (sv && sv === endHM) {
+                        if (autoHint) {
+                            autoHint.textContent = '🍅 番茄计时中 · 已开始（不满 1 分钟）' +
+                                '；时长按 0.1 小时取整，满 3 分钟才显示 0.1';
+                            autoHint.style.color = 'var(--primary)';
+                            autoHint.classList.remove('is-cross');
+                        }
+                        return;
+                    }
+                    durationManual = false;
+                    autoCalcDuration();
+                    const hNow = durationInput ? durationInput.value : '';
+                    // ★ 补丁 G（2026-09-17 自查）：时长框按 0.1 小时取整，跑满 1~2 分钟时
+                    //   info.hours 落到 0、框里仍空着 —— 这时候要**改口报分钟**，
+                    //   否则「满 1 分钟后开始计时长」与「实时 0 小时」自相矛盾。
+                    const infoNow = calcDurationInfo(sv, endHM);
+                    const shown = (hNow && Number(hNow) > 0)
+                        ? (hNow + ' 小时')
+                        : ((infoNow && infoNow.minutes > 0)
+                            ? (infoNow.minutes + ' 分钟')
+                            : (sv ? '不足 1 分钟' : '—'));
+                    if (autoHint) {
+                        autoHint.textContent = '🍅 番茄计时中 · 实时 ' + shown + '（结束 ' + endHM + '）';
+                        autoHint.style.color = 'var(--primary)';
+                        autoHint.classList.remove('is-cross');
+                    }
+                    const ses = state.tomato.session || {};
+                    const n = ses.pomodoros || 0;
+                    if (tHintEl) {
+                        tHintEl.textContent = '🍅 专注计时中（' + (ses.start || '--:--') + ' → ' + endHM +
+                            '）· 本次已完成 ' + n + ' 个';
+                        tHintEl.style.color = 'var(--primary)';
+                    }
                 },
                 clear: function () {
                     if (tCountEl) tCountEl.value = 0;
@@ -6578,7 +6768,7 @@
             if (startTime && endTime) {
                 const d = calcDuration(startTime, endTime);
                 if (d === null || d <= 0) {
-                    alert('结束时间必须晚于开始时间');
+                    alert('开始时间与结束时间不能相同。\n\n（结束时间早于开始时间视为跨零点：23:06 → 01:06 会算成 2.0 小时）');
                     return;
                 }
                 if (Math.abs(d - durationHours) > 0.01) {
@@ -7262,6 +7452,17 @@
             const t = state.tomato;
             t.timeLeft--;
             renderTomatoDisplay();
+            // ★ 2026-09-17 需求 1：专注进行中就把「结束时间 / 时长」实时回填进记录表单。
+            //   第 1 秒先刷一次（立刻有反馈，不必等 15 秒），之后每 15 秒一次
+            //   —— 每秒都写会让输入框一直抖动，15 秒足够「实时」又不烦人。
+            if (t.mode === 'focus' && t.isRunning && t.session && t.session.active) {
+                tomatoLiveTick++;
+                if (tomatoLiveTick === 1 || tomatoLiveTick % 15 === 0) {
+                    if (window.CPATomatoLink && window.CPATomatoLink.live) {
+                        try { window.CPATomatoLink.live(hmNow()); } catch (e) {}
+                    }
+                }
+            }
             if (t.timeLeft > 0) return;
             clearInterval(t.timerId);
             t.timerId = null;
@@ -8551,6 +8752,238 @@
         }
 
         // ============================================================
+        //  🔥 自检热力图（需求 5）
+        //  ── 横轴 = 章，纵轴 = 节，一个格子 = 一个「章 · 节」。
+        //  ── 两个指标共用同一份取数，只换着色与数字口径：
+        //       mastery：该节所有学习记录「理解」星级的**平均值**（1.0~5.0），红→绿 5 档；
+        //       hours  ：该节所有学习记录的**时长合计**（h），主题色赭石单色 5 档。
+        //  ── 取数只读 state.records / GUIDE_DATA，不写任何数据（纯展示）。
+        //  ── 为什么用「理解星级」而不是闪卡的复习自评：本图纵轴是 章·节，
+        //     学习记录天然带 chapter/section；闪卡自评挂在卡片上，落不到节。
+        //     想看复习自评请看 🃏 闪卡 →「按掌握程度」，口径在说明里写清。
+        // ============================================================
+        let heatMetric = 'mastery';    // 'mastery' | 'hours'
+        let heatCourseSel = '';        // 面板自己的科目选择（与主界面当前科目解耦）
+
+        function heatEsc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        // 章名 / 节名：结构里没有就退回「第 N 章 / 第 N 节」，绝不显示空白
+        function heatChapterLabel(course, ch) {
+            const m = (ACTIVE_CHAPTER_NAMES && ACTIVE_CHAPTER_NAMES[course]) || {};
+            const n = m[ch];
+            return (n && String(n).trim()) ? String(n).trim() : (L('chapter') + ' ' + ch);
+        }
+        function heatSectionLabel(course, ch, sec) {
+            const g = GUIDE_DATA[course];
+            const s = g && g.chapters[ch] && g.chapters[ch].sections[sec];
+            const nm = (s && s.name) ? String(s.name).trim() : '';
+            return nm || (L('section') + ' ' + sec);
+        }
+        function heatHasSection(course, ch, sec) {
+            const g = GUIDE_DATA[course];
+            return !!(g && g.chapters[ch] && g.chapters[ch].sections[sec]);
+        }
+        // 一次性扫描：把「章数 / 节数上限 / 每格记录数与星级均值与时长」算出来
+        function heatData(course) {
+            const out = { maxCh: 0, maxSec: 0, cell: {}, recN: 0, maxHours: 0 };
+            const g = GUIDE_DATA[course];
+            if (g) {
+                Object.keys(g.chapters || {}).forEach(function (k) {
+                    const ch = parseInt(k, 10);
+                    if (!ch) return;
+                    if (ch > out.maxCh) out.maxCh = ch;
+                    const secs = (g.chapters[k] && g.chapters[k].sections) || {};
+                    const n = Object.keys(secs).length;
+                    if (n > out.maxSec) out.maxSec = n;
+                });
+            }
+            (state.records || []).forEach(function (r) {
+                if (r.course !== course) return;
+                const ch = parseInt(r.chapter, 10), sec = parseInt(r.section, 10);
+                if (!ch || !sec) return;
+                const k = ch + '|' + sec;
+                const c = out.cell[k] || (out.cell[k] = { n: 0, uSum: 0, uN: 0, h: 0 });
+                c.n++;
+                const u = parseFloat(r.understanding);
+                if (isFinite(u) && u > 0) { c.uSum += u; c.uN++; }
+                const h = parseFloat(r.durationHours);
+                if (isFinite(h) && h > 0) c.h += h;
+                // 记录可能落在结构之外（章 / 节被改过）——上限要跟着记录一起长
+                if (ch > out.maxCh) out.maxCh = ch;
+                if (sec > out.maxSec) out.maxSec = sec;
+                out.recN++;
+            });
+            Object.keys(out.cell).forEach(function (k) {
+                const c = out.cell[k];
+                c.uAvg = c.uN ? Math.round((c.uSum / c.uN) * 10) / 10 : 0;
+                c.h = Math.round(c.h * 10) / 10;
+                if (c.h > out.maxHours) out.maxHours = c.h;
+            });
+            return out;
+        }
+        // 掌握程度分档：<2 薄弱(红) / 2~3 / 3~4 / 4~4.5 / >=4.5 熟练(深绿)
+        function heatMasteryCls(avg) {
+            if (!avg) return 'hc-off';
+            if (avg < 2) return 'hc-m1';
+            if (avg < 3) return 'hc-m2';
+            if (avg < 4) return 'hc-m3';
+            if (avg < 4.5) return 'hc-m4';
+            return 'hc-m5';
+        }
+        // 时长分档：相对「该科目单格最大时长」的五等分（避免个别超长记录把其他格压成一片浅色）
+        function heatHoursCls(h, max) {
+            if (!h) return 'hc-off';
+            if (!(max > 0)) return 'hc-t1';
+            const t = h / max;
+            if (t <= 0.2) return 'hc-t1';
+            if (t <= 0.4) return 'hc-t2';
+            if (t <= 0.6) return 'hc-t3';
+            if (t <= 0.8) return 'hc-t4';
+            return 'hc-t5';
+        }
+        function heatLegendHTML() {
+            const off = '<span class="lg-item"><i class="sw hc-off"></i>没学过 / 不存在的节</span>';
+            if (heatMetric === 'hours') {
+                return '<span class="lg-cap">学习时长（该节合计，相对本科目最大值分档）</span>' +
+                    [['hc-t1', '≤20%'], ['hc-t2', '20~40%'], ['hc-t3', '40~60%'],
+                     ['hc-t4', '60~80%'], ['hc-t5', '80~100%']].map(function (p) {
+                        return '<span class="lg-item"><i class="sw ' + p[0] + '"></i>' + p[1] + '</span>';
+                    }).join('') + off;
+            }
+            return '<span class="lg-cap">掌握程度（理解星级均值）</span>' +
+                [['hc-m5', '4.5~5.0 熟练'], ['hc-m4', '4.0~4.5'], ['hc-m3', '3.0~4.0'],
+                 ['hc-m2', '2.0~3.0'], ['hc-m1', '<2.0 薄弱']].map(function (p) {
+                    return '<span class="lg-item"><i class="sw ' + p[0] + '"></i>' + p[1] + '</span>';
+                }).join('') + off;
+        }
+        function heatNoteHTML() {
+            return '<b>这张图怎么读</b><br>' +
+                '· <b>横轴 = 章</b>（表头数字，鼠标悬停看章名）；<b>纵轴 = 节</b>（第 N 节，悬停看节名）。一个格子 = 一个「' +
+                L('chapter') + ' · ' + L('section') + '」。<br>' +
+                '· <b>🎯 掌握程度</b>：格子里的数字 = 该节<b>全部学习记录「理解」星级的平均值</b>（1.0 ~ 5.0，越接近 5 越熟练）。' +
+                '颜色由红（薄弱）→ 黄（一般）→ 深绿（熟练）。<br>' +
+                '· <b>⏱ 学习时长</b>：格子里的数字 = 该节<b>全部记录的时长合计</b>（小时）。颜色是主题色赭石的单色梯度，' +
+                '按<b>本科目单格最大时长</b>分 5 档 —— 换科目会重新分档，所以不同科目之间不要直接比深浅。<br>' +
+                '· <b>灰色虚线格</b>有两种：<b>该章没有这一节</b>（结构上不存在），或<b>这一节还没学过</b>（没有任何记录）。<br>' +
+                '· 数据源只有「学习进度」模块的<b>学习记录</b>，本页纯只读展示，不会改动任何记录。<br>' +
+                '· 想看<b>复习之后</b>的掌握程度，去 🃏 闪卡 →「按掌握程度」：那是每轮复习后的自评（card.review.mastery），' +
+                '与本图的「学习时理解星级」不是一回事。';
+        }
+        function heatInit() {
+            const sel = document.getElementById('heatCourse');
+            if (sel && !sel.dataset.heatBound) {
+                sel.dataset.heatBound = '1';
+                sel.addEventListener('change', function () { heatCourseSel = this.value; heatRender(); });
+            }
+            const seg = document.getElementById('heatMetric');
+            if (seg && !seg.dataset.heatBound) {
+                seg.dataset.heatBound = '1';
+                seg.addEventListener('click', function (ev) {
+                    const b = (ev.target && ev.target.closest) ? ev.target.closest('[data-heatmetric]') : null;
+                    if (!b) return;
+                    heatMetric = (b.getAttribute('data-heatmetric') === 'hours') ? 'hours' : 'mastery';
+                    heatRender();
+                });
+            }
+        }
+        function heatRender() {
+            const body = document.getElementById('heatBody');
+            if (!body) return;                      // 面板不在（理论上不会）
+            heatInit();
+
+            // ---- 科目下拉：项目切换后 COURSES 会变，所以每次都重建，只保住用户的选择 ----
+            const sel = document.getElementById('heatCourse');
+            if (sel) {
+                let want = heatCourseSel;
+                if (COURSES.indexOf(want) < 0) {
+                    want = (COURSES.indexOf(state.currentCourse) >= 0) ? state.currentCourse : (COURSES[0] || '');
+                }
+                sel.innerHTML = COURSES.map(function (c) {
+                    return '<option value="' + heatEsc(c) + '">' + heatEsc(c) + '</option>';
+                }).join('') || '<option value="">（暂无科目）</option>';
+                sel.value = want;
+                heatCourseSel = sel.value || '';
+            }
+            const course = heatCourseSel;
+
+            // ---- 指标按钮态 + 图例 + 说明 ----
+            document.querySelectorAll('#heatMetric .heat-seg-b').forEach(function (b) {
+                b.classList.toggle('active', b.getAttribute('data-heatmetric') === heatMetric);
+            });
+            const lg = document.getElementById('heatLegend');
+            if (lg) lg.innerHTML = heatLegendHTML();
+            const note = document.getElementById('heatNote');
+            if (note) note.innerHTML = heatNoteHTML();
+            const sum = document.getElementById('heatSum');
+
+            const d = heatData(course);
+            if (!d.maxCh || !d.maxSec) {
+                body.innerHTML = '<div class="heat-empty">' +
+                    (course ? ('「' + heatEsc(course) + '」还没有章 / 节结构，也没有可用的学习记录。')
+                            : '还没有科目 —— 先到 ⚙️ 设置里新建项目与科目。') +
+                    '<br>先在「📚 学习进度」里加一条学习记录，这张图就会有颜色了。</div>';
+                if (sum) sum.innerHTML = '';
+                return;
+            }
+
+            // ---- 矩阵 ----
+            let h = '<table class="heat-tbl"><thead><tr>';
+            h += '<th class="heat-corner">' + L('section') + ' ＼ ' + L('chapter') + '</th>';
+            for (let ch = 1; ch <= d.maxCh; ch++) {
+                h += '<th title="' + heatEsc(heatChapterLabel(course, ch)) + '">' + ch + '</th>';
+            }
+            h += '</tr></thead><tbody>';
+            let totalSec = 0, learnedSec = 0, sumH = 0, sumU = 0, nU = 0;
+            for (let sec = 1; sec <= d.maxSec; sec++) {
+                h += '<tr><th class="heat-rowhead" title="第 ' + sec + ' ' + L('section') + '">第 ' + sec + ' ' + L('section') + '</th>';
+                for (let ch = 1; ch <= d.maxCh; ch++) {
+                    const c = d.cell[ch + '|' + sec];
+                    const exists = heatHasSection(course, ch, sec);
+                    const where = heatChapterLabel(course, ch) + ' · 第 ' + sec + ' ' + L('section') +
+                        (exists ? ('（' + heatSectionLabel(course, ch, sec) + '）') : '');
+                    if (exists) totalSec++;
+                    if (c) {
+                        learnedSec += exists ? 1 : 0;
+                        sumH += c.h;
+                        if (c.uAvg) { sumU += c.uAvg; nU++; }
+                    }
+                    if (!c && !exists) {
+                        h += '<td class="heat-cell hc-off" title="' + heatEsc(where + '：结构里没有这一节') + '">·</td>';
+                        continue;
+                    }
+                    if (heatMetric === 'hours') {
+                        const v = c ? c.h : 0;
+                        h += '<td class="heat-cell ' + heatHoursCls(v, d.maxHours) + '" title="' +
+                            heatEsc(where + '：' + (c ? c.n : 0) + ' 条记录 · ' + v + ' h') + '">' +
+                            (v ? v : '—') + '</td>';
+                    } else {
+                        const avg = c ? c.uAvg : 0;
+                        h += '<td class="heat-cell ' + heatMasteryCls(avg) + '" title="' +
+                            heatEsc(where + '：' + (c ? c.n : 0) + ' 条记录 · 单位均值 ' +
+                                    (avg ? avg.toFixed(1) + ' 星' : '未评')) + '">' +
+                            (avg ? avg.toFixed(1) : '—') + '</td>';
+                    }
+                }
+                h += '</tr>';
+            }
+            h += '</tbody></table>';
+            body.innerHTML = h;
+
+            // ---- 汇总条 ----
+            if (sum) {
+                sum.innerHTML =
+                    '<span><b>' + d.recN + '</b>条学习记录</span>' +
+                    '<span><b>' + learnedSec + '</b>/' + totalSec + ' 节有记录</span>' +
+                    '<span><b>' + (nU ? (Math.round((sumU / nU) * 10) / 10).toFixed(1) : '—') + '</b>星 平均理解</span>' +
+                    '<span><b>' + (Math.round(sumH * 10) / 10) + '</b>h 累计时长</span>' +
+                    '<span>' + d.maxCh + ' 章 × 最多 ' + d.maxSec + ' 节</span>';
+            }
+        }
+
+        // ============================================================
         //  视图 Tab 切换（学习进度 / 记忆曲线 / 目标管理）
         // ============================================================
         function initViewTabs() {
@@ -8571,6 +9004,7 @@
                     if (view === 'flash') { try { fcRender(); } catch (e) {} }
                     if (view === 'kptree') { try { ktRender(); } catch (e) {} }
                     if (view === 'goal') { renderGoalSummary(); renderGoalStatsPanel(); }
+                    if (view === 'scheat') { try { heatRender(); } catch (e) {} }
                 });
             });
         }
@@ -9111,6 +9545,29 @@
                 st.textContent = base + (t.pomodoros ? ' · 本次已完成 ' + t.pomodoros + ' 个' : '');
             }
         }
+        // ★ 2026-09-17 需求 1：复习面板的番茄钟也实时回填（与记录表单同一口径）。
+        //   用户亲手改过结束时间（timer.endManual）就不再覆盖。
+        function rvTimerLive() {
+            if (!rvCtx) return;
+            const t = rvCtx.timer;
+            if (!t.running || t.mode !== 'focus') return;
+            const now = hmNow();
+            const sEl = document.getElementById('rvStartT');
+            const st = (sEl && sEl.value) || t.start;
+            // ★ 不满 1 分钟护栏（与记录表单同一口径）：起止相同 = 0 分钟，先别写结束时间
+            const sameMinute = !!st && st === now;
+            if (!t.endManual && !sameMinute) {
+                const eEl = document.getElementById('rvEndT');
+                if (eEl) eEl.value = now;
+            }
+            const hEl = document.getElementById('rvHours');
+            if (hEl && st && !sameMinute) { const dd = rvDiffHours(st, now); if (dd > 0) hEl.value = dd; }
+            const stx = document.getElementById('rvStatus');
+            if (stx) {
+                stx.textContent = '🍅 复习专注中 · ' + (sameMinute ? '已开始（不满 1 分钟）' : '实时更新（' + (st || '--:--') + ' → ' + now + '）') +
+                    ' · 本次已完成 ' + (t.pomodoros || 0) + ' 个';
+            }
+        }
         function rvTimerStart() {
             if (!rvCtx) return;
             const t = rvCtx.timer;
@@ -9133,6 +9590,11 @@
             const t = rvCtx.timer;
             t.left--;
             rvTimerRender();
+            // ★ 需求 1：复习专注中的实时回填（同记录表单：第 1 秒一次，之后每 15 秒）
+            if (t.mode === 'focus' && t.running) {
+                t.liveTick = (t.liveTick || 0) + 1;
+                if (t.liveTick === 1 || t.liveTick % 15 === 0) rvTimerLive();
+            }
             if (t.left > 0) return;
             clearInterval(t.id); t.id = null; t.running = false;
             const cfg = state.tomato.cfg || {};
@@ -9171,22 +9633,51 @@
             t.left = getTomatoMinutes() * 60;
             rvTimerRender();
         }
-        // 「上期学习内容」：上一轮复习留下的笔记 / 补充；没有就退回本条记录的知识点
-        function rvPrevText(recordId, round) {
+        // 「上期学习内容」= 两段，分开渲染（★ 2026-09-17 需求 3）：
+        //   ① rvPrevNote → 上一轮**人写下的**笔记 / 补充 / 提示（纯文本，无层级）
+        //   ② rvPrevGrid → 上一轮的知识点（**只读 excel 网格**，列 = 层级）
+        //   为什么拆：此前把「知识点」压成一串「1. 带 / 2. 得分 / …」，层级被抹平，
+        //   与学习记录卡片、与记录学时模块里的表格都对不上 —— 用户点名的就是这一点。
+        function rvPrevNote(recordId, round) {
             const prev = getPrevKpReview(recordId, round);
-            if (prev) {
-                const bits = [];
-                if (prev.note) bits.push(prev.note);
-                if (prev.newKp) bits.push('【上一轮补充】' + prev.newKp);
-                if (prev.nextTips) bits.push('【上一轮留给本轮的提示】' + prev.nextTips);
-                if (bits.length) return bits.join('\n');
-            }
+            if (!prev) return '';
+            const bits = [];
+            if (prev.note) bits.push(prev.note);
+            if (prev.newKp) bits.push('【上一轮补充】' + prev.newKp);
+            if (prev.nextTips) bits.push('【上一轮留给本轮的提示】' + prev.nextTips);
+            return bits.join('\n');
+        }
+        function rvPrevGrid(recordId) {
+            const rec = (state.records || []).find(r => r.id === recordId);
+            if (!rec) return '';
+            const RV = window.CpaRecView;
+            if (!RV || typeof RV.gridBlockFor !== 'function') return '';
+            try { return RV.gridBlockFor(rec) || ''; } catch (e) { return ''; }
+        }
+        function rvPrevBlockHTML(recordId, round) {
+            const parts = [];
+            const note = rvPrevNote(recordId, round);
+            if (note) parts.push('<div class="rvp-prev-note">' + kpEsc(note) + '</div>');
+            const grid = rvPrevGrid(recordId);
+            // 解析器 / 记录没就位时退回纯文本 —— 绝不出现空白块
+            parts.push(grid || ('<div class="rvp-prev-plain">' + kpEsc(rvPrevPlain(recordId)) + '</div>'));
+            return '<div class="rvp-prev">' + parts.join('') + '</div>';
+        }
+        // 纯文本口径（兜底用）：笔记优先，否则退回本条记录的知识点，逐行一行一个
+        function rvPrevPlain(recordId) {
             const rec = (state.records || []).find(r => r.id === recordId);
             if (rec && (rec.knowledgePoints || []).length) {
                 return (rec.knowledgePoints || []).filter(k => k && String(k.text || '').trim())
                     .map(k => (k.no ? k.no + '. ' : '') + String(k.text || '')).join('\n');
             }
             return '（暂无上期学习内容）';
+        }
+        // 兼容入口：历史调用点（若有）拿到的是「笔记 + 知识点纯文本」
+        function rvPrevText(recordId, round) {
+            const note = rvPrevNote(recordId, round);
+            const plain = rvPrevPlain(recordId);
+            if (note && plain && plain !== '（暂无上期学习内容）') return note + '\n' + plain;
+            return note || plain;
         }
         function openReviewPanel(recordId, round, kpIdx) {
             const rec = (state.records || []).find(r => r.id === recordId);
@@ -9262,8 +9753,8 @@
                     '<span>上期学习内容（系统带入，只读）</span>' +
                     '<span class="pf-hint" style="margin-left:auto;font-weight:400;">点击标题展开 / 收起</span></label>' +
                     '<div id="rvPrevBody" style="display:none;">' +
-                        '<textarea id="rvNote" rows="7" readonly>' + kpEsc(rvPrevText(recordId, rd)) + '</textarea>' +
-                        '<div class="pf-hint">上一轮留下的内容，系统自动带入、不需要改。</div>' +
+                        rvPrevBlockHTML(recordId, rd) +
+                        '<div class="pf-hint">上一轮留下的内容，系统自动带入、不需要改。知识点用「记录学时」那套表格形式（列 = 层级）展示。</div>' +
                     '</div></div>' +
                 // 🃏 闪卡区：同一套复习周期与统计，只是把内容换成「正面 → 点击看反面」的形式
                 fcEmbedHTML(rec, kpIdx) +
@@ -9292,6 +9783,10 @@
             box.querySelector('#rvResetBtn').onclick = function () { rvTimerReset(); };
             box.querySelector('#rvStartT').addEventListener('change', function () {
                 if (rvCtx && !rvCtx.timer.start) rvCtx.timer.start = this.value;
+            });
+            // ★ 需求 1：用户亲手改过结束时间 → 复习番茄的实时刷新不再覆盖（input 只认真人操作）
+            box.querySelector('#rvEndT').addEventListener('input', function () {
+                if (rvCtx) rvCtx.timer.endManual = true;
             });
             const doSave = function (skip) {
                 const p = box.querySelector('#rvPomo');
@@ -14658,6 +15153,15 @@
                 if (ev.key === 'Enter' && !ev.shiftKey) {
                     ev.preventDefault();
                     addSiblingOf(t.getAttribute('data-path'));
+                    return;
+                }
+                // ★ 2026-09-17 需求 2：Tab / Shift+Tab 接管为「下钻 / 上钻一级」。
+                //   浏览器默认的 Tab 会跳到同格的 ＋ / ↳ / ✕ 按钮上，对铺层级毫无帮助；
+                //   这里 preventDefault 之后，Tab 在这个网格里**只表示层级移动**，
+                //   口径与「列 = 层级」一致（到最后一列就停住）。
+                if (ev.key === 'Tab') {
+                    ev.preventDefault();
+                    drillCell(String(t.getAttribute('data-path')), ev.shiftKey);
                 }
             });
             g.addEventListener('click', function (ev) {
@@ -14695,6 +15199,33 @@
                     }
                 }
             });
+        }
+
+        /* ================= 键盘下钻（需求 2） ================= */
+        // Tab       → 下钻一级：聚焦第一个子格；还没有子格就现建一个（等价于点 ↳）
+        // Shift+Tab → 上钻一级：回到父格
+        // 最后一列不能下钻：列数 = 层级上限，和 cellHTML 里 ↳ 的 disabled 用同一个判据
+        // （p.length >= colCount），保证「按钮点不动」与「键盘钻不动」永远一致。
+        function drillCell(pathStr, up) {
+            var p = String(pathStr).split('.').map(Number);
+            if (!p.length || !p[0]) return;
+            if (up) {
+                if (p.length <= 1) { toast('已经是第 1 列（顶层），没有上级'); return; }
+                focusCell(p.slice(0, -1));
+                return;
+            }
+            if (p.length >= colCount) {
+                toast('已经是最后一级（第 ' + colCount + ' 列 · ' + (COLNAME[colCount] || '') +
+                    '），不能继续下钻' + (colCount === 3 ? '；想更深先切到 4 列' : ''));
+                return;
+            }
+            var nd = nodeAt(p);
+            if (!nd) return;
+            if (!nd.c || !nd.c.length) {
+                nd.c = [{ t: '', c: [] }];
+                renderGrid(); updateStat();
+            }
+            focusCell(p.concat(1));
         }
 
         /* ================= 工具栏 ================= */
@@ -15126,6 +15657,53 @@
                               : '<span class="rec-kp-empty">未记录</span>';
         }
 
+        // ★ 2026-09-17 需求 3：**只读 excel 网格** —— 复习面板「上期学习内容」用。
+        //   与记录学时模块表单里的「思维导图视角」(#kpGrid) 是同一个形态：
+        //   列 = 层级（第 1 列总标题 / 第 2 列子标题 / 第 3 列细节 / 第 4 列要点），
+        //   父单元格按可见叶子数纵向合并；区别只有两点：
+        //     ① 不可编辑（没有 contenteditable，也没有 ＋ / ↳ / ✕）；
+        //     ② 不设 min-width 下限（弹窗里必须自适应，不能逼出横向滚动条）。
+        //   为什么不在复习面板里用 kpMindHtml 的纵向树：用户点名要「记录学时模块的 excel 形式」，
+        //   而且复习时是对着层级回看，表格比缩进树更容易对齐。
+        function kpGridROHtml(roots, cols) {
+            var n = (parseInt(cols, 10) === 4) ? 4 : 3;
+            if (!roots || !roots.length) return '';
+            function leaves(nd, d) {
+                if (d >= n || !nd.c || !nd.c.length) return 1;
+                return nd.c.reduce(function (s, x) { return s + leaves(x, d + 1); }, 0);
+            }
+            function emit(out, nd, d, path, r0) {
+                var span = leaves(nd, d);
+                out.push('<div class="kp-cell kp-lv' + d + (span > 1 ? ' kp-merged' : '') + '"' +
+                    ' style="grid-column:' + d + ';grid-row:' + r0 + ' / span ' + span + '">' +
+                    '<span class="kp-cell-no">' + esc(noStr(path)) + '</span>' +
+                    '<div class="kp-cell-in rvp-ro">' + esc(nd.t) + '</div></div>');
+                var cur = r0;
+                if (d < n) {
+                    (nd.c || []).forEach(function (ch, i) { cur = emit(out, ch, d + 1, path.concat(i + 1), cur); });
+                }
+                return r0 + span;
+            }
+            var html = [], r = 1;
+            roots.forEach(function (nd, i) { r = emit(html, nd, 1, [i + 1], r); });
+            return '<div class="kp-grid rvp-kpgrid" data-cols="' + n + '"' +
+                ' style="--kp-cols:' + COLS_N[n] + ';--kp-min:0">' + html.join('') + '</div>' +
+                '<div class="rvp-kpgrid-cap">共 ' + countNodes(roots) + ' 个节点 · ' +
+                roots.length + ' 个一级标题 · 只读（与「记录学时」模块同一形态）</div>';
+        }
+        // 与 kpBlockHtml 同一套取数（kpQuickRaw 优先，退回 knowledgePoints 拼行），
+        // 只是固定走 excel 网格；没有知识点就返回 ''，由调用方决定兜底文案。
+        function gridBlockFor(rec) {
+            var kps = (rec && rec.knowledgePoints) || [];
+            var raw = (rec && rec.kpQuickRaw) || '';
+            if (!raw && kps.length) {
+                raw = kps.map(function (k, i) { return (i + 1) + '. ' + ((k && (k.text || k)) || ''); }).join('\n');
+            }
+            var roots = raw ? parse(raw) : [];
+            if (!roots.length) return '';
+            return kpGridROHtml(roots, (rec && rec.kpCols) || 3);
+        }
+
         /* ================= 初始化 ================= */
         function init() {
             if (!el('fKpQuick')) return;           // 表单不在这台设备上（理论上不会）
@@ -15252,6 +15830,10 @@
                 if (!(rec && rec.knowledgePoints && rec.knowledgePoints.length)) return '';
                 try { return kpBlockHtml(rec, recKpView) || ''; } catch (e) { return ''; }
             },
+            // ★ 需求 3：只读 excel 网格（列 = 层级），供复习面板的「上期学习内容」使用
+            gridBlockFor: function (rec) {
+                try { return gridBlockFor(rec) || ''; } catch (e) { return ''; }
+            },
             // 切换展示方式：落同一份 localStorage 偏好，学习记录列表会自动重绘
             setKpView: function (v) { setRecKpView(v); },
             // 复用的切换条；attrName 传不同值，避免同类控件互相干扰
@@ -15288,7 +15870,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917aa</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917ab</div>
 <!-- build-tag:end -->
 </body>
 </html>
