@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>同步差异体检 · 效率中心</title>
+<style>
+:root{
+  --bg:#F6F7FB; --panel:#fff; --text:#1F2937; --muted:#6B7280; --border:#E5E7EB;
+  --accent:#6366F1; --accent-soft:#EEF0FF;
+  --ok:#0D8A5F; --ok-soft:#E8F6F0;
+  --warn:#B8720E; --warn-soft:#FDF4E3;
+  --bad:#C0392B; --bad-soft:#FDECEA;
+  --info:#2563EB; --info-soft:#EAF1FE;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text); font-size:14px; line-height:1.6;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  padding:18px 14px 60px;
+}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:12.5px;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
+.card>h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.card>h2 .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+button{
+  font:inherit;font-size:13.5px;padding:9px 18px;border-radius:9px;border:1px solid var(--border);
+  background:#fff;color:var(--text);cursor:pointer;transition:.15s;
+}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.primary:hover{background:#4F52E0;color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+.hint{color:var(--muted);font-size:12px}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:6px 12px;font-size:13px}
+.kv .k{color:var(--muted)}
+.kv .v{word-break:break-all;font-family:var(--mono);font-size:12.5px}
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-info{background:var(--info-soft);color:var(--info)}
+.p-mut{background:#F1F2F6;color:var(--muted)}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:12.5px}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid #F0F1F5;vertical-align:top}
+th{background:#FAFBFD;color:var(--muted);font-weight:600;position:sticky;top:0;z-index:1;white-space:nowrap}
+td.mono,th.mono{font-family:var(--mono);font-size:11.5px}
+tr:last-child td{border-bottom:none}
+tr.hl td{background:#FFFDF5}
+tr.hl-bad td{background:#FFF7F6}
+.alert{border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:10px;border:1px solid transparent}
+.a-bad{background:var(--bad-soft);border-color:#F5C6C0;color:#8C2318}
+.a-warn{background:var(--warn-soft);border-color:#F0DDB4;color:#7A4C06}
+.a-ok{background:var(--ok-soft);border-color:#BFE6D5;color:#075E41}
+.a-info{background:var(--info-soft);border-color:#C7D9FB;color:#1B4BA8}
+.alert b{font-weight:700}
+details{margin-top:8px}
+summary{cursor:pointer;color:var(--accent);font-size:13px;user-select:none}
+pre{background:#FBFCFE;border:1px solid var(--border);border-radius:8px;padding:10px;overflow:auto;max-height:340px;font-size:11.5px;font-family:var(--mono);margin:8px 0 0}
+.err{color:var(--bad)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--accent-soft);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.stat{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.stat div{flex:1 1 130px;background:#FAFBFD;border:1px solid var(--border);border-radius:10px;padding:9px 12px}
+.stat .lab{color:var(--muted);font-size:11.5px}
+.stat .num{font-size:19px;font-weight:700;font-family:var(--mono)}
+@media(max-width:640px){
+  body{padding:12px 9px 50px}
+  .kv{grid-template-columns:1fr;gap:2px 0}
+  .kv .k{margin-top:6px}
+  h1{font-size:17px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>🩺 同步差异体检</h1>
+  <div class="sub">
+    只读工具：<b>不会写云端、不会改本机任何数据</b>。用途是把「两台设备为什么显示不一样」变成一张可核对的表。
+    请在<b>出问题的那两台设备上分别打开本页</b>，各点一次「开始体检」，再对照两边的报告。
+  </div>
+
+  <div class="bar">
+    <button id="run" class="primary">开始体检</button>
+    <button id="copy" disabled>复制报告 JSON</button>
+    <span class="hint" id="status">尚未开始</span>
+  </div>
+
+  <div id="out"></div>
+
+  <div class="card">
+    <h2><span class="n">?</span>这份报告怎么读</h2>
+    <div class="kv">
+      <div class="k">一致</div><div class="v" style="font-family:inherit">本机与云端的值逐字相同。这一项没有同步问题。</div>
+      <div class="k">仅本机</div><div class="v" style="font-family:inherit">这项数据在云端<b>根本没有</b>。说明它从未被传上去 —— 或它属于「不参与同步」的键（见第 4 节）。</div>
+      <div class="k">仅云端</div><div class="v" style="font-family:inherit">云端有、本机没有。说明这台设备没下载到它（没同步过，或被本机清掉了）。</div>
+      <div class="k">值不同</div><div class="v" style="font-family:inherit">两边都有但内容不同。这时要看「形状」与「时间」两列，判断合并会留下哪一份。</div>
+      <div class="k">形状</div><div class="v" style="font-family:inherit"><b>数组</b>可以按条目并集合并（两边都不丢）；<b>对象/文本</b>只能整键取一份，晚同步的那台会把另一台的改动盖掉。</div>
+      <div class="k">本机时间</div><div class="v" style="font-family:inherit">取自 <code>__hub_meta_v1__</code>。显示「<b>无记录</b>」是关键信号 —— 它意味着合并时无法判断本机新旧。</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+   同步差异体检 —— 只读
+   与 sync-github.js 保持同一套约定（版本标记见下方 SYNC_JS）
+   ============================================================ */
+
+var GIST_ID_KEY   = 'github_gist_id';
+var TOKEN_KEY     = 'github_token';
+var META_FILENAME = 'efficiency-hub-meta.json';
+var LEGACY_FILENAME = 'efficiency-hub-sync.json';
+var BACKEND_KEY   = 'cloud_backend';
+var META_KEY      = '__hub_meta_v1__';
+
+// 内置兜底名单：运行时仍会优先从线上 sync-github.js 现读，避免与内核漂移
+var FALLBACK_EXCLUDE_KEYS = ['github_token','github_gist_id','sync_last_sync','github_cloud_state',
+  'gitee_token','gitee_owner','gitee_repo','gitee_last_sync','gitee_branch','cloud_backend',
+  'hub_lastModule','chaomuji_backups_v1',META_KEY,'__hub_last_snap_v1__','__hub_activity_v1__',
+  'sync_timestamps','ehub_autosync_v1'];
+var FALLBACK_EXCLUDE_PREFIXES = ['chaomuji_web_v27_bg','chaomuji_web_v27_cardbg','chaomuji_web_v27_hcardbg',
+  'zmv_bg_','__hub_','__tea_sdk_','__BEACON_'];
+var BIG_IMAGE_MIN = 30*1024;
+var TARGET_SHARD_BYTES = 400*1024;
+
+var EXCLUDE_KEYS = new Set(FALLBACK_EXCLUDE_KEYS);
+var EXCLUDE_PREFIXES = FALLBACK_EXCLUDE_PREFIXES.slice();
+var SYNC_JS_BUILD = '(未读到)';
+
+/* ---------- 小工具 ---------- */
+function $(s){ return document.querySelector(s); }
+function el(tag,cls,html){ var e=document.createElement(tag); if(cls)e.className=cls; if(html!=null)e.innerHTML=html; return e; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function kb(n){ if(n==null) return '-'; return n<1024? n+' B' : (n<1024*1024? (n/1024).toFixed(1)+' KB' : (n/1048576).toFixed(2)+' MB'); }
+function ts(t){
+  if(!t) return null;
+  var d=new Date(t); if(isNaN(d.getTime())) return null;
+  function p(x){return x<10?'0'+x:''+x;}
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+}
+function rel(t){
+  if(!t) return '';
+  var s=Math.round((Date.now()-t)/1000);
+  if(s<60) return s+' 秒前';
+  if(s<3600) return Math.round(s/60)+' 分钟前';
+  if(s<86400) return Math.round(s/3600)+' 小时前';
+  return Math.round(s/86400)+' 天前';
+}
+// 值指纹：只用来判断「两边是否逐字相同」，不做安全用途
+function fp(s){
+  var h1=0x811c9dc5, h2=0x01000193;
+  for(var i=0;i<s.length;i++){
+    var c=s.charCodeAt(i);
+    h1=(h1^c)>>>0; h1=(h1*16777619)>>>0;
+    h2=(h2+c*31)>>>0; h2=(h2*2246822519)>>>0;
+  }
+  return (h1>>>0).toString(36)+(h2>>>0).toString(36)+'.'+s.length;
+}
+function isExcluded(key,value){
+  if(EXCLUDE_KEYS.has(key)) return '在排除名单里';
+  for(var i=0;i<EXCLUDE_PREFIXES.length;i++){
+    if(key.indexOf(EXCLUDE_PREFIXES[i])===0) return '前缀 '+EXCLUDE_PREFIXES[i]+' 被排除';
+  }
+  if(value && value.length>BIG_IMAGE_MIN && value.slice(0,11)==='data:image/') return '内嵌大图('+kb(value.length)+')不同步';
+  return null;
+}
+// 与 sync-github.js 的 mergeKeyValue 对齐：判断这个键能不能按内容合并
+function shapeOf(key,text){
+  var v=null;
+  try{ v=JSON.parse(text); }catch(e){ return {kind:'文本',m:false,extra:'JSON 解析失败'}; }
+  if(Array.isArray(v)){
+    var objEl = v.length>0 && v[0]!==null && typeof v[0]==='object';
+    return { kind: objEl?'数组(对象条目)':'数组', m:true,
+             extra: objEl? '按 id 并集合并，两边独有条目都不会丢' : '取并集' };
+  }
+  if(v!==null && typeof v==='object'){
+    var ks=Object.keys(v);
+    return { kind:'对象', m:false, extra:'无法按内容合并 → 只能整键取一份（'+ks.length+' 个字段）' };
+  }
+  return { kind:'标量', m:false, extra:'只能整键取一份' };
+}
+function shardFile(sid){ return 'efficiency-hub-'+String(sid).replace(/[^a-zA-Z0-9_-]/g,'')+'.json'; }
+
+/* ---------- 解包：与内核 packCloud/unpackCloud 对应 ---------- */
+function b64ToBuf(b64){
+  var bin=atob(b64), u8=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+  return u8;
+}
+function canDecompress(){
+  return typeof DecompressionStream==='function';
+}
+async function unpackCloud(parsed){
+  if(!parsed) return null;
+  if(parsed.enc==='gzip'){
+    if(!canDecompress()) throw new Error('本浏览器不支持解压（需较新 Chrome/Edge），无法读取压缩分片');
+    var ds=new DecompressionStream('gzip');
+    var txt=await new Response(new Blob([b64ToBuf(parsed.data)]).stream().pipeThrough(ds)).text();
+    return JSON.parse(txt);
+  }
+  if(parsed.enc==='none' && typeof parsed.data==='string') return JSON.parse(parsed.data);
+  return parsed;   // v1
+}
+
+/* ---------- 从线上内核现读排除名单与版本标记 ---------- */
+async function loadKernelFacts(){
+  var res={ fromKernel:false, build:null, err:null };
+  // 本页在 tools/ 下，内核在站点根；两个路径都试，避免换目录后失联
+  var cands=['../sync-github.js','sync-github.js','/efficiency-hub/sync-github.js'];
+  var t=null, lastErr=null;
+  for(var ci=0; ci<cands.length; ci++){
+    try{
+      var r=await fetch(cands[ci],{cache:'no-cache'});
+      if(!r.ok){ lastErr='HTTP '+r.status+' @'+cands[ci]; continue; }
+      t=await r.text();
+      if(t && t.indexOf('EXCLUDE_KEYS')>=0) break;
+      t=null; lastErr='内容不含 EXCLUDE_KEYS @'+cands[ci];
+    }catch(e){ lastErr=(e&&e.message)||String(e); }
+  }
+  try{
+    if(!t) throw new Error(lastErr || '未能取到 sync-github.js');
+    var mb=t.match(/build\s*:\s*'([^']+)'/);
+    if(mb){ SYNC_JS_BUILD=mb[1]; res.build=mb[1]; }
+    var m1=t.match(/const\s+EXCLUDE_KEYS\s*=\s*new\s+Set\(\s*\[([\s\S]*?)\]\s*\)/);
+    if(m1){
+      var ks=(m1[1].match(/'([^']+)'/g)||[]).map(function(s){return s.slice(1,-1);});
+      if(ks.length){ EXCLUDE_KEYS=new Set(ks); res.keys=ks.length; }
+    }
+    var m2=t.match(/const\s+EXCLUDE_PREFIXES\s*=\s*\[([\s\S]*?)\]/);
+    if(m2){
+      var ps=(m2[1].match(/'([^']+)'/g)||[]).map(function(s){return s.slice(1,-1);});
+      if(ps.length){ EXCLUDE_PREFIXES=ps; res.prefixes=ps.length; }
+    }
+    res.fromKernel=true;
+  }catch(e){ res.err=(e&&e.message)||String(e); }
+  return res;
+}
+
+/* ---------- 本机侧 ---------- */
+function collectLocal(){
+  var rows=[], meta={};
+  try{ meta=JSON.parse(localStorage.getItem(META_KEY)||'{}')||{}; }catch(e){ meta={}; }
+  var total=0, excluded=[];
+  for(var i=0;i<localStorage.length;i++){
+    var k=localStorage.key(i);
+    if(k==null) continue;
+    var v=localStorage.getItem(k);
+    if(v==null) continue;
+    var why=isExcluded(k,v);
+    if(why){ excluded.push({key:k,bytes:v.length,why:why}); continue; }
+    rows.push({ key:k, bytes:v.length, fp:fp(v), metaTs:meta[k]||0 });
+    total+=v.length;
+  }
+  rows.sort(function(a,b){ return b.bytes-a.bytes; });
+  excluded.sort(function(a,b){ return b.bytes-a.bytes; });
+  return { rows:rows, excluded:excluded, metaKeys:Object.keys(meta).length, total:total };
+}
+
+/* ---------- 云端侧：GitHub Gist ---------- */
+async function ghApi(path, token){
+  var r=await fetch('https://api.github.com'+path,{
+    headers:{ 'Authorization':'token '+token, 'Accept':'application/vnd.github+json' },
+    cache:'no-store'
+  });
+  if(!r.ok){
+    var body=''; try{ body=await r.text(); }catch(e){}
+    var err=new Error('GitHub API HTTP '+r.status+(body? ' · '+body.slice(0,180):''));
+    err.status=r.status; throw err;
+  }
+  return r.json();
+}
+async function readCloudGithub(){
+  var token=localStorage.getItem(TOKEN_KEY)||'';
+  var gid=localStorage.getItem(GIST_ID_KEY)||'';
+  var out={ backend:'GitHub Gist', tokenPresent:!!token, targetId:gid,
+            copies:[], data:{}, shardInfo:null, notes:[] };
+  if(!token){ out.notes.push('本机没有 github_token，无法读取云端。'); return out; }
+
+  // ① 同名副本检测（多副本是「两台设备各连各的」的头号成因）
+  try{
+    var list=await ghApi('/gists?per_page=100', token);
+    var mine=(list||[]).filter(function(g){
+      var f=g&&g.files||{};
+      return f[META_FILENAME]||f[LEGACY_FILENAME];
+    });
+    mine.sort(function(a,b){ return new Date(b.updated_at)-new Date(a.updated_at); });
+    out.copies=mine.map(function(g){
+      var f=g.files[META_FILENAME]||g.files[LEGACY_FILENAME];
+      return { id:g.id, updated:(g.updated_at||'').slice(0,19), bytes:f?f.size:0,
+               current:g.id===gid, desc:g.description||'' };
+    });
+    if(!gid && mine.length){ gid=mine[0].id; out.targetId=gid; out.notes.push('本机未记录 Gist ID，已按最近更新的一份读取。'); }
+  }catch(e){
+    out.notes.push('列取副本失败（可能 Token 缺 gist 作用域）：'+((e&&e.message)||e));
+  }
+  if(!gid){ out.notes.push('没有可用的 Gist ID，无法读取云端内容。'); return out; }
+
+  // ② 读载体
+  var gist=null;
+  try{ gist=await ghApi('/gists/'+gid, token); }
+  catch(e){ out.notes.push('读取 Gist 失败：'+((e&&e.message)||e)); return out; }
+
+  var files=gist.files||{};
+  out.updatedAt=(gist.updated_at||'').slice(0,19);
+  out.gistDesc=gist.description||'';
+
+  async function fileText(name){
+    var f=files[name]; if(!f) return null;
+    if(f.content!==undefined && f.content!==null && f.content!=='') return f.content;
+    if(f.truncated && f.raw_url){
+      var r=await fetch(f.raw_url,{cache:'no-store'});
+      if(!r.ok) throw new Error('raw 读取失败 HTTP '+r.status);
+      return r.text();
+    }
+    return null;
+  }
+
+  var metaTxt=null;
+  try{ metaTxt=await fileText(META_FILENAME); }catch(e){ out.notes.push('读 meta 失败：'+((e&&e.message)||e)); }
+
+  if(metaTxt){
+    var meta=null;
+    try{ meta=JSON.parse(metaTxt); }catch(e){ out.notes.push('meta 解析失败：'+((e&&e.message)||e)); }
+    if(meta){
+      out.shardInfo={ version:meta.version, origin:meta.origin||'', updatedAt:meta.updatedAt||0,
+                      shards:Object.keys(meta.shards||{}), keyCount:Object.keys(meta.keys||{}).length };
+      var shardIds=Object.keys(meta.shards||{});
+      var ok=0, fail=[];
+      for(var i=0;i<shardIds.length;i++){
+        var sid=shardIds[i];
+        try{
+          var txt=await fileText(shardFile(sid));
+          if(txt==null){ fail.push(sid+'（文件不在）'); continue; }
+          var payload=await unpackCloud(JSON.parse(txt));
+          var d=(payload&&payload.data)||{};
+          for(var k in d){ if(Object.prototype.hasOwnProperty.call(d,k)) out.data[k]=d[k]; }
+          ok++;
+        }catch(e){ fail.push(sid+'（'+((e&&e.message)||e)+'）'); }
+      }
+      out.shardInfo.okShards=ok;
+      out.shardInfo.failShards=fail;
+      if(meta.origin && meta.origin.indexOf('gitee')>=0){
+        out.notes.push('云端 meta 的 origin 是「'+meta.origin+'」，说明云端数据是 Gitee 后端写的，但本机现在走 GitHub —— 两条后端的数据互不相通。');
+      }
+    }
+  }else{
+    var legacy=null;
+    try{ legacy=await fileText(LEGACY_FILENAME); }catch(e){}
+    if(legacy){
+      try{
+        var p=await unpackCloud(JSON.parse(legacy));
+        out.data=(p&&p.data)||{};
+        out.shardInfo={ version:1, legacy:true, shards:['(单文件旧格式)'], keyCount:Object.keys(out.data).length, okShards:1, failShards:[] };
+      }catch(e){ out.notes.push('旧格式解析失败：'+((e&&e.message)||e)); }
+    }else{
+      out.notes.push('云端既没有 '+META_FILENAME+' 也没有 '+LEGACY_FILENAME+' —— 这个载体里没有效率中心的数据。');
+    }
+  }
+  return out;
+}
+
+/* ---------- 云端侧：Gitee ---------- */
+async function readCloudGitee(){
+  var token=localStorage.getItem('gitee_token')||'';
+  var owner=localStorage.getItem('gitee_owner')||'';
+  var repo=localStorage.getItem('gitee_repo')||'';
+  var branch=localStorage.getItem('gitee_branch')||'master';
+  var out={ backend:'Gitee 仓库', tokenPresent:!!token, targetId:owner+'/'+repo, copies:[],
+            data:{}, shardInfo:null, notes:[] };
+  if(!token||!owner||!repo){
+    out.notes.push('Gitee 未配置完整（缺 token / owner / repo）。');
+    return out;
+  }
+  var base='https://gitee.com/api/v5/repos/'+encodeURIComponent(owner)+'/'+encodeURIComponent(repo);
+  function q(extra){ return '?access_token='+encodeURIComponent(token)+'&ref='+encodeURIComponent(branch)+(extra||''); }
+  async function raw(name){
+    var r=await fetch(base+'/contents/'+encodeURIComponent(name)+q(),{cache:'no-store'});
+    if(r.status===404) return null;
+    if(!r.ok){ var b=''; try{b=await r.text();}catch(e){} throw new Error('HTTP '+r.status+' · '+b.slice(0,160)); }
+    var j=await r.json();
+    if(j.content){ return decodeURIComponent(escape(atob(String(j.content).replace(/\n/g,'')))); }
+    if(j.download_url){ var r2=await fetch(j.download_url,{cache:'no-store'}); return r2.ok? r2.text():null; }
+    return null;
+  }
+  try{
+    var rl=await fetch(base+'/contents/'+q(),{cache:'no-store'});
+    if(rl.ok){
+      var arr=await rl.json();
+      out.copies=(arr||[]).filter(function(x){ return /efficiency-hub-.*\.json$/.test(x.name||''); })
+        .map(function(x){ return { id:x.name, updated:'', bytes:x.size||0, current:false }; });
+    }else{
+      out.notes.push('列目录失败 HTTP '+rl.status+'（分支名不对也会这样，当前 ref='+branch+'）。');
+    }
+  }catch(e){ out.notes.push('列目录异常：'+((e&&e.message)||e)); }
+
+  var metaTxt=null;
+  try{ metaTxt=await raw(META_FILENAME); }catch(e){ out.notes.push('读 meta 失败：'+((e&&e.message)||e)); }
+  if(metaTxt){
+    var meta=null; try{ meta=JSON.parse(metaTxt); }catch(e){ out.notes.push('meta 解析失败：'+((e&&e.message)||e)); }
+    if(meta){
+      out.shardInfo={ version:meta.version, origin:meta.origin||'', updatedAt:meta.updatedAt||0,
+                      shards:Object.keys(meta.shards||{}), keyCount:Object.keys(meta.keys||{}).length };
+      var ids=Object.keys(meta.shards||{}), ok=0, fail=[];
+      for(var i=0;i<ids.length;i++){
+        try{
+          var txt=await raw(shardFile(ids[i]));
+          if(txt==null){ fail.push(ids[i]+'（文件不在）'); continue; }
+          var p=await unpackCloud(JSON.parse(txt));
+          var d=(p&&p.data)||{};
+          for(var k in d){ if(Object.prototype.hasOwnProperty.call(d,k)) out.data[k]=d[k]; }
+          ok++;
+        }catch(e){ fail.push(ids[i]+'（'+((e&&e.message)||e)+'）'); }
+      }
+      out.shardInfo.okShards=ok; out.shardInfo.failShards=fail;
+      if(meta.origin && meta.origin.indexOf('gitee')<0){
+        out.notes.push('云端 meta 的 origin 是「'+meta.origin+'」，与本机的 Gitee 后端不一致。');
+      }
+    }
+  }else{
+    var legacy=null; try{ legacy=await raw(LEGACY_FILENAME); }catch(e){}
+    if(legacy){
+      try{
+        var p2=await unpackCloud(JSON.parse(legacy));
+        out.data=(p2&&p2.data)||{};
+        out.shardInfo={ version:1, legacy:true, shards:['(单文件旧格式)'], keyCount:Object.keys(out.data).length, okShards:1, failShards:[] };
+      }catch(e){ out.notes.push('旧格式解析失败：'+((e&&e.message)||e)); }
+    }else{
+      out.notes.push('仓库里没有 '+META_FILENAME+'，也没有 '+LEGACY_FILENAME+'。');
+    }
+  }
+  return out;
+}
+
+/* ---------- 对比 ---------- */
+function diff(local, cloud){
+  var lmap={}, cmap=cloud.data||{};
+  local.rows.forEach(function(r){ lmap[r.key]=r; });
+  var keys={}, k;
+  for(k in lmap) keys[k]=1;
+  for(k in cmap) keys[k]=1;
+  var rows=[];
+  Object.keys(keys).sort().forEach(function(key){
+    var L=lmap[key]||null, C=cmap[key]||null;
+    var row={ key:key, lBytes:L?L.bytes:null, cBytes:(C&&C.value)?C.value.length:null,
+              lMeta:L?L.metaTs:0, cTs:(C&&C.timestamp)||0, verdict:'', tag:'p-mut', note:'' };
+    if(L&&C){
+      var same = L.fp===fp(C.value);
+      if(same){ row.verdict='一致'; row.tag='p-ok'; row.note='两边逐字相同'; }
+      else{
+        row.verdict='值不同'; row.tag='p-bad';
+        var sh=shapeOf(key,C.value);
+        row.shape=sh.kind; row.mergeable=sh.m;
+        if(sh.m){ row.note='可合并：'+sh.extra+'（下次双向同步会把两边并起来）'; row.tag='p-warn'; }
+        else if(!row.lMeta){ row.note='本机在 '+META_KEY+' 里没有这个键的记录 → 合并会判定「云端较新」并覆盖本机。'+
+                                   '若本机这次改动更新，改动会丢。'; }
+        else if(row.cTs>row.lMeta){ row.note='云端时间较新 → 合并会覆盖本机。'; }
+        else { row.note='本机时间较新 → 合并会保留本机，并把它推上云。'; row.tag='p-info'; }
+      }
+    }else if(L&&!C){
+      row.verdict='仅本机'; row.tag='p-warn';
+      row.note='云端没有这个键 → 从未上传成功，或它在排除名单里。';
+      var why=isExcluded(key, localStorage.getItem(key));
+      if(why) row.note='这个键被排除，本来就不会同步（'+why+'）。';
+    }else{
+      row.verdict='仅云端'; row.tag='p-info';
+      row.note='这台设备没拿到这个键 → 没同步过，或本机把它删了。';
+    }
+    rows.push(row);
+  });
+  var order={ '值不同':0,'仅本机':1,'仅云端':2,'一致':3 };
+  rows.sort(function(a,b){ return (order[a.verdict]-order[b.verdict]) || (b.lBytes||0)-(a.lBytes||0); });
+  return rows;
+}
+
+/* ---------- 渲染 ---------- */
+function section(n,title,html){
+  var c=el('div','card');
+  c.innerHTML='<h2><span class="n">'+n+'</span>'+esc(title)+'</h2>'+html;
+  return c;
+}
+function pill(text,cls){ return '<span class="pill '+cls+'">'+esc(text)+'</span>'; }
+
+function renderReport(local, cloud, rows, kernel, backendId){
+  var out=$('#out'); out.innerHTML='';
+
+  /* ① 环境 */
+  var env=[
+    ['同步后端', backendId+(backendId==='github'?'（GitHub Gist）':'（Gitee 仓库）')],
+    ['内核版本', 'sync-github.js build = '+SYNC_JS_BUILD + (kernel.fromKernel? '' : ' <span class="pill p-warn">未能现读，用的是内置兜底名单</span>')],
+    ['排除名单', '键 '+EXCLUDE_KEYS.size+' 个 · 前缀 '+EXCLUDE_PREFIXES.length+' 个'+(kernel.fromKernel?'（现读自内核）':'（内置兜底）')],
+    ['载体', cloud.targetId||'(未记录)'],
+    ['云端更新时间', cloud.updatedAt||'-'],
+    ['本机键数', local.rows.length+' 个（可同步） · '+local.excluded.length+' 个被排除 · 合计 '+kb(local.total)],
+    [META_KEY, local.metaKeys+' 个键有时间记录'],
+  ];
+  var h1='<div class="kv">'+env.map(function(x){
+    return '<div class="k">'+esc(x[0])+'</div><div class="v">'+x[1]+'</div>'; }).join('')+'</div>';
+  if(!kernel.fromKernel && kernel.err) h1+='<div class="hint" style="margin-top:8px">现读内核失败：'+esc(kernel.err)+'</div>';
+  out.appendChild(section('1','环境',h1));
+
+  /* ② 副本检测 */
+  var h2='';
+  if(!cloud.copies.length){
+    h2+='<div class="alert a-warn">没能在账号下枚举到载体清单，无法判断是否存在多份副本。'+
+        '这通常是因为当前 Token <b>没有 gist 作用域</b>。</div>';
+  }else if(cloud.copies.length===1){
+    h2+='<div class="alert a-ok">✓ 账号下只有 <b>1</b> 份同类云端文件，两台设备应该连的是同一份。</div>';
+  }else{
+    h2+='<div class="alert a-bad"><b>⚠️ 检测到 '+cloud.copies.length+' 份同类云端文件 —— 这是「两台设备显示不一样」的头号成因。</b><br>'+
+        '两台设备若各自连到不同的一份，上传/下载各在各的副本上做，<b>永远不可能收敛</b>。'+
+        '处理办法：在「数据最新的那台」点一次「本机 → 云端」，再让另一台点一次「云端 → 本机」，'+
+        '然后到云端把多余的那几份删掉。</div>';
+  }
+  if(cloud.copies.length){
+    h2+='<div class="tblwrap"><table><thead><tr><th>载体 ID</th><th>最近更新</th><th class="mono">大小</th><th></th></tr></thead><tbody>'+
+      cloud.copies.map(function(c){
+        return '<tr'+(c.current?' class="hl"':'')+'><td class="mono">'+esc(c.id)+'</td><td class="mono">'+esc(c.updated||'-')+
+          '</td><td class="mono">'+kb(c.bytes)+'</td><td>'+(c.current?pill('当前连接','p-ok'):'')+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  }
+  if(cloud.notes.length) h2+='<div class="alert a-info">'+cloud.notes.map(esc).join('<br>')+'</div>';
+  out.appendChild(section('2','云端副本检测',h2));
+
+  /* ③ 差异表 */
+  var cnt={ '值不同':0,'仅本机':0,'仅云端':0,'一致':0 };
+  rows.forEach(function(r){ cnt[r.verdict]++; });
+  var h3='<div class="stat">'+
+    '<div><div class="lab">值不同</div><div class="num" style="color:var(--bad)">'+cnt['值不同']+'</div></div>'+
+    '<div><div class="lab">仅本机未上传</div><div class="num" style="color:var(--warn)">'+cnt['仅本机']+'</div></div>'+
+    '<div><div class="lab">仅云端未下载</div><div class="num" style="color:var(--info)">'+cnt['仅云端']+'</div></div>'+
+    '<div><div class="lab">一致</div><div class="num" style="color:var(--ok)">'+cnt['一致']+'</div></div>'+
+    '</div>';
+  if(cnt['值不同']+cnt['仅本机']+cnt['仅云端']===0){
+    h3+='<div class="alert a-ok">✓ 本机与云端逐键一致。从这台设备看，同步是成功的。</div>';
+  }
+  h3+='<div class="tblwrap"><table><thead><tr>'+
+      '<th>键名</th><th class="mono">本机</th><th class="mono">云端</th><th>形状</th>'+
+      '<th class="mono">本机时间</th><th class="mono">云端时间</th><th>判定</th><th>说明</th>'+
+      '</tr></thead><tbody>';
+  rows.forEach(function(r){
+    var cls= r.verdict==='一致'? '' : (r.verdict==='值不同'? ' class="hl-bad"' : ' class="hl"');
+    h3+='<tr'+cls+'><td class="mono">'+esc(r.key)+'</td>'+
+      '<td class="mono">'+kb(r.lBytes)+'</td>'+
+      '<td class="mono">'+kb(r.cBytes)+'</td>'+
+      '<td>'+esc(r.shape||'-')+'</td>'+
+      '<td class="mono">'+(r.lMeta? esc(ts(r.lMeta))+'<br><span class="hint">'+esc(rel(r.lMeta))+'</span>' : '<span style="color:var(--bad)">无记录</span>')+'</td>'+
+      '<td class="mono">'+(r.cTs? esc(ts(r.cTs))+'<br><span class="hint">'+esc(rel(r.cTs))+'</span>' : '-')+'</td>'+
+      '<td>'+pill(r.verdict,r.tag)+'</td>'+
+      '<td style="color:var(--muted)">'+esc(r.note)+'</td></tr>';
+  });
+  h3+='</tbody></table></div>';
+  out.appendChild(section('3','逐键差异',h3));
+
+  /* ④ 排除清单 */
+  var h4='<div class="alert a-info">下面这些键<b>设计上就不参与同步</b>，两台设备不一样是正常的，不要当成故障。'+
+         '想判断某个数据是不是被排除，先在这里找一找。</div>';
+  if(local.excluded.length){
+    h4+='<div class="tblwrap"><table><thead><tr><th>键名</th><th class="mono">大小</th><th>不参与同步的原因</th></tr></thead><tbody>'+
+      local.excluded.map(function(x){
+        return '<tr><td class="mono">'+esc(x.key)+'</td><td class="mono">'+kb(x.bytes)+'</td><td>'+esc(x.why)+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+  }else{
+    h4+='<div class="hint">本机没有被排除的键。</div>';
+  }
+  out.appendChild(section('4','不参与同步的键（设计如此）',h4));
+
+  /* ⑤ 分片完整性 */
+  var si=cloud.shardInfo;
+  var h5='';
+  if(!si){ h5+='<div class="alert a-bad">没有读到云端 meta/数据索引，无法核对分片完整性。</div>'; }
+  else{
+    h5+='<div class="kv">'+
+      '<div class="k">格式</div><div class="v">v'+esc(si.version)+(si.legacy? '（旧单文件）':'')+'</div>'+
+      '<div class="k">分片</div><div class="v">共 '+si.shards.length+' 片，读到 '+si.okShards+' 片，失败 '+si.failShards.length+' 片</div>'+
+      '<div class="k">origin</div><div class="v">'+esc(si.origin||'(未记录)')+'</div>'+
+      '<div class="k">云端键数</div><div class="v">'+esc(si.keyCount)+' 个</div>'+
+      '</div>';
+    if(si.failShards.length){
+      h5+='<div class="alert a-bad"><b>有分片没读到</b>：'+si.failShards.map(esc).join('、')+
+          '<br>内核在双向同步前有一道安全闸会拦住这种情况（不会动数据），但读不回来意味着<b>这台设备看不到那部分云端数据</b>。</div>';
+    }else{
+      h5+='<div class="alert a-ok">✓ 全部分片都读回来了，云端数据是完整的。</div>';
+    }
+  }
+  out.appendChild(section('5','云端分片完整性',h5));
+
+  /* ⑥ 报告 JSON */
+  var report={
+    generatedAt:new Date().toISOString(),
+    ua:navigator.userAgent,
+    后端:backendId, 内核build:SYNC_JS_BUILD,
+    排除名单来源: kernel.fromKernel? 'ekernel':'builtin',
+    本地:local.rows.map(function(r){ return {key:r.key,bytes:r.bytes,metaTs:r.metaTs||0,fp:r.fp}; }),
+    本地被排除:local.excluded,
+    云端:(function(){ var o={}; for(var k in cloud.data){ o[k]={bytes:(cloud.data[k].value||'').length, ts:cloud.data[k].timestamp||0}; } return o; })(),
+    云端副本:cloud.copies,
+    云端信息:cloud.shardInfo,
+    对比:rows.map(function(r){ return {key:r.key,判定:r.verdict,形状:r.shape||'',本机字节:r.lBytes,云端字节:r.cBytes,本机时间:r.lMeta,云端时间:r.cTs,说明:r.note}; })
+  };
+  window.__SYNC_DIFF_REPORT__=report;
+  var h6='<div class="hint">点上方「复制报告 JSON」，把两台设备的报告发过来，就能逐键定位差异。</div>'+
+    '<details><summary>展开报告 JSON</summary><pre>'+esc(JSON.stringify(report,null,1))+'</pre></details>';
+  out.appendChild(section('6','报告 JSON',h6));
+}
+
+/* ---------- 主流程 ---------- */
+async function run(){
+  var btn=$('#run'), st=$('#status'), out=$('#out');
+  btn.disabled=true; $('#copy').disabled=true;
+  st.innerHTML='<span class="spin"></span>正在体检…';
+  out.innerHTML='';
+  var t0=Date.now();
+  try{
+    var kernel=await loadKernelFacts();
+    st.innerHTML='<span class="spin"></span>正在读本机数据…';
+    var local=collectLocal();
+    var backendId=localStorage.getItem(BACKEND_KEY)||'github';
+    st.innerHTML='<span class="spin"></span>正在读云端…';
+    var cloud;
+    if(backendId==='gitee') cloud=await readCloudGitee();
+    else cloud=await readCloudGithub();
+    st.innerHTML='<span class="spin"></span>正在对比…';
+    var rows=diff(local,cloud);
+    renderReport(local,cloud,rows,kernel,backendId);
+    var bad=rows.filter(function(r){ return r.verdict!=='一致'; }).length;
+    st.innerHTML='体检完成 · '+rows.length+' 个键 · 与云端不一致 <b>'+bad+'</b> 个 · 耗时 '+((Date.now()-t0)/1000).toFixed(1)+'s';
+    $('#copy').disabled=false;
+  }catch(e){
+    st.innerHTML='<span class="err">体检失败：'+esc((e&&e.message)||e)+'</span>';
+    out.innerHTML='<div class="card"><div class="alert a-bad">'+esc((e&&e.message)||String(e))+'</div></div>';
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+$('#run').addEventListener('click',run);
+$('#copy').addEventListener('click',async function(){
+  var r=window.__SYNC_DIFF_REPORT__;
+  if(!r) return;
+  var txt=JSON.stringify(r,null,1);
+  try{
+    await navigator.clipboard.writeText(txt);
+    $('#status').innerHTML='已复制到剪贴板 ✓';
+  }catch(e){
+    var ta=document.createElement('textarea');
+    ta.value=txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); $('#status').innerHTML='已复制到剪贴板 ✓'; }
+    catch(e2){ $('#status').innerHTML='复制失败，请手动从第 6 节展开复制'; }
+    document.body.removeChild(ta);
+  }
+});
+
+// 自动跑一次：Tom 打开就想看到结论，不该还要再点一下。
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ run(); });
+else run();
+
+})();
+</script>
+</body>
+</html>
