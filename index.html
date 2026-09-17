@@ -237,7 +237,10 @@
   .drag-handle:active{cursor:grabbing}
 
 
-  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07)}
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:12px;padding-bottom:28px;border-top:1px solid rgba(255,255,255,.07)}
+  /* 构建标记（技能 §21）：每次推送改为 V+YYYYMMDD+字母，同日 a→b→c */
+  #buildTag{position:fixed;left:8px;bottom:8px;z-index:30;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;padding:4px 7px;border-radius:6px;background:rgba(15,23,42,.5);color:#fff;opacity:.62;pointer-events:none;user-select:none}
+  @media print{ #buildTag{display:none} }
 
 
   .side-btn{
@@ -754,7 +757,6 @@
       <div class="side-btn" id="toggleTheme"><span id="themeIco">🌙</span><span id="themeTxt">夜间模式</span></div>
 
 
-      <div style="font-size:11px;color:#7c8aa5;padding:6px 4px;opacity:.8">版本 <span id="hubVer">v2026.09.15a</span></div>
 
 
     </div>
@@ -2463,6 +2465,7 @@ document.addEventListener('pointerdown', e => {
 <script src="tools/backup-hub.js?v=54"></script>
 
 
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260917a</div>
 </body>
 
 
