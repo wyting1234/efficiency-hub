@@ -1416,7 +1416,10 @@
           ? '云端 → 本机：新增 ' + st.added + ' 项，更新 ' + st.updated + ' 项，保留本机 ' + st.kept + ' 项' +
             (st.merged ? '，另有 ' + st.merged + ' 项按内容合并' : '') + '。\n'
           : 'Gitee 上原本没有数据，本次已把本机的数据存过去。\n') +
-        '本机 → 云端：已写入 ' + r.nItem + ' 项，约 ' + Math.round(r.info.wroteBytes / 1024) + 'KB（已压缩）。\n' +
+        '本机 → 云端：本次写入 ' + ((r.info && r.info.wroteShards) || 0) + ' / ' +
+          ((r.info && r.info.totalShards) || 0) + ' 个数据片' +
+          ((r.info && r.info.skippedShards) ? '（跳过 ' + r.info.skippedShards + ' 个未变化的片）' : '') +
+          '，共 ' + r.nItem + ' 项，约 ' + Math.round(((r.info && r.info.wroteBytes) || 0) / 1024) + 'KB（已压缩）。\n' +
         '两端现在一致，谁都没有被覆盖。');
       }
       return {
