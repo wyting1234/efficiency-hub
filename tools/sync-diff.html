@@ -274,11 +274,20 @@ function collectLocal(){
 }
 
 /* ---------- 云端侧：GitHub Gist ---------- */
+// GitHub 的 CORS 会暴露 x-oauth-scopes / x-ratelimit-*，实测可从前端直接读到。
+// 这让「Token 缺 gist 作用域」这个原本完全静默的失败模式变成屏幕上可见的结论 ——
+// 缺这个作用域时 /gists 不报错、只返回空数组，同步会莫名失败而没有任何线索。
+var GH_LAST = { scopes: null, rateRemaining: null, rateLimit: null };
 async function ghApi(path, token){
   var r=await fetch('https://api.github.com'+path,{
     headers:{ 'Authorization':'token '+token, 'Accept':'application/vnd.github+json' },
     cache:'no-store'
   });
+  try{
+    GH_LAST.scopes = r.headers.get('x-oauth-scopes');
+    GH_LAST.rateRemaining = r.headers.get('x-ratelimit-remaining');
+    GH_LAST.rateLimit = r.headers.get('x-ratelimit-limit');
+  }catch(e){}
   if(!r.ok){
     var body=''; try{ body=await r.text(); }catch(e){}
     var err=new Error('GitHub API HTTP '+r.status+(body? ' · '+body.slice(0,180):''));
@@ -309,6 +318,17 @@ async function readCloudGithub(){
     if(!gid && mine.length){ gid=mine[0].id; out.targetId=gid; out.notes.push('本机未记录 Gist ID，已按最近更新的一份读取。'); }
   }catch(e){
     out.notes.push('列取副本失败（可能 Token 缺 gist 作用域）：'+((e&&e.message)||e));
+  }
+  // 作用域与配额：从上面那次请求的响应头里取（GitHub 的 CORS 暴露了这几个头）。
+  // ⚠ 不要写 HTML 标签进 notes —— 渲染时是 esc() 过的，标签会原样显示出来。
+  out.scopes = GH_LAST.scopes;
+  out.rateRemaining = GH_LAST.rateRemaining;
+  out.rateLimit = GH_LAST.rateLimit;
+  out.scopeMissingGist = !!(out.scopes && String(out.scopes).indexOf('gist') < 0);
+  if(out.scopeMissingGist){
+    out.notes.push('当前 GitHub Token 的作用域是「'+out.scopes+'」，其中没有 gist —— 这种 Token 无法读写云端 Gist，'+
+      '同步必然失败；而且 /gists 接口不会报错、只返回空列表，所以现象看起来像「云端没有数据」，'+
+      '很容易被误判成「数据丢了」。请到 GitHub → Settings → Developer settings → Personal access tokens 重新生成一个勾选 gist 的 Token。');
   }
   if(!gid){ out.notes.push('没有可用的 Gist ID，无法读取云端内容。'); return out; }
 
@@ -507,6 +527,14 @@ function renderReport(local, cloud, rows, kernel, backendId){
     ['排除名单', '键 '+EXCLUDE_KEYS.size+' 个 · 前缀 '+EXCLUDE_PREFIXES.length+' 个'+(kernel.fromKernel?'（现读自内核）':'（内置兜底）')],
     ['载体', cloud.targetId||'(未记录)'],
     ['云端更新时间', cloud.updatedAt||'-'],
+    ['Token 作用域', backendId==='github'
+        ? (cloud.scopes==null ? '<span class="pill p-mut">未读到</span>'
+           : esc(cloud.scopes||'(空)') + (cloud.scopeMissingGist
+              ? ' <span class="pill p-bad">缺 gist，无法同步</span>'
+              : ' <span class="pill p-ok">含 gist</span>'))
+        : '（Gitee 后端无此字段）'],
+    ['API 配额余量', (cloud.rateRemaining!=null && cloud.rateLimit!=null)
+        ? (esc(cloud.rateRemaining)+' / '+esc(cloud.rateLimit)) : '-'],
     ['本机键数', local.rows.length+' 个（可同步） · '+local.excluded.length+' 个被排除 · 合计 '+kb(local.total)],
     [META_KEY, local.metaKeys+' 个键有时间记录'],
   ];
@@ -517,9 +545,17 @@ function renderReport(local, cloud, rows, kernel, backendId){
 
   /* ② 副本检测 */
   var h2='';
-  if(!cloud.copies.length){
-    h2+='<div class="alert a-warn">没能在账号下枚举到载体清单，无法判断是否存在多份副本。'+
-        '这通常是因为当前 Token <b>没有 gist 作用域</b>。</div>';
+  if(cloud.scopeMissingGist){
+    h2+='<div class="alert a-bad"><b>⚠️ Token 缺 gist 作用域 —— 云端同步不可能成功。</b><br>'+
+        '表现就是「点同步没反应 / 报失败 / 云端永远没数据」，而 <code>/gists</code> 接口不报错、只返回空列表，'+
+        '所以从现象上很容易被误判成「数据丢了」。请重新生成一个勾选 <b>gist</b> 的 Token，'+
+        '在侧边栏「云端同步 → 配置」里替换掉。</div>';
+  }
+  if(!cloud.copies.length && !cloud.scopeMissingGist){
+    h2+='<div class="alert a-warn">枚举到的同类云端文件是 <b>0 份</b>，无法判断是否存在多份副本。两种可能，需结合上面的 Token 作用域判断：<br>'+
+        '① Token <b>缺 gist 作用域</b> —— 此时接口返回空列表而不是报错，看上一节即可确认；<br>'+
+        '② 账号下确实没有 —— 意味着这台设备<b>从未成功上传过</b>（或云端副本被删过）。'+
+        '这种情况请先在「数据最新的那台」点一次「本机 → 云端」，再让另一台点「云端 → 本机」。</div>';
   }else if(cloud.copies.length===1){
     h2+='<div class="alert a-ok">✓ 账号下只有 <b>1</b> 份同类云端文件，两台设备应该连的是同一份。</div>';
   }else{
@@ -607,6 +643,9 @@ function renderReport(local, cloud, rows, kernel, backendId){
     ua:navigator.userAgent,
     后端:backendId, 内核build:SYNC_JS_BUILD,
     排除名单来源: kernel.fromKernel? 'ekernel':'builtin',
+    Token作用域:(cloud.scopes==null? null : cloud.scopes),
+    Token缺gist:(!!cloud.scopeMissingGist),
+    API配额余量:(cloud.rateRemaining!=null? cloud.rateRemaining+' / '+cloud.rateLimit : null),
     本地:local.rows.map(function(r){ return {key:r.key,bytes:r.bytes,metaTs:r.metaTs||0,fp:r.fp}; }),
     本地被排除:local.excluded,
     云端:(function(){ var o={}; for(var k in cloud.data){ o[k]={bytes:(cloud.data[k].value||'').length, ts:cloud.data[k].timestamp||0}; } return o; })(),
