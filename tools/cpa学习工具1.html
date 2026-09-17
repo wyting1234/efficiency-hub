@@ -1519,6 +1519,56 @@
             font-size: 10px; font-weight: 700; color: #FAF7F1;
             border-radius: 6px; padding: 1px 6px; align-self: flex-start;
         }
+        /* ===== ★ 需求 3 / 需求 4：闪卡 → 记忆曲线联动 ===== */
+        /* 月历格子里的「🃏 已完成/需复习」——比「🔁 待复习 N」轻一档，不抢知识点数的位置 */
+        .mem-grid .body .cd .fcq {
+            font-size: 10px; color: #6E4F2A; background: rgba(255,255,255,0.75);
+            border-radius: 6px; padding: 0 5px; align-self: flex-start; font-weight: 600; white-space: nowrap;
+        }
+        /* 当天全部复习完 → 用绿色系实心，扫一眼就知道这天收工了 */
+        .mem-grid .body .cd .fcq.all-done { background: rgba(119,128,92,0.92); color: #FAF7F1; }
+        /* 复习清单条目上的闪卡入口 */
+        .rv-fcgo { color: #6E4F2A; font-weight: 700; cursor: pointer; }
+        .rv-fcgo:hover { text-decoration: underline; }
+        /* 当日详情：知识点模式 / 闪卡列表模式 切换 */
+        .mem-dmodes { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 0 10px; }
+        .mem-dmode {
+            border: 1px solid var(--border); background: var(--card-bg, #fff); color: var(--text-secondary);
+            border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .mem-dmode:hover { background: var(--primary-bg, #F7F3EA); }
+        .mem-dmode.active { background: var(--primary, #8A7358); border-color: var(--primary, #8A7358); color: #FAF7F1; }
+        .mem-dmode .mm-n {
+            font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 0 6px;
+            background: var(--primary-bg, #F7F3EA); color: var(--primary-dark, #6E5B43);
+        }
+        .mem-dmode.active .mm-n { background: rgba(255,255,255,0.25); color: #FAF7F1; }
+        .mem-dmode-hint { font-size: 11px; color: #9C9080; }
+        /* 闪卡列表模式 */
+        .mem-fcbar { font-size: 12px; color: var(--text-secondary); margin: 0 0 8px; }
+        .mem-fcbar b { color: var(--primary-dark, #6E5B43); }
+        .mem-fcbar .mf-hint { color: #9C9080; font-size: 11px; margin-left: 8px; }
+        .mem-fclist { display: flex; flex-direction: column; gap: 8px; }
+        .mem-fc {
+            border: 1px solid var(--border); border-left: 4px solid var(--primary, #8A7358);
+            border-radius: 10px; padding: 9px 12px; background: var(--card-bg, #fff); cursor: pointer;
+            transition: background .12s;
+        }
+        .mem-fc:hover { background: var(--primary-bg, #F7F3EA); }
+        .mem-fc.done { opacity: .72; border-left-color: #77805C; }
+        .mem-fc .mf-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+        .mem-fc .mf-q { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.5; }
+        .mem-fc .mf-st { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+        .mem-fc .mf-st.due { background: #F3E3D6; color: #A6503C; }
+        .mem-fc .mf-st.ok { background: #E4EAD6; color: #5C6647; }
+        .mem-fc .mf-st.fresh { background: #F2EDE4; color: #6E6355; }
+        .mem-fc .mf-meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 5px; }
+        .mem-fc .mf-a {
+            font-size: 12px; color: #6E6355; margin-top: 6px; padding-left: 8px;
+            border-left: 2px solid var(--border); line-height: 1.55;
+        }
+
         .mem-legend {
             display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
             padding: 10px 4px 2px; font-size: 11px; color: var(--text-secondary);
@@ -2161,6 +2211,8 @@
                    background: #F1E9DA; color: #7A6A56; margin-left: 4px; }
 .fc-row .fc-flag.edited { background: #E7EDDD; color: #5C6647; }
 .fc-row .fc-flag.orphan { background: #F3E3DC; color: #A6503C; }
+/* 「范围外」比「已不存在」轻——节点还在大纲里，只是本次没覆盖到（虚框，不用实心警示色） */
+.fc-row .fc-flag.scope { background: transparent; border: 1px dashed #D8C9AF; color: #8A7A63; }
 .fc-row .fc-flag.manual { background: #E4E9F0; color: #55647A; }
 
 .fc-tagline { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
@@ -2242,8 +2294,42 @@
 .fce-div { margin: 13px 0 11px; border-top: 1px dashed #E0D5C2; }
 .fce-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 11px; }
 
+/* ===== 需求 5：反面答案下方的标签栏（章 / 节 / 掌握程度 / 复习次数）=====
+   Tom：「闪卡自带章标签、节标签以及掌握程度和复习次数标签，在反面答案的下方另起一栏展示」 */
+.fct-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 11px; border-top: 1px dashed #E0D5C2; }
+.fct { font-size: 11.5px; padding: 3px 8px; border-radius: 20px; background: #F2ECE1; color: #6D6252; white-space: nowrap; }
+.fct-course { background: #EFE7D7; color: #6F5C45; }
+.fct-ch { background: #E8EDDD; color: #5C6647; }
+.fct-sec { background: #E6EDE9; color: #4F6A5C; }
+.fct-mastery { background: #F6EFDC; color: #8A6B3A; letter-spacing: 1px; }
+.fct-count { background: #EDEAF2; color: #5B5470; }
+.fct-edited { background: #F7E9E2; color: #A6503C; }
+.fct-own { background: #F4E7CE; color: #8A6B3A; }
+.fce-subtitle { margin: 14px 0 7px; font-size: 12px; font-weight: 600; color: #8A7F6E; }
+
+/* ===== 需求 6：列表 / 平铺 两种展示 ===== */
+.fc-stylegroup { display: inline-flex; gap: 4px; }
+.fc-btn.active { background: #8A7358; color: #FAF7F1; border-color: #8A7358; }
+.fc-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; padding: 6px 4px 8px; }
+.fc-tile { background: #FFFDF8; border: 1px solid #E6DCCB; border-radius: 10px; padding: 10px 11px;
+           cursor: pointer; display: flex; flex-direction: column; gap: 8px; min-height: 78px; }
+.fc-tile:hover { background: #FBF7EF; border-color: #D9CDB8; }
+.fc-tile-q { font-size: 13.5px; color: #3E372E; line-height: 1.45; flex: 1 1 auto; overflow-wrap: anywhere; }
+.fc-tile-foot { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: #8A7F6E; }
+.fc-tile-m { color: #B08A4A; }
+.fc-tile-t { color: #8A7F6E; }
+.fc-tile-s { color: #A8997F; white-space: nowrap; }
+
 /* ===== 卡片详情 ===== */
 .fc-detail-box { border: 1px solid #E6DCCB; border-radius: 11px; background: #FFFDF8; padding: 15px 16px; margin: 10px 0; }
+
+/* ===== 复习 / 详情弹窗放大（闪卡内容放得下） ===== */
+.plan-dialog.rv-dialog { max-width: 820px; }
+@media (max-width: 700px) {
+    .plan-dialog.rv-dialog { max-width: 100%; padding: 15px; }
+    .fce-box { padding: 12px 12px; }
+}
+
 /* ===== 🌳 知识树（独立页签：浏览 / 展开收拢 / 层级范围 / 搜索 / 体检） ===== */
 .kt-wrap { background: #FFFDF8; border: 1px solid #E6DCCB; border-radius: 12px; padding: 14px 15px 16px; }
 .kt-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -2278,6 +2364,15 @@
 .kt-kidn { flex: 0 0 auto; font-size: 11px; color: #A8997F; }
 .kt-empty { padding: 26px 10px; text-align: center; color: #A8997F; font-size: 13px; line-height: 1.9; }
 
+/* 「📥 记录补充」节点：来自学习记录、大纲里没有的知识点。
+   虚线左边框 + 浅底，与大纲节点一眼可辨 —— 它们是可以被「导入大纲」固化的临时层。 */
+.kt-row-extra { background: #FBF7EE; border-left: 2px dashed #DCC9A6; border-radius: 0 7px 7px 0; }
+.kt-row-extra:hover { background: #F6EFE2; }
+.kt-extra-badge {
+    flex: 0 0 auto; font-size: 10.5px; color: #8A6B3A; background: #F4E7CE;
+    border-radius: 5px; padding: 2px 6px; white-space: nowrap;
+}
+
 /* ===== 闪卡翻面：严格互斥（正面屏 / 反面屏二选一） ===== */
 .fce-backbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed #E6DCCB; }
 .fce-box[data-fce-flip] { cursor: pointer; }
@@ -2286,13 +2381,6 @@
     .kt-body { max-height: none; }
     .kt-bar { gap: 8px; }
     .kt-bar select, .kt-search { max-width: 100%; }
-}
-
-/* ===== 复习 / 详情弹窗放大（闪卡内容放得下） ===== */
-.plan-dialog.rv-dialog { max-width: 820px; }
-@media (max-width: 700px) {
-    .plan-dialog.rv-dialog { max-width: 100%; padding: 15px; }
-    .fce-box { padding: 12px 12px; }
 }
     </style>
     <style>
@@ -3011,14 +3099,22 @@
                 <div class="fc-range" id="fcRange" style="display:none;">
                     <label>起点 <select id="fcFrom"></select></label>
                     <label>终点 <select id="fcTo"></select></label>
+                    <label class="fc-scope-all" title="勾上 = 把整棵树都铺成卡片；不勾 = 只出学习记录碰过的节点">
+                        <input type="checkbox" id="fcScopeAll"> 含未学过的知识点
+                    </label>
                     <button type="button" class="fc-btn sm" id="fcRangeOk">应用</button>
-                    <span class="fc-range-hint">只对范围内「还有下一级」的知识点出卡；最末一级（叶子）不出题。改范围不会删除已有卡片和复习记录。</span>
+                    <span class="fc-range-hint">闪卡只从<b>学习记录</b>生成：记录里选到的知识点、以及它在树上的上级，构成「相邻两级」出卡（正面=上级，反面=直接下级）。<b>未学过的知识点不出卡</b>，想全铺开就勾上「含未学过的知识点」。改范围不会删除已有卡片和复习记录。</span>
                 </div>
                 <div class="fc-tabs" id="fcTabs">
                     <button type="button" class="fc-tab active" data-fcmode="chapter">🌳 按章节</button>
                     <button type="button" class="fc-tab" data-fcmode="tag">🏷 按标签</button>
+                    <button type="button" class="fc-tab" data-fcmode="mastery">🎯 按掌握程度</button>
                     <button type="button" class="fc-tab" data-fcmode="due">⏰ 待复习<span class="fc-badge" id="fcDueBadge">0</span></button>
                     <span class="fc-spacer"></span>
+                    <span class="fc-stylegroup" title="切换展示方式">
+                        <button type="button" class="fc-btn sm" data-fcstyle="list" title="列表模式：一行一张，信息密（类似表格）">☰ 列表</button>
+                        <button type="button" class="fc-btn sm" data-fcstyle="tile" title="平铺模式：只看每张卡的正面">▦ 平铺</button>
+                    </span>
                     <button type="button" class="fc-btn sm" id="fcNewBtn" title="手工新建一张不属于知识点树的卡片">➕ 自建卡</button>
                     <input type="text" class="fc-search" id="fcSearch" placeholder="搜索卡片 / 标签">
                 </div>
@@ -3976,7 +4072,7 @@
             cardCfg: { from: 1, to: 4, builtAt: '' },   // 出题层级范围
             cardCfg: { from: 1, to: 4, builtAt: '' },   // 出题层级范围
             // ---- 知识树页的视图偏好（独立体系，与闪卡互不相干）----
-            ktCfg: { from: 1, to: 3, course: '', chapter: 0, section: 0 },
+            ktCfg: { from: 1, to: 0, course: '', chapter: 0, section: 0 },
             currentCourse: '会计',
             editingId: null,
             filterStar: 'all',
@@ -4070,7 +4166,7 @@
                     if (!(state.cardCfg.from > 0)) state.cardCfg.from = 1;
                     if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
                     if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
-                    state.ktCfg = (data.ktCfg && typeof data.ktCfg === 'object') ? data.ktCfg : { from: 1, to: 3, course: '', chapter: 0, section: 0 };
+                    state.ktCfg = (data.ktCfg && typeof data.ktCfg === 'object') ? data.ktCfg : { from: 1, to: 0, course: '', chapter: 0, section: 0 };
                     if (data.tomato) {
                         state.tomato.count = data.tomato.count || 0;
                         const _tc = data.tomato.cfg;
@@ -4146,7 +4242,7 @@
                 cardIndex: state.cardIndex || {},
                 cardCfg: state.cardCfg || { from: 1, to: 4, builtAt: '' },
                 cardCfg: state.cardCfg || { from: 1, to: 4, builtAt: '' },
-                ktCfg: state.ktCfg || { from: 1, to: 3, course: '', chapter: 0, section: 0 },
+                ktCfg: state.ktCfg || { from: 1, to: 0, course: '', chapter: 0, section: 0 },
                 resourceTypes: Array.isArray(state.resourceTypes) ? state.resourceTypes : null,
                 sources: Array.isArray(state.sources) ? state.sources : null,
                 tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
@@ -8277,6 +8373,8 @@
             let nx = 1;
             while (cells.length < 42) cells.push({ y: yy, m: mm + 1, d: nx++, off: true });
 
+            // ★ 需求 3：闪卡按来源学习记录的复习节点排期 → 按日聚合成「已完成 / 需复习」张数
+            const fcSched = fcScheduleByDate();
             const wds = '一二三四五六日'.split('').map(c => `<div class="wd">${c}</div>`).join('');
             const grid = cells.map(c => {
                 const ds = `${c.y}-${String(c.m).padStart(2, '0')}-${String(c.d).padStart(2, '0')}`;
@@ -8284,16 +8382,20 @@
                 const isSel = ds === memSelected;
                 const recs = byDate[ds] || [];
                 const revKp = plannedKp[ds] || 0;
-                if (c.off || (recs.length === 0 && revKp === 0)) {
+                const fcS = fcSched[ds] || null;                  // ★ 需求 3：这天要复习的闪卡
+                const fcN = fcS ? fcS.total : 0;
+                // 空判断要把闪卡算进去：记录没登记知识点时 revKp=0，但闪卡照样有（见 fcCardsForRecord）
+                if (c.off || (recs.length === 0 && revKp === 0 && fcN === 0)) {
                     return `<div class="cd ${c.off ? 'off' : ''} ${isToday ? 'today' : ''}" data-date="${c.off ? '' : ds}">
                         <div class="num">${c.d}</div>
                     </div>`;
                 }
                 if (recs.length === 0) {
-                    // 当天没有学习记录，但有复习任务
+                    // 当天没有学习记录，但有复习任务 / 闪卡
                     return `<div class="cd ${isToday ? 'today' : ''} ${isSel ? 'sel' : ''}" data-date="${ds}" style="background:#EDEFE3;">
                         <div class="num">${c.d}</div>
-                        <div class="hrs">🔁 待复习 ${revKp}</div>
+                        <div class="hrs">${revKp > 0 ? '🔁 待复习 ' + revKp : ''}</div>
+                        ${fcCellHTML(fcS, false)}
                     </div>`;
                 }
                 const hours = recs.reduce((a, r) => a + (r.durationHours || 0), 0);
@@ -8303,6 +8405,7 @@
                 return `<div class="cd ${isToday ? 'today' : ''} ${isSel ? 'sel' : ''}" data-date="${ds}" style="background:${bg};">
                     <div class="num" style="${dark ? 'color:#FAF7F1;' : ''}">${c.d}</div>
                     <div class="hrs" style="${dark ? 'color:#FAF7F1;background:rgba(255,255,255,0.25);' : ''}">${revKp > 0 ? '🔁 待复习 ' + revKp : ''}</div>
+                    ${fcCellHTML(fcS, dark)}
                     <div class="ret" style="background:${retentionColor(ret)};">🧠${ret}%</div>
                 </div>`;
             }).join('');
@@ -8388,7 +8491,7 @@
                 '<div class="rv-main">' +
                     '<div class="rv-title">' + rvTitleText(r) + ' · ' + roundName(it.round) + '</div>' +
                     ((r.knowledgePoints && r.knowledgePoints.length) ? '<div class="rv-kp">' + kpChipsHTML(r.knowledgePoints, 3) + '</div>' : '') +
-                    '<div class="rv-meta">学习于 ' + r.date + ' ｜ ⏱ ' + r.durationHours + 'h ｜ ' + status + '</div>' +
+                    '<div class="rv-meta">学习于 ' + r.date + ' ｜ ⏱ ' + r.durationHours + 'h ｜ ' + status + fcItemCountHTML(r) + '</div>' +
                 '</div>' +
                 '<div class="rv-date">' +
                     '<div class="d1">' + (+it.sched.slice(5, 7)) + '.' + (+it.sched.slice(8, 10)) + '</div>' +
@@ -8398,6 +8501,7 @@
         }
 
         function renderListBody(todayStr, body) {
+            fcTaskCacheReset();          // ★ 需求 3：一次渲染内缓存「记录 → 卡」
             const items = getReviewItems(todayStr);
             const pendingHTML = items.pending.length
                 ? '<div class="rv-list">' + items.pending.map(it => rvItemHTML(it, false, todayStr)).join('') + '</div>'
@@ -8414,6 +8518,17 @@
                     '<div class="rv-section-title">✅ 已完成<span class="rv-count" style="background:#77805C;">' + items.done.length + '</span></div>' +
                     doneHTML +
                 '</div>';
+            // ★ 需求 3：清单条目上的「🃏 N 张闪卡 →」直通闪卡复习界面
+            //    stopPropagation 挡住 .rv-item 的「单击=勾选完成」，避免点闪卡入口却把复习勾掉了
+            body.querySelectorAll('[data-fcgo]').forEach(el => {
+                el.addEventListener('click', ev => {
+                    ev.stopPropagation();
+                    const r = (state.records || []).filter(x => x.id === el.dataset.fcgo)[0];
+                    if (!r) return;
+                    const cards = fcCardsForTask({ record: r });
+                    if (cards.length && typeof fcOpenReview === 'function') fcOpenReview(cards[0]);
+                });
+            });
             // 单击延迟执行勾选，避免与双击编辑冲突
             body.querySelectorAll('.rv-item').forEach(el => {
                 el.addEventListener('click', () => {
@@ -8738,11 +8853,17 @@
                     '<div class="pf"><label>番茄个数</label><input type="number" min="0" id="rvPomo" value="' + (parseInt(saved.tomatoes, 10) || 0) + '"></div>' +
                     '<div class="pf"><label>第几轮复习</label><select id="rvRound">' + opts + '</select></div>' +
                 '</div>' +
-                '<div class="pf"><label>上期学习内容（系统带入，只读）</label>' +
-                    '<textarea id="rvNote" rows="2" readonly>' + kpEsc(rvPrevText(recordId, rd)) + '</textarea>' +
-                    '<div class="pf-hint">上一轮留下的内容，系统自动带入、不需要改。</div></div>' +
+                // 上期学习内容：默认**收起**，点标题才展开（Tom：内容太长，先不占地方）
+                '<div class="pf"><label class="rv-fold-head" data-rvfold="rvPrevBody">' +
+                    '<span class="rv-fold-caret" id="rvPrevCaret">▸</span>' +
+                    '<span>上期学习内容（系统带入，只读）</span>' +
+                    '<span class="pf-hint" style="margin-left:auto;font-weight:400;">点击标题展开 / 收起</span></label>' +
+                    '<div id="rvPrevBody" style="display:none;">' +
+                        '<textarea id="rvNote" rows="7" readonly>' + kpEsc(rvPrevText(recordId, rd)) + '</textarea>' +
+                        '<div class="pf-hint">上一轮留下的内容，系统自动带入、不需要改。</div>' +
+                    '</div></div>' +
                 // 🃏 闪卡区：同一套复习周期与统计，只是把内容换成「正面 → 点击看反面」的形式
-                fcEmbedHTML(rec) +
+                fcEmbedHTML(rec, kpIdx) +
                 '<div class="pf"><label>新知识点补充</label>' +
                     '<textarea id="rvNew" rows="3" placeholder="本轮新学到 / 新发现的知识点，下轮会作为「上期学习内容」带出来">' + kpEsc(saved.newKp || '') + '</textarea></div>' +
                 '<div class="pf"><label>下轮复习注意事项</label>' +
@@ -8793,6 +8914,19 @@
             box.querySelector('#rvSkipBtn').onclick = function () { doSave(true); };
             rvTimerRender();
             try { fcBindEmbed(box); } catch (e) {}
+            // 「上期学习内容」的展开 / 收起（默认收起；绑定随面板一起重建）
+            (function bindRvFold() {
+                const head = box.querySelector('[data-rvfold]');
+                if (!head) return;
+                head.addEventListener('click', function () {
+                    const body = box.querySelector('#' + head.getAttribute('data-rvfold'));
+                    const caret = head.querySelector('.rv-fold-caret');
+                    if (!body) return;
+                    const willOpen = (body.style.display === 'none');
+                    body.style.display = willOpen ? '' : 'none';
+                    if (caret) caret.textContent = willOpen ? '▾' : '▸';
+                });
+            })();
         }
         /* ============================================================
            🃏 闪卡模块（Flash Cards）
@@ -8830,12 +8964,19 @@
             { k: 'tip',        icon: '💡', label: '下轮提示',   cls: 'c-tip',        ph: '给下一轮复习的自己留个提示' }
         ];
 
-        let fcView = 'chapter';     // chapter | tag | due
+        let fcView = 'chapter';     // chapter | tag | due | mastery
+        let fcStyle = 'list';       // list（表格行）| tile（正面平铺）
         let fcQuery = '';
         let fcEditing = null;       // 正在行内编辑的卡片 id
         let fcCollapsed = {};       // 分组折叠状态
         let fcDetailId = null;      // 卡片详情弹窗当前卡片
         let fcEmbedState = null;    // 复习面板内嵌闪卡的{idx, flipped}
+        // ⚠️ 绑定守卫，对齐知识树模块的 ktBound。
+        //    init() 里曾把 initCardModule() 连写两遍（既有缺陷，见 _reassemble.py 的 P5），
+        //    于是「⚙️ 层级范围」按钮被绑了两个 click —— 第一次把面板 display 置 ''，
+        //    第二次立刻又置回 'none'，净效果是**按钮彻底失效、面板永远打不开**。
+        //    有了守卫，即使宿主再重复调用也只是空转。
+        let fcBound = false;
         let fcEmbedRecord = null;   // 当前复习面板对应的学习记录
 
         // ---------- 状态字段兜底 ----------
@@ -8843,9 +8984,11 @@
             if (!state.cards || typeof state.cards !== 'object') state.cards = {};
             if (!state.cardNotes || typeof state.cardNotes !== 'object') state.cardNotes = {};
             if (!state.cardIndex || typeof state.cardIndex !== 'object') state.cardIndex = {};
-            if (!state.cardCfg || typeof state.cardCfg !== 'object') state.cardCfg = { from: 1, to: 4, builtAt: '' };
+            if (!state.cardCfg || typeof state.cardCfg !== 'object') state.cardCfg = { from: 1, to: 4, builtAt: '', scopeAll: false };
             if (!(state.cardCfg.from > 0)) state.cardCfg.from = 1;
             if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
+            // 需求 2：默认「只出学习记录碰过的节点」；true = 把整棵树都铺开
+            if (state.cardCfg.scopeAll === undefined) state.cardCfg.scopeAll = false;
             return state;
         }
 
@@ -8923,19 +9066,192 @@
             return mx;
         }
 
+        // ---------- ★ 需求 2：闪卡的唯一生成路径 = 每次的学习记录 ----------
+        // 规则（Tom 原话）：「按照 1-2-3-4 四级或者三级知识记录体系，相邻的两级生成闪卡」。
+        //   一次学习记录选定了某节下的知识点路径（cascade 模式是 L1→L2→L3→L4 四级联动，
+        //   manual 模式是一串自由文本）。这条路径上的每一对**相邻两级**构成一张卡：
+        //       正面 = 上一级节点名，反面 = 它的直接下级（恰好就是下一级那一批）
+        //   所以「出卡」与「相邻两级配对」是同一件事，不需要另写配对逻辑。
+        //
+        // 与旧版的差别只有一个：**范围**。
+        //   旧版对整棵树的每个「还有下一级」的节点都出卡 —— 没学过的章节也铺一堆卡，
+        //   清单里全是看不懂的内容。新版只对「学习记录碰过的节点」出卡。
+        //   判据：该节点自己命中，**或它的子树里有命中的节点**（这样上级才会作为
+        //   相邻两级里的上一级出现）。
+        //   「命中」= 记录的知识点文本与节点名归一化后互为包含。
+        //
+        // 记录一条知识点都没登记时 → 视为整节都学过（宁可多出，不可漏掉）。
+        function fcWalkAll() {
+            const rows = [];
+            const proj = fcProj();
+            if (!proj || !proj.kpTree || typeof proj.kpTree !== 'object') return rows;
+            const courses = (Array.isArray(proj.courses) && proj.courses.length) ? proj.courses : Object.keys(proj.kpTree);
+            courses.forEach(function (course) {
+                const byCh = proj.kpTree[course];
+                if (!byCh || typeof byCh !== 'object') return;
+                Object.keys(byCh).map(Number).filter(function (n) { return !isNaN(n); })
+                    .sort(function (a, b) { return a - b; }).forEach(function (ch) {
+                        const bySec = byCh[ch];
+                        if (!bySec || typeof bySec !== 'object') return;
+                        Object.keys(bySec).map(Number).filter(function (n) { return !isNaN(n); })
+                            .sort(function (a, b) { return a - b; }).forEach(function (sec) {
+                                const arr = bySec[sec];
+                                if (!Array.isArray(arr) || !arr.length) return;
+                                const base = { course: course, chapter: ch, section: sec };
+                                const walk = function (list, tier, parentPath) {
+                                    (list || []).forEach(function (node, i) {
+                                        if (!node || typeof node.name !== 'string' || !node.name.trim()) return;
+                                        const path = parentPath.concat([node.name]);
+                                        const kids = (Array.isArray(node.children) ? node.children : [])
+                                            .filter(function (c) { return c && typeof c.name === 'string' && c.name.trim(); });
+                                        rows.push({
+                                            sig: fcSig(base.course, base.chapter, base.section, tier, i + 1),
+                                            course: base.course, chapter: base.chapter, section: base.section,
+                                            tier: tier, order: i + 1, name: node.name,
+                                            answers: kids.map(function (c) { return c.name; }),
+                                            path: path, hasKids: kids.length > 0
+                                        });
+                                        walk(kids, tier + 1, path);
+                                    });
+                                };
+                                walk(arr, 1, []);
+                            });
+                    });
+            });
+            return rows;
+        }
+
+        // ⚠️ 节点身份**必须**用路径，不能用 fcSig。
+        //    fcSig = [course, 章, 节, tier, order] —— 不含分支路径，因此
+        //    「1.1 不只是数理化」(tier2,order1) 与「2.1 快乐的人更有创造力」(tier2,order1)
+        //    会算出同一个 sig。旧版 fcWalkTree 只输出非叶节点，恰好躲过了这个坑；
+        //    本函数要摊平到叶子，一撞号就会把「没学过的分支」误判成「学过」。
+        //    这个 uid 只用于内存集合，**不写进任何存储**，与卡片 id 无关。
+        function fcUid(n) {
+            return [n.course, n.chapter, n.section, (n.path || []).join(' > ')].join('||');
+        }
+
+        // 由卡片反查树节点：优先用**路径**（路径唯一，sig 会撞号，见 fcSigFixMap）。
+        // 老卡片若没有 src.path，退回按 sig 取第一个 —— 那是升级前的旧行为，保持兼容。
+        // 「恢复为系统原文」用它，避免撞号时把卡恢复成**另一个节点**的原文。
+        function fcNodeOfCard(card) {
+            if (!card || !card.src) return null;
+            const s = card.src;
+            const all = fcWalkTree();
+            if (Array.isArray(s.path) && s.path.length) {
+                const want = [s.course, s.chapter, s.section, s.path.join(' > ')].join('||');
+                const hit = all.filter(function (x) { return fcUid(x) === want; });
+                if (hit.length) return hit[0];
+            }
+            const sig = fcSig(s.course, s.chapter, s.section, s.tier, s.order);
+            return all.filter(function (x) { return x.sig === sig; })[0] || null;
+        }
+
+        // 单条学习记录点亮了哪些节点（uid 集合，只含可以出卡的非叶节点）。
+        // ⚠️ 这里必须和 fcBuild 用**同一套**语义，否则会出现
+        //    「卡是这条记录生成的，但记录复习面板里看不到这张卡」这种自相矛盾。
+        //    （旧版 fcCardsForRecord 只按节点**名字**命中筛选，漏掉了祖先链 ——
+        //      于是 1.1 这条记录生成出来的卡「1. 教育的本质」在面板里消失。）
+        function fcLearnedSetForRecord(r) {
+            const out = {};
+            if (!r) return out;
+            const pool = fcWalkAll().filter(function (n) {
+                return n.course === r.course && (+n.chapter === +r.chapter) && (+n.section === +r.section);
+            });
+            if (!pool.length) return out;
+            const marked = {}, markedPaths = [];
+            const kps = (r.knowledgePoints || []).map(function (k) { return fcNormText(k && k.text); }).filter(Boolean);
+            if (!kps.length) {                           // 没登记知识点 → 整节算学过
+                pool.forEach(function (n) { marked[fcUid(n)] = 1; });
+            } else {
+                pool.forEach(function (n) {
+                    const nm = fcNormText(n.name);
+                    if (!nm) return;
+                    if (kps.some(function (k) { return k === nm || k.indexOf(nm) >= 0 || nm.indexOf(k) >= 0; })) {
+                        marked[fcUid(n)] = 1;
+                    }
+                });
+            }
+            pool.forEach(function (n) { if (marked[fcUid(n)]) markedPaths.push(n.path); });
+
+            const isPrefix = function (shortP, longP) {
+                if (longP.length <= shortP.length) return false;
+                for (let i = 0; i < shortP.length; i++) if (longP[i] !== shortP[i]) return false;
+                return true;
+            };
+            pool.forEach(function (n) {
+                if (!n.hasKids) return;                  // 叶子不出卡
+                if (marked[fcUid(n)]) { out[fcUid(n)] = 1; return; }
+                // 子树里有命中的 → 这个上级也要出卡（相邻两级配对的另一头）
+                for (let i = 0; i < markedPaths.length; i++) {
+                    if (isPrefix(n.path, markedPaths[i])) { out[fcUid(n)] = 1; return; }
+                }
+            });
+            return out;
+        }
+
+        // 全部记录合起来 → 「学过」的集合（各记录取并集）
+        function fcLearnedSigSet() {
+            const out = {};
+            (state.records || []).forEach(function (r) {
+                const s = fcLearnedSetForRecord(r);
+                Object.keys(s).forEach(function (k) { out[k] = 1; });
+            });
+            return out;
+        }
+
+        // ⚠️ 撞号消歧（修既有缺陷，非本轮新增功能的产物）
+        //    fcSig 只用 (course, 章, 节, tier, order)：两个不同分支下同层同序号的节点
+        //    会得到同一个 sig，于是 fcIdOf 返回同一个卡片 id —— 后跑到的节点覆盖先前的，
+        //    两张不同的卡被静默并成一张，复习历史也跟着混。
+        //    修法必须是「迁移安全」的：原 sig 留给**卡片上记的 path 与它一致**的那个节点，
+        //    历史原地不动；同一 sig 下的其余节点顺延成 sig#2、sig#3……（新卡，从零开始）。
+        //    没有任何节点能对上时（全新库 / 树被大改），第一个节点保留原 sig。
+        function fcSigFixMap(nodes) {
+            const groups = {};
+            (nodes || []).forEach(function (n) { (groups[n.sig] = groups[n.sig] || []).push(n); });
+            const map = {};
+            Object.keys(groups).forEach(function (sig) {
+                const g = groups[sig];
+                if (g.length === 1) { map[fcUid(g[0])] = sig; return; }
+                let keep = -1;
+                const cid = state.cardIndex ? state.cardIndex[sig] : null;
+                const c = (cid && state.cards) ? state.cards[cid] : null;
+                if (c && c.src && c.src.path) {
+                    const oldUid = fcUid({ course: c.src.course, chapter: c.src.chapter,
+                                           section: c.src.section, path: c.src.path });
+                    for (let i = 0; i < g.length; i++) {
+                        if (fcUid(g[i]) === oldUid) { keep = i; break; }
+                    }
+                }
+                if (keep < 0) keep = 0;
+                g.forEach(function (n, i) {
+                    map[fcUid(n)] = (i === keep) ? sig : (sig + '#' + (i + 1));
+                });
+            });
+            return map;
+        }
+
         // ---------- 生成 / 更新 ----------
         function fcBuild(silent) {
             fcState();
             const nodes = fcWalkTree();
             const from = Math.max(1, parseInt(state.cardCfg.from, 10) || 1);
             const to = Math.max(from, parseInt(state.cardCfg.to, 10) || 99);
-            let added = 0, kept = 0, refreshed = 0, gone = 0, hiddenKeep = 0;
+            // ★ 需求 2：默认只对「学习记录碰过的节点」出卡；scopeAll 时才铺整棵树
+            const scopeAll = (state.cardCfg.scopeAll === true);
+            const learned = scopeAll ? null : fcLearnedSigSet();
+            const learnedN = learned ? Object.keys(learned).length : 0;
+            let added = 0, kept = 0, refreshed = 0, gone = 0, hiddenKeep = 0, skipped = 0, scopeOutN = 0;
             const seen = {};
             const today = dateToStr(new Date());
+            // 撞号消歧：同一 sig 下若有多个不同路径的节点，只让一个用原 sig（见 fcSigFixMap）
+            const sigFix = fcSigFixMap(nodes);
 
             nodes.forEach(function (n) {
                 if (n.tier < from || n.tier > to) return;
-                const id = fcIdOf(n.sig);
+                if (learned && !learned[fcUid(n)]) { skipped++; return; }
+                const id = fcIdOf(sigFix[fcUid(n)] || n.sig);
                 const autoQ = n.name;
                 const autoA = n.answers.join('\n');
                 const srcNow = {
@@ -8962,20 +9278,41 @@
                 seen[id] = 1;
             });
 
-            // 树里已消失的卡：只打标记，不删（复习历史必须留着）
+            // 本次没生成到的卡：只打标记，不删（复习历史必须留着）。
+            // ⚠️ 要分两种，不能都算「已不存在」——否则「收窄得出题范围」之后，
+            //    明明还在树上的节点被标成「树中已不存在」，用户会以为大纲丢了。
+            //      · orphan   = 树上真的没有这个节点了（路径对不上任何节点）
+            //      · scopeOut = 节点还在树上，只是这次不在出卡范围里（没学到 / 层级范围外）
+            const inTree = {};
+            fcWalkAll().forEach(function (n) { inTree[fcUid(n)] = 1; });
             Object.keys(state.cards).forEach(function (id) {
                 const c = state.cards[id];
-                if (c && !c.manual && !seen[id] && !c.orphan) { c.orphan = true; gone++; }
+                if (!c || c.manual) return;
+                if (seen[id]) { c.scopeOut = false; c.orphan = false; return; }
+                const s = c.src || {};
+                const uid = (Array.isArray(s.path) && s.path.length)
+                    ? fcUid({ course: s.course, chapter: s.chapter, section: s.section, path: s.path }) : '';
+                const exists = !!(uid && inTree[uid]);
+                const wasOrphan = !!c.orphan;
+                c.orphan = !exists;
+                c.scopeOut = exists;
+                if (!wasOrphan && c.orphan) gone++;
+                if (exists) scopeOutN++;
             });
 
             state.cardCfg.builtAt = new Date().toISOString();
-            state.cardCfg.lastResult = { added: added, kept: kept, refreshed: refreshed, total: Object.keys(seen).length };
+            state.cardCfg.lastResult = {
+                added: added, kept: kept, refreshed: refreshed,
+                total: Object.keys(seen).length, skipped: skipped, learnedN: learnedN, scopeAll: scopeAll
+            };
             if (!silent) {
                 saveData();
                 fcRender();
                 showToast('🃏 闪卡已更新：新增 ' + added + ' 张，沿用 ' + kept + ' 张' +
                     (refreshed ? '，刷新 ' + refreshed + ' 张' : '') +
                     (hiddenKeep ? '，跳过已隐藏 ' + hiddenKeep + ' 张' : '') +
+                    (!scopeAll && skipped ? '，' + skipped + ' 张未学到（不生成）' : '') +
+                    (scopeOutN ? '，' + scopeOutN + ' 张本次不在范围（历史保留）' : '') +
                     (gone ? '，' + gone + ' 张已不在树中（历史保留）' : ''));
             }
             return state.cardCfg.lastResult;
@@ -9052,8 +9389,9 @@
             return stripKpNo(String(s || '')).replace(/\s+/g, '').toLowerCase();
         }
 
-        // 一次学习（记录）对应哪些卡：先按记录里写的知识点文本精确匹配树节点，
-        // 匹配不上就退化为「该节的全部卡片」——宁可多给，不要漏掉。
+        // 一次学习（记录）对应哪些卡 —— **与 fcBuild 同源**（见 fcLearnedSetForRecord）。
+        // 记录的知识点文本一个节点都命中不了时（例如手工写的自由文本），退化为「该节
+        // 已有的卡片」，宁可多给、不要漏掉。
         function fcCardsForRecord(r) {
             fcState();
             if (!r) return [];
@@ -9061,20 +9399,17 @@
                 return n.course === r.course && (+n.chapter === +r.chapter) && (+n.section === +r.section);
             });
             if (!nodes.length) return [];
-            const kps = (r.knowledgePoints || []).map(function (k) { return fcNormText(k && k.text); }).filter(Boolean);
-            let picked = nodes;
-            if (kps.length) {
-                const hit = nodes.filter(function (n) {
-                    const nm = fcNormText(n.name);
-                    return nm && kps.some(function (k) {
-                        return k === nm || k.indexOf(nm) >= 0 || nm.indexOf(k) >= 0;
-                    });
-                });
-                if (hit.length) picked = hit;
+            let set = fcLearnedSetForRecord(r);
+            if (!Object.keys(set).length) {
+                set = {};
+                nodes.forEach(function (n) { set[fcUid(n)] = 1; });
             }
             const out = [];
-            picked.forEach(function (n) {
-                const id = state.cardIndex[n.sig];
+            // 与 fcBuild 用同一套撞号消歧，否则撞号的节点会取到别人的卡
+            const sigFix = fcSigFixMap(nodes);
+            nodes.forEach(function (n) {
+                if (!set[fcUid(n)]) return;
+                const id = state.cardIndex[sigFix[fcUid(n)] || n.sig];
                 const c = id ? state.cards[id] : null;
                 if (c && !c.hidden) out.push(c);
             });
@@ -9159,6 +9494,88 @@
             return { cls: 'due', text: '复习 ' + p.done + '/' + p.total };
         }
 
+        // ---------- ★ 需求 5：复习界面的标签栏（章 / 节 / 掌握程度 / 复习次数）----------
+        // 「掌握程度」直接取该卡关联学习记录里的「理解」星级（state.records[].understanding），
+        // 取最近一次有评分的记录 —— 不另立一套评分，避免同一个知识点两处打分打架。
+        function fcMasteryOf(card) {
+            let best = null;
+            fcSourceRecords(card).forEach(function (r) {
+                const u = parseInt(r.understanding, 10) || 0;
+                if (u <= 0) return;
+                if (!best || String(r.date || '') >= String(best.date || '')) best = { u: u, date: r.date || '' };
+            });
+            return best;
+        }
+
+        function fcStarStr(n) {
+            const k = Math.max(1, Math.min(5, parseInt(n, 10) || 0));
+            let s = '';
+            for (let i = 1; i <= 5; i++) s += (i <= k ? '★' : '☆');
+            return s;
+        }
+
+        // 反面答案**下方另起一栏**的标签条（Tom：章 标签、节标签、掌握程度、复习次数）
+        function fcTagStripHTML(card) {
+            const s = card.src || {};
+            const proj = fcProj() || {};
+            const chs = proj.chapterNames || {};
+            const chName = (chs[s.course] && chs[s.course][s.chapter]) || '';
+            const secArr = (proj.sectionNames && proj.sectionNames[s.course] && proj.sectionNames[s.course][s.chapter]) || [];
+            const secName = secArr[s.section - 1] || '';
+            const p = fcProgressOf(card);
+            const m = fcMasteryOf(card);
+            const chips = [];
+            if (s.course) chips.push('<span class="fct fct-course" title="科目">📚 ' + kpEsc(String(s.course)) + '</span>');
+            if (s.chapter) chips.push('<span class="fct fct-ch" title="章标签">章 · 第' + s.chapter + L('chapter') + (chName ? ' ' + kpEsc(chName) : '') + '</span>');
+            if (s.section) chips.push('<span class="fct fct-sec" title="节标签">节 · 第' + s.section + L('section') + (secName ? ' ' + kpEsc(secName) : '') + '</span>');
+            chips.push('<span class="fct fct-mastery" title="掌握程度（取自关联学习记录的理解星级）">🎯 掌握 ' +
+                (m ? fcStarStr(m.u) : '未评') + '</span>');
+            chips.push('<span class="fct fct-count" title="已完成的复习轮次 / 总轮次">🔁 复习 ' +
+                (p.linked ? (p.done + '/' + p.total) : '—') + '</span>');
+            if (card.edited) chips.push('<span class="fct fct-edited" title="内容被手工调整过">✏️ 已改过</span>');
+            (card.tags || []).forEach(function (t) {
+                chips.push('<span class="fct fct-own" title="我的标签">🏷 ' + kpEsc(t) + '</span>');
+            });
+            return '<div class="fct-strip">' + chips.join('') + '</div>';
+        }
+
+        // 复习面板内直接保存编辑（与闪卡页的 fcEditSave 同一套内容层语义：
+        // 只写 state.cards，不碰 records / reviewDone / kpReviews / cardNotes）
+        function fcEmbedSave(card) {
+            const qEl = document.getElementById('fceEq');
+            const aEl = document.getElementById('fceEa');
+            const tEl = document.getElementById('fceEt');
+            if (!qEl || !aEl) return false;
+            const q = qEl.value;
+            if (!q.trim()) { showToast('⚠️ 正面内容不能为空'); return false; }
+            const raw = String(tEl ? tEl.value : '').split(/[,，;；]/).map(function (x) { return x.trim(); }).filter(Boolean);
+            const auto = fcAutoTags(card);
+            const seen = {};
+            card.tags = raw.filter(function (t) {
+                if (seen[t] || auto.indexOf(t) !== -1) return false;
+                seen[t] = 1; return true;
+            });
+            card.q = q;
+            card.a = aEl.value;
+            card.edited = true;
+            card.editedAt = dateToStr(new Date());
+            saveData();
+            showToast('✏️ 已保存（复习进度与笔记不受影响，下次打开可继续补充）');
+            return true;
+        }
+
+        function fcEmbedRestore(card) {
+            if (!card.src) { showToast('⚠️ 自建卡片没有系统原文'); return; }
+            const n = fcNodeOfCard(card);
+            if (!n) { showToast('⚠️ 树里已找不到这个节点，无法恢复原文'); return; }
+            card.q = n.name;
+            card.a = n.answers.join('\n');
+            card.edited = false;
+            card.editedAt = dateToStr(new Date());
+            saveData();
+            showToast('↩️ 已恢复为系统原文');
+        }
+
         // 「时间未知」的卡 —— 没有任何复习排期的卡片，按难度从高到低排。
         // 难度 = 历史遗忘/模糊次数（有复习过的），否则用「答案条数 + 树深」估初始难度，可解释、不引黑盒。
         function fcDifficulty(card) {
@@ -9199,9 +9616,16 @@
             const from = Math.max(1, parseInt(cfg.from, 10) || 1);
             const to = Math.max(from, parseInt(cfg.to, 10) || 99);
             const statEl = document.getElementById('fcStat');
+            const sa = document.getElementById('fcScopeAll');
+            if (sa) sa.checked = (cfg.scopeAll === true);
             if (statEl) {
+                const lr = cfg.lastResult || {};
                 statEl.textContent = all.length
-                    ? ('共 ' + all.length + ' 张 · 出题层级 第' + from + '–' + to + ' 级 · 复习周期与上方记录复习共用')
+                    ? ('共 ' + all.length + ' 张 · 层级 第' + from + '–' + to + ' 级 · ' +
+                       (cfg.scopeAll
+                           ? '范围＝整棵树'
+                           : '范围＝学习记录' + (lr.skipped ? '（' + lr.skipped + ' 个节点还没学到）' : '')) +
+                       ' · 复习周期与记忆曲线共用')
                     : '尚未生成';
             }
             const hiddenN = fcHiddenCount();
@@ -9216,11 +9640,15 @@
             document.querySelectorAll('#fcTabs .fc-tab').forEach(function (b) {
                 b.classList.toggle('active', b.dataset.fcmode === fcView);
             });
+            document.querySelectorAll('#fcTabs [data-fcstyle]').forEach(function (b) {
+                b.classList.toggle('active', b.dataset.fcstyle === fcStyle);
+            });
             const si = document.getElementById('fcSearch');
             if (si && si.value !== fcQuery) si.value = fcQuery;
 
             if (fcView === 'chapter') body.innerHTML = fcChapterHTML();
             else if (fcView === 'tag') body.innerHTML = fcTagHTML();
+            else if (fcView === 'mastery') body.innerHTML = fcMasteryHTML();
             else body.innerHTML = fcDueHTML();
 
             fcBindBody(body);
@@ -9267,6 +9695,75 @@
             return '这棵树里还没有可出题的层级。<br>闪卡只对「还有下一级」的知识点出卡，请点 <b>⚡ 生成 / 更新</b> 或调整 <b>⚙️ 层级范围</b>。';
         }
 
+        // ---------- 卡片行 / 平铺卡 ----------
+        // 需求 6 的「两种展示」：list = 类似表格的行（信息密），tile = 只露正面（看得快）。
+        // 两者点下去都是「进复习模块」—— 与记忆曲线里那套复习完全同源。
+        function fcTileHTML(card) {
+            const st = fcStatusOf(card);
+            const m = fcMasteryOf(card);
+            const own = (card.tags || []).length;
+            return '<div class="fc-tile" data-fcid="' + card.id + '" title="点击进入复习（与记忆曲线同一套排期）">' +
+                '<div class="fc-tile-q">' + kpEsc(card.q) + '</div>' +
+                '<div class="fc-tile-foot">' +
+                    '<span class="fc-dot ' + st.cls + '"></span>' +
+                    '<span class="fc-tile-m">' + (m ? fcStarStr(m.u) : '未评') + '</span>' +
+                    (own ? '<span class="fc-tile-t">🏷' + own + '</span>' : '') +
+                    '<span class="fc-spacer"></span>' +
+                    '<span class="fc-tile-s">' + kpEsc(st.text) + '</span>' +
+                '</div>' +
+            '</div>';
+        }
+
+        // 统一出口：按当前样式渲染一组卡片
+        function fcCardsHTML(list, opts) {
+            opts = opts || {};
+            if (fcStyle === 'tile') {
+                return '<div class="fc-tiles">' + list.map(fcTileHTML).join('') + '</div>';
+            }
+            return list.map(function (c) { return fcRowHTML(c, opts); }).join('');
+        }
+
+        // 点卡片 → 进复习模块（Tom：内容 / 用法 / 数据联动都与记忆曲线一致）
+        // 关联不到学习记录时退回卡片详情弹窗，至少不会点了没反应。
+        function fcOpenReview(card) {
+            if (!card) return;
+            const recs = fcSourceRecords(card).slice().sort(function (a, b) {
+                return String(b.date || '').localeCompare(String(a.date || ''));
+            });
+            if (!recs.length || typeof openReviewPanel !== 'function') { fcDetail(card.id); return; }
+            const rec = recs[0];
+            const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [];
+            const doneKeys = {};
+            (state.reviewDone || []).forEach(function (x) { doneKeys[x.recordId + '#' + x.round] = 1; });
+            let round = Math.max(1, ivs.length);
+            for (let i = 0; i < ivs.length; i++) {          // 第一个还没做完的轮次
+                if (!doneKeys[rec.id + '#' + (i + 1)]) { round = i + 1; break; }
+            }
+            const kps = rec.knowledgePoints || [];
+            const nm = fcNormText(card.q);
+            let kpIdx = -1;
+            kps.forEach(function (k, i) {
+                if (kpIdx >= 0) return;
+                const kt = fcNormText(k && k.text);
+                if (kt && nm && (kt.indexOf(nm) >= 0 || nm.indexOf(kt) >= 0)) kpIdx = i;
+            });
+            openReviewPanel(rec.id, round, kpIdx);
+            // ★ 需求 6：面板默认落在记录的第一个知识点那张卡上，但用户点的是**哪张卡**
+            //   就该看到哪张卡。面板的卡列表与 fcBuild 同源，所以被点的卡一定在列表里，
+            //   把内嵌索引拨过去再重渲一次即可。
+            try {
+                if (fcEmbedState && Array.isArray(fcEmbedState.ids)) {
+                    const k = fcEmbedState.ids.indexOf(card.id);
+                    if (k >= 0 && k !== fcEmbedState.idx) {
+                        fcEmbedState.idx = k;
+                        fcEmbedState.flipped = false;
+                        fcEmbedState.editing = false;
+                        fcEmbedRender();
+                    }
+                }
+            } catch (e) { }
+        }
+
         // ---------- 卡片行 ----------
         function fcRowHTML(card, opts) {
             opts = opts || {};
@@ -9277,6 +9774,7 @@
             if (card.edited) flags.push('<span class="fc-flag edited">已编辑</span>');
             if (card.manual) flags.push('<span class="fc-flag manual">自建</span>');
             if (card.orphan) flags.push('<span class="fc-flag orphan">树中已不存在</span>');
+            else if (card.scopeOut) flags.push('<span class="fc-flag scope" title="这个节点还在大纲里，只是本次出卡范围没覆盖到它（没学到 / 层级范围外）">范围外 · 本次未生成</span>');
             const a1 = String(card.a || '').split('\n').filter(function (s) { return s.trim(); });
             const noteN = (state.cardNotes[card.id] || []).length;
             return '<div class="fc-row" data-fcid="' + card.id + '" style="margin-left:' + indent + 'px;">' +
@@ -9365,7 +9863,7 @@
                             'sec|' + course + '|' + ch + '|' + sec,
                             sec ? ('第' + sec + L('section') + (secName ? ' ' + secName : '')) : '未指定小节',
                             '<span class="fc-gmeta">' + list.length + ' 张</span>',
-                            list.map(function (c) { return fcRowHTML(c); }).join('')
+                            fcCardsHTML(list)
                         );
                     });
                     nCourse += nCh;
@@ -9404,7 +9902,7 @@
                 ownKeys.length
                     ? ownKeys.map(function (t) {
                         return fcGroupHTML('own|' + t, t, '<span class="fc-gmeta">' + own[t].length + ' 张</span>',
-                            own[t].map(function (c) { return fcRowHTML(c, { noIndent: true }); }).join(''));
+                            fcCardsHTML(own[t], { noIndent: true }));
                     }).join('')
                     : '<div class="fc-empty" style="padding:8px 4px;">还没有自定义标签。点任意卡片右侧的 ✎ ，在「我的标签」里用逗号分隔添加。</div>'
             ));
@@ -9413,10 +9911,41 @@
                 '<span class="fc-gmeta">' + autoKeys.length + ' 个</span>',
                 autoKeys.map(function (t) {
                     return fcGroupHTML('auto|' + t, t, '<span class="fc-gmeta">' + auto[t].length + ' 张</span>',
-                        auto[t].map(function (c) { return fcRowHTML(c, { noIndent: true }); }).join(''));
+                        fcCardsHTML(auto[t], { noIndent: true }));
                 }).join('')
             ));
             return out.join('');
+        }
+
+        // ---------- 按掌握程度（需求 6：按章节 / 掌握程度 / 标签 都能筛）----------
+        // 掌握程度取自关联学习记录的「理解」星级，四档：未评 / 薄弱 / 一般 / 熟练。
+        function fcMasteryHTML() {
+            const all = fcVisibleCards();
+            const cards = all.filter(fcMatch);
+            if (!cards.length) {
+                return all.length
+                    ? fcEmptyHTML('没有匹配「' + kpEsc(fcQuery) + '」的卡片。')
+                    : fcEmptyHTML(fcNoCardsHTML());
+            }
+            const buckets = [
+                { k: 'none', name: '⚪ 还没评过', hint: '关联的学习记录里没填「理解」星级',
+                  test: function (m) { return !m; } },
+                { k: 'low', name: '🔴 薄弱（★–★★）', hint: '理解 1–2 星 · 优先复习',
+                  test: function (m) { return !!m && m.u <= 2; } },
+                { k: 'mid', name: '🟡 一般（★★★）', hint: '理解 3 星',
+                  test: function (m) { return !!m && m.u === 3; } },
+                { k: 'high', name: '🟢 熟练（★★★★–★★★★★）', hint: '理解 4–5 星',
+                  test: function (m) { return !!m && m.u >= 4; } }
+            ];
+            const out = [];
+            buckets.forEach(function (b) {
+                const list = cards.filter(function (c) { return b.test(fcMasteryOf(c)); });
+                if (!list.length) return;
+                out.push(fcGroupHTML('mst|' + b.k, b.name,
+                    '<span class="fc-gmeta">' + list.length + ' 张 · ' + b.hint + '</span>',
+                    fcCardsHTML(list, { noIndent: true })));
+            });
+            return out.join('') || fcEmptyHTML('没有卡片。');
         }
 
         // ---------- 待复习（与记录复习同一套排期） ----------
@@ -9456,17 +9985,19 @@
             if (pend.length) {
                 h += fcGroupHTML('fcpending', '⏰ 今天该复习的闪卡',
                     '<span class="fc-gmeta">' + pend.length + ' 张 · 来自 ' + today + ' 的复习清单</span>',
-                    pend.map(function (c) { return fcRowHTML(c, { noIndent: true }); }).join(''));
+                    fcCardsHTML(pend, { noIndent: true }));
             } else {
                 h += '<div class="fc-empty" style="padding:10px 4px;">今天没有到期的复习任务 —— 到上方「📋 复习清单」或月历里安排。</div>';
             }
             if (uns.length) {
                 h += fcGroupHTML('fcuns', '🕐 还没有复习排期的卡（时间未知 → 难度高的排前面）',
                     '<span class="fc-gmeta">' + uns.length + ' 张</span>',
-                    uns.map(function (c) {
-                        return fcRowHTML(c, { noIndent: true })
-                            .replace('<div class="fc-side">', '<div class="fc-side">难度 ' + fcDifficulty(c) + '<br>');
-                    }).join(''));
+                    fcStyle === 'tile'
+                        ? fcCardsHTML(uns, { noIndent: true })
+                        : uns.map(function (c) {
+                            return fcRowHTML(c, { noIndent: true })
+                                .replace('<div class="fc-side">', '<div class="fc-side">难度 ' + fcDifficulty(c) + '<br>');
+                        }).join(''));
             }
             return h;
         }
@@ -9477,6 +10008,14 @@
             body.dataset.fcbound = '1';
             body.addEventListener('click', function (e) {
                 const t = e.target;
+                // 视图样式切换（列表 / 平铺）—— 放在最前面，避免被卡片点击吃掉
+                const sb = t.closest ? t.closest('[data-fcstyle]') : null;
+                if (sb) {
+                    e.stopPropagation();
+                    const want = sb.dataset.fcstyle;
+                    if (want && want !== fcStyle) { fcStyle = want; fcRender(); }
+                    return;
+                }
                 const ghead = t.closest ? t.closest('.fc-ghead') : null;
                 if (ghead && ghead.parentNode && ghead.parentNode.dataset.fckey
                     && ghead.parentNode.dataset.fckey !== 'fcpending'
@@ -9495,8 +10034,11 @@
                 if (hide) { e.stopPropagation(); fcHide(hide.dataset.fchide); return; }
                 const eb = t.closest ? t.closest('[data-fcedit]') : null;
                 if (eb) { e.stopPropagation(); fcEditing = (fcEditing === eb.dataset.fcedit) ? null : eb.dataset.fcedit; fcRender(); return; }
+                // ★ 需求 6：点卡片本身 → 直接进复习模块（与记忆曲线同一套排期与统计）
+                const tile = t.closest ? t.closest('.fc-tile') : null;
+                if (tile && tile.dataset.fcid) { fcOpenReview(state.cards[tile.dataset.fcid]); return; }
                 const row = t.closest ? t.closest('.fc-row') : null;
-                if (row && row.dataset.fcid) { fcDetail(row.dataset.fcid); }
+                if (row && row.dataset.fcid) { fcOpenReview(state.cards[row.dataset.fcid]); }
             });
         }
 
@@ -9529,8 +10071,7 @@
         function fcEditRestore(id) {
             const card = state.cards[id];
             if (!card || !card.src) { showToast('⚠️ 自建卡片没有系统原文'); return; }
-            const sig = fcSig(card.src.course, card.src.chapter, card.src.section, card.src.tier, card.src.order);
-            const n = fcWalkTree().find(function (x) { return x.sig === sig; });
+            const n = fcNodeOfCard(card);
             if (!n) { showToast('⚠️ 树里已找不到这个节点，无法恢复原文'); return; }
             card.q = n.name;
             card.a = n.answers.join('\n');
@@ -9670,7 +10211,12 @@
         // ---------- 复习面板内嵌的闪卡区 ----------
         // 记录复习面板里的「学习笔记」就是它：先看正面，点击翻到反面
         // （答案 + 标签 + 补充 / 联想 / 提示子栏）。
-        function fcEmbedHTML(rec) {
+        // kpIdx = 用户是从**哪条知识点**点进来的（月历上的知识点 chip）。
+        // ★ 面板该停在哪张卡：优先「用户点的那条知识点」对应的卡 ——
+        //   一条记录会带出多张卡（相邻两级配对，含祖先链），固定停在第 0 张
+        //   会让「点开『1.1 不只是数理化』却看到卡『1. 教育的本质』」。
+        //   没给 kpIdx 就退化为「记录命中的第一条知识点」，都对不上才用第 0 张。
+        function fcEmbedHTML(rec, kpIdx) {
             fcState();
             const cards = fcCardsForRecord(rec);
             fcEmbedRecord = rec;
@@ -9681,7 +10227,28 @@
                     '<div class="fc-empty" style="padding:10px 4px;">这一节还没有可用的闪卡。到顶部 <b>🃏 闪卡</b> 页点 <b>⚡ 生成 / 更新</b>。</div>' +
                 '</div>';
             }
-            fcEmbedState = { idx: 0, flipped: false, ids: cards.map(function (c) { return c.id; }) };
+            const kpsOf = (rec && rec.knowledgePoints) || [];
+            const pushByKp = function (k) {          // 这条知识点对应第几张卡（-1 = 对不上）
+                const kt = fcNormText(k && k.text);
+                if (!kt) return -1;
+                return cards.findIndex(function (c) {
+                    const p = (c.src && Array.isArray(c.src.path) && c.src.path.length)
+                        ? c.src.path[c.src.path.length - 1] : c.q;
+                    const nm = fcNormText(p);
+                    return !!nm && (nm === kt || kt.indexOf(nm) >= 0 || nm.indexOf(kt) >= 0);
+                });
+            };
+            let startIdx = 0;
+            if (kpIdx >= 0 && kpsOf[kpIdx]) {
+                const t = pushByKp(kpsOf[kpIdx]);
+                if (t >= 0) startIdx = t;
+            } else {
+                for (let i = 0; i < kpsOf.length; i++) {
+                    const t = pushByKp(kpsOf[i]);
+                    if (t >= 0) { startIdx = t; break; }
+                }
+            }
+            fcEmbedState = { idx: startIdx, flipped: false, editing: false, ids: cards.map(function (c) { return c.id; }) };
             return '<div class="fce-wrap" id="fceWrap">' +
                 '<div class="fce-head">' +
                     '<span class="fce-title">🃏 本次闪卡</span>' +
@@ -9702,8 +10269,36 @@
             const pos = document.getElementById('fcePos');
             if (pos) pos.textContent = String(fcEmbedState.idx + 1);
             if (!card) { stage.innerHTML = '<div class="fc-empty">卡片已不存在</div>'; return; }
+
+            // ★ 需求 5：编辑态 —— 自动生成的内容常常要按自己的理解改一改，
+            //   改的就是这张卡的 q / a / 自定义标签，下次打开还能接着改。
+            if (fcEmbedState.editing) {
+                stage.innerHTML =
+                    '<div class="fce-box">' +
+                        '<div class="fce-backbar">' +
+                            '<span class="fc-face-label">✏️ 编辑这张卡</span>' +
+                            '<span class="fc-spacer"></span>' +
+                            '<button type="button" class="fc-btn sm" data-fce-cancel="1">取消</button>' +
+                        '</div>' +
+                        '<div class="pf"><label>正面（问题 / 提示）</label>' +
+                            '<textarea rows="2" id="fceEq">' + kpEsc(card.q) + '</textarea></div>' +
+                        '<div class="pf"><label>反面（答案，可多行）</label>' +
+                            '<textarea rows="5" id="fceEa">' + kpEsc(card.a || '') + '</textarea></div>' +
+                        '<div class="pf"><label>我的标签（逗号分隔；章节标签系统自动带出，无需手填）</label>' +
+                            '<input type="text" id="fceEt" value="' + kpEsc((card.tags || []).join(', ')) + '">' +
+                            '<div class="fc-hint">自动标签：' + kpEsc(fcAutoTags(card).join(' / ') || '（无）') + '</div></div>' +
+                        '<div class="fc-hint">✏️ 修改只作用于这张卡的文字与标签 —— 不触碰已积累的复习记录、轮次完成情况与笔记。保存后下次打开可继续补充。</div>' +
+                        '<div class="fc-edit-actions">' +
+                            '<button type="button" class="fc-btn primary" data-fce-save="1">保存</button>' +
+                            '<span class="fc-spacer"></span>' +
+                            '<button type="button" class="fc-btn sm" data-fce-restore="1">恢复系统原文</button>' +
+                        '</div>' +
+                    '</div>';
+                return;
+            }
+
             // ★ 严格互斥：同一时刻只渲染一面。
-            //   正面屏 = 只有问题；反面屏 = 只有答案 + 标签 + 子栏。
+            //   正面屏 = 只有问题；反面屏 = 只有答案 + 标签栏 + 子栏。
             //   （旧版把正面缩小留在反面屏上方当上下文，本轮按 Tom 要求撤掉。）
             if (!fcEmbedState.flipped) {
                 stage.innerHTML =
@@ -9720,13 +10315,13 @@
                     '<div class="fce-backbar">' +
                         '<span class="fc-face-label">反面 · 答案</span>' +
                         '<span class="fc-spacer"></span>' +
+                        '<button type="button" class="fc-btn sm" data-fce-edit="1" title="改这张卡的正面 / 反面 / 标签">✎ 编辑</button>' +
                         '<button type="button" class="fc-btn sm" data-fce-flip="0">↩ 回到正面</button>' +
                     '</div>' +
                     '<div class="fc-face-a">' + kpEsc(card.a || '（无）') + '</div>' +
-                    '<div class="fce-tags">' + fcAllTags(card).map(function (t) {
-                        const own = (card.tags || []).indexOf(t) !== -1;
-                        return '<span class="fc-tag ' + (own ? 'own' : 'auto') + '">' + kpEsc(t) + '</span>';
-                    }).join('') + '</div>' +
+                    // 标签栏：章 / 节 / 掌握程度 / 复习次数（另起一栏，在答案下方）
+                    fcTagStripHTML(card) +
+                    '<div class="fce-subtitle">📝 复习补充（本轮新学到 / 联想到的，可一直加）</div>' +
                     fcNoteSectionsHTML(card, notes, 'fceNote') +
                 '</div>';
             fcBindNotes(stage, card, 'fceNote');
@@ -9737,24 +10332,47 @@
             if (!wrap || wrap.dataset.fcebound === '1') return;
             wrap.dataset.fcebound = '1';
             wrap.addEventListener('click', function (e) {
+                const pick = function (attr) { return e.target.closest ? e.target.closest('[' + attr + ']') : null; };
+                const curCard = function () {
+                    return (fcEmbedState && state.cards[fcEmbedState.ids[fcEmbedState.idx]]) || null;
+                };
+                // 编辑态四件套（进入 / 取消 / 保存 / 恢复原文）
+                if (pick('data-fce-edit') && fcEmbedState) {
+                    fcEmbedState.editing = true; fcEmbedRender(); return;
+                }
+                if (pick('data-fce-cancel') && fcEmbedState) {
+                    fcEmbedState.editing = false; fcEmbedRender(); return;
+                }
+                if (pick('data-fce-save') && fcEmbedState) {
+                    const c = curCard();
+                    if (c && fcEmbedSave(c)) { fcEmbedState.editing = false; fcEmbedRender(); fcRender(); }
+                    return;
+                }
+                if (pick('data-fce-restore') && fcEmbedState) {
+                    const c = curCard();
+                    if (c) { fcEmbedRestore(c); fcEmbedRender(); fcRender(); }
+                    return;
+                }
                 // 翻面：data-fce-flip="1" 翻到反面，"0" 翻回正面。
                 // 正面整块（含问题文字）都可点 —— 对应「学习笔记展示正面，
                 // 再次点击成为反面」；反面屏只在标题行 / 按钮上可点回，
                 // 免得想选一段答案文字却被翻回正面。
-                const flip = e.target.closest ? e.target.closest('[data-fce-flip]') : null;
+                const flip = pick('data-fce-flip');
                 if (flip) {
                     if (fcEmbedState) {
                         fcEmbedState.flipped = String(flip.getAttribute('data-fce-flip')) === '1';
+                        fcEmbedState.editing = false;
                         fcEmbedRender();
                     }
                     return;
                 }
-                const nav = e.target.closest ? e.target.closest('[data-fce-nav]') : null;
+                const nav = pick('data-fce-nav');
                 if (nav && fcEmbedState) {
                     const n = parseInt(nav.dataset.fceNav, 10) || 0;
                     const len = fcEmbedState.ids.length;
                     fcEmbedState.idx = ((fcEmbedState.idx + n) % len + len) % len;
                     fcEmbedState.flipped = false;
+                    fcEmbedState.editing = false;
                     fcEmbedRender();
                 }
             });
@@ -9763,6 +10381,8 @@
 
         // ---------- 初始化（Tab 上的按钮只绑一次） ----------
         function initCardModule() {
+            if (fcBound) return;        // 见 fcBound 注释：防重复绑定（重复绑会让层级范围按钮失效）
+            fcBound = true;
             const build = document.getElementById('fcBuildBtn');
             if (build) build.addEventListener('click', function () { fcBuild(false); });
             const rbtn = document.getElementById('fcRangeBtn');
@@ -9786,11 +10406,28 @@
                 saveData();
                 fcBuild(false);
             });
+            // 范围开关：勾上 = 整棵树都铺卡；取消 = 只出学习记录碰过的节点（默认）
+            const sa = document.getElementById('fcScopeAll');
+            if (sa) sa.addEventListener('change', function () {
+                fcState();
+                state.cardCfg.scopeAll = !!sa.checked;
+                saveData();
+                fcBuild(false);
+            });
             document.querySelectorAll('#fcTabs .fc-tab').forEach(function (b) {
                 b.addEventListener('click', function () {
                     fcView = b.dataset.fcmode || 'chapter';
                     fcEditing = null;
                     fcRender();
+                });
+            });
+            // 列表 / 平铺 切换。#fcTabs 与 #fcBody 是兄弟节点，
+            // 所以这里必须单独绑 —— 别指望 fcBindBody 的委托能收到。
+            document.querySelectorAll('#fcTabs [data-fcstyle]').forEach(function (b) {
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const want = b.dataset.fcstyle;
+                    if (want && want !== fcStyle) { fcStyle = want; fcRender(); }
                 });
             });
             const s = document.getElementById('fcSearch');
@@ -9841,6 +10478,16 @@
         let ktOpen = {};        // sig -> true / false：用户手动覆盖过的展开状态
         let ktBound = false;
 
+        // 「终点层级」的哨兵值：0 = 自动 = 展示到**次级节点，不到最底层**。
+        //
+        // 语义澄清（v50 按 Tom 的口径定死）：
+        //   展开第 t 级 → 它的下一级（t+1）随之可见。所以要「看到第 k 级」，
+        //   必须展开到第 k-1 级。于是：
+        //     看到「次级节点（倒数第二级）」→ 展开到 (最深级 - 2)
+        //   例：4 级树 → 展开到 2 → 屏上出现 1/2/3 级，叶子（第 4 级）不铺开。
+        //       3 级树 → 展开到 1 → 屏上出现 1/2 级，叶子（第 3 级）不铺开。
+        const KT_TO_AUTO = 0;
+
         function ktProj() {
             try { return (typeof getCurrentProject === 'function') ? getCurrentProject() : null; } catch (e) { return null; }
         }
@@ -9848,9 +10495,18 @@
         function ktState() {
             if (!state.ktCfg || typeof state.ktCfg !== 'object') state.ktCfg = {};
             if (!(state.ktCfg.from > 0)) state.ktCfg.from = 1;
-            if (!(state.ktCfg.to > 0)) state.ktCfg.to = 3;
-            if (state.ktCfg.to < state.ktCfg.from) state.ktCfg.to = state.ktCfg.from;
+            // 缺失 / null → 自动档（不是 1，也不是 3）
+            if (state.ktCfg.to === undefined || state.ktCfg.to === null) state.ktCfg.to = KT_TO_AUTO;
+            if (state.ktCfg.to !== KT_TO_AUTO && state.ktCfg.to < state.ktCfg.from) state.ktCfg.to = state.ktCfg.from;
             return state.ktCfg;
+        }
+
+        // 把「终点层级」解析成真实层级数字。mxVal = 当前范围内最深的层级。
+        function ktResolveTo(mxVal) {
+            const cfg = ktState();
+            const top = Math.max(1, mxVal || 1);
+            if (cfg.to === KT_TO_AUTO) return Math.max(1, top - 2);   // 次级 = 倒数第二级
+            return Math.min(cfg.to, top);
         }
 
         // 展开状态的键 = 下标路径（科目|章|节#i.j.k），不是节点名 —— 改名不丢展开状态
@@ -9876,26 +10532,106 @@
             });
         }
 
-        // 整棵项目树摊平（所有科目 / 章 / 节）
+        // ---------- 摊平整棵树（大纲 ∪ 学习记录）----------
+        // ★ 需求 1：知识树 = 创建科目时录入的章节 / 知识点  ∪  后续学习记录里补充的内容。
+        //   「补充」的判据：某条记录的知识点文本，在它所属那一节的知识点树里找不到同名节点。
+        //   这类文本作为「📥 记录补充」节点自动挂到那一节的顶层 —— 记录一改，这里跟着变，
+        //   不需要用户手工往大纲里再录一遍。
+        //
+        //   注意：本模块仍是**只读**的 —— 合并在内存里完成，一个字节都不写回 kpTree。
+        //   （要把它固化成大纲，走「⚙️ 设置 → 导入大纲」。）
+        function ktNorm(s) {
+            return String(s || '')
+                .replace(/^[\s\u3000]*[0-9]{1,3}\s*[.、．)）:：]\s*/, '')   // 剥掉行首序号
+                .replace(/\s+/g, '')
+                .toLowerCase();
+        }
+
+        function ktTreeNodeAt(tree, course, ch, sec) {
+            try {
+                const byCh = tree[course];
+                if (!byCh) return [];
+                const bySec = byCh[ch];
+                if (!bySec) return [];
+                const arr = bySec[sec];
+                return Array.isArray(arr) ? arr : [];
+            } catch (e) { return []; }
+        }
+
+        // 该节里「记录写了但树里没有」的知识点
+        function ktRecordExtras(course, ch, sec, treeNodes) {
+            const have = {};
+            (treeNodes || []).forEach(function (n) { const k = ktNorm(n.name); if (k) have[k] = 1; });
+            const out = [];
+            (state.records || []).forEach(function (r) {
+                if (!r || r.course !== course) return;
+                if (+(r.chapter || 0) !== +ch || +(r.section || 0) !== +sec) return;
+                (r.knowledgePoints || []).forEach(function (k) {
+                    const t = String((k && k.text) || '').trim();
+                    const key = ktNorm(t);
+                    if (!key || have[key]) return;
+                    have[key] = 1;                       // 同节内去重
+                    out.push({ name: t, recId: r.id || '', recDate: r.date || '' });
+                });
+            });
+            return out;
+        }
+
+        // 整棵项目树摊平（所有科目 / 章 / 节），并并入学习记录补充的节点
         function ktAllNodes() {
             const out = [];
             const proj = ktProj();
-            if (!proj || !proj.kpTree || typeof proj.kpTree !== 'object') return out;
-            const courses = (Array.isArray(proj.courses) && proj.courses.length) ? proj.courses : Object.keys(proj.kpTree);
+            const tree = (proj && proj.kpTree && typeof proj.kpTree === 'object') ? proj.kpTree : {};
+
+            // ① 「科目 / 章 / 节」的全集 = 树里有的 ∪ 记录里出现过的
+            const seen = {}, combos = [];
+            const push = function (course, ch, sec) {
+                if (!course) return;
+                const k = course + '|' + ch + '|' + sec;
+                if (seen[k]) return;
+                seen[k] = 1;
+                combos.push({ course: course, chapter: ch, section: sec });
+            };
+            const courses = (Array.isArray(proj && proj.courses) && proj.courses.length)
+                ? proj.courses : Object.keys(tree);
             courses.forEach(function (course) {
-                const byCh = proj.kpTree[course];
+                const byCh = tree[course];
                 if (!byCh || typeof byCh !== 'object') return;
                 Object.keys(byCh).map(Number).filter(function (n) { return !isNaN(n); })
                     .sort(function (a, b) { return a - b; }).forEach(function (ch) {
                         const bySec = byCh[ch];
                         if (!bySec || typeof bySec !== 'object') return;
                         Object.keys(bySec).map(Number).filter(function (n) { return !isNaN(n); })
-                            .sort(function (a, b) { return a - b; }).forEach(function (sec) {
-                                const arr = bySec[sec];
-                                if (!Array.isArray(arr) || !arr.length) return;
-                                ktFlatten(arr, { course: course, chapter: ch, section: sec }, 0, [], [], out);
-                            });
+                            .sort(function (a, b) { return a - b; }).forEach(function (sec) { push(course, ch, sec); });
                     });
+            });
+            (state.records || []).forEach(function (r) {
+                if (!r || !r.course) return;
+                const kps = (r.knowledgePoints || []).filter(function (k) { return k && String(k.text || '').trim(); });
+                if (kps.length) push(r.course, r.chapter || 0, r.section || 0);
+            });
+            combos.sort(function (a, b) {
+                return String(a.course).localeCompare(String(b.course))
+                    || (a.chapter - b.chapter) || (a.section - b.section);
+            });
+
+            // ② 逐个组合摊平：树节点在前，「记录补充」追加在后
+            combos.forEach(function (c) {
+                const base = { course: c.course, chapter: c.chapter, section: c.section };
+                const local = [];
+                ktFlatten(ktTreeNodeAt(tree, c.course, c.chapter, c.section), base, 0, [], [], local);
+                ktRecordExtras(c.course, c.chapter, c.section, local).forEach(function (x, i) {
+                    local.push({
+                        // 虚拟下标路径 9xxx：与真实节点的 i.j.k 不可能撞号
+                        sig: ktSig(c.course, c.chapter, c.section, [9000 + i]),
+                        parent: '',
+                        course: c.course, chapter: c.chapter, section: c.section,
+                        tier: 1, order: 9000 + i, name: x.name, kidN: 0,
+                        crumb: x.name + '（来自学习记录）',
+                        extra: true, recId: x.recId, recDate: x.recDate
+                    });
+                });
+                local.forEach(function (n) { out.push(n); });
             });
             return out;
         }
@@ -9968,23 +10704,34 @@
             };
             const sf = document.getElementById('ktFrom'), st = document.getElementById('ktTo');
             if (sf) sf.innerHTML = opts(Math.min(cfg.from, mx));
-            if (st) st.innerHTML = opts(Math.min(cfg.to, mx));
+            // 终点多给一个「次级（不到最底层）」自动档，且它是默认值 ——
+            // 按 Tom 的要求：默认只铺到次级节点，最底层叶子不铺开。
+            if (st) {
+                st.innerHTML =
+                    '<option value="' + KT_TO_AUTO + '"' + (cfg.to === KT_TO_AUTO ? ' selected' : '') +
+                        '>次级（不到最底层）</option>' +
+                    opts(cfg.to === KT_TO_AUTO ? -1 : Math.min(cfg.to, mx));
+            }
         }
 
         // ---------- 统计条 ----------
         function ktPaintStats(scope) {
             const total = scope.length;
-            const leaf = scope.filter(function (n) { return !n.kidN; }).length;
-            const mx = ktMaxTier(scope);
+            const extra = scope.filter(function (n) { return n.extra; }).length;
+            const pure = scope.filter(function (n) { return !n.extra; });
+            const leaf = pure.filter(function (n) { return !n.kidN; }).length;
+            const mx = ktMaxTier(pure);
             const set = function (id, v) { const el = document.getElementById(id); if (el) el.textContent = String(v); };
             set('ktTotal', total); set('ktLeaf', leaf); set('ktDepth', total ? mx : 0);
 
+            // 层级分布只算大纲节点 —— 「记录补充」不属于任何大纲层级，单列一格
             const byTier = {};
-            scope.forEach(function (n) { byTier[n.tier] = (byTier[n.tier] || 0) + 1; });
+            pure.forEach(function (n) { byTier[n.tier] = (byTier[n.tier] || 0) + 1; });
             const bar = document.getElementById('ktTierBar');
             if (bar) {
                 const parts = [];
                 for (let t = 1; t <= mx; t++) parts.push('第' + t + '级 ' + (byTier[t] || 0));
+                if (extra) parts.push('📥 记录补充 ' + extra);
                 bar.innerHTML = total ? parts.map(function (s) { return '<span>' + s + '</span>'; }).join('') : '';
             }
         }
@@ -10011,13 +10758,20 @@
             const cfg = ktState();
             const scope = all.filter(function (n) {
                 return n.course === cfg.course && +n.chapter === +cfg.chapter && +n.section === +cfg.section;
+            }).sort(function (a, b) {
+                // 「记录补充」统一沉底 —— 它们是外加的，不该打断大纲本身的层级顺序
+                if (!!a.extra !== !!b.extra) return a.extra ? 1 : -1;
+                return 0;                            // 其余保持原顺序（Array#sort 是稳定的）
             });
+            // 终点层级在这里才解析得出来（要知道这一节最深几级）
+            const toTier = ktResolveTo(ktMaxTier(scope));
             ktPaintStats(all);
 
             const secNm = ktSectionName(proj, cfg.course, cfg.chapter, cfg.section);
             if (statEl) {
                 statEl.textContent = cfg.course + ' · 第 ' + cfg.chapter + ' 章' + (ktChapterName(proj, cfg.course, cfg.chapter) ? ' ' + ktChapterName(proj, cfg.course, cfg.chapter) : '') +
-                    ' · 第 ' + cfg.section + ' 节' + (secNm ? ' ' + secNm : '') + ' —— 本节 ' + scope.length + ' 个节点';
+                    ' · 第 ' + cfg.section + ' 节' + (secNm ? ' ' + secNm : '') + ' —— 本节 ' + scope.length + ' 个节点' +
+                    ' · 展开 第' + cfg.from + '–' + toTier + ' 级' + (cfg.to === KT_TO_AUTO ? '（次级）' : '');
             }
 
             if (!scope.length) {
@@ -10050,7 +10804,7 @@
                 let e;
                 if (q) e = !!keep[n.sig] && !matched[n.sig];
                 else if (ktOpen[n.sig] !== undefined) e = !!ktOpen[n.sig];
-                else e = (n.tier >= cfg.from && n.tier <= cfg.to);
+                else e = (n.tier >= cfg.from && n.tier <= toTier);
                 expd[n.sig] = e && n.kidN > 0;
             });
 
@@ -10071,11 +10825,13 @@
                 const caret = n.kidN
                     ? '<span class="kt-caret" data-kt-toggle="' + esc(n.sig) + '" title="展开 / 收拢">' + (expd[n.sig] ? '▾' : '▸') + '</span>'
                     : '<span class="kt-caret kt-leaf">·</span>';
-                html += '<div class="kt-row" data-kt-sig="' + esc(n.sig) + '" title="' + esc(n.crumb) + '" style="padding-left:' + ((n.tier - 1) * 18) + 'px;">' +
+                html += '<div class="kt-row' + (n.extra ? ' kt-row-extra' : '') + '" data-kt-sig="' + esc(n.sig) + '" title="' + esc(n.crumb) + '" style="padding-left:' + ((n.tier - 1) * 18) + 'px;">' +
                     caret +
                     '<span class="kt-name">' + label(n) + '</span>' +
-                    '<span class="kt-tier">L' + n.tier + '</span>' +
-                    (n.kidN ? '<span class="kt-kidn">' + n.kidN + ' 个子节点</span>' : '<span class="kt-kidn">叶子</span>') +
+                    (n.extra
+                        ? '<span class="kt-extra-badge" title="' + esc(n.recDate ? ('来自 ' + n.recDate + ' 的学习记录') : '来自学习记录') + '">📥 记录补充</span>'
+                        : ('<span class="kt-tier">L' + n.tier + '</span>' +
+                           (n.kidN ? '<span class="kt-kidn">' + n.kidN + ' 个子节点</span>' : '<span class="kt-kidn">叶子</span>'))) +
                     '</div>';
             });
 
@@ -10103,7 +10859,7 @@
                         const row = t.parentNode;
                         const tierEl = row ? row.querySelector('.kt-tier') : null;
                         const tier = tierEl ? parseInt(String(tierEl.textContent).replace(/[^\d]/g, ''), 10) : cfg.from;
-                        ktOpen[sig] = (tier >= cfg.from && tier <= cfg.to);
+                        ktOpen[sig] = (tier >= cfg.from && tier <= ktResolveTo(ktMaxTier(ktAllNodes())));
                     }
                     ktOpen[sig] = !ktOpen[sig];
                     ktRender();
@@ -10131,9 +10887,18 @@
                     if (id === 'ktChapter') { cfg.chapter = parseInt(g('ktChapter'), 10) || 0; cfg.section = 0; }
                     if (id === 'ktSection') { cfg.section = parseInt(g('ktSection'), 10) || 0; }
                     if (id === 'ktFrom' || id === 'ktTo') {
-                        let a = parseInt(g('ktFrom'), 10) || 1, b = parseInt(g('ktTo'), 10) || 1;
-                        if (b < a) { const t = a; a = b; b = t; }
-                        cfg.from = a; cfg.to = b;
+                        // ⚠️ ktTo 的 0 是「自动到次级」的哨兵，不能走 `parseInt(...) || 1`
+                        //    —— 那会把 0 变成 1，自动档就悄悄退化成「只展开一级」。
+                        const a = parseInt(g('ktFrom'), 10) || 1;
+                        const bRaw = g('ktTo');
+                        let b = (bRaw === '' || bRaw === null) ? KT_TO_AUTO : parseInt(bRaw, 10);
+                        if (isNaN(b)) b = KT_TO_AUTO;
+                        // 只对「两个都是具体层级」的情形做大小纠正；自动档不参与
+                        if (b !== KT_TO_AUTO && b < a) {
+                            cfg.from = b; cfg.to = a;
+                        } else {
+                            cfg.from = a; cfg.to = b;
+                        }
                         ktOpen = {};                      // 改范围 = 回到「按范围展开」
                     }
                     saveData();
@@ -10173,12 +10938,149 @@
             showToast('🔁 ' + roundName(d.round) + (d.skipped ? ' 已标记完成' : (' 已记录：🍅 ' + d.tomatoes + ' 个 · ' + (d.hours || 0) + 'h')) + nextTip);
         }
 
+        /* ============================================================
+           ★ 需求 3 / 需求 4：闪卡 → 记忆曲线的联动
+           闪卡不另开一条复习轨道：它按**来源学习记录**的艾宾浩斯轮次排期，
+           与「复习清单 / 月历 / 当日详情」共用同一套节点（进度判定见 fcProgressOf）。
+           这里只做聚合与展示：
+             fcCardsForTask(t)     单个复习任务 → 该轮次的卡
+             fcScheduleByDate()    { 'YYYY-MM-DD': { total, done, cards } }
+             fcCellHTML(slot)      月历格子里的「🃏 已完成/需复习」
+             fcItemCountHTML(r)    清单条目上的「🃏 N 张闪卡 →」
+             memDetailFcHTML(ds)   当日详情的「闪卡列表模式」
+        ============================================================ */
+        let memDetailMode = 'kp';        // 'kp' = 知识点模式（原有）｜ 'cards' = 闪卡列表模式
+        let fcTaskCache = null;          // 一次渲染内的「记录 → 卡」缓存（清单条目多，避免反复遍历知识点树）
+
+        function fcTaskCacheReset() { fcTaskCache = {}; }
+
+        function fcCardsForTask(t) {
+            if (!t || !t.record) return [];
+            const rid = t.record.id;
+            if (fcTaskCache && fcTaskCache[rid]) return fcTaskCache[rid];
+            let out = [];
+            try { out = fcCardsForRecord(t.record) || []; } catch (e) { out = []; }
+            if (fcTaskCache) fcTaskCache[rid] = out;
+            return out;
+        }
+
+        // 按日聚合：某天有几张卡要复习、其中几张已复习完。
+        // 口径按**卡**去重 —— 同一张卡当天被多个轮次命中只算一张；
+        // 「已完成」要求该卡当天命中的**所有**轮次都已勾选，否则一张还有事要做的卡会被算成完成。
+        function fcScheduleByDate() {
+            fcTaskCacheReset();
+            const out = {};
+            const doneKeys = new Set((state.reviewDone || []).map(x => x.recordId + '#' + x.round));
+            const rvOv = state.reviewOverrides || {};
+            const rvDel = state.reviewDeleted || {};
+            const ivs = getReviewIntervals();
+            (state.records || []).forEach(r => {
+                if (r.addToMemory === false) return;                  // 未加入记忆曲线 → 不排期
+                const cards = fcCardsForTask({ record: r }).filter(c => c && !c.hidden);
+                if (!cards.length) return;                            // 闪卡还没生成 → 这天不出现标记
+                ivs.forEach((iv, i) => {
+                    const round = i + 1;
+                    const key = r.id + '#' + round;
+                    if (rvDel[key]) return;
+                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
+                    const slot = out[sched] || (out[sched] = { total: 0, done: 0, src: {} });
+                    const isDone = doneKeys.has(key);
+                    cards.forEach(c => {
+                        const rec = slot.src[c.id] || (slot.src[c.id] = { card: c, pend: 0 });
+                        if (!isDone) rec.pend++;
+                    });
+                });
+            });
+            Object.keys(out).forEach(ds => {
+                const slot = out[ds];
+                const cards = Object.keys(slot.src).map(function (k) { return slot.src[k]; });
+                cards.sort(function (a, b) {
+                    const x = a.card.src || {}, y = b.card.src || {};
+                    return String(x.course || '～').localeCompare(String(y.course || '～'))
+                        || ((x.chapter || 0) - (y.chapter || 0))
+                        || ((x.section || 0) - (y.section || 0))
+                        || ((x.tier || 0) - (y.tier || 0))
+                        || ((x.order || 0) - (y.order || 0));
+                });
+                slot.cards = cards;
+                slot.total = cards.length;
+                slot.done = cards.filter(function (x) { return x.pend === 0; }).length;
+                delete slot.src;
+            });
+            return out;
+        }
+
+        // 月历格子里的闪卡标记（dark = 当天学习 ≥4h 的深色格子，文字要反白）
+        function fcCellHTML(slot, dark) {
+            if (!slot || !slot.total) return '';
+            const allDone = slot.done >= slot.total;
+            const st = dark ? 'color:#FAF7F1;background:rgba(255,255,255,0.25);' : '';
+            return '<div class="fcq' + (allDone ? ' all-done' : '') + '" style="' + st + '" title="闪卡：已完成 ' +
+                slot.done + ' / 当天需复习 ' + slot.total + ' 张' + (allDone ? '（已全部复习完）' : '') + '">🃏 ' +
+                slot.done + '/' + slot.total + '</div>';
+        }
+
+        // 复习清单条目上的闪卡张数 + 直达入口（需求 3：闪卡推到清单）
+        function fcItemCountHTML(r) {
+            const n = fcCardsForTask({ record: r }).length;
+            if (!n) return '';
+            return ' ｜ <span class="rv-fcgo" data-fcgo="' + planEsc(r.id) +
+                '" title="点此进入这些闪卡的复习界面">🃏 ' + n + ' 张闪卡 →</span>';
+        }
+
+        // 当日详情的模式切换条（需求 4）
+        function memDetailModeBarHTML(taskN, fcN) {
+            const on = memDetailMode === 'cards';
+            return '<div class="mem-dmodes">' +
+                '<button type="button" class="mem-dmode' + (on ? '' : ' active') + '" data-dmode="kp">' +
+                    '📋 知识点模式<span class="mm-n">' + taskN + '</span></button>' +
+                '<button type="button" class="mem-dmode' + (on ? ' active' : '') + '" data-dmode="cards">' +
+                    '🃏 闪卡列表<span class="mm-n">' + fcN + '</span></button>' +
+                '<span class="mem-dmode-hint">两种模式进入的是<b>同一个复习界面</b>，数据与记忆曲线完全联动</span>' +
+            '</div>';
+        }
+
+        // 当日详情 · 闪卡列表模式：一张一行，点进闪卡复习界面
+        function memDetailFcHTML(ds, slot) {
+            const list = (slot && slot.cards) ? slot.cards : [];
+            if (!list.length) {
+                return '<div class="mem-detail-empty">这天没有闪卡要复习。<br>' +
+                    '闪卡按<b>学习记录</b>的复习节点排期（' + getReviewIntervals().join(' / ') + ' 天）：' +
+                    '先在「🃏 闪卡」页生成，或换一天看看。</div>';
+            }
+            const proj = fcProj() || {};
+            const rows = list.map(function (x) {
+                const c = x.card, s = c.src || {};
+                const chName = (proj.chapterNames && proj.chapterNames[s.course] && proj.chapterNames[s.course][s.chapter]) || '';
+                const secArr = (proj.sectionNames && proj.sectionNames[s.course] && proj.sectionNames[s.course][s.chapter]) || [];
+                const secName = secArr[s.section - 1] || '';
+                const st = fcStatusOf(c);
+                const aTxt = String(c.a || '').replace(/\s+/g, ' ').trim();
+                return '<div class="mem-fc' + (x.pend ? '' : ' done') + '" data-fcid="' + planEsc(c.id) + '" title="点此进入闪卡复习界面">' +
+                    '<div class="mf-top">' +
+                        '<div class="mf-q">' + kpEsc(c.q || '（无正面）') + '</div>' +
+                        '<span class="mf-st ' + st.cls + '">' + kpEsc(st.text) + '</span>' +
+                    '</div>' +
+                    '<div class="mf-meta">' + kpEsc(String(s.course || '') + ' · 第' + (s.chapter || '-') + L('chapter') +
+                        (chName ? ' ' + chName : '') + ' · 第' + (s.section || '-') + L('section') + (secName ? ' ' + secName : '')) +
+                        ((c.tags && c.tags.length) ? ' ｜ 🏷 ' + kpEsc(c.tags.join('、')) : '') + '</div>' +
+                    (aTxt ? '<div class="mf-a">' + kpEsc(aTxt.slice(0, 92)) + (aTxt.length > 92 ? '…' : '') + '</div>' : '') +
+                '</div>';
+            }).join('');
+            return '<div class="mem-fcbar">🃏 当天需复习 <b>' + list.length + '</b> 张 ｜ 已完成 <b>' + slot.done +
+                '</b> 张<span class="mf-hint">点任意一张进入闪卡复习界面（可翻面看答案、可编辑、可补充）</span></div>' +
+                '<div class="mem-fclist">' + rows + '</div>';
+        }
+
         function renderMemDetail(ds) {
             const todayStr = dateToStr(new Date());
             const recs = state.records.filter(r => r.date === ds);
             const tasks = getReviewTasksOnDate(ds);
             const box = document.getElementById('memDetail');
-            if (recs.length === 0 && tasks.length === 0) {
+            // ★ 需求 3：这天要复习的闪卡（与月历格子同源，见 fcScheduleByDate）
+            const fcSlot = fcScheduleByDate()[ds] || null;
+            const fcN = fcSlot ? fcSlot.total : 0;
+            if (recs.length === 0 && tasks.length === 0 && !fcN) {
                 box.innerHTML = `<div class="mem-detail-empty">${ds} 当天没有学习记录，也没有待复习的知识点</div>`;
                 return;
             }
@@ -10229,8 +11131,27 @@
                     </svg>
                 </div>`;
             }).join('');
-            box.innerHTML = `<h4>📆 ${m}月${d}日 · 周${week} · ${recs.length} 条学习记录${tasks.length ? ' · ' + tasks.length + ' 项复习任务' : ''}（虚线 = 复习节点）</h4>`
-                + reviewTasksHTML(ds, tasks) + items;
+            // ★ 需求 4：两种模式共用一个出口 —— 知识点模式（原有）/ 闪卡列表模式
+            box.innerHTML = `<h4>📆 ${m}月${d}日 · 周${week} · ${recs.length} 条学习记录${tasks.length ? ' · ' + tasks.length + ' 项复习任务' : ''}${fcN ? ' · 🃏 ' + fcN + ' 张闪卡' : ''}（虚线 = 复习节点）</h4>`
+                + memDetailModeBarHTML(tasks.length, fcN)
+                + (memDetailMode === 'cards' ? memDetailFcHTML(ds, fcSlot) : (reviewTasksHTML(ds, tasks) + items));
+            // ★ 需求 4：模式切换（选择在同一天内保持，换日期也保留）
+            box.querySelectorAll('.mem-dmode').forEach(el => {
+                el.addEventListener('click', function (ev) {
+                    ev.stopPropagation();
+                    const m2 = el.dataset.dmode;
+                    if (!m2 || m2 === memDetailMode) return;
+                    memDetailMode = m2;
+                    renderMemDetail(ds);
+                });
+            });
+            // ★ 需求 4：闪卡列表模式里点单张卡 → 同一个闪卡复习界面（可编辑 / 补充 / 翻面）
+            box.querySelectorAll('.mem-fc').forEach(el => {
+                el.addEventListener('click', function () {
+                    const c = (state.cards || {})[el.dataset.fcid];
+                    if (c && typeof fcOpenReview === 'function') fcOpenReview(c);
+                });
+            });
             // 点知识点 → 进入复习界面（直接带上这一轮复习）
             box.querySelectorAll('.kp-chip-link').forEach(el => {
                 el.addEventListener('click', function (ev) {
@@ -10367,7 +11288,6 @@
             initViewTabs();
             initMemoryView();
             renderProjectSelect();
-            try { initCardModule(); } catch (e) { console.warn('闪卡模块初始化失败：', e); }
             try { initCardModule(); } catch (e) { console.warn('闪卡模块初始化失败：', e); }
             try { initKpTreeModule(); } catch (e) { console.warn('知识树模块初始化失败：', e); }
 
@@ -12849,7 +13769,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917g</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917j</div>
 <!-- build-tag:end -->
 </body>
 </html>
