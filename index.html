@@ -184,7 +184,7 @@
   #toggleTools.collapsed{transform:rotate(180deg)}
 
 
-  #navList{overflow:hidden;transition:max-height .25s ease,opacity .25s ease;max-height:calc(100vh - 230px);opacity:1}
+  #navList{overflow:hidden;transition:max-height .25s ease,opacity .25s ease;max-height:calc(100vh - 258px);opacity:1}
 
 
   #navList:not(.collapsed){overflow-y:auto;overflow-x:hidden}
@@ -237,10 +237,14 @@
   .drag-handle:active{cursor:grabbing}
 
 
-  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:12px;padding-bottom:28px;border-top:1px solid rgba(255,255,255,.07)}
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:12px;padding-bottom:12px;border-top:1px solid rgba(255,255,255,.07)}
   /* 构建标记（技能 §21）：每次推送改为 V+YYYYMMDD+字母，同日 a→b→c */
   #buildTag{position:fixed;left:8px;bottom:8px;z-index:30;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;padding:4px 7px;border-radius:6px;background:rgba(15,23,42,.5);color:#fff;opacity:.62;pointer-events:none;user-select:none;white-space:nowrap}
-  @media print{ #buildTag{display:none} }
+  /* v2：徽标归位到侧栏底部 —— 与侧栏同生命周期（收起/手机端滑出时一起走），
+     不再是一个压在工具内容上、用户关不掉的浮层。搬不进去时仍退回上面那条左下角定位。 */
+  #buildTag.in-side{position:static;left:auto;bottom:auto;z-index:auto;display:block;opacity:1;margin-top:2px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.06);color:#8ea2c0;text-align:center;overflow:hidden;text-overflow:ellipsis;pointer-events:auto;user-select:text;cursor:default}
+  #buildTag.in-side:hover{background:rgba(255,255,255,.1);color:#cbd8ea}
+  @media print{ #buildTag,#buildTag.in-side{display:none} }
 
 
   .side-btn{
@@ -2454,11 +2458,11 @@ document.addEventListener('pointerdown', e => {
 </script>
 
 
-<script src="sync-github.js?v=62"></script>
+<script src="sync-github.js?v=64"></script>
 
 
 <!-- Gitee 备选后端：复用 sync-github.js 导出的 CloudSyncCore，必须排在其后加载 -->
-<script src="sync-gitee.js?v=63"></script>
+<script src="sync-gitee.js?v=64"></script>
 
 
 <!-- 统一数据备份中心：入口已合并到侧边栏「云端同步」，提供全站备份/恢复/快照/体检 -->
@@ -2466,10 +2470,12 @@ document.addEventListener('pointerdown', e => {
 
 
 <script>
-/* 版本联动（技能 §21/§22）：本页版本 = 项目最新推送版本；打开工具时追加该工具自己的版本。
-   versions.json 由推送脚本维护。读不到就退回上次缓存，再读不到就只显示本页版本 —— 绝不阻塞渲染。 */
+/* 版本联动（技能 §21/§22，v2）：徽标改为「导航侧栏底部的一行」，不再是浮在视口上的浮层 ——
+   浮层在手机端 / 侧栏收起时会盖在工具内容上，而且用户关不掉。
+   本页版本 = 项目最新推送版本（versions.json 的 latest）；打开工具时追加该工具自己的版本。
+   三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260917d';
+  var NAV_VER = 'V20260917e';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -2485,12 +2491,25 @@ document.addEventListener('pointerdown', e => {
     }catch(e){}
     return '';
   }
+  /* 兜底数据源：直接问 iframe 里的工具页「你自报的是哪一版」。
+     同源，读得到 —— 工具页自己的徽标被 html.embedded 隐藏了，但元素还在、文本可读。
+     用途：versions.json 还没登记这个文件时（新工具刚加进来）也能显示正确版本。 */
+  function frameVer(id){
+    try{
+      var b = document.getElementById('frame-' + id);
+      var f = b && b.querySelector('iframe');
+      var d = f && f.contentDocument;
+      var t = d && d.getElementById('buildTag');
+      return t && t.textContent ? t.textContent.trim() : '';
+    }catch(e){ return ''; }
+  }
   function paint(){
     var el = badge(); if(!el) return;
     var cur = lastMod(), tv = '';
     if(cur && cur.type === 'tool'){
       var f = fileOf(cur.id);
       if(f && FILES[f]) tv = FILES[f];
+      if(!tv) tv = frameVer(cur.id);
     }
     if(tv && tv !== NAV_VER){
       el.textContent = NAV_VER + ' · 本工具 ' + tv;
@@ -2500,11 +2519,24 @@ document.addEventListener('pointerdown', e => {
       el.title = '构建版本（确认本设备加载的是哪一版）：' + NAV_VER;
     }
   }
+  /* 把徽标搬进侧栏底部（.side-foot）：进得去就是侧栏的一部分，进不去就保留原来的
+     左下角浮动 —— 自愈，不报错、不阻塞。 */
+  function mount(){
+    var el = badge(); if(!el) return;
+    try{
+      var foot = document.querySelector('.sidebar .side-foot');
+      if(foot){
+        if(el.parentNode !== foot) foot.appendChild(el);
+        if(el.className !== 'in-side') el.className = 'in-side';
+      }
+    }catch(e){}
+  }
+  function refresh(){ mount(); paint(); }
   try{
     var c = localStorage.getItem(CACHE_KEY);
     if(c){ var o = JSON.parse(c); if(o && o.files) FILES = o.files; }
   }catch(e){}
-  paint();
+  refresh();
   try{
     fetch('versions.json', { cache: 'no-cache' }).then(function(r){
       return r.ok ? r.json() : null;
@@ -2512,21 +2544,27 @@ document.addEventListener('pointerdown', e => {
       if(j && j.files){
         FILES = j.files;
         try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ files: j.files, at: Date.now() })); }catch(e){}
-        paint();
+        refresh();
       }
     }).catch(function(){});
   }catch(e){}
+  /* 切子工具就重绘。两处都挂：① openModule 被调用（点导航）；
+     ② #toolContainer 上的 load 事件（工具页真正加载完，第三级兜底版本源才读得到）。 */
   try{
     if(typeof openModule === 'function'){
       var _orig = openModule;
-      openModule = function(t, i){ _orig(t, i); setTimeout(paint, 0); };
+      openModule = function(t, i){ _orig(t, i); setTimeout(refresh, 0); };
     }
   }catch(e){}
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint);
-  else paint();
+  try{
+    var box = document.getElementById('toolContainer');
+    if(box) box.addEventListener('load', function(){ setTimeout(refresh, 0); }, true);
+  }catch(e){}
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh);
+  window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260917d</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260917e</div>
 </body>
 
 
