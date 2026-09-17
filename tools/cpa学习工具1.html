@@ -2847,6 +2847,38 @@
            只是淡显 + 虚线左边框，并说明它的归宿是卡片反面、不单独出卡。 */
         .kp-hrow.kp-hdeep > .kp-htext { background: transparent; border-left-style: dashed; border-left-color: #E2D8C6; color: var(--text-secondary); }
         .kp-hrow.kp-hdeep > .kp-hno { color: #B9AE9A; }
+        /* ★ 「思维导图视角」：纵向树 + 虚线连接，**不带编号** —— 层级完全由连线与缩进表达。
+           为什么不画成知识树那种「左→右分支」：记录卡片在手机 / 效率中心 iframe 里宽度很窄，
+           横向分支会把内容挤出视口、逼出横向滚动条；纵向树只在垂直方向增长。
+           与默认 / 大纲 / MD 三视角同一口径：**不裁层级**，逐层独立成行。 */
+        .kp-mind { display: block; padding: 2px 0 2px 2px; }
+        .kp-mnode { position: relative; padding: 3px 0 3px 17px; line-height: 1.5; }
+        .kp-mnode > .kp-mtext {
+            display: inline-block; max-width: 100%; box-sizing: border-box;
+            padding: 1px 8px; border-radius: 7px; font-size: 12.5px; color: var(--text);
+            background: #F1EBDF; border: 1px solid #E4DBCA; word-break: break-word;
+        }
+        .kp-mnode.kp-mlv2 > .kp-mtext { background: #F6F2E9; }
+        .kp-mnode.kp-mlv3 > .kp-mtext, .kp-mnode.kp-mlv4 > .kp-mtext { background: #FAF7F0; font-size: 12px; }
+        .kp-mnode.kp-mlv1 > .kp-mtext { background: #EAE0CC; border-color: #DCCFB4; font-weight: 600; }
+        .kp-mnode.kp-mdeep > .kp-mtext { background: transparent; border-style: dashed; color: var(--text-secondary); }
+        /* 连接线：一条竖线 + 本行的横臂（直角折线，与知识树同一套视觉语言） */
+        .kp-mnode::before {
+            content: ''; position: absolute; left: 7px; top: 0; bottom: 0;
+            border-left: 1px dashed #DCD1BC;
+        }
+        .kp-mnode::after {
+            content: ''; position: absolute; left: 7px; top: 50%; width: 8px;
+            border-top: 1px dashed #DCD1BC;
+        }
+        .kp-mnode.kp-mlast::before { bottom: 50%; }     /* 末位子节点：竖线收在横臂处，不拖尾 */
+        .kp-mnode.kp-mlv1 { padding-left: 0; }          /* 根节点不画线、不缩进 */
+        .kp-mnode.kp-mlv1::before, .kp-mnode.kp-mlv1::after { display: none; }
+        @media (max-width: 700px) {
+            .kp-mnode { padding-left: 13px; }
+            .kp-mnode::before, .kp-mnode::after { left: 5px; }
+            .kp-mnode::after { width: 6px; }
+        }
     </style>
 </head>
 <body>
@@ -9380,7 +9412,10 @@
         //
         // 同一节可能被多条记录写到：按 (科目, 章, 节) 归组，
         //   同名同层的节点**按路径合并**（后写的并入先写的，下级取并集）。
-        function fcWalkAll() {
+        // opts.keepDeep = true → 展示口径（知识树）：逐层全收，链路完整。
+        //   不传 = 出题口径（闪卡 / 出卡判断）：只到「倒数第二格」，行为与改造前一致。
+        function fcWalkAll(opts) {
+            const keepDeep = !!(opts && opts.keepDeep);
             const rows = [];
             const groups = {};      // key = course|ch|sec → { base, list: [] }
             const order = [];       // 保持节的出现顺序（按记录时间先后）
@@ -9388,7 +9423,7 @@
             (state.records || []).forEach(function (r) {
                 if (!r || !r.course) return;
                 const ch = +(r.chapter || 0), sec = +(r.section || 0);
-                const outline = fcRecOutline(r);
+                const outline = fcRecOutline(r, keepDeep);
                 if (!outline || !outline.length) return;
                 const key = [r.course, ch, sec].join('|');
                 if (!groups[key]) {
@@ -9615,7 +9650,11 @@
         //   ancestors = 1–3 级祖先链（科目 / 章 / 节），来自**记录表单已选好的三级**，
         //               见 fcAncestorPath。parents 仍是速记内部的祖先链，不含这三级。
         // 解析不出来时返回 null，调用方退回旧的名字匹配 —— 宁可多给，不要漏卡。
-        function fcRecOutline(r) {
+        // ★ keepDeep（2026-09-17）：**展示口径**。传 true 时逐层全部收进来，
+        //   超层只标记不丢 —— 知识树靠它才能画完整的七级链路。
+        //   默认 false = **出题口径**：只到「倒数第二格」，与闪卡规则一致。
+        //   两者共用一条解析路径，避免再出现「卡片分了层、知识树还是平级」这种分叉。
+        function fcRecOutline(r, keepDeep) {
             const raw = (r && r.kpQuickRaw) || '';
             if (!raw || !raw.replace(/\s/g, '')) return null;
             const parser = (window.CpaKpEditor && typeof window.CpaKpEditor.parseText === 'function')
@@ -9639,10 +9678,13 @@
             const walk = function (list, lv, parents) {
                 (list || []).forEach(function (node) {
                     const nm = fcNormText(node && node.t);
-                    if (nm && lv <= maxLv) {
+                    // ★ 展示口径（keepDeep）逐层全收 —— 少一个节点，知识树里那一层
+                    //   就会整支消失（上一版正是这么把「武汉大学」连同它的子树一起
+                    //   弄没的，用户看到的 6 个并列全是第 3 级）。
+                    if (nm && (keepDeep || lv <= maxLv)) {
                         out.push({
                             name: nm, lv: lv, parents: parents, ancestors: anc,
-                            direct: directOf(node)
+                            direct: directOf(node), deep: lv > maxLv
                         });
                     }
                     walk((node && node.c) || [], lv + 1, nm ? parents.concat([nm]) : parents);
@@ -11194,7 +11236,10 @@
 
             // ② 知识点：与闪卡同源（fcWalkAll），已是 4–7 绝对层级 + 含 1–3 级祖先链
             const byKey = {};
-            fcWalkAll().forEach(function (n) {
+            // ★ keepDeep：知识树是**展示**，要完整七级链路。不加这个开关，
+            //   fcRecOutline 会按出题规则砍掉「倒数第二格」之后的那一层，
+            //   树里那一层连带子树整支消失 —— 用户看到的就是「平级」。
+            fcWalkAll({ keepDeep: true }).forEach(function (n) {
                 const k = n.course + '|' + n.chapter + '|' + n.section;
                 (byKey[k] = byKey[k] || []).push(n);
             });
@@ -13577,8 +13622,13 @@
             kp: '知识点', ps: '解题思路', mem: '记忆网络',
             other: '其他（AI问答 / 自评原因 / 备注）'
         };
-        var REC_KPVIEWS = ['default', 'outline', 'md'];
-        var REC_KPVIEW_NAME = { default: '默认', outline: '大纲视角', md: 'MD视角' };
+        // ★ 视角顺序与编辑器的 VIEWS 对齐（default / outline / mind / md）。
+        //   mind = 思维导图视角：知识点的纵向树形态（带连线、无编号）。
+        var REC_KPVIEWS = ['default', 'outline', 'mind', 'md'];
+        var REC_KPVIEW_NAME = {
+            default: '默认', outline: '大纲视角',
+            mind: '思维导图视角', md: 'MD视角'
+        };
         var recShow = { kp: true, ps: true, mem: true, other: true };
         var recKpView = 'default';
         var statTimer = null;
@@ -13733,6 +13783,20 @@
                 } else if (r.seq) {
                     // 体系基准层 + 体系内深度 - 1
                     lvl = base[r.seq.id] + r.seq.d - 1;
+                    // ★ 缩进比编号更深时，以**缩进**为准（2026-09-17，Tom 报「学校与
+                    //   武汉大学依然平级」的真正根因）。
+                    //   编号模版在深层会写出 parse 认不出的形态：
+                    //     cn-classic → 第 3 级「1.」、第 4 级「(1)」、第 5 级「①」
+                    //     cn-chapter → 第 4 级「(1)」
+                    //     part       → 第 4 级「1.1」（只两级！比第 3 级还浅）
+                    //   而 seqKind 把「(1)」判成 `{id:'num', d:1}`、把「1.1」判成 d=2，
+                    //   于是第 4 级被算成与第 3 级**同级** —— 4 层材料存回去只剩 3 层，
+                    //   实测逐字复现 Tom 的截图（7 个第 3 级并列）。
+                    //   而 toFlat 是「编号 + 缩进」同时输出的（每级 2 空格），
+                    //   缩进是层级唯一稳定的载体 —— 这点 toFlat 的注释早已写明，
+                    //   只是这里没落实。只在缩进**更深**时接管，所以无缩进的
+                    //   纯编号文本（1. / 1.1 / 1.1.1）行为完全不变。
+                    if (r.indent > 0 && indentLvl > lvl) lvl = indentLvl;
                     body = cutSeqNo(body);
                 } else {
                     // 没有编号时靠缩进；若上文出现过标题，整体下沉一级（手写 MD 的常见写法）
@@ -14512,6 +14576,7 @@
             // ★ 不裁层级：recMaxLv 只用来标记「哪一层是答案层」，不用来删/并节点。
             if (v === 'md') return '<pre class="rec-pre rec-pre-md">' + esc(toMD(roots)) + '</pre>';
             if (v === 'outline') return '<pre class="rec-pre">' + esc(toOutline(roots, true)) + '</pre>';
+            if (v === 'mind') return kpMindHtml(roots, recMaxLv(rec));
             return kpHierHtml(roots, recMaxLv(rec));
         }
 
@@ -14541,6 +14606,30 @@
                 });
             })(roots, 1, []);
             return out.length ? ('<div class="kp-hier">' + out.join('') + '</div>') : '<span class="rec-kp-empty">未记录</span>';
+        }
+
+        // 思维导图视角：纵向树 + 虚线连接，无编号 —— 层级由连线与缩进表达。
+        // ★ 与 kpHierHtml 同一口径：**不裁层级**、逐层独立成行；
+        //   maxLv 只用来给超出「答案层」的行加 .kp-mdeep 淡显（不删、不并）。
+        //   每层缩进 18px（窄屏 13px），末位子节点加 .kp-mlast 让竖线收口，
+        //   否则最后一个分支的竖线会拖出一段无意义的尾巴。
+        function kpMindHtml(roots, maxLv) {
+            var lim = (typeof maxLv === 'number' && maxLv > 0) ? maxLv : 0;
+            var out = [];
+            (function walk(list, d) {
+                (list || []).forEach(function (n, i) {
+                    var last = (i === (list.length - 1));
+                    var deep = lim && d > lim;
+                    out.push('<div class="kp-mnode kp-mlv' + Math.min(d, 4) +
+                        (last ? ' kp-mlast' : '') + (deep ? ' kp-mdeep' : '') + '"' +
+                        ' style="margin-left:' + ((d - 1) * 18) + 'px"' +
+                        (deep ? ' title="这一层进卡片反面（答案层），不单独出卡"' : '') + '>' +
+                        '<span class="kp-mtext">' + esc(n.t) + '</span></div>');
+                    walk(n.c || [], d + 1);
+                });
+            })(roots, 1);
+            return out.length ? ('<div class="kp-mind">' + out.join('') + '</div>')
+                              : '<span class="rec-kp-empty">未记录</span>';
         }
 
         /* ================= 初始化 ================= */
@@ -14705,7 +14794,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917x</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917y</div>
 <!-- build-tag:end -->
 </body>
 </html>
