@@ -550,12 +550,13 @@ function renderReport(local, cloud, rows, kernel, backendId){
         '表现就是「点同步没反应 / 报失败 / 云端永远没数据」，而 <code>/gists</code> 接口不报错、只返回空列表，'+
         '所以从现象上很容易被误判成「数据丢了」。请重新生成一个勾选 <b>gist</b> 的 Token，'+
         '在侧边栏「云端同步 → 配置」里替换掉。</div>';
-  }
-  if(!cloud.copies.length && !cloud.scopeMissingGist){
-    h2+='<div class="alert a-warn">枚举到的同类云端文件是 <b>0 份</b>，无法判断是否存在多份副本。两种可能，需结合上面的 Token 作用域判断：<br>'+
-        '① Token <b>缺 gist 作用域</b> —— 此时接口返回空列表而不是报错，看上一节即可确认；<br>'+
-        '② 账号下确实没有 —— 意味着这台设备<b>从未成功上传过</b>（或云端副本被删过）。'+
-        '这种情况请先在「数据最新的那台」点一次「本机 → 云端」，再让另一台点「云端 → 本机」。</div>';
+    // ⚠ 这条分支必须先判且独占：Token 读不了 Gist 时，副本清单必然是空的。
+    //   若让它继续走下面的 0 份 / 多份分支，就会打出「检测到 0 份同类云端文件」这种自相矛盾的结论。
+    h2+='<div class="hint" style="margin:2px 0 10px">Token 无法读取 Gist，因此下方的副本清单不成立，本节跳过「多副本」判断。</div>';
+  } else if(!cloud.copies.length){
+    h2+='<div class="alert a-warn">枚举到的同类云端文件是 <b>0 份</b>。Token 作用域正常（见上一节），'+
+        '所以这大概率意味着<b>这台设备从未成功上传过</b>，或云端副本被删过。<br>'+
+        '处理办法：先在「数据最新的那台」点一次「本机 → 云端」，再让另一台点「云端 → 本机」。</div>';
   }else if(cloud.copies.length===1){
     h2+='<div class="alert a-ok">✓ 账号下只有 <b>1</b> 份同类云端文件，两台设备应该连的是同一份。</div>';
   }else{
