@@ -506,6 +506,13 @@
         }
         .rv-kp { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
         .rv-kp .kp-chip { background: #F1EBDF; font-size: 11px; padding: 1px 8px; }
+        /* ★ 2026-09-17：复习清单的知识点改为「层级化结构 / 保缩进 <pre>」后，容器必须退回
+           块级 —— 否则 flex-wrap 会把每一层压回同一行，又变回「这些是平级」的错觉。 */
+        .rv-kp.rv-kp-block { display: block; }
+        .rv-kp.rv-kp-block .kp-hier { gap: 3px; }
+        /* 复习清单顶部的「展示方式」切换条（与学习记录列表共用同一份偏好，不另存） */
+        .rv-kpvbar { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 0 0 10px; }
+        .rv-kpvbar .lbl { font-size: 11.5px; color: var(--text-secondary, #8a8175); }
         .mem-tag {
             display: inline-block; font-size: 11px; font-weight: 700; color: #FAF7F1;
             background: var(--primary); border-radius: 999px; padding: 1px 8px;
@@ -2130,6 +2137,13 @@
 /* 复习界面（复用番茄钟方法） */
 .rv-dialog { max-width: 620px; max-height: 88vh; overflow: auto; }
 .rv-dialog .rvp-kp { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+/* ★ 2026-09-17：复习面板（openReviewPanel）的知识点区接入「展示方式」。
+   此前这里固定平铺一串序号（1. 2. 3. …），层级信息被抹平 —— 正是「不是平级」的来源。 */
+.rv-dialog .rvp-kpvbar { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 7px; }
+.rv-dialog .rvp-kpvbar .lbl { font-size: 11.5px; color: var(--text-secondary, #888); }
+.rv-dialog .rvp-kphtml { margin-bottom: 12px; }
+.rv-dialog .rvp-kphtml .kp-hier { gap: 4px; }
+.rv-dialog .rvp-kphtml .kp-htext { font-size: 12.5px; }
 .rv-dialog .rvp-pomo { background: var(--primary-bg, #F7F3EA); border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 14px; }
 .rv-dialog .rvp-timer { font-size: 34px; font-weight: 700; letter-spacing: 2px; color: var(--text, #3A3128); font-variant-numeric: tabular-nums; line-height: 1.15; }
 .rv-dialog .rvp-timer.break { color: #77805C; }
@@ -2408,6 +2422,9 @@
     border-radius: 10px; margin-bottom: 8px; font-size: 12px; color: #6D6252;
 }
 .kt-bar label { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+/* 2026-09-17：层级范围去掉「显示 第」前缀标签后，两个下拉之间只留一个连接号 */
+.kt-bar .kt-range { gap: 6px; }
+.kt-bar .kt-range-sep { color: #9C9080; font-size: 12px; }
 .kt-bar select, .kt-search {
     font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid #DED2BE;
     border-radius: 7px; background: #FFFDF8; color: #3E372E; max-width: 200px;
@@ -2822,6 +2839,11 @@
         .kp-hrow.kp-hlv4 { margin-left: 42px; }
         .kp-hrow.kp-hlv2 > .kp-htext { border-left-color: #C9B896; }
         .kp-hrow.kp-hlv3 > .kp-htext, .kp-hrow.kp-hlv4 > .kp-htext { background: #F6F2E9; border-left-color: #E0D8CA; }
+        /* 「答案层」：超出「拆解只到倒数第二格」的那一层。
+           它**依然逐层显示**（不再并进父行 —— 并起来会读成「这些是平级」），
+           只是淡显 + 虚线左边框，并说明它的归宿是卡片反面、不单独出卡。 */
+        .kp-hrow.kp-hdeep > .kp-htext { background: transparent; border-left-style: dashed; border-left-color: #E2D8C6; color: var(--text-secondary); }
+        .kp-hrow.kp-hdeep > .kp-hno { color: #B9AE9A; }
     </style>
 </head>
 <body>
@@ -3295,7 +3317,9 @@
                     <label>章 <select id="ktChapter"></select></label>
                     <label>节 <select id="ktSection"></select></label>
                     <span class="fc-spacer"></span>
-                    <label title="七级链路：1科目 2章 3节 4知识点1级 5知识点2级 6知识点3级 7知识点4级。这里选的是**显示范围**：范围外的层级（含科目/章/节这类祖先行）一律不显示。">显示 第 <select id="ktFrom"></select> – 第 <select id="ktTo"></select></label>
+                    <!-- 2026-09-17（按 Tom 红框所指删除）：去掉「显示 第」前缀标签 ——
+                         两个下拉自带的「第X级 · 知识点Y级」已说明含义，前缀只是白占横向宽度。 -->
+                    <label class="kt-range" title="七级链路：1科目 2章 3节 4知识点1级 5知识点2级 6知识点3级 7知识点4级。这里选的是**显示范围**：范围外的层级（含科目/章/节这类祖先行）一律不显示。"><select id="ktFrom"></select><span class="kt-range-sep">–</span><select id="ktTo"></select></label>
                     <input type="text" class="kt-search" id="ktSearch" placeholder="搜索节点（Esc 清空）">
                 </div>
                 <div class="kt-legend">
@@ -8669,6 +8693,24 @@
             return kpEsc(r.course || '') + '-第' + (r.chapter || '-') + L('chapter') + sec + (content ? '-' + kpEsc(content) : '');
         }
 
+        // ★ 2026-09-17：复习场景（清单条目 / 当日明细 / 复习面板）统一从这里取
+        //   「按当前展示方式渲染好的知识点 HTML」—— 与学习记录卡片共用同一套渲染器
+        //   （默认 = 逐层铺开；大纲视角 / MD视角 = 保缩进的 <pre>）。
+        //   历史问题：这几处此前各自调 kpChipsHTML(...) 平铺成「1. 2. 3. …」，
+        //   层级在展示层被抹平 —— 即用户说的「不是平级，怎么又放在一起了」。
+        function rvKpBlock(rec) {
+            if (!(rec && rec.knowledgePoints && rec.knowledgePoints.length)) return '';
+            const h = (window.CpaRecView && typeof window.CpaRecView.blockFor === 'function')
+                ? window.CpaRecView.blockFor(rec) : '';
+            if (h) return h;
+            // 兜底（CpaKpEditor 尚未就位时）：至少保证「一行一个」，不再平铺
+            return '<div class="kp-hier">' + rec.knowledgePoints.map(function (k) {
+                return '<div class="kp-hrow kp-hlv1"><span class="kp-hno">' +
+                    kpEsc(String((k && k.no) != null ? k.no : '')) + '</span><span class="kp-htext">' +
+                    kpEsc(String((k && (k.text || k)) || '')) + '</span></div>';
+            }).join('') + '</div>';
+        }
+
         function rvItemHTML(it, isDone, todayStr) {
             const r = it.record;
             if (rvEditingKey === it.key && !isDone) {
@@ -8691,6 +8733,8 @@
             const late = !isDone && it.overdueDays > 0;
             const dueToday = !isDone && it.overdueDays === 0;
             const cls = isDone ? 'done' : (late ? 'overdue' : (dueToday ? 'duetoday' : ''));
+            // ★ 2026-09-17：知识点按「展示方式」渲染，不再固定平铺前 3 个 chip + 「+N」
+            const kpB = rvKpBlock(r);
             const status = isDone
                 ? '完成于 ' + it.doneAt
                 : (late
@@ -8700,7 +8744,7 @@
                 '<div class="rv-check">' + (isDone ? '✓' : '') + '</div>' +
                 '<div class="rv-main">' +
                     '<div class="rv-title">' + rvTitleText(r) + ' · ' + roundName(it.round) + '</div>' +
-                    ((r.knowledgePoints && r.knowledgePoints.length) ? '<div class="rv-kp">' + kpChipsHTML(r.knowledgePoints, 3) + '</div>' : '') +
+                    (kpB ? '<div class="rv-kp rv-kp-block">' + kpB + '</div>' : '') +
                     '<div class="rv-meta">学习于 ' + r.date + ' ｜ ⏱ ' + r.durationHours + 'h ｜ ' + status + fcItemCountHTML(r) + '</div>' +
                 '</div>' +
                 '<div class="rv-date">' +
@@ -8720,6 +8764,9 @@
                 ? '<div class="rv-list">' + items.done.slice(0, 50).map(it => rvItemHTML(it, true, todayStr)).join('') + '</div>'
                 : '<div class="rv-empty">还没有完成记录，勾选待复习项后会出现在这里</div>';
             body.innerHTML =
+                // ★ 2026-09-17：复习清单也给出「展示方式」入口（改的是与学习记录列表同一份偏好）
+                ((window.CpaRecView && typeof window.CpaRecView.viewBar === 'function')
+                    ? window.CpaRecView.viewBar('data-rvkp', 'rv-kpvbar') : '') +
                 '<div class="rv-section">' +
                     '<div class="rv-section-title">⏰ 待复习（过期 / 到期）<span class="rv-count" style="background:#A6503C;">' + items.pending.length + '</span></div>' +
                     pendingHTML +
@@ -8728,6 +8775,17 @@
                     '<div class="rv-section-title">✅ 已完成<span class="rv-count" style="background:#77805C;">' + items.done.length + '</span></div>' +
                     doneHTML +
                 '</div>';
+            // ★ 2026-09-17：展示方式切换（同一份偏好，学习记录列表会同步重绘）
+            body.querySelectorAll('.rv-kpvbar [data-rvkp]').forEach(el => {
+                el.addEventListener('click', ev => {
+                    ev.stopPropagation();
+                    const v = el.dataset.rvkp;
+                    if (window.CpaRecView && typeof window.CpaRecView.setKpView === 'function') {
+                        window.CpaRecView.setKpView(v);
+                    }
+                    renderMemoryView();
+                });
+            });
             // ★ 需求 3：清单条目上的「🃏 N 张闪卡 →」直通闪卡复习界面
             //    stopPropagation 挡住 .rv-item 的「单击=勾选完成」，避免点闪卡入口却把复习勾掉了
             body.querySelectorAll('[data-fcgo]').forEach(el => {
@@ -9033,9 +9091,18 @@
             for (let i = 1; i <= maxRound; i++) {
                 opts += '<option value="' + i + '"' + (i === rd ? ' selected' : '') + '>' + roundName(i) + '</option>';
             }
-            const kpHtml = kps.length
-                ? '<div class="rvp-kp">' + kps.map((k, i) => '<span class="kp-chip"' + (i === kpIdx ? ' style="background:#8A7358;color:#FAF7F1;"' : '') + '>' + kpEsc((k.no ? k.no + '. ' : '') + (k.text || '')) + '</span>').join('') + '</div>'
-                : '';
+            // ★ 2026-09-17：知识点区接入「展示方式」（默认 / 大纲视角 / MD视角）。
+            //   此前固定平铺一串序号（1. 2. 3. …），层级被抹平，与学习记录卡片的口径不一致。
+            //   现在与卡片共用同一套渲染；平铺 chips 只作为解析器未就位时的兜底，
+            //   并继续承担「本次针对某个知识点」的高亮（kpIdx）。
+            const kpBar = (window.CpaRecView && typeof window.CpaRecView.viewBar === 'function')
+                ? window.CpaRecView.viewBar('data-rvkp', 'rvp-kpvbar') : '';
+            const kpBlk = rvKpBlock(rec);
+            const kpHtml = kpBlk
+                ? '<div class="rvp-kpblock">' + kpBar + '<div class="rvp-kphtml" data-kparea="1">' + kpBlk + '</div></div>'
+                : (kps.length
+                    ? '<div class="rvp-kpblock">' + kpBar + '<div class="rvp-kp" data-kparea="1">' + kps.map((k, i) => '<span class="kp-chip"' + (i === kpIdx ? ' style="background:#8A7358;color:#FAF7F1;"' : '') + '>' + kpEsc((k.no ? k.no + '. ' : '') + (k.text || '')) + '</span>').join('') + '</div></div>'
+                    : '');
             const box = document.createElement('div');
             box.className = 'plan-mask';
             box.id = 'reviewDialog';
@@ -9124,6 +9191,28 @@
             box.querySelector('#rvSkipBtn').onclick = function () { doSave(true); };
             rvTimerRender();
             try { fcBindEmbed(box); } catch (e) {}
+            // ★ 2026-09-17：展示方式切换 —— **原地重绘知识点区**，不整块重建面板
+            //   （重建会把面板里已填的时间 / 番茄数 / 文本框清掉）
+            (function bindRvKpView() {
+                box.querySelectorAll('.rvp-kpvbar [data-rvkp]').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var v = btn.getAttribute('data-rvkp');
+                        if (window.CpaRecView && typeof window.CpaRecView.setKpView === 'function') {
+                            window.CpaRecView.setKpView(v);
+                        }
+                        var area = box.querySelector('[data-kparea]');
+                        var kpB2 = (window.CpaRecView && typeof window.CpaRecView.blockFor === 'function')
+                            ? window.CpaRecView.blockFor(rec) : '';
+                        if (area && kpB2) {
+                            area.className = 'rvp-kphtml';
+                            area.innerHTML = kpB2;
+                        }
+                        box.querySelectorAll('.rvp-kpvbar [data-rvkp]').forEach(function (b) {
+                            b.classList.toggle('active', b.getAttribute('data-rvkp') === v);
+                        });
+                    });
+                });
+            })();
             // 「上期学习内容」的展开 / 收起（默认收起；绑定随面板一起重建）
             (function bindRvFold() {
                 const head = box.querySelector('[data-rvfold]');
@@ -11740,6 +11829,8 @@
             const items = recs.map((r, idx) => {
                 const ret = recordRetention(r, todayStr);
                 const color = retentionColor(ret);
+                // ★ 2026-09-17：与复习清单 / 卡片同一套展示口径（此前是平铺的全部 chip）
+                const kpB = rvKpBlock(r);
                 const chName = (typeof CHAPTER_NAMES !== 'undefined' && CHAPTER_NAMES[r.course] && CHAPTER_NAMES[r.course][r.chapter]) || '';
                 const secGuide = (typeof GUIDE_DATA !== 'undefined' && GUIDE_DATA[r.course] && GUIDE_DATA[r.course].chapters[r.chapter] && GUIDE_DATA[r.course].chapters[r.chapter].sections[r.section]) || null;
                 const secName = secGuide ? secGuide.name : '';
@@ -11773,7 +11864,7 @@
                         </div>
                         <span class="ret-badge" style="background:${color};">记忆保持 ${ret}%</span>
                     </div>
-                    ${(r.knowledgePoints && r.knowledgePoints.length) ? `<div class="rv-kp" style="margin-top:6px;">${kpChipsHTML(r.knowledgePoints)}</div>` : ''}
+                    ${kpB ? `<div class="rv-kp rv-kp-block" style="margin-top:6px;">${kpB}</div>` : ''}
                     ${r.addToMemory === false ? '<div class="rv-kp"><span class="kp-chip" style="background:#F2EDE4;color:#6E6355;">未加入记忆曲线</span></div>' : ''}
                     <div class="ret-bar"><i style="width:${ret}%;background:${color};"></i></div>
                     <svg class="curve" viewBox="0 0 200 54" preserveAspectRatio="none">
@@ -14334,10 +14425,14 @@
         //   default → **按层级缩进的结构**（每行 = 编号 + 文本，不再是平铺的一串序号）
         //   outline → 保缩进的大纲 <pre>
         //   md      → Markdown 源码 <pre>
-        // ★ 三种方式都按「拆解只到倒数第二格」的口径裁层级（见 recMaxLv）——
-        //   最后一格并入上一行显示，保证一个字都不丢。
-        //   （旧版 default 返回 null，由主应用渲染成平铺 chips —— 那正是「知识不是平级」
-        //     这个问题的来源：结构被抹平成流水号了。）
+        // ★ 展示**不裁层级**：三种方式都按大纲原文逐层铺开（每层一行 + 缩进）。
+        //   历史教训：旧版 default 返回 null，由主应用渲染成平铺 chips —— 「知识不是平级」；
+        //   改成 kpHierHtml 后又把超层内容用「 / 」并进父行，产出「创始人 / 学校 / 武汉大学」
+        //   这样一行三层的内容 —— 读起来仍像「这些是平级」（用户第二次反馈）。
+        //   ⇒ 结论：层级必须**逐层独立成行**，任何形式的合并都会重新制造「平级」的错觉。
+        //   「拆解只到倒数第二格」只约束**出题侧**（fcRecMaxLv / fcRecOutline）
+        //   与**写入侧**（getKnowledgePoints），不约束展示；超出该层的那一行用
+        //   .kp-hdeep 淡显标出（它进卡片反面，不单独出卡）。
         function kpBlockHtml(rec, v) {
             var kps = (rec && rec.knowledgePoints) || [];
             var raw = (rec && rec.kpQuickRaw) || '';
@@ -14346,39 +14441,32 @@
             }
             var roots = raw ? parse(raw) : [];
             if (!roots.length) return '<span class="rec-kp-empty">未记录</span>';
-            roots = clipDepth(roots, recMaxLv(rec));
+            // ★ 不裁层级：recMaxLv 只用来标记「哪一层是答案层」，不用来删/并节点。
             if (v === 'md') return '<pre class="rec-pre rec-pre-md">' + esc(toMD(roots)) + '</pre>';
             if (v === 'outline') return '<pre class="rec-pre">' + esc(toOutline(roots, true)) + '</pre>';
-            return kpHierHtml(roots);
+            return kpHierHtml(roots, recMaxLv(rec));
         }
 
-        // 本记录的知识点层级上限：3 列 → 2 层 / 4 列 → 3 层
+        // 本记录的「答案层」起点：3 列 → 第 3 层起算 / 4 列 → 第 4 层起算
         // （与主应用 fcRecMaxLv 同一口径，两处必须一起改）
+        // ★ 注意用途已变（2026-09-17）：**只用于给超层的那一行加 .kp-hdeep 淡显**，
+        //   不再用于裁剪展示。clampDepth() 那版「并进父行」的写法已删除 ——
+        //   它会把三层内容压成一行，重新制造「这些是平级」的错觉。
         function recMaxLv(rec) {
             var n = rec && rec.kpCols;
             return Math.max(1, ((n === 4) ? 4 : 3) - 1);
         }
-        // 把树裁到 maxD 层；超出层级的节点**并入父节点文本**（用「 / 」连接），一个字都不丢
-        function clipDepth(list, maxD) {
-            var rec2 = function (arr, d) {
-                return (arr || []).map(function (n) {
-                    var kids = rec2(n.c || [], d + 1);
-                    if (d < maxD) return { t: n.t, c: kids };
-                    if (!kids.length) return { t: n.t, c: [] };
-                    var extra = [];
-                    (function flat(a) { a.forEach(function (x) { if (x.t) extra.push(x.t); flat(x.c || []); }); })(kids);
-                    return { t: (n.t ? n.t + ' / ' : '') + extra.join(' / '), c: [] };
-                });
-            };
-            return rec2(list, 1);
-        }
-        // 层级化标签流：每行 = 编号 + 文本，按层级缩进（编号本身就是层级标记）
-        function kpHierHtml(roots) {
+        // 层级化标签流：每行 = 编号 + 文本，按层级缩进（编号本身就是层级标记）。
+        // maxLv 只用来给「超出答案层起点」的行加 .kp-hdeep 淡显 —— 不删、不并。
+        function kpHierHtml(roots, maxLv) {
+            var lim = (typeof maxLv === 'number' && maxLv > 0) ? maxLv : 0;
             var out = [];
             (function walk(list, d, path) {
                 (list || []).forEach(function (n, i) {
                     var p = path.concat([i + 1]);
-                    out.push('<div class="kp-hrow kp-hlv' + Math.min(d, 4) + '">' +
+                    var deep = lim && d > lim;
+                    out.push('<div class="kp-hrow kp-hlv' + Math.min(d, 4) + (deep ? ' kp-hdeep' : '') + '"' +
+                        (deep ? ' title="这一层进卡片反面（答案层），不单独出卡"' : '') + '>' +
                         '<span class="kp-hno">' + esc(noStr(p)) + '</span>' +
                         '<span class="kp-htext">' + esc(n.t) + '</span></div>');
                     walk(n.c || [], d + 1, p);
@@ -14504,7 +14592,25 @@
             show: function (k) { return recShow[k] !== false; },
             kpView: function () { return recKpView; },
             kpBlockHtml: kpBlockHtml,
-            name: recViewName
+            name: recViewName,
+            // ★ 2026-09-17 新增：把「展示方式」透出给复习界面 / 复习清单 / 当日明细，
+            //   保证同一份知识点在哪个界面看都是同一套层级（此前那三处各自平铺）。
+            //   blockFor(rec) → 按当前展示方式渲染好的知识点 HTML；'' 表示这条记录没有知识点
+            blockFor: function (rec) {
+                if (!(rec && rec.knowledgePoints && rec.knowledgePoints.length)) return '';
+                try { return kpBlockHtml(rec, recKpView) || ''; } catch (e) { return ''; }
+            },
+            // 切换展示方式：落同一份 localStorage 偏好，学习记录列表会自动重绘
+            setKpView: function (v) { setRecKpView(v); },
+            // 复用的切换条；attrName 传不同值，避免同类控件互相干扰
+            viewBar: function (attrName, cls) {
+                var a = attrName || 'data-rvkp';
+                return '<div class="' + (cls || 'rvp-kpvbar') + '"><span class="lbl">📐 展示方式</span>' +
+                    REC_KPVIEWS.map(function (v) {
+                        return '<button type="button" class="rec-chip' + (v === recKpView ? ' active' : '') +
+                            '" ' + a + '="' + v + '">' + REC_KPVIEW_NAME[v] + '</button>';
+                    }).join('') + '</div>';
+            }
         };
 
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -14530,7 +14636,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917v</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917w</div>
 <!-- build-tag:end -->
 </body>
 </html>
