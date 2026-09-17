@@ -5729,5 +5729,26 @@ kick();
 
 
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
+<!-- build-tag:begin（技能 §21/§22：由推送脚本维护，勿手改） -->
+<style>
+html.embedded #buildTag{display:none}
+#buildTag{position:fixed;left:8px;bottom:8px;z-index:30;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;padding:4px 7px;border-radius:6px;background:rgba(15,23,42,.5);color:#fff;opacity:.62;pointer-events:none;user-select:none;white-space:nowrap}
+@media print{#buildTag{display:none}}
+</style>
+<script>/* ① 嵌在 iframe 里时隐藏自己的徽标（否则与导航徽标同位置叠字）② 把页面内
+   标了 data-build-ver 的位置同步成同一个版本串 —— 版本只有一个字面量，就是下面那个 div */
+(function(){
+  try{ if(window.self!==window.top) document.documentElement.className += ' embedded'; }catch(e){}
+  function sync(){
+    var el=document.getElementById('buildTag'); if(!el) return;
+    var v=el.textContent.trim();
+    var n=document.querySelectorAll('[data-build-ver]');
+    for(var i=0;i<n.length;i++) if(n[i].textContent.trim()!==v) n[i].textContent=v;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+})();
+</script>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917i</div>
+<!-- build-tag:end -->
 </body>
 </html>
