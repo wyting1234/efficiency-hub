@@ -1364,7 +1364,11 @@
       let stats = null;
       if (mode === 'merge') stats = Core.mergeCloudToLocal(remote);
       else Core.applyCloudToLocal(remote);
-      Core.reloadActiveIframe();
+      // 与 GitHub 侧同款：按变化键挑工具页刷新；覆盖式动全部键所以全刷。
+      // Core.refreshToolData 不存在时（sync-github.js 没加载成功）退回旧的全刷，不静默失效。
+      if (Core.refreshToolData) {
+        Core.refreshToolData(mode === 'merge' && stats ? { keys: stats.keys || [] } : { all: true });
+      } else Core.reloadActiveIframe();
       if (typeof buildCards === 'function') buildCards();
       markSynced('down', Object.keys(remote.data));
       Core.notifyOK(mode === 'merge' ? '已合并 Gitee 数据到本机' : '已从 Gitee 同步到本机',
@@ -1406,7 +1410,12 @@
         await ensureRepo();
         r = await Core.runBothIO(readFn, writeFn);
       }
-      Core.reloadActiveIframe();
+      // 后台（silent）走这条：只重载数据真被改过的工具页，且不碰当前正开着的那个。
+      const changedKeys = (r.localStats && r.localStats.keys) || [];
+      const reloadInfo = Core.refreshToolData
+        ? Core.refreshToolData({ silent: silent, keys: changedKeys })
+        : { reloaded: [], deferred: [] };
+      if (!Core.refreshToolData) Core.reloadActiveIframe();
       if (typeof buildCards === 'function') buildCards();
       markSynced('both', Core.getLocalKeys());
       const st = r.localStats;
@@ -1424,6 +1433,7 @@
       }
       return {
         mode: 'both', at: Date.now(), ms: Date.now() - t0, hasRemote: r.hasRemote,
+        reload: reloadInfo,
         local: st
           ? { added: st.added, updated: st.updated, merged: st.merged, kept: st.kept, keys: st.keys || [] }
           : { added: 0, updated: 0, merged: 0, kept: 0, keys: [] },
