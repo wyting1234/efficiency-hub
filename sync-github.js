@@ -52,7 +52,10 @@
     'sync_timestamps',            // 上次同步时云端各键的时间戳
     // 自动同步的「记录」属于各设备自己的状态：同步过去会让两端互相覆盖对方的
     // 上次同步时间与日志（谁最后同步谁覆盖），必须排除。
-    'ehub_autosync_v1'
+    'ehub_autosync_v1',
+    // 工具页（iframe）写入的键 → 时间戳，由本模块的 storage 钩子维护（见 localKeyTs 上方注释）。
+    // 同样是「本机记录」，跨设备没有意义，传上去会让两端的判新旧时间互相污染。
+    'sync_key_ts_v1'
   ]);
 
   // ============ 背景图片不同步 ============
@@ -138,8 +141,69 @@
 
   // ============ 合并（v4 新增）============
   // 本机每个键的最后写入时间：BackupHub 自 v1.5.0 起在全站记录 __hub_meta_v1__
+  //
+  // ⚠️ 但 __hub_meta_v1__ 有一个结构性盲区，必须在这里补齐，否则「工具页的数据」
+  //    会静默地既同步不出去、又被云端旧值覆盖：
+  //
+  //      来源                        setItem 覆写   storage 事件
+  //      -------------------------- -------------- --------------
+  //      导航页自身写入              能             不能（规范如此）
+  //      iframe 内写入（工具页）     不能           能
+  //
+  //    backup-hub.js 覆写的是【导航页自己】的 localStorage.setItem，而所有工具页都跑在
+  //    #toolContainer 的 iframe 里 —— 同源 iframe 是另一个 realm，那层覆写抓不到它的写入。
+  //    于是 cpa_*、life-* 这类「由工具页写入」的键在 __hub_meta_v1__ 里没有记录，
+  //    localKeyTs()[key] 取到 0，两处判定同时失效（两者都是静默的）：
+  //      ① mergeCloudToLocal：lts=0 而 cts>0 →「云端较新」恒成立 → 用云端旧值覆盖本机新数据；
+  //      ② writeShardedWith：maxTs=0，而首次写片时片级 ts 也记成 0 → maxTs > cloudTs 恒假
+  //         → 该片永久跳过，数据永远上不了云端 —— 两端却都显示「同步成功」。
+  //    实测（mock io）：数据已变仍返回 wroteShards=0 / skippedShards=1，
+  //    双向同步第二轮云端与本机都停在旧值，而提示是「两端现在一致」。
+  //
+  //  storage 事件是唯一能感知「其它文档（含同源 iframe）写入」的通道，且只会在【其它】
+  //  文档触发，所以这里不会与导航页自身的记录重复计数。记在独立的 sync_key_ts_v1 里，
+  //  不去改 backup-hub 的键（那份是它的领地），读取时再与 __hub_meta_v1__ 取较新者。
+  const KEY_TS_STORE = 'sync_key_ts_v1';
+  let iframeKeyTsOn = false;
+
+  function iframeKeyTs() {
+    try { return JSON.parse(localStorage.getItem(KEY_TS_STORE) || '{}') || {}; } catch (e) { return {}; }
+  }
+
+  // 把「工具页写入的键」的时间并进一份已有的时间表（__hub_meta_v1__ 的副本）。
+  // 取较新者：两边都记过同一键时，谁晚谁说了算 —— 这正是「最后写入时间」的语义。
+  function mergeIframeKeyTs(m) {
+    const t = iframeKeyTs();
+    for (const k in t) {
+      if (!Object.prototype.hasOwnProperty.call(t, k)) continue;
+      if (!m[k] || t[k] > m[k]) m[k] = t[k];
+    }
+    return m;
+  }
+
+  function installIframeKeyTs() {
+    if (iframeKeyTsOn) return;
+    iframeKeyTsOn = true;
+    try {
+      window.addEventListener('storage', function (ev) {
+        try {
+          if (!ev || !ev.key) return;
+          if (ev.storageArea && ev.storageArea !== localStorage) return;
+          // 删除不记时间：合并是并集语义，删除本来就不会传播，记了反而把旧值标成"刚写过"。
+          if (ev.newValue === null) return;
+          if (isExcludedKey(ev.key, ev.newValue)) return;   // 令牌 / 大图等不参与同步
+          const t = iframeKeyTs();
+          t[ev.key] = Date.now();
+          localStorage.setItem(KEY_TS_STORE, JSON.stringify(t));
+        } catch (e) {}
+      });
+    } catch (e) {}
+  }
+
   function localKeyTs() {
-    try { return JSON.parse(localStorage.getItem('__hub_meta_v1__') || '{}') || {}; } catch (e) { return {}; }
+    let m = {};
+    try { m = JSON.parse(localStorage.getItem('__hub_meta_v1__') || '{}') || {}; } catch (e) { return {}; }
+    return mergeIframeKeyTs(m);
   }
 
   /* ============ 领域级合并（v5 新增）============
@@ -1412,9 +1476,14 @@
 
   function shardFile(sid) { return 'efficiency-hub-' + sid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json'; }
 
-  // 本机每个键的最后写入时间（BackupHub 全站维护），用来判定「脏键」
+  // 本机每个键的最后写入时间（BackupHub 全站维护 + 工具页写入的补记，见 localKeyTs 上方注释），
+  // 用来判定「脏键」。
+  // ⚠️ 必须与 localKeyTs 走同一套合并：读云端的一侧用 localKeyTs、写云端的一侧用 localMeta，
+  //    两处若得出不同结论，就会出现「本机认为该键是新的、写片时又认为它是旧的」这种撕裂。
   function localMeta() {
-    try { return JSON.parse(localStorage.getItem('__hub_meta_v1__') || '{}') || {}; } catch (e) { return {}; }
+    let m = {};
+    try { m = JSON.parse(localStorage.getItem('__hub_meta_v1__') || '{}') || {}; } catch (e) { return {}; }
+    return mergeIframeKeyTs(m);
   }
   // ============ 分片读写（v5）============
   // ⚠️ 这一层是「与后端无关」的：只看 io 接口，不认 Gist 还是 Gitee。
@@ -1470,7 +1539,22 @@
       // 该片里最大的写入时间 vs 上次同步记录的时间 → 判定脏不脏
       let maxTs = 0;
       keys.forEach(k => {
-        const t = meta[k] || 0;
+        // ★ 时间戳必须同时看两处，只看 meta 会让「工具页写入的键」永远上不了云端。
+        //   成因：meta 来自 __hub_meta_v1__，它由导航页覆写「本页」的 localStorage.setItem
+        //         来记录；工具页跑在同源 iframe 里，那是另一个 realm，覆写抓不到它的写入
+        //         （sync-github.js 里 doSyncBoth 附近有实测结论）。于是业务键（cpa_*、
+        //         life-* 等由工具页写入的键）在 meta 里根本没有记录。
+        //   而 buildMergedUpload 对「无写入记录」的键给的是 Date.now()（视为刚写过、本机为准），
+        //   放在 allData[k].timestamp 里。只看 meta 就把它丢了：t=0 → maxTs=0；
+        //   首次写片时片级 ts 也记成 0 → 之后 maxTs > cloudTs（0 > 0）恒假 → 该片永久跳过。
+        //   实测（mock io 两轮 writeShardedWith）：数据已变仍返回 wroteShards=0 /
+        //         skippedShards=1 / wroteBytes=0，云端停在首次同步的内容，
+        //         而两端都显示「同步成功、两端一致」。
+        //   取 max 是安全的：buildMergedUpload 对「云端较新」的键给的是云端时间戳，
+        //   于是 maxTs 就是云端值，maxTs > cloudTs 为假 → 跳过，增量优化照样保留。
+        const tData = (allData[k] && allData[k].timestamp) || 0;
+        const tMeta = meta[k] || 0;
+        const t = tData > tMeta ? tData : tMeta;
         if (t > maxTs) maxTs = t;
         next.keys[k] = { shard: sid, ts: t || (prevTs[k] && prevTs[k].ts) || 0 };
       });
@@ -1971,7 +2055,10 @@
             ? '云端 → 本机：新增 ' + st.added + ' 项，更新 ' + st.updated + ' 项，保留本机 ' + st.kept + ' 项' +
               (st.merged ? '，另有 ' + st.merged + ' 项按内容合并' : '') + '。\n'
             : '云端原本没有数据，本次已把本机的数据存过去。\n') +
-          '本机 → 云端：已写入 ' + r.nItem + ' 项，约 ' + Math.round(r.info.wroteBytes / 1024) + 'KB（已压缩）。\n' +
+          '本机 → 云端：本次写入 ' + ((r.info && r.info.wroteShards) || 0) + ' / ' +
+            ((r.info && r.info.totalShards) || 0) + ' 个数据片' +
+            ((r.info && r.info.skippedShards) ? '（跳过 ' + r.info.skippedShards + ' 个未变化的片）' : '') +
+            '，共 ' + r.nItem + ' 项，约 ' + Math.round(((r.info && r.info.wroteBytes) || 0) / 1024) + 'KB（已压缩）。\n' +
           '两端现在一致，谁都没有被覆盖。');
       }
       return {
@@ -2375,6 +2462,9 @@
 
   async function init() {
     createSyncUI();
+    // 尽早装上：这是「工具页（iframe）写入的键」唯一的时间来源。
+    // 晚一步，这段时间里的改动就会漏记 —— 而漏记的后果是静默的（见 localKeyTs 上方注释）。
+    installIframeKeyTs();
     // 自动同步的钩子与定时器要尽早装上：即使此刻还没配置云端，
     // 用户后续配置好之后「数据变动触发同步」也能立刻生效（不必刷新页面）。
     autoStart();
@@ -2421,6 +2511,8 @@
       peekCloud, readGist,
       // 判定
       isExcludedKey,
+      // 工具页写入时间表（供诊断页与测试使用）
+      installIframeKeyTs, iframeKeyTs, KEY_TS_STORE,
       // UI
       showChoice, showConfirm, showAlert, notifyOK, notifyFail, fmtTime,
       // 进度反馈（多后端共用：面板内常驻状态区）
