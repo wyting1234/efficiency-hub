@@ -458,6 +458,17 @@
   }
 
   // 合并下载：两边并集；同键两边都有时保留「较新」的一份（时间未知时保留本机）
+  //
+  // ⚠️ v50：「时间未知」的判据两处必须同义。
+  //    本函数（下载方向）原先用 `meta[key] || 0` —— 本机无写入记录 → lts=0 →
+  //    「云端较新」恒成立 → 拿云端覆盖本机；
+  //    而 buildMergedUpload（上传方向）用 `meta[key] || Date.now()` —— 同一情形
+  //    却判定「本机刚写过，本机为准」。同一对数据，两个方向给出相反答案，
+  //    结果就是两端来回覆盖、谁也无法收敛。
+  //    现统一为**写入侧语义**：本机没有该键的时间戳记录 → 视为本机为准。
+  //    理由：本机存在该键，说明本机写过它（时间戳理应存在，缺失只可能是记录陈旧）；
+  //    在「无从判断」时保留本机，是不丢用户本机数据的保守方向。
+  //    云端独有的键仍会在下面 cur === null 的分支补进来，不受影响。
   function mergeCloudToLocal(serverData) {
     const sdata = (serverData && serverData.data) || {};
     const meta = localKeyTs();
@@ -491,7 +502,8 @@
         } else kept++;
         continue;
       }
-      const lts = meta[key] || 0, cts = entry.timestamp || 0;
+      // 时间未知 → 视为本机刚写过（与 buildMergedUpload 同义，见函数头注释 v50）
+      const lts = meta[key] || Date.now(), cts = entry.timestamp || 0;
       if (cts > lts) {                                       // 云端较新 → 覆盖这一键
         localStorage.setItem(key, entry.value);
         if (entry.timestamp) timestamps[key] = entry.timestamp;
