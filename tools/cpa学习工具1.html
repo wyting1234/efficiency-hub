@@ -97,6 +97,33 @@
             overflow-y: auto;
             z-index: 10;
         }
+
+        /* ===== 侧栏收起（html.embedded 时默认收起，把宽度全让给内容）=====
+           起因：本工具自带 375px 侧栏，套进效率中心的 iframe 后可用宽度 =
+           窗口 − hub 侧栏 − 375，七级知识树的缩进会被压到看不全。
+           收起后 .main（flex:1）自动占满；需要时点 Tab 条最左的 ☰ 再调出来。
+           实现刻意保持最简：纯 CSS 显隐，不改编排逻辑 ——
+           已核查全文件，没有任何 JS 引用 .sidebar（只有 CSS 选择器 13 处）。 */
+        body.sb-collapsed .sidebar { display: none; }
+        .sb-toggle {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 15px;
+            line-height: 1;
+            transition: all 0.15s;
+        }
+        .sb-toggle:hover { background: var(--primary-bg); color: var(--primary-dark); }
+        /* 嵌在 iframe 里时再收一档主区内边距，横向又多挤出约 24px */
+        html.embedded .main { padding: 18px 20px 32px; }
         .sidebar-brand {
             display: flex;
             align-items: center;
@@ -2855,10 +2882,55 @@
         </div>
     </aside>
 
+    <script>
+    /* ===== 侧栏收起：判定默认状态（放在这里是为了在 <main> 解析之前就打上类，避免闪一下）=====
+       默认折叠的条件只有一个：**被嵌在 iframe 里**（window.self !== window.top）。
+       理由：独立打开时侧栏是主信息源（课程进度 / 考试项目），不该擅自藏；
+       而嵌进效率中心时，hub 自己已经提供了导航与徽标，这 375px 纯粹是重复占用。
+       用户的显式点击优先于默认值，记在 localStorage（cpa_ 前缀，与 hub 的 hub_ 前缀不冲突），
+       下次打开沿用。跨域读 window.top 会抛 SecurityError —— 抛了就是被嵌了，按 folded 处理。 */
+    (function () {
+        var KEY = 'cpa_sidebar_folded_v1';
+        var embedded = false;
+        try { embedded = (window.self !== window.top); } catch (e) { embedded = true; }
+
+        var saved = null;
+        try { saved = localStorage.getItem(KEY); } catch (e) { saved = null; }
+        var folded = (saved === '1') ? true : (saved === '0' ? false : embedded);
+        if (folded) document.body.classList.add('sb-collapsed');
+
+        function syncBtn() {
+            var b = document.getElementById('sbToggle');
+            if (!b) return;
+            var c = document.body.classList.contains('sb-collapsed');
+            b.textContent = c ? '☰' : '⟨';
+            b.title = c ? '展开侧栏（考试项目 / 课程进度）' : '收起侧栏（把宽度让给内容）';
+            b.setAttribute('aria-expanded', c ? 'false' : 'true');
+        }
+        function toggle() {
+            var c = document.body.classList.toggle('sb-collapsed');
+            try { localStorage.setItem(KEY, c ? '1' : '0'); } catch (e) {}
+            syncBtn();
+        }
+        /* 按钮在 <main> 里，此刻还没解析到 —— 挂到 DOMContentLoaded 上。
+           点击用原生监听（不走事件委托），因为全站委托链只认 data-* 属性，这里不需要。 */
+        function wire() {
+            var b = document.getElementById('sbToggle');
+            if (b) b.addEventListener('click', toggle);
+            syncBtn();
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+        else wire();
+    })();
+    </script>
+
     <!-- ===== 主区域 ===== -->
     <main class="main scrollbar" id="mainContent">
         <!-- ===== 顶部视图 Tab ===== -->
         <div class="view-tabs" id="viewTabs">
+            <!-- 注意：这个按钮刻意不带 .vtab 类 —— JS 有 4 处 querySelectorAll('#viewTabs .vtab')，
+                 混进来会让「点页签切视图」的遍历逻辑多认一个非视图按钮 -->
+            <button type="button" class="sb-toggle" id="sbToggle" title="收起侧栏（把宽度让给内容）" aria-controls="mainContent" aria-expanded="true">☰</button>
             <button type="button" class="vtab active" data-view="study">📚 学习进度</button>
             <button type="button" class="vtab" data-view="kptree" title="知识点树：浏览 / 展开收拢 / 层级范围 / 搜索">🌳 知识树</button>
             <button type="button" class="vtab" data-view="flash" title="闪卡：复习内容的另一种呈现形式">🃏 闪卡<span class="sc-tab-badge" id="fc-tabBadge">0</span></button>
@@ -14458,7 +14530,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917u</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917v</div>
 <!-- build-tag:end -->
 </body>
 </html>
