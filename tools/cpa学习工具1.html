@@ -1404,7 +1404,9 @@
         .view-tabs {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;          /* ★ 放不下就换行：加页签再也不会撑破容器 */
             gap: 8px;
+            row-gap: 6px;
             margin-bottom: 16px;
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -1413,7 +1415,9 @@
             box-shadow: 0 1px 3px rgba(51, 41, 31, 0.04);
         }
         .vtab {
-            flex: 1;
+            flex: 1 1 auto;
+            min-width: 0;             /* ★ 允许收缩，别用固有宽度顶住容器 */
+            max-width: 200px;         /* ★ 换行后不把最后一个页签拉成一整条 */
             border: none;
             background: transparent;
             color: var(--text-secondary);
@@ -1424,6 +1428,8 @@
             cursor: pointer;
             transition: all 0.15s;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .vtab:hover { background: var(--primary-bg); color: var(--primary-dark); }
         .vtab.active {
@@ -1435,6 +1441,18 @@
             flex: 0 0 auto;
             font-size: 12px;
             padding: 9px 14px;
+        }
+
+        /* 中等宽度：页签降一档，尽量维持单行（1400px 也走这一档） */
+        @media (max-width: 1500px) {
+            .view-tabs { gap: 5px; }
+            .vtab { font-size: 12.5px; padding: 8px 7px; }
+            .vtab-small { font-size: 11.5px; padding: 8px 9px; }
+        }
+        /* 再窄一屏：宁可换行也别截断文字 */
+        @media (max-width: 1180px) {
+            .view-tabs { gap: 5px; }
+            .vtab { font-size: 12px; padding: 7px 6px; }
         }
 
         /* ===== 记忆曲线 · 汇总卡片 ===== */
@@ -2226,6 +2244,49 @@
 
 /* ===== 卡片详情 ===== */
 .fc-detail-box { border: 1px solid #E6DCCB; border-radius: 11px; background: #FFFDF8; padding: 15px 16px; margin: 10px 0; }
+/* ===== 🌳 知识树（独立页签：浏览 / 展开收拢 / 层级范围 / 搜索 / 体检） ===== */
+.kt-wrap { background: #FFFDF8; border: 1px solid #E6DCCB; border-radius: 12px; padding: 14px 15px 16px; }
+.kt-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.kt-head h3 { margin: 0; font-size: 16px; font-weight: 700; color: #3E372E; letter-spacing: .3px; }
+.kt-sub { font-size: 12px; color: #8A7F6E; }
+.kt-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 10px; border: 1px solid #EFE7DA; background: #FAF6EF;
+    border-radius: 10px; margin-bottom: 8px; font-size: 12px; color: #6D6252;
+}
+.kt-bar label { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.kt-bar select, .kt-search {
+    font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid #DED2BE;
+    border-radius: 7px; background: #FFFDF8; color: #3E372E; max-width: 200px;
+}
+.kt-search { min-width: 130px; }
+.kt-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #8A7F6E; margin-bottom: 8px; }
+.kt-legend b { color: #3E372E; }
+.kt-tierbar { display: flex; gap: 5px; flex-wrap: wrap; }
+.kt-tierbar span { background: #F2ECE1; border-radius: 6px; padding: 2px 6px; font-size: 11px; color: #6D6252; }
+.kt-body {
+    border: 1px solid #EFE7DA; border-radius: 10px; background: #FFFEFB;
+    padding: 8px 10px; max-height: calc(100vh - 340px); min-height: 160px; overflow: auto;
+}
+.kt-row { display: flex; align-items: center; gap: 8px; padding: 3px 4px; border-radius: 7px; font-size: 13px; color: #3E372E; line-height: 1.5; }
+.kt-row:hover { background: #F7F2E8; }
+.kt-caret { flex: 0 0 auto; width: 16px; text-align: center; color: #A8997F; cursor: pointer; user-select: none; font-size: 11px; }
+.kt-caret.kt-leaf { cursor: default; color: #D6CBB6; }
+.kt-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.kt-name mark { background: #F4E3B8; color: #5A4A2E; border-radius: 3px; padding: 0 1px; }
+.kt-tier { flex: 0 0 auto; font-size: 10.5px; color: #8A7F6E; background: #F2ECE1; border-radius: 5px; padding: 2px 5px; }
+.kt-kidn { flex: 0 0 auto; font-size: 11px; color: #A8997F; }
+.kt-empty { padding: 26px 10px; text-align: center; color: #A8997F; font-size: 13px; line-height: 1.9; }
+
+/* ===== 闪卡翻面：严格互斥（正面屏 / 反面屏二选一） ===== */
+.fce-backbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed #E6DCCB; }
+.fce-box[data-fce-flip] { cursor: pointer; }
+
+@media (max-width: 700px) {
+    .kt-body { max-height: none; }
+    .kt-bar { gap: 8px; }
+    .kt-bar select, .kt-search { max-width: 100%; }
+}
 
 /* ===== 复习 / 详情弹窗放大（闪卡内容放得下） ===== */
 .plan-dialog.rv-dialog { max-width: 820px; }
@@ -2554,6 +2615,8 @@
         <!-- ===== 顶部视图 Tab ===== -->
         <div class="view-tabs" id="viewTabs">
             <button type="button" class="vtab active" data-view="study">📚 学习进度</button>
+            <button type="button" class="vtab" data-view="kptree" title="知识点树：浏览 / 展开收拢 / 层级范围 / 搜索">🌳 知识树</button>
+            <button type="button" class="vtab" data-view="flash" title="闪卡：复习内容的另一种呈现形式">🃏 闪卡<span class="sc-tab-badge" id="fc-tabBadge">0</span></button>
             <button type="button" class="vtab" data-view="memory">🧠 记忆曲线</button>
             <button type="button" class="vtab" data-view="scsec" title="小节精简自检">📝 小节自检</button>
             <button type="button" class="vtab" data-view="scchap" title="整章综合复盘">🗂 整章复盘</button>
@@ -2906,6 +2969,63 @@
         </div><!-- /view-study -->
 
         <!-- ===== 记忆曲线视图 ===== -->
+        <!-- ===== 🌳 知识树视图（独立体系：浏览 / 展开收拢 / 层级范围 / 搜索） =====
+             自成一套，不依赖闪卡模块，也不在此出题。只读 kpTree，不写学习记录。 -->
+        <div class="view-pane" id="view-kptree" style="display:none;">
+            <div class="kt-wrap" id="ktWrap">
+                <div class="kt-head">
+                    <h3>🌳 知识树</h3>
+                    <span class="kt-sub" id="ktStat">尚未导入知识点</span>
+                    <span class="fc-spacer"></span>
+                    <button type="button" class="fc-btn" id="ktExpandAll" title="展开当前选中节的所有节点">＋ 全部展开</button>
+                    <button type="button" class="fc-btn" id="ktCollapseAll" title="收拢当前选中节的所有节点">－ 全部收拢</button>
+                </div>
+                <div class="kt-bar">
+                    <label>科目 <select id="ktCourse"></select></label>
+                    <label>章 <select id="ktChapter"></select></label>
+                    <label>节 <select id="ktSection"></select></label>
+                    <span class="fc-spacer"></span>
+                    <label>默认展开 第 <select id="ktFrom"></select> – 第 <select id="ktTo"></select> 级</label>
+                    <input type="text" class="kt-search" id="ktSearch" placeholder="搜索节点（Esc 清空）">
+                </div>
+                <div class="kt-legend">
+                    <span>全项目：节点 <b id="ktTotal">0</b> · 叶子 <b id="ktLeaf">0</b> · 最深 <b id="ktDepth">0</b> 级</span>
+                    <span class="kt-tierbar" id="ktTierBar"></span>
+                </div>
+                <div class="kt-body" id="ktBody"></div>
+            </div>
+        </div>
+
+        <!-- ===== 🃏 闪卡视图（独立页签） =====
+             内容来自知识点树（kpTree）：一个「还有下一级」的节点 = 一张卡。
+             卡片内容可编辑，且编辑不影响任何复习历史（三层数据分离，见模块头注释）。 -->
+        <div class="view-pane" id="view-flash" style="display:none;">
+<div class="fc-wrap" id="fcWrap">
+                <div class="fc-head">
+                    <h3>🃏 闪卡</h3>
+                    <span class="fc-sub" id="fcStat">尚未生成</span>
+                    <span class="fc-spacer"></span>
+                    <button type="button" class="fc-btn" id="fcRangeBtn" title="设置出题 / 展开的层级范围">⚙️ 层级范围</button>
+                    <button type="button" class="fc-btn primary" id="fcBuildBtn">⚡ 生成 / 更新</button>
+                </div>
+                <div class="fc-range" id="fcRange" style="display:none;">
+                    <label>起点 <select id="fcFrom"></select></label>
+                    <label>终点 <select id="fcTo"></select></label>
+                    <button type="button" class="fc-btn sm" id="fcRangeOk">应用</button>
+                    <span class="fc-range-hint">只对范围内「还有下一级」的知识点出卡；最末一级（叶子）不出题。改范围不会删除已有卡片和复习记录。</span>
+                </div>
+                <div class="fc-tabs" id="fcTabs">
+                    <button type="button" class="fc-tab active" data-fcmode="chapter">🌳 按章节</button>
+                    <button type="button" class="fc-tab" data-fcmode="tag">🏷 按标签</button>
+                    <button type="button" class="fc-tab" data-fcmode="due">⏰ 待复习<span class="fc-badge" id="fcDueBadge">0</span></button>
+                    <span class="fc-spacer"></span>
+                    <button type="button" class="fc-btn sm" id="fcNewBtn" title="手工新建一张不属于知识点树的卡片">➕ 自建卡</button>
+                    <input type="text" class="fc-search" id="fcSearch" placeholder="搜索卡片 / 标签">
+                </div>
+                <div class="fc-body" id="fcBody"></div>
+            </div>
+        </div>
+
         <div class="view-pane" id="view-memory" style="display:none;">
             <div class="mem-summary" id="memSummary"></div>
             <div class="mem-cal">
@@ -2930,33 +3050,7 @@
             <div class="mem-detail" id="memDetail">
                 <div class="mem-detail-empty">点击日历中的任意一天，查看当天学习内容与记忆保持曲线</div>
             </div>
-            <!-- ===== 🃏 闪卡模块（放在月历 / 复习清单 / 当日详情之后） =====
-                 数据来源：项目的知识点树（kpTree）—— 一个「还有下级」的节点 = 一张卡，
-                 正面 = 节点名，反面 = 直接下级。内容可编辑，且编辑不影响任何复习历史。 -->
-            <div class="fc-wrap" id="fcWrap">
-                <div class="fc-head">
-                    <h3>🃏 闪卡</h3>
-                    <span class="fc-sub" id="fcStat">尚未生成</span>
-                    <span class="fc-spacer"></span>
-                    <button type="button" class="fc-btn" id="fcRangeBtn" title="设置出题 / 展开的层级范围">⚙️ 层级范围</button>
-                    <button type="button" class="fc-btn primary" id="fcBuildBtn">⚡ 生成 / 更新</button>
-                </div>
-                <div class="fc-range" id="fcRange" style="display:none;">
-                    <label>起点 <select id="fcFrom"></select></label>
-                    <label>终点 <select id="fcTo"></select></label>
-                    <button type="button" class="fc-btn sm" id="fcRangeOk">应用</button>
-                    <span class="fc-range-hint">只对范围内「还有下一级」的知识点出卡；最末一级（叶子）不出题。改范围不会删除已有卡片和复习记录。</span>
-                </div>
-                <div class="fc-tabs" id="fcTabs">
-                    <button type="button" class="fc-tab active" data-fcmode="chapter">🌳 按章节</button>
-                    <button type="button" class="fc-tab" data-fcmode="tag">🏷 按标签</button>
-                    <button type="button" class="fc-tab" data-fcmode="due">⏰ 待复习<span class="fc-badge" id="fcDueBadge">0</span></button>
-                    <span class="fc-spacer"></span>
-                    <button type="button" class="fc-btn sm" id="fcNewBtn" title="手工新建一张不属于知识点树的卡片">➕ 自建卡</button>
-                    <input type="text" class="fc-search" id="fcSearch" placeholder="搜索卡片 / 标签">
-                </div>
-                <div class="fc-body" id="fcBody"></div>
-            </div>
+            
         </div>
 
         <!-- ===== 设置视图（小 Tab）===== -->
@@ -3765,6 +3859,9 @@
             try{ window.dispatchEvent(new CustomEvent('cpaProjectApplied')); }catch(e){}
             // 闪卡跟随项目切换刷新（延后一拍：此刻 loadData 尚未执行）
             try { setTimeout(function () { try { fcState(); fcRender(); } catch (e) {} }, 0); } catch (e) {}
+            try { setTimeout(function () { try { fcState(); fcRender(); } catch (e) {} }, 0); } catch (e) {}
+            // 知识树跟随项目切换刷新（同样延后一拍）
+            try { setTimeout(function () { try { ktOpen = {}; ktRender(); } catch (e) {} }, 0); } catch (e) {}
             if (!COURSES.includes(state.currentCourse)) {
                 state.currentCourse = COURSES[0] || '';
             }
@@ -3877,6 +3974,9 @@
             cardNotes: {},    // [id] = [{nid,t,kind,text}]  kind: supplement|assoc|tip
             cardIndex: {},    // ['科目|章|节|层级|序号'] = cardId  —— 节点改名也不换 id
             cardCfg: { from: 1, to: 4, builtAt: '' },   // 出题层级范围
+            cardCfg: { from: 1, to: 4, builtAt: '' },   // 出题层级范围
+            // ---- 知识树页的视图偏好（独立体系，与闪卡互不相干）----
+            ktCfg: { from: 1, to: 3, course: '', chapter: 0, section: 0 },
             currentCourse: '会计',
             editingId: null,
             filterStar: 'all',
@@ -3969,6 +4069,8 @@
                     state.cardCfg = (data.cardCfg && typeof data.cardCfg === 'object') ? data.cardCfg : { from: 1, to: 4, builtAt: '' };
                     if (!(state.cardCfg.from > 0)) state.cardCfg.from = 1;
                     if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
+                    if (!(state.cardCfg.to > 0)) state.cardCfg.to = 4;
+                    state.ktCfg = (data.ktCfg && typeof data.ktCfg === 'object') ? data.ktCfg : { from: 1, to: 3, course: '', chapter: 0, section: 0 };
                     if (data.tomato) {
                         state.tomato.count = data.tomato.count || 0;
                         const _tc = data.tomato.cfg;
@@ -4043,6 +4145,8 @@
                 cardNotes: state.cardNotes || {},
                 cardIndex: state.cardIndex || {},
                 cardCfg: state.cardCfg || { from: 1, to: 4, builtAt: '' },
+                cardCfg: state.cardCfg || { from: 1, to: 4, builtAt: '' },
+                ktCfg: state.ktCfg || { from: 1, to: 3, course: '', chapter: 0, section: 0 },
                 resourceTypes: Array.isArray(state.resourceTypes) ? state.resourceTypes : null,
                 sources: Array.isArray(state.sources) ? state.sources : null,
                 tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
@@ -8014,6 +8118,8 @@
                         p.style.display = (p.id === 'view-' + view) ? '' : 'none';
                     });
                     if (view === 'memory') renderMemoryView();
+                    if (view === 'flash') { try { fcRender(); } catch (e) {} }
+                    if (view === 'kptree') { try { ktRender(); } catch (e) {} }
                     if (view === 'goal') { renderGoalSummary(); renderGoalStatsPanel(); }
                 });
             });
@@ -8066,7 +8172,7 @@
         function renderMemoryView() {
             const projectRecords = state.records;
             const todayStr = dateToStr(new Date());
-            try { fcRender(); } catch (e) {}   // 闪卡模块与月历 / 复习清单同屏刷新
+            try { fcSyncTabBadge(); } catch (e) {}   // 闪卡已独立成页，这里只把页签角标刷新
 
             // ---- 汇总卡片 ----
             const rets = projectRecords.map(r => recordRetention(r, todayStr));
@@ -9074,6 +9180,15 @@
             return Math.round((1 + ans * 0.3 + depth * 0.2) * 100) / 100;
         }
 
+        // 顶部页签上的「待复习」角标 —— 与闪卡页内的 ⏰ 待复习 同源同数
+        function fcSyncTabBadge() {
+            const el = document.getElementById('fc-tabBadge');
+            if (!el) return;
+            let n = 0;
+            try { n = fcPendingCards().length; } catch (e) { n = 0; }
+            el.textContent = String(n);
+        }
+
         // ---------- 渲染：主入口 ----------
         function fcRender() {
             fcState();
@@ -9097,6 +9212,7 @@
                 badge.textContent = String(n);
                 badge.className = 'fc-badge' + (n ? ' hot' : '');
             }
+            fcSyncTabBadge();
             document.querySelectorAll('#fcTabs .fc-tab').forEach(function (b) {
                 b.classList.toggle('active', b.dataset.fcmode === fcView);
             });
@@ -9562,7 +9678,7 @@
                 fcEmbedState = null;
                 return '<div class="fce-wrap">' +
                     '<div class="fce-head"><span class="fce-title">🃏 本次闪卡</span><span class="fce-count">0 张</span></div>' +
-                    '<div class="fc-empty" style="padding:10px 4px;">这一节还没有可用的闪卡。到 <b>🧠 记忆曲线 → 🃏 闪卡</b> 点 <b>⚡ 生成 / 更新</b>。</div>' +
+                    '<div class="fc-empty" style="padding:10px 4px;">这一节还没有可用的闪卡。到顶部 <b>🃏 闪卡</b> 页点 <b>⚡ 生成 / 更新</b>。</div>' +
                 '</div>';
             }
             fcEmbedState = { idx: 0, flipped: false, ids: cards.map(function (c) { return c.id; }) };
@@ -9586,24 +9702,32 @@
             const pos = document.getElementById('fcePos');
             if (pos) pos.textContent = String(fcEmbedState.idx + 1);
             if (!card) { stage.innerHTML = '<div class="fc-empty">卡片已不存在</div>'; return; }
-            const head = '<div class="fce-box">' +
-                '<div class="fc-face-label">正面 · 问题</div>' +
-                '<div class="fc-face-q"' + (fcEmbedState.flipped ? ' style="font-size:15px;"' : '') + '>' + kpEsc(card.q) + '</div>';
+            // ★ 严格互斥：同一时刻只渲染一面。
+            //   正面屏 = 只有问题；反面屏 = 只有答案 + 标签 + 子栏。
+            //   （旧版把正面缩小留在反面屏上方当上下文，本轮按 Tom 要求撤掉。）
             if (!fcEmbedState.flipped) {
-                stage.innerHTML = head +
-                    '<button type="button" class="fce-flip" data-fce-flip="1">👆 点击显示答案</button></div>';
+                stage.innerHTML =
+                    '<div class="fce-box" data-fce-flip="1">' +
+                        '<div class="fc-face-label">正面 · 问题</div>' +
+                        '<div class="fc-face-q">' + kpEsc(card.q) + '</div>' +
+                        '<button type="button" class="fce-flip" data-fce-flip="1">👆 点击显示答案</button>' +
+                    '</div>';
                 return;
             }
             const notes = fcNotes(card);
-            stage.innerHTML = head +
-                '<div class="fce-div"></div>' +
-                '<div class="fc-face-label">反面 · 答案</div>' +
-                '<div class="fc-face-a">' + kpEsc(card.a || '（无）') + '</div>' +
-                '<div class="fce-tags">' + fcAllTags(card).map(function (t) {
-                    const own = (card.tags || []).indexOf(t) !== -1;
-                    return '<span class="fc-tag ' + (own ? 'own' : 'auto') + '">' + kpEsc(t) + '</span>';
-                }).join('') + '</div>' +
-                fcNoteSectionsHTML(card, notes, 'fceNote') +
+            stage.innerHTML =
+                '<div class="fce-box">' +
+                    '<div class="fce-backbar">' +
+                        '<span class="fc-face-label">反面 · 答案</span>' +
+                        '<span class="fc-spacer"></span>' +
+                        '<button type="button" class="fc-btn sm" data-fce-flip="0">↩ 回到正面</button>' +
+                    '</div>' +
+                    '<div class="fc-face-a">' + kpEsc(card.a || '（无）') + '</div>' +
+                    '<div class="fce-tags">' + fcAllTags(card).map(function (t) {
+                        const own = (card.tags || []).indexOf(t) !== -1;
+                        return '<span class="fc-tag ' + (own ? 'own' : 'auto') + '">' + kpEsc(t) + '</span>';
+                    }).join('') + '</div>' +
+                    fcNoteSectionsHTML(card, notes, 'fceNote') +
                 '</div>';
             fcBindNotes(stage, card, 'fceNote');
         }
@@ -9613,9 +9737,16 @@
             if (!wrap || wrap.dataset.fcebound === '1') return;
             wrap.dataset.fcebound = '1';
             wrap.addEventListener('click', function (e) {
+                // 翻面：data-fce-flip="1" 翻到反面，"0" 翻回正面。
+                // 正面整块（含问题文字）都可点 —— 对应「学习笔记展示正面，
+                // 再次点击成为反面」；反面屏只在标题行 / 按钮上可点回，
+                // 免得想选一段答案文字却被翻回正面。
                 const flip = e.target.closest ? e.target.closest('[data-fce-flip]') : null;
                 if (flip) {
-                    if (fcEmbedState) { fcEmbedState.flipped = true; fcEmbedRender(); }
+                    if (fcEmbedState) {
+                        fcEmbedState.flipped = String(flip.getAttribute('data-fce-flip')) === '1';
+                        fcEmbedRender();
+                    }
                     return;
                 }
                 const nav = e.target.closest ? e.target.closest('[data-fce-nav]') : null;
@@ -9685,6 +9816,341 @@
             };
             f.innerHTML = opts(Math.min(state.cardCfg.from || 1, mx));
             t.innerHTML = opts(Math.min(state.cardCfg.to || mx, mx));
+        }
+
+        /* ============================================================
+           🌳 知识树模块（Knowledge Tree）
+           ------------------------------------------------------------
+           定位：**自成一套体系**，与闪卡模块互不依赖。
+                 它只做一件事 —— 把项目里的知识点树
+                   project.kpTree[科目][章][节] = [ {name, children:[…]} ]
+                 完整摊开给人看：展开 / 收拢 / 层级范围 / 搜索 / 体检。
+
+           与闪卡的关系：零直接调用。
+             · 闪卡读的是同一棵树，但闪卡有自己的内容层 state.cards；
+               在这里展开 / 收拢 / 搜索，不会动到任何一张卡；
+             · 这里也不出题、不生成卡片 —— 出题是闪卡页的事。
+
+           只读：本模块不写 kpTree、不写学习记录。要改结构请走
+                 「⚙️ 设置 → 导入大纲」或学习进度页逐条录入知识点。
+           唯一写入的地方：state.ktCfg（本页自己的视图偏好），
+                 与闪卡互不相干。
+           ============================================================ */
+
+        let ktQuery = '';
+        let ktOpen = {};        // sig -> true / false：用户手动覆盖过的展开状态
+        let ktBound = false;
+
+        function ktProj() {
+            try { return (typeof getCurrentProject === 'function') ? getCurrentProject() : null; } catch (e) { return null; }
+        }
+
+        function ktState() {
+            if (!state.ktCfg || typeof state.ktCfg !== 'object') state.ktCfg = {};
+            if (!(state.ktCfg.from > 0)) state.ktCfg.from = 1;
+            if (!(state.ktCfg.to > 0)) state.ktCfg.to = 3;
+            if (state.ktCfg.to < state.ktCfg.from) state.ktCfg.to = state.ktCfg.from;
+            return state.ktCfg;
+        }
+
+        // 展开状态的键 = 下标路径（科目|章|节#i.j.k），不是节点名 —— 改名不丢展开状态
+        function ktSig(course, ch, sec, idxPath) {
+            return [course, ch, sec].join('|') + '#' + idxPath.join('.');
+        }
+
+        function ktFlatten(arr, base, depth, idxPath, parentNames, out) {
+            (arr || []).forEach(function (node, i) {
+                if (!node || typeof node.name !== 'string' || !node.name.trim()) return;
+                const kids = (Array.isArray(node.children) ? node.children : [])
+                    .filter(function (c) { return c && typeof c.name === 'string' && c.name.trim(); });
+                const ip = idxPath.concat([i + 1]);
+                const names = parentNames.concat([node.name]);
+                out.push({
+                    sig: ktSig(base.course, base.chapter, base.section, ip),
+                    parent: idxPath.length ? ktSig(base.course, base.chapter, base.section, idxPath) : '',
+                    course: base.course, chapter: base.chapter, section: base.section,
+                    tier: depth + 1, order: i + 1, name: node.name, kidN: kids.length,
+                    crumb: names.join(' › ')
+                });
+                ktFlatten(kids, base, depth + 1, ip, names, out);
+            });
+        }
+
+        // 整棵项目树摊平（所有科目 / 章 / 节）
+        function ktAllNodes() {
+            const out = [];
+            const proj = ktProj();
+            if (!proj || !proj.kpTree || typeof proj.kpTree !== 'object') return out;
+            const courses = (Array.isArray(proj.courses) && proj.courses.length) ? proj.courses : Object.keys(proj.kpTree);
+            courses.forEach(function (course) {
+                const byCh = proj.kpTree[course];
+                if (!byCh || typeof byCh !== 'object') return;
+                Object.keys(byCh).map(Number).filter(function (n) { return !isNaN(n); })
+                    .sort(function (a, b) { return a - b; }).forEach(function (ch) {
+                        const bySec = byCh[ch];
+                        if (!bySec || typeof bySec !== 'object') return;
+                        Object.keys(bySec).map(Number).filter(function (n) { return !isNaN(n); })
+                            .sort(function (a, b) { return a - b; }).forEach(function (sec) {
+                                const arr = bySec[sec];
+                                if (!Array.isArray(arr) || !arr.length) return;
+                                ktFlatten(arr, { course: course, chapter: ch, section: sec }, 0, [], [], out);
+                            });
+                    });
+            });
+            return out;
+        }
+
+        function ktChapterName(proj, course, ch) {
+            try { return (proj.chapterNames && proj.chapterNames[course] && proj.chapterNames[course][ch]) || ''; } catch (e) { return ''; }
+        }
+        function ktSectionName(proj, course, ch, sec) {
+            try {
+                const a = proj.sectionNames && proj.sectionNames[course] && proj.sectionNames[course][ch];
+                return (Array.isArray(a) && a[sec - 1]) || '';
+            } catch (e) { return ''; }
+        }
+
+        function ktMaxTier(all) {
+            let mx = 1;
+            (all || []).forEach(function (n) { if (n.tier > mx) mx = n.tier; });
+            return mx;
+        }
+
+        // ---------- 选择器 ----------
+        function ktFillSelects(all, proj) {
+            const cfg = ktState();
+            const courses = [];
+            (all || []).forEach(function (n) { if (courses.indexOf(n.course) < 0) courses.push(n.course); });
+
+            const sc = document.getElementById('ktCourse');
+            if (sc) {
+                if (courses.indexOf(cfg.course) < 0) cfg.course = courses.length ? courses[0] : '';
+                sc.innerHTML = courses.map(function (c) {
+                    return '<option value="' + kpEsc(c) + '"' + (c === cfg.course ? ' selected' : '') + '>' + kpEsc(c) + '</option>';
+                }).join('');
+            }
+
+            const chs = [];
+            (all || []).forEach(function (n) {
+                if (n.course !== cfg.course) return;
+                if (chs.indexOf(n.chapter) < 0) chs.push(n.chapter);
+            });
+            chs.sort(function (a, b) { return a - b; });
+            if (chs.indexOf(+cfg.chapter) < 0) cfg.chapter = chs.length ? chs[0] : 0;
+            const sch = document.getElementById('ktChapter');
+            if (sch) {
+                sch.innerHTML = chs.map(function (ch) {
+                    const nm = ktChapterName(proj, cfg.course, ch);
+                    return '<option value="' + ch + '"' + (+ch === +cfg.chapter ? ' selected' : '') + '>第 ' + ch + ' 章' + (nm ? ' ' + kpEsc(nm) : '') + '</option>';
+                }).join('');
+            }
+
+            const secs = [];
+            (all || []).forEach(function (n) {
+                if (n.course !== cfg.course || +n.chapter !== +cfg.chapter) return;
+                if (secs.indexOf(n.section) < 0) secs.push(n.section);
+            });
+            secs.sort(function (a, b) { return a - b; });
+            if (secs.indexOf(+cfg.section) < 0) cfg.section = secs.length ? secs[0] : 0;
+            const sse = document.getElementById('ktSection');
+            if (sse) {
+                sse.innerHTML = secs.map(function (sec) {
+                    const nm = ktSectionName(proj, cfg.course, cfg.chapter, sec);
+                    return '<option value="' + sec + '"' + (+sec === +cfg.section ? ' selected' : '') + '>第 ' + sec + ' 节' + (nm ? ' ' + kpEsc(nm) : '') + '</option>';
+                }).join('');
+            }
+
+            const mx = Math.max(ktMaxTier(all), 1);
+            const opts = function (sel) {
+                let h = '';
+                for (let i = 1; i <= mx; i++) h += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>第 ' + i + ' 级</option>';
+                return h;
+            };
+            const sf = document.getElementById('ktFrom'), st = document.getElementById('ktTo');
+            if (sf) sf.innerHTML = opts(Math.min(cfg.from, mx));
+            if (st) st.innerHTML = opts(Math.min(cfg.to, mx));
+        }
+
+        // ---------- 统计条 ----------
+        function ktPaintStats(scope) {
+            const total = scope.length;
+            const leaf = scope.filter(function (n) { return !n.kidN; }).length;
+            const mx = ktMaxTier(scope);
+            const set = function (id, v) { const el = document.getElementById(id); if (el) el.textContent = String(v); };
+            set('ktTotal', total); set('ktLeaf', leaf); set('ktDepth', total ? mx : 0);
+
+            const byTier = {};
+            scope.forEach(function (n) { byTier[n.tier] = (byTier[n.tier] || 0) + 1; });
+            const bar = document.getElementById('ktTierBar');
+            if (bar) {
+                const parts = [];
+                for (let t = 1; t <= mx; t++) parts.push('第' + t + '级 ' + (byTier[t] || 0));
+                bar.innerHTML = total ? parts.map(function (s) { return '<span>' + s + '</span>'; }).join('') : '';
+            }
+        }
+
+        // ---------- 主渲染 ----------
+        function ktRender() {
+            const body = document.getElementById('ktBody');
+            if (!body) return;
+            const proj = ktProj();
+            const all = ktAllNodes();
+            const statEl = document.getElementById('ktStat');
+
+            ktFillSelects(all, proj);
+
+            if (!all.length) {
+                if (statEl) statEl.textContent = '尚未导入知识点';
+                ktPaintStats([]);
+                body.innerHTML = '<div class="kt-empty">这个项目还没有知识点树。<br>' +
+                    '先到 <b>⚙️ 设置 → 导入大纲</b> 把「科目 / 章 / 节 / 知识点」的缩进文本粘进去，' +
+                    '或在<b>学习进度</b>页逐条录入知识点。</div>';
+                return;
+            }
+
+            const cfg = ktState();
+            const scope = all.filter(function (n) {
+                return n.course === cfg.course && +n.chapter === +cfg.chapter && +n.section === +cfg.section;
+            });
+            ktPaintStats(all);
+
+            const secNm = ktSectionName(proj, cfg.course, cfg.chapter, cfg.section);
+            if (statEl) {
+                statEl.textContent = cfg.course + ' · 第 ' + cfg.chapter + ' 章' + (ktChapterName(proj, cfg.course, cfg.chapter) ? ' ' + ktChapterName(proj, cfg.course, cfg.chapter) : '') +
+                    ' · 第 ' + cfg.section + ' 节' + (secNm ? ' ' + secNm : '') + ' —— 本节 ' + scope.length + ' 个节点';
+            }
+
+            if (!scope.length) {
+                body.innerHTML = '<div class="kt-empty">这一节还没有知识点。</div>';
+                return;
+            }
+
+            // —— 搜索：命中项 + 它的所有祖先保持可见，祖先自动展开 ——
+            const q = ktQuery.trim().toLowerCase();
+            const map = {};
+            scope.forEach(function (n) { map[n.sig] = n; });
+            const matched = {}, keep = {};
+            if (q) {
+                scope.forEach(function (n) {
+                    if (n.name.toLowerCase().indexOf(q) < 0) return;
+                    matched[n.sig] = true; keep[n.sig] = true;
+                    let p = n.parent, guard = 0;
+                    while (p && guard++ < 24) {
+                        if (keep[p]) break;
+                        keep[p] = true;
+                        p = (map[p] && map[p].parent) || '';
+                    }
+                });
+            }
+
+            // —— 可见性 / 展开态 ——
+            const vis = {}, expd = {};
+            scope.forEach(function (n) {
+                vis[n.sig] = n.parent ? (!!vis[n.parent] && !!expd[n.parent]) : true;
+                let e;
+                if (q) e = !!keep[n.sig] && !matched[n.sig];
+                else if (ktOpen[n.sig] !== undefined) e = !!ktOpen[n.sig];
+                else e = (n.tier >= cfg.from && n.tier <= cfg.to);
+                expd[n.sig] = e && n.kidN > 0;
+            });
+
+            const esc = function (s) { return kpEsc(s); };
+            const label = function (n) {
+                if (!q) return esc(n.name);
+                const at = n.name.toLowerCase().indexOf(q);
+                if (at < 0) return esc(n.name);
+                return esc(n.name.slice(0, at)) + '<mark>' + esc(n.name.slice(at, at + q.length)) + '</mark>' + esc(n.name.slice(at + q.length));
+            };
+
+            let html = '';
+            let shown = 0;
+            scope.forEach(function (n) {
+                if (!vis[n.sig]) return;
+                if (q && !keep[n.sig]) return;
+                shown++;
+                const caret = n.kidN
+                    ? '<span class="kt-caret" data-kt-toggle="' + esc(n.sig) + '" title="展开 / 收拢">' + (expd[n.sig] ? '▾' : '▸') + '</span>'
+                    : '<span class="kt-caret kt-leaf">·</span>';
+                html += '<div class="kt-row" data-kt-sig="' + esc(n.sig) + '" title="' + esc(n.crumb) + '" style="padding-left:' + ((n.tier - 1) * 18) + 'px;">' +
+                    caret +
+                    '<span class="kt-name">' + label(n) + '</span>' +
+                    '<span class="kt-tier">L' + n.tier + '</span>' +
+                    (n.kidN ? '<span class="kt-kidn">' + n.kidN + ' 个子节点</span>' : '<span class="kt-kidn">叶子</span>') +
+                    '</div>';
+            });
+
+            if (q && !shown) {
+                body.innerHTML = '<div class="kt-empty">没有匹配「' + esc(ktQuery.trim()) + '」的节点。</div>';
+                return;
+            }
+            body.innerHTML = html;
+        }
+
+        // ---------- 事件（只绑一次） ----------
+        function initKpTreeModule() {
+            if (ktBound) return;
+            ktBound = true;
+
+            const body = document.getElementById('ktBody');
+            if (body) {
+                body.addEventListener('click', function (e) {
+                    const t = e.target.closest ? e.target.closest('[data-kt-toggle]') : null;
+                    if (!t) return;
+                    const sig = t.getAttribute('data-kt-toggle');
+                    const cfg = ktState();
+                    // 首次手动切换时，把「范围默认」固化成显式状态，避免下次算出别的结果
+                    if (ktOpen[sig] === undefined) {
+                        const row = t.parentNode;
+                        const tierEl = row ? row.querySelector('.kt-tier') : null;
+                        const tier = tierEl ? parseInt(String(tierEl.textContent).replace(/[^\d]/g, ''), 10) : cfg.from;
+                        ktOpen[sig] = (tier >= cfg.from && tier <= cfg.to);
+                    }
+                    ktOpen[sig] = !ktOpen[sig];
+                    ktRender();
+                });
+            }
+
+            const expAll = document.getElementById('ktExpandAll');
+            if (expAll) expAll.addEventListener('click', function () { ktSetAllOpen(true); });
+            const colAll = document.getElementById('ktCollapseAll');
+            if (colAll) colAll.addEventListener('click', function () { ktSetAllOpen(false); });
+
+            const search = document.getElementById('ktSearch');
+            if (search) {
+                search.addEventListener('input', function () { ktQuery = search.value || ''; ktRender(); });
+                search.addEventListener('keydown', function (e) { if (e.key === 'Escape') { search.value = ''; ktQuery = ''; ktRender(); } });
+            }
+
+            ['ktCourse', 'ktChapter', 'ktSection', 'ktFrom', 'ktTo'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('change', function () {
+                    const cfg = ktState();
+                    const g = function (i) { const e2 = document.getElementById(i); return e2 ? e2.value : ''; };
+                    if (id === 'ktCourse') { cfg.course = g('ktCourse'); cfg.chapter = 0; cfg.section = 0; }
+                    if (id === 'ktChapter') { cfg.chapter = parseInt(g('ktChapter'), 10) || 0; cfg.section = 0; }
+                    if (id === 'ktSection') { cfg.section = parseInt(g('ktSection'), 10) || 0; }
+                    if (id === 'ktFrom' || id === 'ktTo') {
+                        let a = parseInt(g('ktFrom'), 10) || 1, b = parseInt(g('ktTo'), 10) || 1;
+                        if (b < a) { const t = a; a = b; b = t; }
+                        cfg.from = a; cfg.to = b;
+                        ktOpen = {};                      // 改范围 = 回到「按范围展开」
+                    }
+                    saveData();
+                    ktRender();
+                });
+            });
+        }
+
+        // 全部展开 / 收拢只作用于「当前选中的这一节」，避免误伤别的章节的展开状态
+        function ktSetAllOpen(open) {
+            const cfg = ktState();
+            ktAllNodes().forEach(function (n) {
+                if (n.course !== cfg.course || +n.chapter !== +cfg.chapter || +n.section !== +cfg.section) return;
+                if (!n.kidN) return;
+                ktOpen[n.sig] = !!open;
+            });
+            ktRender();
         }
         function saveKpReview(recordId, d) {
             const todayStr = dateToStr(new Date());
@@ -9902,6 +10368,8 @@
             initMemoryView();
             renderProjectSelect();
             try { initCardModule(); } catch (e) { console.warn('闪卡模块初始化失败：', e); }
+            try { initCardModule(); } catch (e) { console.warn('闪卡模块初始化失败：', e); }
+            try { initKpTreeModule(); } catch (e) { console.warn('知识树模块初始化失败：', e); }
 
             if (state.records.length > 0) {
                 const most = state.records.reduce((a, b) => {
@@ -12381,7 +12849,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917f</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917g</div>
 <!-- build-tag:end -->
 </body>
 </html>
