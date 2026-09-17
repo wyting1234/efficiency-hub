@@ -2436,18 +2436,33 @@
 .kt-tierbar span { background: #F2ECE1; border-radius: 6px; padding: 2px 6px; font-size: 11px; color: #6D6252; }
 .kt-body {
     border: 1px solid #EFE7DA; border-radius: 10px; background: #FFFEFB;
-    padding: 12px 12px 14px; max-height: calc(100vh - 340px); min-height: 160px; overflow: auto;
+    padding: 12px 12px 14px; min-height: 160px; overflow: auto;
 }
-/* ⚠️ .kt-row / .kt-caret / .kt-name / .kt-kidn / .kt-row-extra 的样式**只在下面
+
+/* ===== 知识树「铺满整页」（2026-09-17，按 Tom 红框） =====
+   症状：知识树卡片按内容自适应高度 —— 视口 828px 时卡片只到 405px，下面 423px 全是空背景，
+   纵向填充率 50.9%（Edge 无头内核实测，非目测）。根因不是树太短，是**卡片没有可伸展的高度**：
+   `max-height: calc(100vh - 340px)` 只是个手估常量（既可能白留空、也可能早早就出滚动条），
+   而 160px 的 min-height 才是树少时的实际高度 —— 节点没几个，它永远长不高。
+   做法：只在知识树激活时（`.main.fillpage`，由 initViewTabs 打类）把整条链变成
+   「高度已知的 flex 列」：.main(100vh) → #view-kptree → #ktWrap → .kt-body 逐级 flex:1，
+   多出来的高度全给树体。链上每级都要 min-height:0 —— 否则 flex 项默认 min-height:auto 会
+   顶住内容高度，伸展失效（改 flex 高度最容易踩的一条）。
+   为什么不用 calc(100vh - N)：页签会换行（1500/1180/768 三档字号都在变，窄屏还折两行），
+   常量 N 估错就冒出滚动条；交给 flex，任何视口、任何换行都对。
+   为什么 height:100vh 而不是靠 body 撑高：body 的 min-height:100vh 会让「页签 + 树」一起把
+   整页顶高，树大时整页滚（筛选条也跟着滚走）。锁 100vh 后由 .kt-body 自己滚，与「卡片内滚动」
+   的既有体验一致。↑ 只作用于知识树：其它页签的排版一行不动。 */
+.main.fillpage { display: flex; flex-direction: column; height: 100vh; }
+.main.fillpage .view-tabs { flex: 0 0 auto; }
+.main.fillpage #view-kptree { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.main.fillpage #ktWrap { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.main.fillpage .kt-body { flex: 1 1 auto; max-height: none; }
+/* ⚠️ .kt-row / .kt-caret / .kt-name / .kt-kidn 的样式**只在下面
    「🌳 知识树 · 思维导图样式」那一段里定义一份**。上一版在这里还留着一份旧副本，
    同一个选择器写两遍 —— 改一处忘一处是这类大文件最难查的坑，已清掉。
    同时删掉了 .kt-tier：模板换成 kt-lv{n} + .kt-lvb 之后它已没有任何元素使用。 */
 .kt-empty { padding: 26px 10px; text-align: center; color: #A8997F; font-size: 13px; line-height: 1.9; }
-
-.kt-extra-badge {
-    flex: 0 0 auto; font-size: 10.5px; color: #8A6B3A; background: #F4E7CE;
-    border-radius: 5px; padding: 2px 6px; white-space: nowrap;
-}
 
 /* ===== 🌳 知识树 · 思维导图样式（需求 2：借鉴参考图） =====
    参考图的形态逐条落到这里：
@@ -2521,11 +2536,11 @@
 .kt-lv4:hover, .kt-lv5:hover, .kt-lv6:hover, .kt-lv7:hover { background: #F7F2E8; }
 .kt-lv5 > .kt-name { color: #554C41; }
 .kt-lv6 > .kt-name, .kt-lv7 > .kt-name { color: #6D6252; font-weight: 400; }
-/* 「📥 记录补充」节点：来自学习记录、大纲里没有的知识点。
-   虚线左边框 + 浅底，与大纲节点一眼可辨 —— 它们是「📝 学习记录 → 知识点速记」写下的
-   第 4 级往下内容；大纲只到第 3 级，本来就不会有，所以无需固化。 */
-.kt-row-extra { background: #FBF7EE; border-left: 2px dashed #DCC9A6; border-radius: 0 7px 7px 0; }
-.kt-row-extra:hover { background: #F6EFE2; }
+/* 2026-09-17 欠账清理：此处原有 .kt-row-extra（+ :hover）与 .kt-extra-badge 两条规则 ——
+   「📥 记录补充」节点用虚线左边框 + 浅底，与大纲节点一眼可辨。但全文件零引用：
+   渲染端从来没有输出过这两个类名（配套的 extra:true / fromRecord:true 两个标记也没有任何读取方）。
+   删除，不留「看着像在用、其实永远不生效」的规则。
+   ⚠️ 若要恢复这个视觉区分，缺的不是 CSS 而是**渲染端真的输出类名**这一步。 */
 .kt-caret { flex: 0 0 auto; width: 15px; text-align: center; color: #A8997F; cursor: pointer;
     user-select: none; font-size: 11px; }
 .kt-lv1 > .kt-caret, .kt-lv2 > .kt-caret { color: rgba(255, 253, 248, .8); }
@@ -8493,6 +8508,10 @@
                     document.querySelectorAll('.view-pane').forEach(p => {
                         p.style.display = (p.id === 'view-' + view) ? '' : 'none';
                     });
+                    // ★ 知识树铺满整页：只有这一个视图需要（样式见 CSS 的 .main.fillpage）。
+                    //   按视图打类而不是写死在容器上，别的页签排版一行不动。
+                    const mc = document.getElementById('mainContent');
+                    if (mc) mc.classList.toggle('fillpage', view === 'kptree');
                     if (view === 'memory') renderMemoryView();
                     if (view === 'flash') { try { fcRender(); } catch (e) {} }
                     if (view === 'kptree') { try { ktRender(); } catch (e) {} }
@@ -9227,7 +9246,13 @@
                     round: parseInt(box.querySelector('#rvRound').value, 10) || rd,
                     start: start, end: end, hours: hours,
                     tomatoes: Math.max(0, parseInt(p.value, 10) || 0),
-                    note: box.querySelector('#rvNote').value || '',
+                    // ★ 2026-09-17 欠账清理：这里原来存的是只读框 #rvNote 的值，
+                    //   而 #rvNote 显示的是 rvPrevText()（上期笔记 + 上一轮补充/提示），
+                    //   于是每复习一轮就把「上期内容」抄成本轮 note，下一轮再抄一次 ——
+                    //   「【上一轮补充】」会逐轮自我嵌套。改为保留本轮已存值，
+                    //   与下面 newKp / nextTips 同款口径：不新增污染，也不动历史数据。
+                    //   （跳过本轮时也保留 —— 该字段已无输入源，清掉就是纯丢数据。）
+                    note: saved.note || '',
                     // 输入框已移除 → 保留已存值，避免编辑旧记录时把历史内容清掉
                     newKp: skip ? '' : (saved.newKp || ''),
                     nextTips: skip ? '' : (saved.nextTips || ''),
@@ -11268,8 +11293,6 @@
                         tier: n.tier,                       // ★ 4–7 绝对层级
                         order: n.order, name: n.name, kidN: n.hasKids ? n.answers.length : 0,
                         crumb: n.path.join(' › '),
-                        extra: true,                        // 视觉上仍标「来自学习记录」
-                        fromRecord: true,
                         virtual: !!n.virtual
                     });
                 });
@@ -14794,7 +14817,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917y</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917z</div>
 <!-- build-tag:end -->
 </body>
 </html>
