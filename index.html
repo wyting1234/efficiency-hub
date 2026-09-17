@@ -2475,7 +2475,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；打开工具时追加该工具自己的版本。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260917t';
+  var NAV_VER = 'V20260917u';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -2564,7 +2564,7 @@ document.addEventListener('pointerdown', e => {
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260917t</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260917u</div>
 </body>
 
 

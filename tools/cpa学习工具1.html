@@ -2478,7 +2478,8 @@
 .kt-lv5 > .kt-name { color: #554C41; }
 .kt-lv6 > .kt-name, .kt-lv7 > .kt-name { color: #6D6252; font-weight: 400; }
 /* 「📥 记录补充」节点：来自学习记录、大纲里没有的知识点。
-   虚线左边框 + 浅底，与大纲节点一眼可辨 —— 它们是可以被「导入大纲」固化的临时层。 */
+   虚线左边框 + 浅底，与大纲节点一眼可辨 —— 它们是「📝 学习记录 → 知识点速记」写下的
+   第 4 级往下内容；大纲只到第 3 级，本来就不会有，所以无需固化。 */
 .kt-row-extra { background: #FBF7EE; border-left: 2px dashed #DCC9A6; border-radius: 0 7px 7px 0; }
 .kt-row-extra:hover { background: #F6EFE2; }
 .kt-caret { flex: 0 0 auto; width: 15px; text-align: center; color: #A8997F; cursor: pointer;
@@ -10003,7 +10004,7 @@
             const proj = fcProj();
             const hasTree = !!(proj && proj.kpTree && Object.keys(proj.kpTree).length);
             if (!hasTree) {
-                return '还没有知识点树。<br>先到 <b>⚙️ 设置 → 导入大纲</b> 把「科目 / 章 / 节 / 知识点」的缩进文本粘进去，<br>再回到这里点 <b>⚡ 生成 / 更新</b>。';
+                return '还没有可出题的知识点。<br>先在 <b>🎯 考试项目 → ✎ 编辑项目配置 → 大纲结构</b> 里填好 <b>科目 / 章 / 节</b>（只到第 3 级），<br>再到 <b>📝 学习记录 → 知识点速记</b> 写第 4 级往下的知识点，<br>然后回到这里点 <b>⚡ 生成 / 更新</b>。';
             }
             return '这棵树里还没有可出题的层级。<br>闪卡只对「还有下一级」的知识点出卡，请点 <b>⚡ 生成 / 更新</b> 或调整 <b>⚙️ 层级范围</b>。';
         }
@@ -10843,7 +10844,8 @@
              · 这里也不出题、不生成卡片 —— 出题是闪卡页的事。
 
            只读：本模块不写 kpTree、不写学习记录。要改结构请走
-                 「⚙️ 设置 → 导入大纲」或学习进度页逐条录入知识点。
+                 「🎯 考试项目 → ✎ 编辑项目配置 → 大纲结构」（只到第 3 级：科目/章/节）
+                 与「📝 学习记录 → 知识点速记」（第 4 级往下）。
            唯一写入的地方：state.ktCfg（本页自己的视图偏好），
                  与闪卡互不相干。
            ============================================================ */
@@ -10925,7 +10927,8 @@
         //   不需要用户手工往大纲里再录一遍。
         //
         //   注意：本模块仍是**只读**的 —— 合并在内存里完成，一个字节都不写回 kpTree。
-        //   （要把它固化成大纲，走「⚙️ 设置 → 导入大纲」。）
+        //   这些节点来自「📝 学习记录 → 知识点速记」（第 4 级往下）；大纲只到第 3 级
+        //   （🎯 考试项目 → ✎ 编辑项目配置 → 大纲结构），所以它们不必再往大纲里搬。
         function ktNorm(s) {
             return String(s || '')
                 .replace(/^[\s\u3000]*[0-9]{1,3}\s*[.、．)）:：]\s*/, '')   // 剥掉行首序号
@@ -11322,9 +11325,10 @@
             if (!all.length) {
                 if (statEl) statEl.textContent = '尚未导入知识点';
                 ktPaintStats([]);
-                body.innerHTML = '<div class="kt-empty">这个项目还没有知识点树。<br>' +
-                    '先到 <b>⚙️ 设置 → 导入大纲</b> 把「科目 / 章 / 节 / 知识点」的缩进文本粘进去，' +
-                    '或在<b>学习进度</b>页逐条录入知识点。</div>';
+                body.innerHTML = '<div class="kt-empty">这个项目还没有可展示的层级。<br>' +
+                    '<b>科目 / 章 / 节</b>（第 1–3 级）在 <b>🎯 考试项目 → ✎ 编辑项目配置 → 大纲结构</b> 里填；<br>' +
+                    '<b>知识点</b>（第 4 级往下）在 <b>📝 学习记录 → 知识点速记</b> 里写 —— ' +
+                    '速记三列占第 4–5 级、四列占第 4–6 级。</div>';
                 return;
             }
 
@@ -11354,7 +11358,9 @@
             }
 
             if (!total) {
-                body.innerHTML = '<div class="kt-empty">这个范围内还没有知识点。</div>';
+                body.innerHTML = '<div class="kt-empty">这个范围内没有节点。<br>' +
+                    '上面的<b>显示范围</b>是第 ' + cfg.from + '–' + visTo + ' 级 —— ' +
+                    '该区间确实没有节点时，把范围放宽一档即可。</div>';
                 return;
             }
 
@@ -14452,7 +14458,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917t</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917u</div>
 <!-- build-tag:end -->
 </body>
 </html>
