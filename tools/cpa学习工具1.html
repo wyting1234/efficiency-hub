@@ -2774,6 +2774,26 @@
         }
         .rec-pre-md { background: #F7F5F0; }
         .rec-kp-empty { color: var(--text-secondary); font-style: italic; }
+        /* ★ 卡片知识点的「默认」展示方式：**按层级缩进的结构**，不再是平铺的一串序号。
+           层级 = 速记里的真实缩进层级；编号用 1 / 1.1 / 1.1.1，本身就是层级标记。
+           最深一层按「拆解只到倒数第二格」的口径已并入上一级（见 fcRecMaxLv）。 */
+        .kp-hier { display: flex; flex-direction: column; gap: 3px; }
+        .kp-hrow { display: flex; align-items: flex-start; gap: 7px; line-height: 1.6; }
+        .kp-hno {
+            flex: none; min-width: 36px; text-align: right; font-size: 11px; font-weight: 600;
+            color: var(--text-secondary); font-family: ui-monospace, Consolas, "Courier New", monospace;
+            padding-top: 2px; letter-spacing: -.2px;
+        }
+        .kp-htext {
+            font-size: 12px; color: var(--text); background: #F1EBDF; border-radius: 6px;
+            padding: 1px 8px; word-break: break-word; border-left: 3px solid #DCCFB8;
+        }
+        .kp-hrow.kp-hlv1 > .kp-htext { background: #EAE0CC; border-left-color: var(--primary); font-weight: 600; }
+        .kp-hrow.kp-hlv2 { margin-left: 14px; }
+        .kp-hrow.kp-hlv3 { margin-left: 28px; }
+        .kp-hrow.kp-hlv4 { margin-left: 42px; }
+        .kp-hrow.kp-hlv2 > .kp-htext { border-left-color: #C9B896; }
+        .kp-hrow.kp-hlv3 > .kp-htext, .kp-hrow.kp-hlv4 > .kp-htext { background: #F6F2E9; border-left-color: #E0D8CA; }
     </style>
 </head>
 <body>
@@ -3202,7 +3222,7 @@
                     <label>章 <select id="ktChapter"></select></label>
                     <label>节 <select id="ktSection"></select></label>
                     <span class="fc-spacer"></span>
-                    <label title="七级链路：1科目 2章 3节 4知识点1级 5知识点2级 6知识点3级 7知识点4级">展开 第 <select id="ktFrom"></select> – 第 <select id="ktTo"></select></label>
+                    <label title="七级链路：1科目 2章 3节 4知识点1级 5知识点2级 6知识点3级 7知识点4级。这里选的是**显示范围**：范围外的层级（含科目/章/节这类祖先行）一律不显示。">显示 第 <select id="ktFrom"></select> – 第 <select id="ktTo"></select></label>
                     <input type="text" class="kt-search" id="ktSearch" placeholder="搜索节点（Esc 清空）">
                 </div>
                 <div class="kt-legend">
@@ -5965,17 +5985,43 @@
 
         // 收集本次记录的知识点：只从知识点速记的原文解析。
         // 产出 {no, text} 流水号用于展示；层级坐标由 kpQuickRaw 承担（见 fcRecOutline）。
+        //
+        // ★ 拆解只到「倒数第二格」（与 fcRecMaxLv 同口径，3 列→2 层 / 4 列→3 层）：
+        //   最后一格（叶子）不再作为独立条目记录 —— 它在闪卡里永远出不了题，
+        //   内容会作为上一级的「直接下级」出现在卡片反面。
+        //   层级判定用 CpaKpEditor.parseText（与闪卡 / 知识树同一套解析器）；
+        //   解析器不可用或解析不出东西时，退回按分隔符切片的老行为。
         function getKnowledgePoints() {
             const out = [];
             const q = document.getElementById('fKpQuick');
             const raw = (q && q.value) || '';
-            raw.split(/[；;\n、]+/).forEach(function (s) {
-                const tok = stripKpNo(String(s || '').trim());
-                // 「一、」这类一级标记会被顿号切开，留下一个孤零零的「一」；
-                // 纯编号残渣不是知识点，丢掉（否则每行一级都会多出一个假知识点）
-                const residue = /^(?:[0-9]{1,3}|[一二三四五六七八九十]{1,3}|[\u2460-\u2473])[.、．)）:：]?$/;
-                if (tok && !residue.test(tok)) out.push({ text: tok });
-            });
+            // 「一、」这类标记会被顿号切开，留下一个孤零零的「一」；
+            // 纯编号残渣不是知识点，丢掉（否则每行一级都会多出一个假知识点）
+            const residue = /^(?:[0-9]{1,3}|[一二三四五六七八九十]{1,3}|[\u2460-\u2473])[.、．)）:：]?$/;
+            const pushTok = function (s) {
+                String(s || '').split(/[；;、]+/).forEach(function (part) {
+                    const tok = stripKpNo(String(part || '').trim());
+                    if (tok && !residue.test(tok)) out.push({ text: tok });
+                });
+            };
+            const cols = (window.CpaKpEditor && typeof window.CpaKpEditor.getCols === 'function')
+                ? (window.CpaKpEditor.getCols() === 4 ? 4 : 3) : 3;
+            const maxLv = Math.max(1, cols - 1);
+            const parser = (window.CpaKpEditor && typeof window.CpaKpEditor.parseText === 'function')
+                ? window.CpaKpEditor.parseText : null;
+            let roots = null;
+            if (parser) { try { roots = parser(raw) || []; } catch (e) { roots = null; } }
+            if (roots && roots.length) {
+                (function walk(list, lv) {
+                    list.forEach(function (node) {
+                        if (!node) return;
+                        if (lv <= maxLv) pushTok(node.t);
+                        walk(node.c || [], lv + 1);
+                    });
+                })(roots, 1);
+            } else {
+                pushTok(String(raw).replace(/\n/g, '；'));      // 退回老行为
+            }
             out.forEach(function (k, i) { k.no = i + 1; });
             return out;
         }
@@ -9200,7 +9246,11 @@
                                 course: base.course, chapter: base.chapter, section: base.section,
                                 tier: lvAbs, name: c.name,
                                 path: anc.concat(c.parents).concat([c.name]),
-                                kids: [], answers: [], childUids: []
+                                kids: [], childUids: [],
+                                // ★ 卡片反面 = 直接下级。拆解上限之外的那一格（最后一格）
+                                //   已不作为独立节点，但它的文本由 fcRecOutline 的 direct 带出，
+                                //   从这里进 answers；下面 walk() 还会把 kids 的名字并进来（去重）。
+                                answers: (c.direct || []).slice()
                             };
                             nodes[pkey] = node;
                             // 挂到父节点下：
@@ -9258,7 +9308,10 @@
                         childUids: node.childUids,
                         path: node.path.slice(),
                         virtual: !!node.virtual,
-                        hasKids: (node.kids || []).length > 0
+                        // ★ 「有内容可做反面」就算有下级：结构里最后一格已被砍掉，
+                        //   但它的文本还在 answers 里 —— 只看 kids 的话，倒数第二格会被
+                        //   误判成叶子，整层不出卡（这是本轮改动最容易踩的坑，务必保留这个 ||）。
+                        hasKids: (node.kids || []).length > 0 || (node.answers || []).length > 0
                     });
                 });
             });
@@ -9354,6 +9407,23 @@
             return (n === 4) ? 4 : 3;
         }
 
+        // ★★ 知识点拆解的层级上限 = **倒数第二格**（Tom 本轮口径，也是本文件闪卡模块
+        //     一开始就写下的出题规则「知识点拆解只到倒数第二格层级」，见下方闪卡模块头注释）。
+        //        速记 3 列（总标题 / 子标题 / 细节）    → 保留 2 层
+        //        速记 4 列（总标题 / 子标题 / 细节 / 要点）→ 保留 3 层
+        //
+        //   为什么砍掉最后一格：它是**叶子**。闪卡的出题方式是「相邻两级配对」——
+        //     正面 = 该节点名，反面 = 它的直接下级（逐行）；叶子只有正面、没有配对对象，
+        //     永远出不了题。所以最后一格在「知识结构」里没有位置，留在结构里只会
+        //     让树多出一层空的、让层级统计虚高。
+        //
+        //   ⚠️ 内容一个字都不丢：被砍掉的那一格仍是上一层节点的**直接下级**，
+        //     由 fcRecOutline 的 direct 字段随节点带出，落在卡片反面
+        //     （fcWalkAll 用它初始化 answers），大纲视角里则并入上一行显示。
+        function fcRecMaxLv(r) {
+            return Math.max(1, fcRecCols(r) - 1);
+        }
+
         // ---------- ★ 层级修复：从记录的大纲原文恢复层级 ----------
         // Tom 报的缺陷：「学习记录的闪卡层级读取错误，所有知识点都取成了平级」。
         //   写入侧 getKnowledgePoints() 存进 knowledgePoints 的只有 {no,text}，
@@ -9376,19 +9446,28 @@
             let roots = [];
             try { roots = parser(raw) || []; } catch (e) { return null; }
             if (!roots.length) return null;
-            // ★ 列数即层级契约：3 列的记录只认 3 层。
-            //   历史遗留 / 手改过的第 4 层「折叠进第 3 层」而**不是丢弃** ——
-            //   宁可多给（少一层）也不要漏掉整条知识点。
-            const maxLv = fcRecCols(r);
+            // ★ 拆解只到「倒数第二格」（见 fcRecMaxLv）：更深的层级不再作为独立节点输出。
+            //   但**一个字都不丢** —— 每个节点都带上自己的 direct（直接下级名，
+            //   不管这个下级是否还留在结构里），fcWalkAll 用它初始化 answers，
+            //   于是卡片反面天然保留了最后一格的内容，大纲视角里也会显示出来。
+            const maxLv = fcRecMaxLv(r);
             const anc = fcAncestorPath(r);       // ★ 1–3 级：记录已选好的 科目/章/节
             const out = [];
+            const directOf = function (node) {
+                return ((node && node.c) || [])
+                    .map(function (x) { return fcNormText(x && x.t); })
+                    .filter(Boolean);
+            };
             const walk = function (list, lv, parents) {
                 (list || []).forEach(function (node) {
                     const nm = fcNormText(node && node.t);
-                    // 超出该记录契约层数的节点：折叠到最深层（保持与父级的归属，不丢内容）
-                    const useLv = Math.min(lv, maxLv);
-                    if (nm) out.push({ name: nm, lv: useLv, parents: parents, ancestors: anc });
-                    walk((node && node.c) || [], lv + 1, parents.concat([nm]));
+                    if (nm && lv <= maxLv) {
+                        out.push({
+                            name: nm, lv: lv, parents: parents, ancestors: anc,
+                            direct: directOf(node)
+                        });
+                    }
+                    walk((node && node.c) || [], lv + 1, nm ? parents.concat([nm]) : parents);
                 });
             };
             walk(roots, 1, []);
@@ -11156,6 +11235,28 @@
             return n;
         }
 
+        // ---------- ★ 层级范围 = 显示范围 ----------
+        // 「显示 第 X – 第 Y 级」选的不再是「展开到哪一级」，而是**屏幕上出现哪些层级**：
+        //   · lv < from 的祖先行不渲染，它的子树**整体上提**到该位置
+        //     （于是选了 4–7 时，第 4 级知识点直接成为最左列，科目/章/节不再占位）
+        //   · lv > to 的层级整支不渲染
+        //   展开状态 expd 是按 sig 记的，裁剪不改 sig —— 两边的键仍然对得上，
+        //   所以在范围内点开/收起照常工作。
+        function ktClip(list, from, to) {
+            const out = [];
+            (list || []).forEach(function (n) {
+                if (n.lv < from) {
+                    ktClip(n.children, from, to).forEach(function (c) { out.push(c); });
+                } else if (n.lv <= to) {
+                    out.push({
+                        sig: n.sig, lv: n.lv, kind: n.kind, name: n.name, raw: n.raw,
+                        children: ktClip(n.children, from, to)
+                    });
+                }
+            });
+            return out;
+        }
+
         function ktLabelText(n, q) {
             const nm = String(n.name || '');
             if (!q) return kpEsc(nm);
@@ -11228,17 +11329,18 @@
             }
 
             const cfg = ktState();
-            const tree = ktSevenTree(cfg, all, proj);
-            const total = ktCountTree(tree);
-            // 按「知识点最深 tier + 3」夹取：树只有 2 级时，「展开到第 6 级」应当等价于
+            const rawTree = ktSevenTree(cfg, all, proj);
+            // 按「知识点最深 tier + 3」夹取：树只有 2 级时，「显示到第 6 级」应当等价于
             // 「全开」，统计条也不该报出一个超出实际深度的级数（旧写死 KT_MAX_LV）。
             const toLv = ktResolveTo(ktMaxTier(all) + 3);
-            // 最深可见级 = max(from, toLv)。展开规则里有一条
-            //   `(n.lv < cfg.from && hasChildren)`
-            // —— 起点之上的祖先一律展开；于是把起点设得比终点还深时（from=5 + 默认档
-            //   toLv=4），屏上实际看到的是第 5 级。只印 `from–toLv` 会出现
-            //   「展开 第5–4 级」这种倒挂读数。默认档 max(1,4)=4，文案不变。
+            // 最深可见级 = max(from, toLv)：起点设得比终点深时（from=5 + 默认档），
+            // 屏上实际看到的就是第 5 级 —— 只印 `from–toLv` 会出现
+            // 「显示 第5–4 级」这种倒挂读数。
             const visTo = Math.max(cfg.from, toLv);
+            // ★ 层级范围 = 显示范围：选 3–5 就只显示第 3–5 级，
+            //   1–2 级（科目/章/节这类祖先行）与第 6–7 级一并隐藏（见 ktClip）。
+            const tree = ktClip(rawTree, cfg.from, visTo);
+            const total = ktCountTree(tree);
             ktPaintStats(all);
 
             if (statEl) {
@@ -11248,7 +11350,7 @@
                 if (+cfg.section > 0) parts.push('第 ' + cfg.section + L('section'));
                 statEl.textContent = parts.join(' · ') + ' —— ' + total + ' 个节点' +
                     ' · 七级链路（科目›章›节›知识点1–4级）' +
-                    ' · 展开 第' + cfg.from + '–' + visTo + ' 级' + (cfg.to === KT_TO_AUTO ? '（默认档）' : '');
+                    ' · 显示 第' + cfg.from + '–' + visTo + ' 级' + (cfg.to === KT_TO_AUTO ? '（默认档）' : '');
             }
 
             if (!total) {
@@ -14150,10 +14252,15 @@
             applyRecCfg();
             reRenderRecords();
         }
-        // 记录卡片里的知识点：默认返回 null（交给主应用渲染成 chips），
-        // 大纲 / MD 两种方式在这里渲染成保缩进的 <pre>
+        // 记录卡片里的知识点（三种展示方式都在这里出 HTML）：
+        //   default → **按层级缩进的结构**（每行 = 编号 + 文本，不再是平铺的一串序号）
+        //   outline → 保缩进的大纲 <pre>
+        //   md      → Markdown 源码 <pre>
+        // ★ 三种方式都按「拆解只到倒数第二格」的口径裁层级（见 recMaxLv）——
+        //   最后一格并入上一行显示，保证一个字都不丢。
+        //   （旧版 default 返回 null，由主应用渲染成平铺 chips —— 那正是「知识不是平级」
+        //     这个问题的来源：结构被抹平成流水号了。）
         function kpBlockHtml(rec, v) {
-            if (v !== 'outline' && v !== 'md') return null;
             var kps = (rec && rec.knowledgePoints) || [];
             var raw = (rec && rec.kpQuickRaw) || '';
             if (!raw && kps.length) {
@@ -14161,8 +14268,45 @@
             }
             var roots = raw ? parse(raw) : [];
             if (!roots.length) return '<span class="rec-kp-empty">未记录</span>';
-            var txt = (v === 'md') ? toMD(roots) : toOutline(roots, true);
-            return '<pre class="rec-pre' + (v === 'md' ? ' rec-pre-md' : '') + '">' + esc(txt) + '</pre>';
+            roots = clipDepth(roots, recMaxLv(rec));
+            if (v === 'md') return '<pre class="rec-pre rec-pre-md">' + esc(toMD(roots)) + '</pre>';
+            if (v === 'outline') return '<pre class="rec-pre">' + esc(toOutline(roots, true)) + '</pre>';
+            return kpHierHtml(roots);
+        }
+
+        // 本记录的知识点层级上限：3 列 → 2 层 / 4 列 → 3 层
+        // （与主应用 fcRecMaxLv 同一口径，两处必须一起改）
+        function recMaxLv(rec) {
+            var n = rec && rec.kpCols;
+            return Math.max(1, ((n === 4) ? 4 : 3) - 1);
+        }
+        // 把树裁到 maxD 层；超出层级的节点**并入父节点文本**（用「 / 」连接），一个字都不丢
+        function clipDepth(list, maxD) {
+            var rec2 = function (arr, d) {
+                return (arr || []).map(function (n) {
+                    var kids = rec2(n.c || [], d + 1);
+                    if (d < maxD) return { t: n.t, c: kids };
+                    if (!kids.length) return { t: n.t, c: [] };
+                    var extra = [];
+                    (function flat(a) { a.forEach(function (x) { if (x.t) extra.push(x.t); flat(x.c || []); }); })(kids);
+                    return { t: (n.t ? n.t + ' / ' : '') + extra.join(' / '), c: [] };
+                });
+            };
+            return rec2(list, 1);
+        }
+        // 层级化标签流：每行 = 编号 + 文本，按层级缩进（编号本身就是层级标记）
+        function kpHierHtml(roots) {
+            var out = [];
+            (function walk(list, d, path) {
+                (list || []).forEach(function (n, i) {
+                    var p = path.concat([i + 1]);
+                    out.push('<div class="kp-hrow kp-hlv' + Math.min(d, 4) + '">' +
+                        '<span class="kp-hno">' + esc(noStr(p)) + '</span>' +
+                        '<span class="kp-htext">' + esc(n.t) + '</span></div>');
+                    walk(n.c || [], d + 1, p);
+                });
+            })(roots, 1, []);
+            return out.length ? ('<div class="kp-hier">' + out.join('') + '</div>') : '<span class="rec-kp-empty">未记录</span>';
         }
 
         /* ================= 初始化 ================= */
@@ -14308,7 +14452,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917s</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917t</div>
 <!-- build-tag:end -->
 </body>
 </html>
