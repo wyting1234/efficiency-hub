@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>复盘台账 · 人际交往与沟通</title>
+    <link rel="stylesheet" href="social.css?v=V20260918c">
+</head>
+<body data-page="record">
+
+    <!-- 移动端遮罩 -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <button class="menu-toggle" id="menuToggle">☰ <span>菜单</span></button>
+
+    <div class="app">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="logo">🧠</div>
+                <div>
+                    <h2>沟通复盘体系</h2>
+                    <small>人际交往 · 能力跃迁</small>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="section-label">🗂️ 总览</li>
+                    <li><a href="../人积极交往.html" data-nav="home"><span class="icon">🏠</span> 回首总览</a></li>
+                    <li class="section-label">📋 台账</li>
+                    <li><a href="record.html" data-nav="record"><span class="icon">📝</span> 复盘台账 <span class="badge" id="dailyCountBadge">0</span></a></li>
+                    <li class="section-label">📚 体系</li>
+                    <li><a href="model.html" data-nav="model"><span class="icon">📊</span> 5维能力模型</a></li>
+                    <li><a href="loop.html" data-nav="loop"><span class="icon">🔄</span> 三层复盘闭环</a></li>
+                    <li><a href="learn.html" data-nav="learn"><span class="icon">📖</span> 学习体系</a></li>
+                    <li><a href="toolkit.html" data-nav="toolkit"><span class="icon">🧰</span> 工具与模板</a></li>
+                    <li><a href="path.html" data-nav="path"><span class="icon">🚀</span> 进阶路径</a></li>
+                    <li><a href="action.html" data-nav="action"><span class="icon">✅</span> 落地行动</a></li>
+                    <li class="section-label">💎 储备</li>
+                    <li><a href="wisdom.html" data-nav="wisdom"><span class="icon">💎</span> 他山之玉</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">v3.0 · 分页版 · 本地存储</div>
+        </aside>
+
+        <!-- ===== 主内容 ===== -->
+        <main class="main">
+
+            <nav class="crumb"><a href="../人积极交往.html">← 总览</a><span class="sep">/</span><span class="cur">复盘台账</span></nav>
+
+<section class="content-section" id="record">
+                <h2><span class="emoji">📝</span> 复盘台账 &amp; 执行记录</h2>
+                <div class="tip tip-success">功能说明：新增日复盘事件卡、周练习任务、月度打分；支持标记是否执行完成、填写执行反馈；数据保存在浏览器本地。</div>
+
+                <!-- 统计 -->
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card"><div class="num" id="statDaily">0</div><div class="label">日复盘事件</div></div>
+                    <div class="stat-card"><div class="num" id="statDone">0</div><div class="label">已完成</div></div>
+                    <div class="stat-card"><div class="num" id="statWeek">0</div><div class="label">周练习任务</div></div>
+                    <div class="stat-card"><div class="num" id="statMonth">0</div><div class="label">月度评估</div></div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs" id="recordTabs">
+                    <button class="tab-btn active" data-tab="tabDaily">📅 日复盘</button>
+                    <button class="tab-btn" data-tab="tabWeek">📆 周练习</button>
+                    <button class="tab-btn" data-tab="tabMonth">📈 月度评分</button>
+                </div>
+
+                <!-- ===== Tab: 日复盘 ===== -->
+                <div class="tab-panel active" id="tabDaily">
+                    <div class="flex-between mb-16">
+                        <span style="font-weight:600;color:var(--text-soft);">关键事件卡 · 记录与执行跟踪</span>
+                        <div class="btn-group">
+                            <button class="btn btn-success btn-sm" onclick="exportDaily()">📤 导出备份</button>
+                            <button class="btn btn-danger btn-sm" onclick="clearAllDaily()">🗑️ 清空全部</button>
+                        </div>
+                    </div>
+
+                    <!-- 新建表单 -->
+                    <div class="form-card">
+                        <h3>✏️ 新建关键事件卡</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>事件 <span class="hint">对象 + 话题 + 结果</span></label>
+                                <input id="d_event" placeholder="例：和客户沟通方案报价，对方提出降价诉求">
+                            </div>
+                            <div class="form-group">
+                                <label>对应维度</label>
+                                <select id="d_dim">
+                                    <option value="D1">D1 自我认知与情绪管理</option>
+                                    <option value="D2">D2 倾听与理解</option>
+                                    <option value="D3">D3 表达与说服</option>
+                                    <option value="D4">D4 冲突处理与谈判</option>
+                                    <option value="D5">D5 关系经营与人脉</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>目标 <span class="hint">我当时想达成什么？</span></label>
+                            <textarea id="d_target" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>实际 <span class="hint">对方反应 + 最终结果</span></label>
+                            <textarea id="d_actual" rows="2"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>情绪线 <span class="hint">情绪变化 &amp; 触发点</span></label>
+                                <textarea id="d_emotion" rows="2"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>假设检验 <span class="hint">判断是否准确？</span></label>
+                                <textarea id="d_check" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>改进方案 <span class="hint">如果重来，一个具体的不同做法</span></label>
+                            <textarea id="d_improve" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>执行反馈 <span class="hint">完成后填写效果与新问题</span></label>
+                            <textarea id="d_execute" rows="2"></textarea>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="saveDaily()">💾 保存事件卡</button>
+                            <button class="btn btn-outline" onclick="clearDailyForm()">清空表单</button>
+                        </div>
+                    </div>
+
+                    <!-- 记录列表 -->
+                    <div id="dailyListWrap" class="record-list"></div>
+                </div>
+
+                <!-- ===== Tab: 周练习 ===== -->
+                <div class="tab-panel" id="tabWeek">
+                    <div class="flex-between mb-16">
+                        <span style="font-weight:600;color:var(--text-soft);">每周刻意练习任务 · 执行复盘</span>
+                    </div>
+
+                    <div class="form-card">
+                        <h3>📌 新建本周任务</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>周次 <span class="hint">例：2026-W33</span></label>
+                                <input id="w_week" placeholder="2026-W33">
+                            </div>
+                            <div class="form-group">
+                                <label>主攻维度</label>
+                                <select id="w_dim">
+                                    <option value="D1">D1 自我认知与情绪管理</option>
+                                    <option value="D2">D2 倾听与理解</option>
+                                    <option value="D3">D3 表达与说服</option>
+                                    <option value="D4">D4 冲突处理与谈判</option>
+                                    <option value="D5">D5 关系经营与人脉</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>刻意练习动作 <span class="hint">2-3 个具体行动</span></label>
+                            <textarea id="w_action" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>执行复盘 <span class="hint">周末填写完成情况</span></label>
+                            <textarea id="w_result" rows="2"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveWeekTask()">💾 保存任务</button>
+                    </div>
+
+                    <div id="weekListWrap" class="record-list"></div>
+                </div>
+
+                <!-- ===== Tab: 月度评分 ===== -->
+                <div class="tab-panel" id="tabMonth">
+                    <div class="flex-between mb-16">
+                        <span style="font-weight:600;color:var(--text-soft);">月度5维能力评估 · 存档</span>
+                    </div>
+
+                    <div class="form-card">
+                        <h3>📊 本月能力评估</h3>
+                        <div class="form-group">
+                            <label>年月 <span class="hint">例：2026-08</span></label>
+                            <input id="m_month" placeholder="2026-08">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>D1 自我认知与情绪管理</label><input id="m_d1" type="number" min="1" max="5" value="3"></div>
+                            <div class="form-group"><label>D2 倾听与理解</label><input id="m_d2" type="number" min="1" max="5" value="3"></div>
+                            <div class="form-group"><label>D3 表达与说服</label><input id="m_d3" type="number" min="1" max="5" value="3"></div>
+                            <div class="form-group"><label>D4 冲突处理与谈判</label><input id="m_d4" type="number" min="1" max="5" value="3"></div>
+                            <div class="form-group"><label>D5 关系经营与人脉</label><input id="m_d5" type="number" min="1" max="5" value="3"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>小结 &amp; 下月主攻</label>
+                            <textarea id="m_note" rows="3"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="saveMonthScore()">💾 存档评估</button>
+                    </div>
+
+                    <div id="monthListWrap" class="record-list"></div>
+                </div>
+            </section>
+
+            <!-- 页脚 -->
+            <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:40px;text-align:center;color:var(--text-muted);font-size:13px;">
+                🧠 人际交往与沟通管理 · 复盘学习体系 &mdash; 数据本地存储
+            </div>
+
+        </main>
+    </div>
+
+    <script src="social-core.js?v=V20260918c"></script>
+<!-- build-tag:begin（技能 §21/§22：由推送脚本维护，勿手改） -->
+<style>
+html.embedded #buildTag{display:none}
+#buildTag{position:fixed;left:8px;bottom:8px;z-index:30;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;padding:4px 7px;border-radius:6px;background:rgba(15,23,42,.5);color:#fff;opacity:.62;pointer-events:none;user-select:none;white-space:nowrap}
+@media print{#buildTag{display:none}}
+</style>
+<script>/* ① 嵌在 iframe 里时隐藏自己的徽标（否则与导航徽标同位置叠字）② 把页面内
+   标了 data-build-ver 的位置同步成同一个版本串 —— 版本只有一个字面量，就是下面那个 div */
+(function(){
+  try{ if(window.self!==window.top) document.documentElement.className += ' embedded'; }catch(e){}
+  function sync(){
+    var el=document.getElementById('buildTag'); if(!el) return;
+    var v=el.textContent.trim();
+    var n=document.querySelectorAll('[data-build-ver]');
+    for(var i=0;i<n.length;i++) if(n[i].textContent.trim()!==v) n[i].textContent=v;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+})();
+</script>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918c</div>
+<!-- build-tag:end -->
+</body>
+</html>
