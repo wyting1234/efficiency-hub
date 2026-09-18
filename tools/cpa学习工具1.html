@@ -444,6 +444,24 @@
         .form-row.full { grid-template-columns: 1fr; }
         .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
         .form-row .field { display: flex; flex-direction: column; }
+        /* ★ 2026-09-18（需求 D）：重点 / 难点 / 疑点 三态多选 */
+        .rec-marks { display: flex; gap: 6px; flex-wrap: wrap; }
+        /* 三标记现在住 .form-row.full（整行）。chips + 提示并排一行，
+           否则整行会被撑成「chips 一行 + 提示一行」，比原来更松散。 */
+        .form-row.full .field .rec-line { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .form-row.full .field .rec-line .hint { margin-top: 0; }
+        .rec-mark-chip {
+            border: 1px solid var(--border); background: #FFFDF8; color: #7A6A56;
+            border-radius: 999px; padding: 4px 11px; font-size: 12px; font-family: inherit;
+            cursor: pointer; transition: background .13s, border-color .13s, color .13s;
+        }
+        .rec-mark-chip:hover { border-color: #C9B99B; }
+        .rec-mark-chip.on { font-weight: 700; }
+        .rec-mark-chip[data-mark="key"].on   { background: #FBEAE7; border-color: #E3B7AE; color: #B23A28; }
+        .rec-mark-chip[data-mark="hard"].on  { background: #FCF2E0; border-color: #E8CF9E; color: #A96C0B; }
+        .rec-mark-chip[data-mark="doubt"].on { background: #E9F1F9; border-color: #AFCBE4; color: #2E6DA4; }
+        .tag.rec-marktag { background: #F1EBE0; color: #6D6252; }
+
         .form-row .field .star-rating {
             display: flex;
             gap: 6px;
@@ -2260,6 +2278,14 @@
         32px;                /* ✎ */
     min-width: 878px;
 }
+/* ★ 2026-09-18（需求 A）：批量删除模式（.fc-bulkdel 挂在 #fcBody 上）—— 行尾多一列「🗑」。
+   只在这一模式下多一列、**不常驻**：常驻会让普通列表右侧白缩进 30px，
+   而需求是「点了批量删除，编辑按钮后面才出现删除符号」。 */
+.fc-bulkdel .fc-thead, .fc-bulkdel .fc-table > .fc-row {
+    grid-template-columns: 14px minmax(150px, 1.3fr) minmax(150px, 1.5fr)
+        104px 104px 68px 88px 168px 32px 30px;
+    min-width: 908px;
+}
 .fc-thead { background: #F4EEE3; border-bottom: 1px solid #E6DCCB; font-size: 11px; color: #6D6252; }
 .fc-thead > span { padding: 6px 7px; font-weight: 600; letter-spacing: .3px; white-space: nowrap; }
 .fc-thead > span + span { border-left: 1px solid #EBE2D3; }
@@ -2296,6 +2322,10 @@
     .fc-thead > .fc-hide-sm, .fc-table > .fc-row > .fc-hide-sm { display: none; }
     .fc-thead, .fc-table > .fc-row {
         grid-template-columns: 14px minmax(116px, 1.6fr) minmax(104px, 1.4fr) 60px 74px 30px;
+        min-width: 0;
+    }
+    .fc-bulkdel .fc-thead, .fc-bulkdel .fc-table > .fc-row {
+        grid-template-columns: 14px minmax(116px, 1.6fr) minmax(104px, 1.4fr) 60px 74px 30px 30px;
         min-width: 0;
     }
     .fc-table { overflow-x: visible; }
@@ -2835,6 +2865,20 @@
            于是 tab 行被挤成三行、右侧空出一大块（用户截图圈的就是这块）。 */
         .fc-filter { width: auto; flex: 0 0 auto; }
 
+        /* ===== ★ 2026-09-18（需求 E）：全局「一键编号」工具条 =====
+           每个多行文本输入框后面自动挂一条（见 JS 的 numbInit / numbAttach）。
+           编号体系与「📝 学习记录 → 🧩 模版设置」共用同一份偏好
+           （localStorage: hub_cpa_kp_tmpl_v1），所以在哪个模块换模版都一致。 */
+        .numb-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0 2px; }
+        .numb-btn {
+            border: 1px solid var(--border); background: #FFFDF8; color: #7A6A56;
+            border-radius: 6px; padding: 3px 9px; font-size: 11.5px; font-family: inherit;
+            cursor: pointer; line-height: 1.65;
+        }
+        .numb-btn:hover { border-color: #C9B99B; background: var(--primary-bg); }
+        .numb-btn.ghost { color: #9A8B76; }
+        .numb-hint { font-size: 11px; color: #A99A83; }
+
         /* ===== 需求 5：自检热力图 ===== */
         .heat-card {
             background: var(--card-bg); border: 1px solid var(--border);
@@ -2858,6 +2902,25 @@
         .heat-tbl th { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); padding: 0 2px 4px; text-align: center; white-space: nowrap; }
         .heat-tbl th.heat-corner { text-align: right; padding-right: 10px; font-size: 11px; color: #A99A83; }
         .heat-tbl th.heat-rowhead { text-align: right; padding-right: 10px; color: #7A6A56; white-space: nowrap; }
+        /* ===== ★ 2026-09-18（需求 F-2）：标题详略 =====
+           简略（默认）＝ 现状：横轴只写章号，完整名称留在悬停提示里。
+           详细 ＝ 横轴写「第 3 章 长期股权投资」、纵轴写「第 2 节 存货的初始计量」。
+           横轴标题动辄 8–12 个字，横排会把每列撑到 100px+ 并逼出横向滚动条，
+           所以详细模式下横轴**竖排** —— 中文天然能直书，列宽回到 ~20px，
+           高度按标题长度自然增长。纵轴在左侧，保持横排但允许换行。 */
+        .heat-tbl.heat-full th.heat-colhead {
+            writing-mode: vertical-rl; text-orientation: upright;
+            letter-spacing: .5px; line-height: 1.15; padding: 4px 0 6px;
+            font-size: 10.5px; white-space: nowrap; vertical-align: bottom;
+        }
+        .heat-tbl.heat-full th.heat-rowhead {
+            white-space: normal; max-width: 158px; line-height: 1.35; font-size: 11px;
+        }
+        /* 「全部科目」模式下每个科目一张图：用小标题把它和上一张隔开 */
+        .heat-sub { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 20px 0 6px; }
+        .heat-sub:first-child { margin-top: 2px; }
+        .heat-sub > b { font-size: 13.5px; color: var(--primary-dark); }
+        .heat-sub > span { font-size: 11.5px; color: var(--text-secondary); }
         .heat-tbl td.heat-cell {
             width: 58px; height: 42px; border-radius: 8px; text-align: center; vertical-align: middle;
             font-size: 12.5px; font-weight: 700; border: 1px solid transparent; cursor: default;
@@ -2966,6 +3029,20 @@
         }
         .kt-lv1 > .kt-no, .kt-lv2 > .kt-no { color: rgba(255, 253, 248, .92); }
         .kt-lv3 > .kt-no { color: #7E7059; }
+
+        /* ===== ★ 2026-09-18（需求 C）：行尾符号化 + 重点/难点/疑点符号 =====
+           开关（state.ktCfg.sym）打开后：行尾「层级名」→ 该级符号、「N 项」→「∷N」，
+           并在行尾显示学习记录里标好的 重点 ★ / 难点 ▲ / 疑点 ？。
+           这三者是**只读展示**（数据源是学习记录，见 ktMarkSyms），所以没有 hover 手型。 */
+        .kt-mark {
+            flex: 0 0 auto; font-size: 11px; line-height: 1.6; min-width: 13px;
+            text-align: center; border-radius: 4px; padding: 0 3px; user-select: none;
+        }
+        .kt-mark-key   { color: #B23A28; background: #FBEAE7; font-weight: 700; }
+        .kt-mark-hard  { color: #A96C0B; background: #FCF2E0; font-weight: 700; }
+        .kt-mark-doubt { color: #2E6DA4; background: #E9F1F9; font-weight: 700; }
+        /* 深色行（科目 / 章）上换个底，不然红底红字糊成一片 */
+        .kt-lv1 > .kt-mark, .kt-lv2 > .kt-mark { background: rgba(255, 253, 248, .94); }
 
         /* ===== 学习记录列表：展示内容 / 展示方式 控件条 ===== */
         .rec-display-bar {
@@ -3281,7 +3358,12 @@
                             <span class="auto-calc" id="tomatoLinkHint">🍅 点番茄钟「开始」，起止时间与个数会自动填进来</span>
                         </div>
                     </div>
-                    <div class="form-row four">
+                    <!-- ★ 2026-09-18（需求 D）：重点 / 难点 / 疑点 —— 独立整行。
+                         它是 🌳 知识树行尾那三个符号的**唯一数据源**（知识树只读展示），
+                         数据落在 record.marks（随 records 自动落盘）。
+                         独立成行的原因：原来挤在 4 列栅格里只是与「理解程度」并排，
+                         并没有落在「理解程度」与「学习状态自评」中间（见 patchG 文件头）。 -->
+                    <div class="form-row three">
                         <div class="field">
                             <label>学习途径 <span class="required">*</span>
                                 <button type="button" class="mini-add-btn" id="manageTypeBtn" title="增删改「学习途径」分类">⚙️ 管理</button>
@@ -3316,6 +3398,21 @@
                             <span class="hint" id="starLabel">点击星星评级</span>
                             <input type="hidden" id="fUnderstanding" value="0" required />
                         </div>
+                    </div>
+                    <div class="form-row full">
+                        <div class="field">
+                            <label>重点 / 难点 / 疑点</label>
+                            <div class="rec-line">
+                                <div class="rec-marks" id="fMarkChips">
+                                    <button type="button" class="rec-mark-chip" data-mark="key" aria-pressed="false" title="这一节是重点">★ 重点</button>
+                                    <button type="button" class="rec-mark-chip" data-mark="hard" aria-pressed="false" title="这一节是难点">▲ 难点</button>
+                                    <button type="button" class="rec-mark-chip" data-mark="doubt" aria-pressed="false" title="这一节还没弄明白（疑点）">？ 疑点</button>
+                                </div>
+                                <span class="hint" id="markLabel">可多选，也可都不选 —— 勾了之后在 🌳 知识树里显示为符号</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row">
                         <div class="field">
                             <label>学习状态自评 <span class="required">*</span></label>
                             <select id="fSelfAssessment" required>
@@ -3324,7 +3421,10 @@
                                 <option value="一般">👍 一般</option>
                                 <option value="差">💪 差</option>
                             </select>
-                            <input type="text" id="fAssessmentReason" placeholder="自评原因 (可选)" style="margin-top:6px;" />
+                        </div>
+                        <div class="field">
+                            <label>自评原因 <span style="font-weight:400;color:var(--text-secondary);">(可选)</span></label>
+                            <input type="text" id="fAssessmentReason" placeholder="例如：多选题频繁出错" />
                         </div>
                     </div>
                                         <div class="rec-draft-bar" id="recDraftBar" hidden>
@@ -3419,12 +3519,11 @@
                             <div class="rec-pane" id="recPaneTmpl" role="tabpanel" hidden>
                                 <div class="field">
                                     <label>🔢 编号模版 <span style="font-weight:400;color:var(--text-secondary);">(「一键编号」与四个视角的行首编号都按此模版生成；只改编号写法，不动内容与层级)</span></label>
-                                    <div class="kp-tmpl-list" id="kpTmplList">
-                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="cn-chapter" /> <span class="kp-tmpl-name">第一章 / 1.1 / 1.1.1 / (1) / ①</span><span class="kp-tmpl-desc">章节体：一级写「第N章」，二三级用十进制路径，第四级用 (N)</span></label>
-                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="cn-classic" /> <span class="kp-tmpl-name">一、 / (一) / 1. / (1) / ①</span><span class="kp-tmpl-desc">中文公文体：一、（一）1.（1）① 递进（本工具最深 4 级，① 暂无层级可用）</span></label>
-                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="arabic" /> <span class="kp-tmpl-name">1. / 1.1 / 1.1.1 / 1.1.1.1</span><span class="kp-tmpl-desc">阿拉伯多级（默认）：每级都是十进制路径，最通用</span></label>
-                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="part" /> <span class="kp-tmpl-name">第1部分 / 第1章 / 第1节 / 1.1</span><span class="kp-tmpl-desc">教材体：部分 → 章 → 节 → 节内序号.要点序号</span></label>
-                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="roman7" /> <span class="kp-tmpl-name">I, II / A, B / 1, 2 / a, b / (1) / (i) / a.</span><span class="kp-tmpl-desc">罗马体系（七级）：大写罗马 → 大写字母 → 阿拉伯 → 小写字母 → (阿拉伯) → (小写罗马) → 小写字母加句点。正好对上知识树的七级链路（科目/章/节/知识点 1–4 级）</span></label>
+                                        <div class="kp-tmpl-list" id="kpTmplList">
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="chap" /> <span class="kp-tmpl-name">第1章 / 第1节 / 一、 / （一） / 1. / （1） / ①</span><span class="kp-tmpl-desc">章节体（七级）：第N章 → 第N节 → 一、 → （一） → 1. → （1） → ①。档位 = 知识树的链路层级（1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级），所以同一个知识点在速记与知识树里编号一致</span></label>
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="gongwen" /> <span class="kp-tmpl-name">一、 / （一） / 1. / （1） / ① / a. / i.</span><span class="kp-tmpl-desc">中文公文体（七级）：一、 → （一） → 1. → （1） → ① → a. → i.</span></label>
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="roman" /> <span class="kp-tmpl-name">I. / A. / 1. / a. / (1) / (i) / a)</span><span class="kp-tmpl-desc">罗马体系（七级，出厂默认）：I. → A. → 1. → a. → (1) → (i) → a)</span></label>
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="symbol" /> <span class="kp-tmpl-name">● / ■ / ◆ / ▷ / ✓ / ✧ / ∷</span><span class="kp-tmpl-desc">符号体（七级）：每级一个符号，符号取自下面的「🔣 每级符号」；这里显示的名字会跟着你改的符号一起变</span></label>
                                     </div>
                                 </div>
                                 <div class="field">
@@ -3547,8 +3646,10 @@
                     <label>节 <select id="ktSection"></select></label>
                     <span class="kt-noctl">
                         <button type="button" class="fc-btn" id="ktNumberBtn" title="按编号模版给每一行加上行首编号（只影响本页显示，不改动科目/章/节与学习记录）">🔢 一键编号</button>
-                        <select id="ktNoTmpl" title="编号模版（与「📝 学习记录 → 🧩 模版设置」共用同一份偏好）。七级依次为：1 级 I 大写罗马 · 2 级 A 大写字母 · 3 级 1 阿拉伯数字 · 4 级 a 小写字母 · 5 级 (1) 括号阿拉伯 · 6 级 (i) 括号小写罗马 · 7 级 a. 小写字母加句点"></select>
+                        <select id="ktNoTmpl" title="编号模版（与「📝 学习记录 → 🧩 模版设置」共用同一份偏好）。四套体系各七档，档位 = 链路层级：1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级"></select>
                     </span>
+                    <!-- ★ 2026-09-18（需求 C）：把行尾的「层级名 / N 项」换成符号，并显示记录里标的 重点/难点/疑点 -->
+                    <button type="button" class="fc-btn" id="ktSymBtn" title="符号显示：把每行行尾的「层级名」与「N 项」换成符号，并显示该节点的「重点 ★ / 难点 ▲ / 疑点 ？ 」（来自 📝 学习记录里的标记）">🔣 符号</button>
                     <span class="fc-spacer"></span>
                     <!-- 2026-09-17（按 Tom 红框所指删除）：去掉「显示 第」前缀标签 ——
                          两个下拉自带的「第X级 · 知识点Y级」已说明含义，前缀只是白占横向宽度。 -->
@@ -3574,6 +3675,11 @@
                     <span class="fc-sub" id="fcStat">尚未生成</span>
                     <span class="fc-spacer"></span>
                     <button type="button" class="fc-btn" id="fcRangeBtn" title="设置出题 / 展开的层级范围">⚙️ 层级范围</button>
+                    <!-- ★ 2026-09-18（需求 A）：批量删除开关。打开后列表行「✎」后面出现「🗑」，
+                         点它即删该卡。该模式下不再逐张弹确认 —— 这个模式本身就是显式删除意图，
+                         逐张确认会把「批量删除」变成「点 20 次确定」；误删由顶部
+                         「🗑 恢复已删除」兜底，且复习记录 / 笔记从不随卡片删除。 -->
+                    <button type="button" class="fc-btn" id="fcBulkDelBtn" title="批量删除：打开后，列表里每张卡片的「✎」后面会出现一个「🗑」，点它即删除该卡（误删可点顶部「🗑 恢复已删除」找回）">🗑 批量删除</button>
                     <button type="button" class="fc-btn primary" id="fcBuildBtn">⚡ 生成 / 更新</button>
                 </div>
                 <div class="fc-range" id="fcRange" style="display:none;">
@@ -3852,6 +3958,13 @@
                     <span class="heat-seg" id="heatMetric">
                         <button type="button" class="heat-seg-b active" data-heatmetric="mastery">🎯 掌握程度</button>
                         <button type="button" class="heat-seg-b" data-heatmetric="hours">⏱ 学习时长</button>
+                    </span>
+                    <!-- ★ 2026-09-18（需求 F-2）：标题详略。简略＝只写章号（名称看悬停），
+                         详细＝「第 3 章 长期股权投资」完整标题（横轴竖排，见 CSS .heat-full）。 -->
+                    <span class="heat-lab" style="margin-left:10px;">标题</span>
+                    <span class="heat-seg" id="heatLabel">
+                        <button type="button" class="heat-seg-b active" data-heatlabel="brief" title="只写章号 / 第 N 节；完整名称留在悬停提示里">简略</button>
+                        <button type="button" class="heat-seg-b" data-heatlabel="full" title="把「第 N 章 + 章名」「第 N 节 + 节名」写进表头；横轴改为竖排">详细</button>
                     </span>
                 </div>
                 <div class="heat-sum" id="heatSum"></div>
@@ -4761,6 +4874,8 @@
                 if (!r.memoryNetwork) r.memoryNetwork = '';
                 if (!r.aiQA) r.aiQA = '';
                 if (!r.selfAssessment) r.selfAssessment = '';
+                // ★ 需求 D：老记录没有 marks 字段，补成空数组（知识树读它时不必再判 null）
+                if (!Array.isArray(r.marks)) r.marks = [];
                 if (!r.assessmentReason) r.assessmentReason = '';
                 if (!r.startTime) r.startTime = '';
                 if (!r.endTime) r.endTime = '';
@@ -5109,6 +5224,43 @@
         }
 
         // ---------- 工具函数 ----------
+        /* ★ 2026-09-18（需求 D）：重点 / 难点 / 疑点 —— 学习记录编辑界面上的三态多选。
+           存成 record.marks = ['key','hard','doubt'] 的子集；知识树（需求 C）读它来点亮符号。
+           这里不设 required：这三项是**补充信息**，不该拦住一次记录的保存。 */
+        function recMarkChips() {
+            return Array.prototype.slice.call(document.querySelectorAll('#fMarkChips .rec-mark-chip'));
+        }
+        function getRecMarks() {
+            return recMarkChips().filter(function (b) { return b.getAttribute('aria-pressed') === 'true'; })
+                .map(function (b) { return b.getAttribute('data-mark'); });
+        }
+        function applyRecMarks(arr) {
+            var a = Array.isArray(arr) ? arr : [];
+            var chips = recMarkChips();
+            chips.forEach(function (b) {
+                var on = a.indexOf(b.getAttribute('data-mark')) >= 0;
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+                b.classList.toggle('on', on);
+            });
+            var lb = document.getElementById('markLabel');
+            if (lb) {
+                var on = chips.filter(function (b) { return b.classList.contains('on'); });
+                lb.textContent = on.length
+                    ? ('已选：' + on.map(function (b) { return b.textContent.trim(); }).join(' / ') +
+                       '　—— 打开 🌳 知识树的「🔣 符号」后按这个显示')
+                    : '可多选，也可都不选 —— 勾了之后在 🌳 知识树里显示为符号';
+            }
+        }
+        // 委托到 document：表单被重建（新建/编辑切换）也不会失联
+        document.addEventListener('click', function (e) {
+            var b = (e.target && e.target.closest) ? e.target.closest('#fMarkChips .rec-mark-chip') : null;
+            if (!b) return;
+            var on = b.getAttribute('aria-pressed') === 'true';
+            b.setAttribute('aria-pressed', on ? 'false' : 'true');
+            b.classList.toggle('on', !on);
+            applyRecMarks(getRecMarks());
+        });
+
         function generateId() { return 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
 
         function getToday() { return new Date().toISOString().split('T')[0]; }
@@ -6767,6 +6919,7 @@
             const _tcRaw = _tcEl ? parseInt(_tcEl.value) : 0;
             const tomatoCount = (isFinite(_tcRaw) && _tcRaw > 0) ? _tcRaw : 0;
             const understanding = parseInt(document.getElementById('fUnderstanding').value);
+            const marks = getRecMarks();               // ★ 需求 D：重点 / 难点 / 疑点
             const selfAssessment = document.getElementById('fSelfAssessment').value;
             const assessmentReason = document.getElementById('fAssessmentReason').value.trim();
             const problemSolving = document.getElementById('fProblemSolving').value.trim();
@@ -6856,6 +7009,7 @@
                 durationHours: Math.round(durationHours * 10) / 10,
                 tomatoCount: tomatoCount,
                 understanding,
+                marks: marks,          // ★ 需求 D：['key','hard','doubt'] 的子集
                 selfAssessment,
                 assessmentReason: assessmentReason || '',
                 problemSolving: problemSolving || '',
@@ -6922,6 +7076,7 @@
                     durationManual = false;
                 document.getElementById('autoCalcHint').textContent = '⏱️ 填写起止时间自动计算';
                 document.getElementById('autoCalcHint').style.color = 'var(--primary)';
+                applyRecMarks([]);                     // ★ 需求 D：新建时清空
                 document.getElementById('fSelfAssessment').value = '';
                 document.getElementById('fAssessmentReason').value = '';
                 document.getElementById('fProblemSolving').value = '';
@@ -7003,6 +7158,7 @@
                                     <span class="tag${isClassifyActive('type', r.resourceType) ? '' : ' deprecated'}"${isClassifyActive('type', r.resourceType) ? '' : ' title="该分类已从「学习途径」中删除"'}>${r.resourceType || '其他'}</span>
                                     <span class="tag source${isClassifyActive('source', r.source) ? '' : ' deprecated'}"${isClassifyActive('source', r.source) ? '' : ' title="该分类已从「资料来源」中删除"'}>${r.source || '未知'}</span>
                                     ${r.selfAssessment ? `<span class="tag ${assessmentClass}">${assessmentEmoji} ${r.selfAssessment}</span>` : ''}
+                                    ${Array.isArray(r.marks) && r.marks.length ? `<span class="tag rec-marktag">${r.marks.map(m => ({ key: '★ 重点', hard: '▲ 难点', doubt: '？ 疑点' }[m] || '')).join(' ')}</span>` : ''}
                                     ${r.addToMemory === false ? '<span class="mem-tag off">不进记忆曲线</span>' : '<span class="mem-tag">🧠 记忆曲线</span>'}
                                     ${getRecordTomatoCount(r) > 0 ? ('<span class="tag pomo-tag">🍅 ' + getRecordTomatoCount(r) + '</span>') : ''}
                                 </div>
@@ -7104,6 +7260,7 @@
                     durationManual = false;
             { const _tc = document.getElementById('fTomatoCount'); if (_tc) _tc.value = record.tomatoCount || 0; }
             { const _th = document.getElementById('tomatoLinkHint'); if (_th) { _th.textContent = getRecordTomatoCount(record) > 0 ? ('🍅 本条约 ' + getRecordTomatoCount(record) + ' 个番茄') : '🍅 点番茄钟「开始」，起止时间与个数会自动填进来'; } }
+            applyRecMarks(record.marks);               // ★ 需求 D
             document.getElementById('fSelfAssessment').value = record.selfAssessment || '';
             document.getElementById('fAssessmentReason').value = record.assessmentReason || '';
             document.getElementById('fProblemSolving').value = record.problemSolving || '';
@@ -8829,6 +8986,11 @@
         // ============================================================
         let heatMetric = 'mastery';    // 'mastery' | 'hours'
         let heatCourseSel = '';        // 面板自己的科目选择（与主界面当前科目解耦）
+        // ★ 2026-09-18（需求 F）
+        let heatLabel = 'brief';       // 'brief' 简略（只写章号）| 'full' 详细（章号 + 完整标题）
+        // 科目下拉的「全部」哨兵值。为什么要一个哨兵而不是空串：空串同时是
+        // 「还没有科目」的取值，两者混在一起没法区分「用户想看全部」与「一个科目都没有」。
+        const HEAT_ALL = '__all__';
 
         function heatEsc(s) {
             return String(s == null ? '' : s)
@@ -8850,6 +9012,91 @@
         function heatHasSection(course, ch, sec) {
             const g = GUIDE_DATA[course];
             return !!(g && g.chapters[ch] && g.chapters[ch].sections[sec]);
+        }
+        /* ===== ★ 2026-09-18（需求 F-2）：详细模式的表头取词 =====
+           为什么不直接改 heatChapterLabel：它的返回值同时被 tooltip 与
+           「没名字就退回紧凑形态」的兜底逻辑用着（返回的是「章 3」那种紧凑写法），
+           改它会把所有 tooltip 一起改味。这两个函数是**给人看的标题**：编号 + 名字，
+           没有名字时**不重复编号**（否则会印出「第 3 章 章 3」）。 */
+        function heatChapterTitle(course, ch) {
+            const m = (ACTIVE_CHAPTER_NAMES && ACTIVE_CHAPTER_NAMES[course]) || {};
+            const n = (m[ch] && String(m[ch]).trim()) ? String(m[ch]).trim() : '';
+            const base = '第 ' + ch + ' ' + L('chapter');
+            return n ? (base + ' ' + n) : base;
+        }
+        /* 纵轴写节名的前提：该节在**所有**章里叫法一致。
+           矩阵的纵轴是「节序号」，同一行的「第 2 节」在不同章里可以是完全不同的东西
+           （GUIDE_DATA[科目].chapters[章].sections[节].name 是按章存的）。
+           只要出现两种叫法，就不敢挑一个写上去 —— 那等于给别的章贴错标签。 */
+        function heatSectionTitle(course, sec, maxCh) {
+            const base = '第 ' + sec + ' ' + L('section');
+            const g = GUIDE_DATA[course];
+            const names = [];
+            for (let ch = 1; ch <= maxCh; ch++) {
+                const sc = g && g.chapters[ch] && g.chapters[ch].sections[sec];
+                const nm = (sc && sc.name) ? String(sc.name).trim() : '';
+                if (nm && names.indexOf(nm) < 0) names.push(nm);
+            }
+            return (names.length === 1) ? (base + ' ' + names[0]) : base;
+        }
+        /* ★ 2026-09-18（需求 F-1）：把「一个科目的矩阵」抽成独立函数。
+           「全部科目」模式要按科目循环渲染 N 张图，原来这段内联在 heatRender 里
+           没法复用，也拿不到「这一张图自己的统计」。返回 {html, st}。 */
+        function heatMatrixHTML(course) {
+            const d = heatData(course);
+            const st = {
+                maxCh: d.maxCh, maxSec: d.maxSec, recN: d.recN,
+                totalSec: 0, learnedSec: 0, sumH: 0, sumU: 0, nU: 0, empty: true
+            };
+            if (!d.maxCh || !d.maxSec) return { html: '', st: st };
+            st.empty = false;
+            const full = (heatLabel === 'full');
+            let h = '<table class="heat-tbl' + (full ? ' heat-full' : '') + '"><thead><tr>';
+            h += '<th class="heat-corner">' + L('section') + ' ＼ ' + L('chapter') + '</th>';
+            for (let ch = 1; ch <= d.maxCh; ch++) {
+                // 简略＝只写章号（完整名称留在 tooltip）；详细＝章号 + 章名（竖排，见 CSS）
+                const ctxt = full ? heatChapterTitle(course, ch) : heatChapterLabel(course, ch);
+                h += '<th' + (full ? ' class="heat-colhead"' : '') + ' title="' + heatEsc(ctxt) + '">' +
+                    (full ? heatEsc(ctxt) : ch) + '</th>';
+            }
+            h += '</tr></thead><tbody>';
+            for (let sec = 1; sec <= d.maxSec; sec++) {
+                const rtxt = full ? heatSectionTitle(course, sec, d.maxCh)
+                                  : ('第 ' + sec + ' ' + L('section'));
+                h += '<tr><th class="heat-rowhead" title="' +
+                    heatEsc('第 ' + sec + ' ' + L('section')) + '">' + heatEsc(rtxt) + '</th>';
+                for (let ch = 1; ch <= d.maxCh; ch++) {
+                    const c = d.cell[ch + '|' + sec];
+                    const exists = heatHasSection(course, ch, sec);
+                    const where = heatChapterTitle(course, ch) + ' · 第 ' + sec + ' ' + L('section') +
+                        (exists ? ('（' + heatSectionLabel(course, ch, sec) + '）') : '');
+                    if (exists) st.totalSec++;
+                    if (c) {
+                        st.learnedSec += exists ? 1 : 0;
+                        st.sumH += c.h;
+                        if (c.uAvg) { st.sumU += c.uAvg; st.nU++; }
+                    }
+                    if (!c && !exists) {
+                        h += '<td class="heat-cell hc-off" title="' + heatEsc(where + '：结构里没有这一节') + '">·</td>';
+                        continue;
+                    }
+                    if (heatMetric === 'hours') {
+                        const v = c ? c.h : 0;
+                        h += '<td class="heat-cell ' + heatHoursCls(v, d.maxHours) + '" title="' +
+                            heatEsc(where + '：' + (c ? c.n : 0) + ' 条记录 · ' + v + ' h') + '">' +
+                            (v ? v : '—') + '</td>';
+                    } else {
+                        const avg = c ? c.uAvg : 0;
+                        h += '<td class="heat-cell ' + heatMasteryCls(avg) + '" title="' +
+                            heatEsc(where + '：' + (c ? c.n : 0) + ' 条记录 · 单位均值 ' +
+                                    (avg ? avg.toFixed(1) + ' 星' : '未评')) + '">' +
+                            (avg ? avg.toFixed(1) : '—') + '</td>';
+                    }
+                }
+                h += '</tr>';
+            }
+            h += '</tbody></table>';
+            return { html: h, st: st };
         }
         // 一次性扫描：把「章数 / 节数上限 / 每格记录数与星级均值与时长」算出来
         function heatData(course) {
@@ -8924,8 +9171,17 @@
                     return '<span class="lg-item"><i class="sw ' + p[0] + '"></i>' + p[1] + '</span>';
                 }).join('') + off;
         }
-        function heatNoteHTML() {
+        function heatNoteHTML(multi) {
             return '<b>这张图怎么读</b><br>' +
+                (multi
+                    ? ('· 当前是<b>全部科目</b>：<b>每个科目一张图，独立分档</b>。' +
+                       '章 / 节编号是按科目各自算的（会计的第 3 章 ≠ 财管的第 3 章），' +
+                       '横向拼成一张会把不同科目的「第 3 章」挤进同一列 —— 那不是一张能看的图，' +
+                       '所以这里纵向排开、各图独立；上面的汇总条是全部科目合计。<br>')
+                    : '') +
+                '· <b>标题 简略 / 详细</b>：简略只写章号（完整名称看悬停提示）；' +
+                '详细把「第 N 章 + 章名」竖排写进表头。纵轴的节名随章而变，' +
+                '只有当该节<b>在所有章里叫法一致</b>时才会写出来，否则只写「第 N 节」。<br>' +
                 '· <b>横轴 = 章</b>（表头数字，鼠标悬停看章名）；<b>纵轴 = 节</b>（第 N 节，悬停看节名）。一个格子 = 一个「' +
                 L('chapter') + ' · ' + L('section') + '」。<br>' +
                 '· <b>🎯 掌握程度</b>：格子里的数字 = 该节<b>全部学习记录「理解」星级的平均值</b>（1.0 ~ 5.0，越接近 5 越熟练）。' +
@@ -8953,6 +9209,17 @@
                     heatRender();
                 });
             }
+            // ★ 2026-09-18（需求 F-2）：标题 简略 / 详细
+            const lseg = document.getElementById('heatLabel');
+            if (lseg && !lseg.dataset.heatBound) {
+                lseg.dataset.heatBound = '1';
+                lseg.addEventListener('click', function (ev) {
+                    const b = (ev.target && ev.target.closest) ? ev.target.closest('[data-heatlabel]') : null;
+                    if (!b) return;
+                    heatLabel = (b.getAttribute('data-heatlabel') === 'full') ? 'full' : 'brief';
+                    heatRender();
+                });
+            }
         }
         function heatRender() {
             const body = document.getElementById('heatBody');
@@ -8963,29 +9230,67 @@
             const sel = document.getElementById('heatCourse');
             if (sel) {
                 let want = heatCourseSel;
-                if (COURSES.indexOf(want) < 0) {
+                // 「全部」是合法选择，不能因为它不在 COURSES 里就被打回默认科目
+                if (want !== HEAT_ALL && COURSES.indexOf(want) < 0) {
                     want = (COURSES.indexOf(state.currentCourse) >= 0) ? state.currentCourse : (COURSES[0] || '');
                 }
-                sel.innerHTML = COURSES.map(function (c) {
-                    return '<option value="' + heatEsc(c) + '">' + heatEsc(c) + '</option>';
-                }).join('') || '<option value="">（暂无科目）</option>';
+                sel.innerHTML = COURSES.length
+                    ? ('<option value="' + HEAT_ALL + '">全部科目（' + COURSES.length + ' 个 · 各一张图）</option>' +
+                       COURSES.map(function (c) {
+                           return '<option value="' + heatEsc(c) + '">' + heatEsc(c) + '</option>';
+                       }).join(''))
+                    : '<option value="">（暂无科目）</option>';
+                if (!COURSES.length) want = '';
                 sel.value = want;
                 heatCourseSel = sel.value || '';
             }
             const course = heatCourseSel;
+            const multi = (course === HEAT_ALL && COURSES.length > 0);
 
-            // ---- 指标按钮态 + 图例 + 说明 ----
+            // ---- 指标 / 标题 按钮态 + 图例 + 说明 ----
             document.querySelectorAll('#heatMetric .heat-seg-b').forEach(function (b) {
                 b.classList.toggle('active', b.getAttribute('data-heatmetric') === heatMetric);
+            });
+            document.querySelectorAll('#heatLabel .heat-seg-b').forEach(function (b) {
+                b.classList.toggle('active', b.getAttribute('data-heatlabel') === heatLabel);
             });
             const lg = document.getElementById('heatLegend');
             if (lg) lg.innerHTML = heatLegendHTML();
             const note = document.getElementById('heatNote');
-            if (note) note.innerHTML = heatNoteHTML();
+            if (note) note.innerHTML = heatNoteHTML(multi);
             const sum = document.getElementById('heatSum');
 
-            const d = heatData(course);
-            if (!d.maxCh || !d.maxSec) {
+            // ---- 逐科目渲染；全部模式就是这一圈循环 ----
+            const list = multi ? COURSES.slice() : [course];
+            const agg = { recN: 0, totalSec: 0, learnedSec: 0, sumH: 0, sumU: 0, nU: 0,
+                          maxCh: 0, maxSec: 0, drawn: 0 };
+            const parts = [];
+            list.forEach(function (c) {
+                const r = heatMatrixHTML(c);
+                const st = r.st;
+                agg.recN += st.recN; agg.totalSec += st.totalSec; agg.learnedSec += st.learnedSec;
+                agg.sumH += st.sumH; agg.sumU += st.sumU; agg.nU += st.nU;
+                if (st.maxCh > agg.maxCh) agg.maxCh = st.maxCh;
+                if (st.maxSec > agg.maxSec) agg.maxSec = st.maxSec;
+                if (st.empty) {
+                    // 全部模式下空科目也要留一行说明，否则用户会以为是漏渲染
+                    if (multi) {
+                        parts.push('<div class="heat-sub"><b>' + heatEsc(c) + '</b>' +
+                            '<span>还没有章 / 节结构，也没有可用的学习记录</span></div>');
+                    }
+                    return;
+                }
+                agg.drawn++;
+                if (multi) {
+                    parts.push('<div class="heat-sub"><b>' + heatEsc(c) + '</b><span>' +
+                        st.maxCh + ' ' + L('chapter') + ' × 最多 ' + st.maxSec + ' ' + L('section') +
+                        ' · ' + st.recN + ' 条记录 · ' + st.learnedSec + '/' + st.totalSec + ' ' +
+                        L('section') + '有记录</span></div>');
+                }
+                parts.push(r.html);
+            });
+
+            if (!agg.drawn) {
                 body.innerHTML = '<div class="heat-empty">' +
                     (course ? ('「' + heatEsc(course) + '」还没有章 / 节结构，也没有可用的学习记录。')
                             : '还没有科目 —— 先到 ⚙️ 设置里新建项目与科目。') +
@@ -8993,58 +9298,17 @@
                 if (sum) sum.innerHTML = '';
                 return;
             }
+            body.innerHTML = parts.join('');
 
-            // ---- 矩阵 ----
-            let h = '<table class="heat-tbl"><thead><tr>';
-            h += '<th class="heat-corner">' + L('section') + ' ＼ ' + L('chapter') + '</th>';
-            for (let ch = 1; ch <= d.maxCh; ch++) {
-                h += '<th title="' + heatEsc(heatChapterLabel(course, ch)) + '">' + ch + '</th>';
-            }
-            h += '</tr></thead><tbody>';
-            let totalSec = 0, learnedSec = 0, sumH = 0, sumU = 0, nU = 0;
-            for (let sec = 1; sec <= d.maxSec; sec++) {
-                h += '<tr><th class="heat-rowhead" title="第 ' + sec + ' ' + L('section') + '">第 ' + sec + ' ' + L('section') + '</th>';
-                for (let ch = 1; ch <= d.maxCh; ch++) {
-                    const c = d.cell[ch + '|' + sec];
-                    const exists = heatHasSection(course, ch, sec);
-                    const where = heatChapterLabel(course, ch) + ' · 第 ' + sec + ' ' + L('section') +
-                        (exists ? ('（' + heatSectionLabel(course, ch, sec) + '）') : '');
-                    if (exists) totalSec++;
-                    if (c) {
-                        learnedSec += exists ? 1 : 0;
-                        sumH += c.h;
-                        if (c.uAvg) { sumU += c.uAvg; nU++; }
-                    }
-                    if (!c && !exists) {
-                        h += '<td class="heat-cell hc-off" title="' + heatEsc(where + '：结构里没有这一节') + '">·</td>';
-                        continue;
-                    }
-                    if (heatMetric === 'hours') {
-                        const v = c ? c.h : 0;
-                        h += '<td class="heat-cell ' + heatHoursCls(v, d.maxHours) + '" title="' +
-                            heatEsc(where + '：' + (c ? c.n : 0) + ' 条记录 · ' + v + ' h') + '">' +
-                            (v ? v : '—') + '</td>';
-                    } else {
-                        const avg = c ? c.uAvg : 0;
-                        h += '<td class="heat-cell ' + heatMasteryCls(avg) + '" title="' +
-                            heatEsc(where + '：' + (c ? c.n : 0) + ' 条记录 · 单位均值 ' +
-                                    (avg ? avg.toFixed(1) + ' 星' : '未评')) + '">' +
-                            (avg ? avg.toFixed(1) : '—') + '</td>';
-                    }
-                }
-                h += '</tr>';
-            }
-            h += '</tbody></table>';
-            body.innerHTML = h;
-
-            // ---- 汇总条 ----
+            // ---- 汇总条（全部模式＝所有科目合计）----
             if (sum) {
                 sum.innerHTML =
-                    '<span><b>' + d.recN + '</b>条学习记录</span>' +
-                    '<span><b>' + learnedSec + '</b>/' + totalSec + ' 节有记录</span>' +
-                    '<span><b>' + (nU ? (Math.round((sumU / nU) * 10) / 10).toFixed(1) : '—') + '</b>星 平均理解</span>' +
-                    '<span><b>' + (Math.round(sumH * 10) / 10) + '</b>h 累计时长</span>' +
-                    '<span>' + d.maxCh + ' 章 × 最多 ' + d.maxSec + ' 节</span>';
+                    '<span><b>' + agg.recN + '</b>条学习记录</span>' +
+                    '<span><b>' + agg.learnedSec + '</b>/' + agg.totalSec + ' 节有记录</span>' +
+                    '<span><b>' + (agg.nU ? (Math.round((agg.sumU / agg.nU) * 10) / 10).toFixed(1) : '—') + '</b>星 平均理解</span>' +
+                    '<span><b>' + (Math.round(agg.sumH * 10) / 10) + '</b>h 累计时长</span>' +
+                    '<span>' + (multi ? (agg.drawn + ' 个科目 · 各一张图')
+                                      : (agg.maxCh + ' 章 × 最多 ' + agg.maxSec + ' 节')) + '</span>';
             }
         }
 
@@ -10606,10 +10870,17 @@
             return n;
         }
 
-        function fcDelete(id) {
+        /* ★ 2026-09-18（需求 A）：批量删除模式开关。
+           **只放内存、不落盘** —— 这是个「一次性动作模式」，刷新后回到关闭态更安全，
+           免得下次打开页面就处在「一点就删」的状态里。 */
+        var fcBulkDel = false;
+
+        // quiet = 批量删除模式：该模式本身就是显式删除意图，逐张弹确认会把批量删除变成
+        // 「点 20 次确定」。误删有顶部「🗑 恢复已删除」兜底，复习记录与笔记从不随卡删除。
+        function fcDelete(id, quiet) {
             const card = state.cards[id];
             if (!card) return;
-            if (!confirm('删除这张卡？\n\n' +
+            if (!quiet && !confirm('删除这张卡？\n\n' +
                 '· 它会从列表、复习排期与日历分布里消失，再点「⚡ 生成 / 更新」也不会重新生成它；\n' +
                 '· 已积累的复习记录与笔记不会被删除，顶部「🗑 恢复已删除」可以找回。')) return;
             card.deleted = true;
@@ -11142,6 +11413,10 @@
             document.querySelectorAll('#fcTabs [data-fcstyle]').forEach(function (b) {
                 b.classList.toggle('active', b.dataset.fcstyle === fcStyle);
             });
+            // ★ 需求 A：批量删除开关的选中态；.fc-bulkdel 决定表格是否多渲染「🗑」那一列
+            const bdBtn = document.getElementById('fcBulkDelBtn');
+            if (bdBtn) bdBtn.classList.toggle('active', !!fcBulkDel);
+            body.classList.toggle('fc-bulkdel', !!fcBulkDel);
             const si = document.getElementById('fcSearch');
             if (si && si.value !== fcQuery) si.value = fcQuery;
             // ★ 需求 6：掌握程度下拉也要跟着状态回填（例如别处改了筛选条件）
@@ -11238,6 +11513,7 @@
                 '<span>复习</span>' +
                 '<span class="fc-hide-sm">标签</span>' +
                 '<span></span>' +
+                (fcBulkDel ? '<span title="批量删除">🗑</span>' : '') +
             '</div>';
         }
 
@@ -11357,6 +11633,10 @@
                     }).join('')) +
                 '</span>' +
                 '<button type="button" class="fc-btn sm fc-editbtn" data-fcedit="' + card.id + '" title="编辑内容与标签">✎</button>' +
+                // ★ 需求 A：批量删除模式下才出现（表格同步多一格，见 .fc-bulkdel 的列定义）
+                (fcBulkDel
+                    ? '<button type="button" class="fc-btn sm del fc-delbtn" data-fcbulkdel="' + card.id + '" title="删除这张卡（顶部「🗑 恢复已删除」可找回）">🗑</button>'
+                    : '') +
             '</div>' +
             (fcEditing === card.id ? fcEditHTML(card) : '');
         }
@@ -11621,6 +11901,9 @@
                 const hide = t.closest ? t.closest('[data-fchide]') : null;
                 if (hide) { e.stopPropagation(); fcHide(hide.dataset.fchide); return; }
                 // ★ 2026-09-18 新增四件事：删除（需求 1）/ 恢复我的改动 / 锁定 / 自评（需求 2、3）
+                // ★ 需求 A：列表行的「🗑」—— 批量模式下去掉逐张确认（见 fcDelete 的 quiet 参数）
+                const bdel = t.closest ? t.closest('[data-fcbulkdel]') : null;
+                if (bdel) { e.stopPropagation(); fcDelete(bdel.dataset.fcbulkdel, true); return; }
                 const del = t.closest ? t.closest('[data-fcdel]') : null;
                 if (del) { e.stopPropagation(); fcDelete(del.dataset.fcdel); return; }
                 const mine = t.closest ? t.closest('[data-fcmine]') : null;
@@ -12001,6 +12284,16 @@
             fcBound = true;
             const build = document.getElementById('fcBuildBtn');
             if (build) build.addEventListener('click', function () { fcBuild(false); });
+            // ★ 2026-09-18（需求 A）：批量删除开关（只切内存标志，不动任何卡片数据）
+            const bdbtn = document.getElementById('fcBulkDelBtn');
+            if (bdbtn) bdbtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                fcBulkDel = !fcBulkDel;
+                fcRender();
+                showToast(fcBulkDel
+                    ? '🗑 批量删除已开启：列表里每张卡片的「✎」后面出现「🗑」，点它即删除（顶部「🗑 恢复已删除」可找回）'
+                    : '🗑 批量删除已关闭');
+            });
             const rbtn = document.getElementById('fcRangeBtn');
             const rbox = document.getElementById('fcRange');
             if (rbtn && rbox) {
@@ -12144,6 +12437,9 @@
             // ★ 2026-09-18：「一键编号」开关。只存开关本身 —— 模版是**共享偏好**
             //   （hub_cpa_kp_tmpl_v1，与「记录学习 → 模版设置」同一份），不在这里存第二份。
             if (state.ktCfg.num === undefined || state.ktCfg.num === null) state.ktCfg.num = false;
+            // ★ 2026-09-18（需求 C）：符号显示开关 —— 行尾「层级名 / N 项」符号化，
+            //   并显示学习记录里标好的 重点/难点/疑点。
+            if (state.ktCfg.sym === undefined || state.ktCfg.sym === null) state.ktCfg.sym = false;
             return state.ktCfg;
         }
 
@@ -12539,6 +12835,91 @@
             return ['科目', '章', '节', '知识点1级', '知识点2级', '知识点3级', '知识点4级'][lv - 1]
                 || ('第 ' + lv + ' 级');
         }
+        /* ============ ★ 2026-09-18（需求 C + D）：行尾符号化 + 重点/难点/疑点符号 ============
+           两件事共用「🔣 符号」这一个开关（state.ktCfg.sym）：
+             · 行尾「层级名」（科目/章/节/知识点N级）→ 换成该级的符号；
+               「N 项」→ 换成「∷N」（符号化但**不丢数字**：收起时仍要知道它下面有几条）；
+             · 节点上的「重点 ★ / 难点 ▲ / 疑点 ？」—— 数据**只来自学习记录的标记**
+               （📝 学习记录 → 编辑界面里勾的那三个，见需求 D），知识树这边只读、不回写。
+           为什么标记不在知识树里改：同一个知识点会被多条记录覆盖，在树上再写一份
+           就必然和记录里那份打架。记录是这件事的唯一真源。 */
+        var KT_MARKS = [
+            { id: 'key',   ch: '★', name: '重点' },
+            { id: 'hard',  ch: '▲', name: '难点' },
+            { id: 'doubt', ch: '？', name: '疑点' }
+        ];
+        var ktSymOn = false;      // 本轮开关（ktBranchHTML 读它，避免每行都去 ktState()）
+        var ktMarkIdx = {};       // 记录侧标记的索引，ktRender 每轮重建
+        // 每级的符号与「编号体系 → 符号体」同源（hub_cpa_kp_sym_v1），
+        // 不在这里写第二份默认表 —— 用户在别处改过每级符号，这里要跟着变。
+        function ktSymCh(lv) {
+            try {
+                if (window.CpaKpEditor && typeof window.CpaKpEditor.symChOf === 'function') {
+                    var s = window.CpaKpEditor.symChOf(lv);
+                    if (s) return s;
+                }
+            } catch (e) {}
+            return ['●', '■', '◆', '▷', '✓', '✧', '∷'][Math.max(1, Math.min(7, lv)) - 1] || '';
+        }
+        // 「科目|章|节」→ 该节下所有带标记的记录。只收 marks 非空的记录，
+        // 没有 marks 字段的老记录顺手跳过（不必先做数据迁移）。
+        function ktMarkIndex() {
+            var idx = {};
+            var recs = (state.records || []);
+            for (var i = 0; i < recs.length; i++) {
+                var r = recs[i];
+                var ms = (r && Array.isArray(r.marks)) ? r.marks : [];
+                if (!ms.length) continue;
+                var k = [r.course || '', parseInt(r.chapter, 10) || 0, parseInt(r.section, 10) || 0].join('|');
+                (idx[k] || (idx[k] = [])).push({ marks: ms, raw: String(r.kpQuickRaw || '') });
+            }
+            return idx;
+        }
+        // 节点的 (科目, 章, 节)：科目/章/节三个祖先行从 sig 解析，知识点行 sig = 科目|章|节#序号路径
+        function ktNodeCS(n) {
+            var p = String((n && n.sig) || '').split('|');
+            if (p[0] === 'co') return { course: p[1] || '', ch: 0, sec: 0 };
+            if (p[0] === 'ch') return { course: p[1] || '', ch: parseInt(p[2], 10) || 0, sec: 0 };
+            if (p[0] === 'se') return { course: p[1] || '', ch: parseInt(p[2], 10) || 0, sec: parseInt(p[3], 10) || 0 };
+            return { course: p[0] || '', ch: parseInt(p[1], 10) || 0, sec: parseInt(p[2], 10) || 0 };
+        }
+        /* 这个节点该亮哪几个符号。
+           科目 / 章 / 节三个祖先行按 (科目, 章, 节) **逐级汇总** —— 收起时也要能一眼
+           看出「这一章里有重点」；知识点行则额外要求**名字出现在那条记录的速记文本里**，
+           否则勾一次「重点」就是整节几十行全挂上符号，等于没有信息。 */
+        function ktMarkSyms(n, idx) {
+            idx = idx || {};
+            var cs = ktNodeCS(n);
+            var hit = [];
+            var keys = Object.keys(idx);
+            if (n.kind === 'course') {
+                keys.forEach(function (k) { if (k.split('|')[0] === cs.course) hit = hit.concat(idx[k]); });
+            } else if (n.kind === 'chapter') {
+                keys.forEach(function (k) {
+                    if (k.split('|')[0] === cs.course && (+k.split('|')[1] || 0) === cs.ch) hit = hit.concat(idx[k]);
+                });
+            } else if (n.kind === 'section') {
+                hit = idx[[cs.course, cs.ch, cs.sec].join('|')] || [];
+            } else {
+                hit = (idx[[cs.course, cs.ch, cs.sec].join('|')] || []).filter(function (it) {
+                    return it.raw && it.raw.indexOf(n.name) >= 0;
+                });
+            }
+            if (!hit.length) return [];
+            var out = [];
+            KT_MARKS.forEach(function (mk) {
+                if (hit.some(function (it) { return it.marks.indexOf(mk.id) >= 0; })) out.push(mk);
+            });
+            return out;
+        }
+        function ktMarkHTML(n, idx) {
+            var ms = ktMarkSyms(n, idx);
+            if (!ms.length) return '';
+            return ms.map(function (m) {
+                return '<span class="kt-mark kt-mark-' + m.id + '" title="学习记录里标记为「' + m.name +
+                    '」（在 📝 学习记录的编辑界面里改）">' + m.ch + '</span>';
+            }).join('');
+        }
 
         // 一棵「分支」= 节点本身 + （展开时）它的子级容器。
         // 结构对齐参考图：kt-row 是色块/文字，kt-kids 是右移一档的下一层，
@@ -12562,9 +12943,13 @@
                 caret +
                 ((NO && NO[n.sig]) ? '<span class="kt-no">' + kpEsc(NO[n.sig]) + '</span>' : '') +
                 '<span class="kt-name">' + ktLabelText(n, q) + '</span>' +
+                // ★ 需求 C：开关打开时「层级名 / N 项」都换成符号（∷ 后面保留数字，不丢信息）
                 '<span class="kt-lvb" title="第 ' + n.lv + ' 级 · ' + kpEsc(ktLvName(n.lv)) + '">' +
-                    kpEsc(ktLvName(n.lv)) + '</span>' +
-                (kids.length ? '<span class="kt-kidn">' + kids.length + ' 项</span>' : '') +
+                    (ktSymOn ? kpEsc(ktSymCh(n.lv)) : kpEsc(ktLvName(n.lv))) + '</span>' +
+                (kids.length
+                    ? '<span class="kt-kidn">' + (ktSymOn ? ('∷' + kids.length) : (kids.length + ' 项')) + '</span>'
+                    : '') +
+                (ktSymOn ? ktMarkHTML(n, ktMarkIdx) : '') +
                 '</div>';
             if (kids.length && open) {
                 // ★ 需求 2：先按搜索筛出真正要渲染的子级，再判「这一组是不是全叶子」——
@@ -12651,6 +13036,8 @@
             }
             const btn = document.getElementById('ktNumberBtn');
             if (btn) btn.classList.toggle('active', !!cfg.num);
+            const sbtn = document.getElementById('ktSymBtn');
+            if (sbtn) sbtn.classList.toggle('active', !!cfg.sym);
         }
 
         // ---------- 主渲染 ----------
@@ -12678,6 +13065,8 @@
             }
 
             const cfg = ktState();
+            ktSymOn = !!cfg.sym;                 // ★ 需求 C：本轮符号开关（ktBranchHTML 读它）
+            ktMarkIdx = ktSymOn ? ktMarkIndex() : {};   // 关了就不必算索引
             const rawTree = ktSevenTree(cfg, all, proj);
             // ★ 一键编号：在**未裁剪**的 rawTree 上算，键是 sig（见上方 ktNoText 的口径说明）
             const NO = {};
@@ -12798,6 +13187,19 @@
                     ktRender();
                 });
             }
+
+            // ★ 2026-09-18（需求 C）：符号显示开关
+            const symBtn = document.getElementById('ktSymBtn');
+            if (symBtn) symBtn.addEventListener('click', function () {
+                const cfg = ktState();
+                cfg.sym = !cfg.sym;
+                saveData();
+                ktPaintNoCtl();
+                ktRender();
+                ktToast(cfg.sym
+                    ? '🔣 已用符号显示层级与「N 项」（重点/难点/疑点来自学习记录里的标记）'
+                    : '🔣 已恢复文字显示');
+            });
 
             // ★ 2026-09-18：一键编号（开关 + 模版）
             const numBtn = document.getElementById('ktNumberBtn');
@@ -14788,7 +15190,7 @@
         var outlineNo = false;
         var tree = [];
         var colCount = 3;                                      // 当前展示列数：3 或 4
-        var tmpl = 'arabic';                                   // 当前编号模版
+        var tmpl = 'roman';                                    // 当前编号模版（默认罗马体系）
         // 学习记录列表：展示内容（选中才展示）/ 知识点展示方式
         var REC_SHOW = ['kp', 'ps', 'mem', 'other'];
         var REC_SHOW_NAME = {
@@ -14887,24 +15289,72 @@
         // 这个偏移量就是 block 1 的 KT_KP_OFFSET —— 两个 <script> 块各自被 IIFE
         // 包着、作用域不共享，所以由 block 1 挂到 window.CpaChain 再读回来
         // （单一真源，不在这里写死常量，避免两处漂移）。读不到时退回 3。
-        var ROMAN7_OFF = (function () {
+        // 速记内部层级 → 链路绝对层级的偏移（知识点内部第 1 层 = 链路第 4 级）。
+        // 这个量就是 block 1 的 KT_KP_OFFSET —— 两个 <script> 块各自被 IIFE 包着、
+        // 作用域不共享，所以由 block 1 挂到 window.CpaChain 再读回来
+        // （单一真源，不在这里写死常量，避免两处漂移）。读不到时退回 3。
+        var SYSOFF = (function () {
             try {
                 var c = window.CpaChain;
                 if (c && typeof c.KP_OFFSET === 'number') return c.KP_OFFSET;
             } catch (e) {}
             return 3;
         })();
-        function roman7Tok(d, n) {
-            d = parseInt(d, 10) || 1; n = parseInt(n, 10) || 1;
-            if (d === 1) return romanNo(n);
-            if (d === 2) return alphaNo(n, false);
-            if (d === 3) return String(n);
-            if (d === 4) return alphaNo(n, true);
-            if (d === 5) return '(' + n + ')';
-            if (d === 6) return '(' + romanNo(n).toLowerCase() + ')';
-            if (d === 7) return alphaNo(n, true) + '.';
+        /* 链路第 d 级第 n 项的编号形态 —— 四套体系的**唯一**形态定义处。
+           noStr（写出去）、cutSysNo（解析回来）、sysLevelOf（判层级）都从这里取，
+           三处天然一致：只改这一处，不会出现「写出去的编号解析不回来」。 */
+        function sysTok(id, d, n) {
+            d = parseInt(d, 10) || 1;
+            n = parseInt(n, 10) || 1;
+            if (d < 1 || d > 7) return '';
+            if (id === 'chap') {                    // 章节体：第1章/第1节/一、/（一）/1./（1）/①
+                if (d === 1) return '第' + n + '章';
+                if (d === 2) return '第' + n + '节';
+                if (d === 3) return cnNum(n) + '、';
+                if (d === 4) return '（' + cnNum(n) + '）';
+                if (d === 5) return n + '.';
+                if (d === 6) return '（' + n + '）';
+                return circledNo(n);
+            }
+            if (id === 'gongwen') {                 // 中文公文体：一、/（一）/1./（1）/①/a./i.
+                if (d === 1) return cnNum(n) + '、';
+                if (d === 2) return '（' + cnNum(n) + '）';
+                if (d === 3) return n + '.';
+                if (d === 4) return '（' + n + '）';
+                if (d === 5) return circledNo(n);
+                if (d === 6) return alphaNo(n, true) + '.';
+                return romanNo(n).toLowerCase() + '.';
+            }
+            if (id === 'roman') {                   // 罗马体系：I./A./1./a./(1)/(i)/a)
+                if (d === 1) return romanNo(n) + '.';
+                if (d === 2) return alphaNo(n, false) + '.';
+                if (d === 3) return n + '.';
+                if (d === 4) return alphaNo(n, true) + '.';
+                if (d === 5) return '(' + n + ')';
+                if (d === 6) return '(' + romanNo(n).toLowerCase() + ')';
+                return alphaNo(n, true) + ')';
+            }
+            if (id === 'symbol') return symCh(d);   // 符号体：整级一个符号（取自「每级符号」设置）
             return String(n);
         }
+        // 旧名保留：上一轮的调用点（含测试）仍可能引用罗马体系这一支
+        function roman7Tok(d, n) { return sysTok('roman', d, n); }
+        /* 用「当前模版的形态」反解这一行处在哪一档（链路层级）；解不出返回 0。
+           序位只扫到 20：同一层超过 20 项时不认（退回缩进判层级，不会出错）。 */
+        function sysLevelOf(body) {
+            var b = String(body || '');
+            if (!b) return 0;
+            for (var d = 1; d <= 7; d++) {
+                for (var n = 1; n <= 20; n++) {
+                    var tok = sysTok(tmpl, d, n);
+                    if (!tok || b.indexOf(tok) !== 0) continue;
+                    var nx = b.charAt(tok.length);
+                    if (nx === '' || nx === ' ' || nx === '\t' || nx === '\u3000') return d;
+                }
+            }
+            return 0;
+        }
+
         /* ★ 2026-09-18 改法：从「按层级做形态泛匹配」改成「按序位逐字比对」。
            为什么必须改 —— 罗马体系的第 2 / 4 级标记就是**单个字母 + 空格**（A / a），
            「单字母 + 空白」这种形态无法区分「编号 A」和「正文 PE」：
@@ -14914,11 +15364,11 @@
            形态确实分不出来，但**序位**可以：第 d 级的第 k 个节点，编号必然是
            roman7Tok(d, k)。expect 由 parse 按兄弟序位算出（见 parse 里的 sib），
            对不上就不剥 —— 宁可留着编号，也不吃正文。 */
-        function cutRomanNo(body, depth, expect) {
+        function cutSysNo(body, depth, expect) {
             var d = Math.max(1, Math.min(7, parseInt(depth, 10) || 1));
             var out = String(body || '');
             if (!out) return out;
-            var tok = roman7Tok(d, expect);
+            var tok = sysTok(tmpl, d, expect);
             if (!tok) return out;
             var head = out.replace(/^[ \t\u3000]+/, '');
             var pad = out.length - head.length;
@@ -14931,6 +15381,8 @@
             }
             return out;
         }
+        // 旧名保留：上一轮只有罗马体系走这条路，本轮四套通用
+        function cutRomanNo(b, d, e) { return cutSysNo(b, d, e); }
 
         // 剥掉行首编号（含中文 / 括号 / 圆圈），交给后面的 stripNoInner 兜底
         function cutSeqNo(body) {
@@ -15034,11 +15486,30 @@
                     //   缩进是层级唯一稳定的载体 —— 这点 toFlat 的注释早已写明，
                     //   只是这里没落实。只在缩进**更深**时接管，所以无缩进的
                     //   纯编号文本（1. / 1.1 / 1.1.1）行为完全不变。
+                    // ★ 需求 B：**带缩进的行**改用「当前模版的形态」反解层级。
+                    //   为什么必须改：seqKind 的体系基准序是 cn → pcn → circ → num（给
+                    //   「随手粘的中文大纲」用的），它与四套体系的档位序并不一致 ——
+                    //   章节体里 ① 在第 7 档、1. 在第 5 档，而 seqKind 把 circ 排在了 num 前面，
+                    //   于是「1.」被算成第 3 级、与「（一）」的第 1 级一起塌平；
+                    //   实测：章节体整整 6 行全部退化成根节点（往返结构被摧毁）。
+                    //   自产文本永远是「编号 + 缩进」一起写出去的，所以这里只对**带缩进**的行
+                    //   生效；手写「无缩进纯编号大纲」的行为一字不变。
+                    if (r.indent > 0) {
+                        var sl = sysLevelOf(body);
+                        if (sl > 0) lvl = Math.max(1, sl - SYSOFF);
+                    }
                     if (r.indent > 0 && indentLvl > lvl) lvl = indentLvl;
                     body = cutSeqNo(body);
                 } else {
                     // 没有编号时靠缩进；若上文出现过标题，整体下沉一级（手写 MD 的常见写法）
                     lvl = indentLvl + headingDepth;
+                    // ★ 2026-09-18（需求 B）：符号体的行首是**单个符号**（●/■/◆…），
+                    //   它不是任何编号体系，seqKind 认不出来 → 必然落进这一支。
+                    //   而这一支只走下面的 stripNoInner（不认符号），不补一刀的话
+                    //   「● 金融资产」的 ● 会被当成正文写进节点名 —— 切一次模版名字脏一次。
+                    //   其余三套体系的行首都带数字/中文编号，走上面 r.seq 那一支，不受影响。
+                    //   级数同样要 +SYSOFF：符号按「链路第 d 级」定义（第 4 级起）。
+                    if (tmpl === 'symbol') body = cutSysNo(body, lvl + SYSOFF, expIdx);
                 }
                 if (lvl > MAXD) lvl = MAXD;
                 if (lvl < 1) lvl = 1;
@@ -15051,13 +15522,14 @@
                 // 只有编号没有内容的空行（模版的「第一章」「一、」「(1)」）必须保留，
                 // 否则层级会塌；纯标点残渣才丢。
                 if (body) {
-                    if (tmpl === 'roman7') {
-                        var b0 = body;
-                        body = cutRomanNo(body, lvl + ROMAN7_OFF, expIdx);   // +偏移：编号是链路绝对层级
-                        // 编号体系命中过 seqKind 时 lvl 可能来自体系基准、与缩进不同口径，
-                        // 兜一次缩进深度；仍然对不上就保留原样（不猜）。
-                        if (body === b0 && indentLvl !== lvl) body = cutRomanNo(body, indentLvl + ROMAN7_OFF, expIdx);
-                    }
+                    // ★ 需求 B：四套体系**都**走这条通用剥离（按「链路第 d 级第 k 号」逐字比对）。
+                    //   形态匹配做不到这件事：罗马体第 2/4 档是「A. / a.」、公文体第 6/7 档是
+                    //   「a. / i.」—— 形态上分不出「编号 a.」和正文「pe 市盈率」。
+                    var b0 = body;
+                    body = cutSysNo(body, lvl + SYSOFF, expIdx);
+                    // 编号体系命中过 seqKind 时 lvl 可能来自体系基准、与缩进不同口径，
+                    // 兜一次缩进深度；仍然对不上就保留原样（不猜）。
+                    if (body === b0 && indentLvl !== lvl) body = cutSysNo(body, indentLvl + SYSOFF, expIdx);
                     body = stripNoInner(body).trim();
                     if (body && !/[\u4e00-\u9fa5A-Za-z0-9]/.test(body)) return;
                 } else if (!r.seq && !r.isHeading) {
@@ -15131,43 +15603,15 @@
             return lower ? s : s.toUpperCase();
         }
         function noStr(p, abs) {
-            var a = p, d = p.length;
-            if (tmpl === 'cn-chapter') {                 // 第一章 / 1.1 / 1.1.1 / (1) / ①
-                if (d === 1) return '第' + cnNum(a[0]) + '章';
-                if (d === 2) return a[0] + '.' + a[1];
-                if (d === 3) return a[0] + '.' + a[1] + '.' + a[2];
-                if (d === 4) return '(' + a[3] + ')';
-                return circledNo(a[4]);
-            }
-            if (tmpl === 'cn-classic') {                 // 一、 / (一) / 1. / (1) / ①
-                if (d === 1) return cnNum(a[0]) + '、';
-                if (d === 2) return '(' + cnNum(a[1]) + ')';
-                if (d === 3) return a[2] + '.';
-                if (d === 4) return '(' + a[3] + ')';
-                return circledNo(a[4]);
-            }
-            if (tmpl === 'part') {                       // 第1部分 / 第1章 / 第1节 / 1.1
-                if (d === 1) return '第' + a[0] + '部分';
-                if (d === 2) return '第' + a[1] + '章';
-                if (d === 3) return '第' + a[2] + '节';
-                return a[2] + '.' + a[3];
-            }
-            if (tmpl === 'roman7') {                     // I / A / 1 / a / (1) / (i) / a.（链路 1–7 级）
-                // ★ 按**链路绝对层级**编号，不是「速记内部层级」。
-                //   速记内部第 1 层 = 链路第 4 级（KT_KP_OFFSET），所以要 +ROMAN7_OFF。
-                //   为什么必须加：同一个知识点，速记里写 a、知识树里也必须写 a。
-                //   不加的话速记顶层写 I、知识树同一节点写 a ——「速记第 1 级」和
-                //   「知识树第 4 级」讲的就不是一回事了（见 KT_KP_OFFSET 的口径注释）。
-                //   abs=true 表示 path 已经是链路绝对层级（知识树 ktNoText 用），不再加。
-                var kd = abs ? d : (d + ROMAN7_OFF);
-                // 罗马体系只定义到 7 级；更深退回十进制路径（形如 1.2.3），不编造新形态
-                if (kd > 7) return a.join('.');
-                return roman7Tok(kd, a[d - 1]);
-            }
-            // arabic：一级带点（1.），二级起是完整十进制路径（1.1 / 1.1.1 / 1.1.1.1）
-            var s2 = a.join('.');
-            return d === 1 ? (s2 + '.') : s2;
+            var a = p || [];
+            if (!a.length) return '';
+            // abs=true → path 已是链路绝对层级（知识树 ktNoText 用）；否则是速记内部层级，要 +SYSOFF
+            var d = a.length + (abs ? 0 : SYSOFF);
+            // 四套体系都只定义到链路第 7 级；更深退回十进制路径（形如 1.2.3），不编造新形态
+            if (d > 7) return a.join('.');
+            return sysTok(tmpl, d, a[a.length - 1]);
         }
+
         // 每级缩进 2 空格。这不是装饰：编号模版可能写出 parse 认不出的标记
         // （第一章 / 一、 / 第1节 …），缩进是层级唯一稳定的载体，缺了它切模版会塌层级。
         function toFlat(roots) {
@@ -15667,6 +16111,11 @@
             DRAFT_FIELDS.forEach(function (id) { var e = el(id); if (e) v[id] = e.value; });
             var u = el('fUnderstanding'); if (u) v.fUnderstanding = u.value;
             var m = el('fAddToMemory'); if (m) v.fAddToMemory = !!m.checked;
+            // ★ 需求 D：重点/难点/疑点也随草稿走（直读 DOM，不跨 <script> 块依赖函数）
+            var mb = el('fMarkChips');
+            if (mb) v.fMarks = Array.prototype.slice.call(mb.querySelectorAll('.rec-mark-chip'))
+                .filter(function (b) { return b.getAttribute('aria-pressed') === 'true'; })
+                .map(function (b) { return b.getAttribute('data-mark'); });
             return { t: Date.now(), mode: mode, cols: colCount, outlineNo: outlineNo, tab: curTab, tree: tree, v: v };
         }
         function draftMeaningful(d) {
@@ -15738,6 +16187,17 @@
                         try { if (typeof selectedStar !== 'undefined') selectedStar = n; } catch (e2) {}
                     }
                 } catch (e3) {}
+                try {
+                    var mb = el('fMarkChips');
+                    if (mb) {
+                        var want = Array.isArray(v.fMarks) ? v.fMarks : [];
+                        Array.prototype.slice.call(mb.querySelectorAll('.rec-mark-chip')).forEach(function (b) {
+                            var on = want.indexOf(b.getAttribute('data-mark')) >= 0;
+                            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+                            b.classList.toggle('on', on);
+                        });
+                    }
+                } catch (e4) {}
                 tree = (d.tree && d.tree.length) ? d.tree : parse(el('fKpQuick') ? el('fKpQuick').value : '');
                 outlineNo = !!d.outlineNo;
                 if (d.cols === 3 || d.cols === 4) colCount = d.cols;
@@ -15800,17 +16260,32 @@
         }
 
         /* ================= 编号模版 ================= */
+        /* ★ 2026-09-18（需求 B）：全局编号体系统一为四套，每套七档。
+           口径（唯一真源，三处共用）：**模版第 i 档 = 链路第 i 级**
+             链路：1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级
+           为什么必须这样定：速记内部第 1 层 = 链路第 4 级（KT_KP_OFFSET），
+           知识树本身就是链路层级 —— 只有「档位 = 链路层级」才能让同一个知识点
+           在速记、知识树、复习面板里显示同一副编号。上一轮只有罗马体系这么做，
+           本轮推广到全部体系，消灭「只有罗马体偏移、别的体不偏移」的分裂。 */
         var TMPLS = [
-            { id: 'cn-chapter', name: '第一章 / 1.1 / 1.1.1 / (1) / ①' },
-            { id: 'cn-classic', name: '一、 / (一) / 1. / (1) / ①' },
-            { id: 'arabic',     name: '1. / 1.1 / 1.1.1 / 1.1.1.1' },
-            { id: 'part',       name: '第1部分 / 第1章 / 第1节 / 1.1' },
-            // ★ 2026-09-18 新增「罗马体系」（Tom 指定的七级体系，正好对上知识树的七级链路）：
-            //     1 级 I,II,III（大写罗马） 2 级 A,B,C（大写字母） 3 级 1,2,3（阿拉伯）
-            //     4 级 a,b,c（小写字母）    5 级 (1),(2)（括号阿拉伯）
-            //     6 级 (i),(ii)（括号小写罗马） 7 级 a.,b.（小写字母加句点）
-            { id: 'roman7',     name: 'I / A / 1 / a / (1) / (i) / a.' }
+            { id: 'chap',    name: '第1章/第1节/一、/（一）/1./（1）/①' },
+            { id: 'gongwen', name: '一、/（一）/1./（1）/①/a./i.' },
+            { id: 'roman',   name: 'I./A./1./a./(1)/(i)/a)' },
+            { id: 'symbol',  name: '●/■/◆/▷/✓/✧/∷' }
         ];
+        // 旧模版 id → 新体系。老用户 localStorage 里存的是旧 id（hub_cpa_kp_tmpl_v1），
+        // 认不出来就会被当成非法值退回第一套 —— 那是**静默换掉他选好的编号**，
+        // 比多写这张表贵得多。'part' 与 'cn-chapter' 都带「第X章」形态，归到章节体。
+        var TMPL_LEGACY = {
+            'cn-chapter': 'chap', 'part': 'chap',
+            'cn-classic': 'gongwen',
+            'arabic': 'roman', 'roman7': 'roman'
+        };
+        function tmplNorm(id) {
+            if (TMPL_LEGACY[id]) id = TMPL_LEGACY[id];
+            for (var i = 0; i < TMPLS.length; i++) if (TMPLS[i].id === id) return id;
+            return TMPLS[0].id;
+        }
 
         /* ★ 2026-09-18：符号视角的 8 个候选符号（形态对齐参考图：∅ ● ■ ◆ ∷ ▷ ✓ ✧）。
            「每级一个符号」—— 七个层级各选一个，none 表示该级不显示符号。
@@ -15853,8 +16328,16 @@
         }
         var DEMO_TREE = [{ t: '金融资产', c: [{ t: '交易性金融资产', c: [{ t: '初始计量', c: [{ t: '入账价值', c: [] }] }] }] }];
         function tmplName(id) {
-            for (var i = 0; i < TMPLS.length; i++) if (TMPLS[i].id === id) return TMPLS[i].name;
-            return id;
+            var nid = tmplNorm(id);
+            // 符号体的名字跟着「每级符号」设置走 —— 不然用户把七级符号全换了一遍，
+            // 下拉里还印着出厂默认的 ●■◆▷✓✧∷，跟预览对不上。
+            if (nid === 'symbol') {
+                var out = [];
+                for (var k = 1; k <= 7; k++) out.push(symCh(k) || '·');
+                return out.join('/');
+            }
+            for (var i = 0; i < TMPLS.length; i++) if (TMPLS[i].id === nid) return TMPLS[i].name;
+            return String(id);
         }
         function previewRoots() { return tree.length ? tree : DEMO_TREE; }
         function paintTmpl() {
@@ -15869,9 +16352,7 @@
             if (st) st.textContent = (tree.length ? '' : '（预览为示例内容）') + '当前模版：' + tmplName(tmpl);
         }
         function setTmpl(id, quiet) {
-            var ok = false;
-            for (var i = 0; i < TMPLS.length; i++) if (TMPLS[i].id === id) ok = true;
-            if (!ok) id = 'arabic';
+            id = tmplNorm(id);          // 旧 id（arabic / roman7 / cn-chapter …）在这里翻译成新体系
             if (id === tmpl) { paintTmpl(); return; }
             syncFromView();
             tmpl = id;
@@ -16009,7 +16490,7 @@
                     var deep = lim && d > lim;
                     out.push('<div class="kp-hrow kp-hlv' + Math.min(d, 4) + (deep ? ' kp-hdeep' : '') + '"' +
                         (deep ? ' title="这一层进卡片反面（答案层），不单独出卡"' : '') + '>' +
-                        '<span class="kp-hno kp-symno">' + esc(symCh(d + ROMAN7_OFF)) + '</span>' +
+                        '<span class="kp-hno kp-symno">' + esc(symCh(d + SYSOFF)) + '</span>' +
                         '<span class="kp-htext">' + esc(n.t) + '</span></div>');
                     walk(n.c || [], d + 1);
                 });
@@ -16045,8 +16526,8 @@
             if (hint) hint.textContent = '当前：' + SYM_LV.map(function (nm, i) {
                 return '第' + (i + 1) + '级 ' + (symCh(i + 1) || '（不显示）');
             }).join(' · ') + '　（速记 ' + colCount + ' 列 → 只用第 ' +
-                (ROMAN7_OFF + 1) + '–' + (ROMAN7_OFF + colCount) + ' 级的符号；'
-                + '第 1–' + ROMAN7_OFF + ' 级是科目/章/节，速记不涉及）';
+                (SYSOFF + 1) + '–' + (SYSOFF + colCount) + ' 级的符号；'
+                + '第 1–' + SYSOFF + ' 级是科目/章/节，速记不涉及）';
         }
         function setSym(lv, id) {
             lv = parseInt(lv, 10);
@@ -16114,7 +16595,8 @@
             mode = (VIEWS.indexOf(savedMode) >= 0) ? savedMode : 'default';
             colCount = (parseInt(load(COL_KEY), 10) === 4) ? 4 : 3;
             var savedTmpl = load(TMPL_KEY);
-            for (var ti = 0; ti < TMPLS.length; ti++) if (TMPLS[ti].id === savedTmpl) tmpl = savedTmpl;
+            // ★ 需求 B：旧 id（arabic / roman7 / cn-chapter …）在这里归一成本轮的四套体系
+            if (savedTmpl) tmpl = tmplNorm(savedTmpl);
             try {
                 var rawShow = load(REC_SHOW_KEY);
                 if (rawShow) {
@@ -16186,6 +16668,8 @@
             if (draftTimer) clearInterval(draftTimer);
             draftTimer = setInterval(saveDraft, DRAFT_MS);
             window.addEventListener('pagehide', function () { saveDraft(); });
+            // ★ 2026-09-18（需求 E）：给全站每一个多行文本输入挂「🔢 一键编号」工具条
+            numbInit();
         }
 
         // 供外部（表单重置 / 编辑既有记录）调用
@@ -16233,7 +16717,10 @@
             tmplNameOf: tmplName,
             noStrOf: function (path) { return noStr(path, true); },   // true = path 已是链路绝对层级
             symChOf: symCh,
-            symbolList: function () { return SYMS.slice(); }
+            symbolList: function () { return SYMS.slice(); },
+            // ★ 需求 B：形态生成与 id 归一也透出（知识树 / 测试用同一份，杜绝第二实现）
+            sysTokOf: sysTok,
+            tmplNormOf: tmplNorm
         };
         // 记录列表（主应用渲染）读这里：哪些内容要展示、知识点按哪种方式展示
         window.CpaRecView = {
@@ -16265,6 +16752,168 @@
             }
         };
 
+        /* ============================================================================
+           ★ 2026-09-18（需求 E）：全局「一键编号」
+           挂在此处的原因：它要用 parse 的**缩进栈**口径、noStr / sysTok 的**编号形态**、
+           以及 tmpl / SYSOFF 这几个量 —— 全都住在这个 IIFE 里。放在别的 <script> 块
+           等于再写一份，两份迟早漂移（上一轮那个编号偏移常量就是这么出事的：
+           改名时漏了三处引用，调用即抛 ReferenceError）。
+           ============================================================================ */
+        // 速记内部最多 4 层（链路第 4–7 级）—— 与 MAXD - SYSOFF 同口径，不写死 4
+        var NUMB_MAXLV = Math.max(1, Math.min(4, 7 - SYSOFF));
+        // 两类字段必须排除（理由见文件头的补丁说明）
+        var NUMB_SKIP = {
+            fKpQuick: 1, fKpOutline: 1, fKpMd: 1,   // 速记三视角：自带一键编号与模版选择
+            pdSubjects: 1, cdName: 1                // 一行一个名称：编号会被当成名字存进数据
+        };
+        var numbBound = false;
+        var numbSeq = 0;
+
+        // 第 d 级、**任意序号**的行首编号，剥得掉就返回剥完的串，否则原样返回。
+        // 为什么要遍历序号：用户可能从别处粘来「3. xxx」当第一项，
+        // 只认「第 1 项」形态的话这一行就剥不动，会叠成「I. 3. xxx」。
+        function numStripTok(str, d, id) {
+            var out = String(str == null ? '' : str);
+            for (var n = 1; n <= 40; n++) {
+                var t = sysTok(id || tmpl, d, n);
+                if (!t) continue;
+                if (out.indexOf(t) !== 0) continue;
+                var nx = out.charAt(t.length);
+                if (nx === '' || nx === ' ' || nx === '\t' || nx === '\u3000') {
+                    return out.slice(t.length).replace(/^[ \t\u3000]+/, '');
+                }
+            }
+            return out;
+        }
+        /* 剥掉行首编号，三级策略：
+             ① 当前模版该级的编号（任意序号）
+             ② 其余三套体系该级的编号（用户以前可能用别的体系编过号）
+             ③ 历史模版残留：只认「带分隔符且后面有空白」的形态
+           ③ 为什么不直接调 stripNoInner：它有一条 `^[0-9]{1,3}(\.[0-9]{1,3}){1,3}\s*`
+           的**零空格也吃**的规则，`1.5倍` 会被剥成 `倍`。对「速记」那是可接受的取舍，
+           对全局按钮就是吃内容 —— 所以这里只认后面确实有空格/制表符的形态。 */
+        function numStripHead(str, lv) {
+            var d = lv + SYSOFF;
+            var out = numStripTok(str, d, tmpl);
+            if (out !== str) return out;
+            for (var k = 0; k < TMPLS.length; k++) {
+                if (TMPLS[k].id === tmpl) continue;
+                out = numStripTok(str, d, TMPLS[k].id);
+                if (out !== str) return out;
+            }
+            var LEG = [
+                /^第[0-9一二三四五六七八九十百]{1,4}\s*(?:部分|章|节|讲|篇|单元)\s+/,
+                /^[0-9]{1,3}(?:\.[0-9]{1,3}){1,3}\s+/,
+                /^[0-9]{1,3}\s*[.、．)）:：]\s+/,
+                /^[（(【\[]\s*(?:[一二三四五六七八九十]{1,3}|[0-9]{1,3})\s*[）)】\]]\s*/,
+                /^[一二三四五六七八九十]{1,3}\s*[、.．]\s*/,
+                /^[①-⑳⑴-⒇❶-❿]\s*/
+            ];
+            for (var j = 0; j < LEG.length; j++) {
+                var t2 = String(str).replace(LEG[j], '');
+                if (t2 !== str) return t2.replace(/^[ \t\u3000]+/, '');
+            }
+            return str;
+        }
+        /* 一键编号（幂等）：按缩进定层级，按当前模版写行首编号。
+           逐行处理，**空行原样保留**（不建树 —— 见文件头第 1 条）。 */
+        function numApplyText(text) {
+            var src = String(text == null ? '' : text).split(/\r?\n/);
+            var out = [], st = [], path = [];
+            var changed = 0;
+            for (var i = 0; i < src.length; i++) {
+                var raw = src[i];
+                if (!raw.trim()) { out.push(raw); continue; }     // 空行：原样，不吞段落分隔
+                var lead = (raw.match(/^[ \t\u3000]*/) || [''])[0];
+                var ind = lead.replace(/\t/g, '  ').replace(/\u3000/g, '  ').length;
+                // 缩进栈：只看相对大小，所以 2/3/4 空格、Tab、全角空格、混用都能分层
+                while (st.length && ind < st[st.length - 1]) st.pop();
+                if (!st.length || ind > st[st.length - 1]) st.push(ind);
+                var lv = Math.min(st.length, NUMB_MAXLV);
+                while (path.length < lv) path.push(0);
+                path.length = lv;                                  // 回到浅层 = 深层序号归零
+                path[lv - 1] = (path[lv - 1] || 0) + 1;
+                var body = numStripHead(raw.slice(lead.length), lv);
+                var no = noStr(path, false);                       // false = 速记内部层级，内部 +SYSOFF
+                var line = lead + (no ? (no + ' ') : '') + body;
+                if (line !== raw) changed++;
+                out.push(line);
+            }
+            return { text: out.join('\n'), changed: changed };
+        }
+        function numbToast(msg) {
+            try { if (typeof toast === 'function') { toast(msg); return; } } catch (e) {}
+            try { console.log('[numb] ' + msg); } catch (e2) {}
+        }
+        function numbHintSync(bar) {
+            if (!bar) return;
+            var h = bar.querySelector('.numb-hint');
+            if (h) h.textContent = '模版：' + tmplName(tmpl);
+        }
+        function numbAttach(ta) {
+            if (!ta || ta.dataset.numbed === '1') return;
+            if (ta.dataset.nonumb === '1') return;                 // 预留：将来新字段可自行退出
+            if (ta.id && NUMB_SKIP[ta.id]) return;
+            ta.dataset.numbed = '1';
+            var bar = document.createElement('div');
+            bar.className = 'numb-bar';
+            bar.setAttribute('data-numbfor', 'n' + (++numbSeq));
+            bar.innerHTML =
+                '<button type="button" class="numb-btn" data-numbapply="1" title="按「编号模版」给每一行加 / 重排行首编号（层级按缩进；空行原样保留）">🔢 一键编号</button>' +
+                '<button type="button" class="numb-btn ghost" data-numbundo="1" title="撤销上一次编号，恢复编号前的原文">↩ 还原</button>' +
+                '<span class="numb-hint"></span>';
+            bar.__ta = ta;                        // 直接挂引用，比 dataset 里存 id 稳（动态 id 可能重复）
+            try { ta.insertAdjacentElement('afterend', bar); } catch (e) { return; }
+            numbHintSync(bar);
+        }
+        function numbInit() {
+            var list = document.querySelectorAll('textarea');
+            for (var i = 0; i < list.length; i++) numbAttach(list[i]);
+            if (numbBound) return;
+            numbBound = true;
+            // 动态创建的多行输入（闪卡编辑区 / 错题本作答区 / 项目·科目·结构自检对话框）
+            // 在第一次聚焦时补挂 —— 这样不必在每一处构造 DOM 的地方都写一遍挂载代码。
+            document.addEventListener('focusin', function (e) {
+                var t = e.target;
+                if (!t || t.tagName !== 'TEXTAREA') return;
+                numbAttach(t);
+                var bar = t.nextElementSibling;
+                if (bar && bar.classList && bar.classList.contains('numb-bar')) numbHintSync(bar);
+            });
+            // 一个委托处理所有工具条的点击
+            document.addEventListener('click', function (e) {
+                var t = e.target;
+                if (!t || !t.closest) return;
+                var bar = t.closest('.numb-bar');
+                if (!bar) return;
+                var ta = bar.__ta;
+                if (!ta) return;
+                if (t.closest('[data-numbapply]')) {
+                    var r = numApplyText(ta.value);
+                    if (!String(ta.value || '').trim()) { numbToast('这段是空的，没什么可编号。'); return; }
+                    if (r.text === ta.value) { numbToast('已是最新编号（模版：' + tmplName(tmpl) + '）'); return; }
+                    ta.dataset.numbUndo = ta.value;                 // 只留最近一次，够用且不占空间
+                    ta.value = r.text;
+                    // 让草稿保存 / 联动逻辑跟上（有些字段靠 input 事件驱动）
+                    try { ta.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) {}
+                    numbToast('🔢 已按「' + tmplName(tmpl) + '」为 ' + r.changed + ' 行编号（可点「↩ 还原」退回）');
+                } else if (t.closest('[data-numbundo]')) {
+                    if (ta.dataset.numbUndo == null) { numbToast('还没有可撤销的编号。'); return; }
+                    ta.value = ta.dataset.numbUndo;
+                    delete ta.dataset.numbUndo;
+                    try { ta.dispatchEvent(new Event('input', { bubbles: true })); } catch (e3) {}
+                    numbToast('↩ 已恢复编号前的原文');
+                }
+            });
+        }
+        // 透出给其它 <script> 块 / 测试（单一实现，别处不再写第二份编号算法）
+        window.CpaNum = {
+            apply: numApplyText,
+            stripHead: numStripHead,
+            tmplNameOf: function () { return tmplName(tmpl); },
+            attachAll: numbInit
+        };
+
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
         else init();
     })();
@@ -16288,7 +16937,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918b</div>
 <!-- build-tag:end -->
 </body>
 </html>
