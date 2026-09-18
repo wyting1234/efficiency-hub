@@ -625,6 +625,32 @@
   .pf-prev{flex:1 0 100%;background:var(--bg);border:1px dashed var(--border);border-radius:9px;padding:9px 11px;font-size:13.5px;line-height:1.75}
   .pf-foot{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);padding-top:14px;margin-top:8px}
   code.pf-k{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:12px}
+/* ── HubSelBar：选中文字后浮出的格式条 ─────────────────────────────
+   颜色一律走导航页已有的主题变量，所以日间 / 夜间自动跟随，不用另写一套。
+   transform 被用来做「底部居中」，所以出现动画只做 opacity，不碰 transform。 */
+.hub-selbar{position:fixed;z-index:9999;left:0;top:0;display:flex;align-items:center;
+  gap:5px;padding:6px 8px;border-radius:12px;background:var(--panel,#fff);
+  color:var(--text,#1e2533);border:1px solid var(--border,#e2e8f0);
+  box-shadow:0 8px 28px rgba(15,23,42,.20);max-width:calc(100vw - 24px);
+  flex-wrap:wrap;justify-content:center;opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .12s ease;-webkit-user-select:none;user-select:none;
+  font-family:var(--font,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif)}
+.hub-selbar.show{opacity:1;visibility:visible;pointer-events:auto}
+.hub-selbar .sb-btn{min-width:34px;height:34px;padding:0 8px;border:1px solid transparent;
+  border-radius:8px;background:transparent;color:inherit;font-size:14px;line-height:1;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.hub-selbar .sb-btn:hover{background:rgba(127,127,127,.16)}
+.hub-selbar .sb-btn.on{background:var(--accent,#2563eb);color:#fff}
+.hub-selbar .sb-btn.on:hover{background:var(--accent,#2563eb)}
+.hub-selbar .sb-hl{font-size:12px;min-width:42px}
+.hub-selbar .sb-clear{font-size:12px;min-width:44px;color:var(--muted,#64748b)}
+.hub-selbar .sb-sep{width:1px;height:20px;background:var(--border,#e2e8f0);margin:0 2px;flex:none}
+.hub-selbar .sb-sw{width:22px;height:22px;border-radius:50%;border:0;padding:0;flex:none;
+  cursor:pointer;box-shadow:inset 0 0 0 1px rgba(127,127,127,.45);transition:transform .1s ease}
+.hub-selbar .sb-sw:hover{transform:scale(1.18)}
+/* 手机底部固定：不换行、按内容取宽。position:fixed + 无 width 时宽度是 shrink-to-fit，
+   在 flex-wrap 容器里会缩成很窄并把工具条折成两行 —— 显式拿 max-content 才是一整条。 */
+.hub-selbar.dock{flex-wrap:nowrap;width:max-content}
 </style>
 
 
@@ -1606,6 +1632,427 @@
 })();
 </script>
 
+<script>
+/* ============================================================
+ *  HubSelBar —— 选中文字后就地浮出的格式条（加粗 / 下划线 / 颜色 / 高亮）
+ *  ------------------------------------------------------------
+ *  为什么浮层建在导航页、而不是注入到子页里去：
+ *    工具页跑在同源 iframe 里。桌面上 iframe 是 height:100%，滚动在 iframe 内，
+ *    子页里的 position:fixed 正好等于可视区；但 iOS 走的是 .ios-scroll 分支
+ *    （iframe 高度自适应、滚动落回导航页），这时子页里的 fixed 贴的是「iframe
+ *    视口」＝整篇文档，浮层会被推到屏幕外。只有导航页的 fixed 才是真正的屏幕
+ *    视口，所以浮层 DOM 建在导航页，子页的选区坐标再换算上来
+ *    （选区 rect + iframe 的 rect，两个都是相对各自视口的，相加即得）。
+ *
+ *  两种形态按「指针类型」分，不按窗口宽度 —— 桌面把窗口拖窄不该变成底部条：
+ *    coarse（触摸）→ 固定在屏幕底部，用 visualViewport 顶在键盘上方；
+ *    fine（鼠标）  → 跟随选区，优先弹在选区上方，上面放不下就落到下方。
+ *    手机上长按会先弹系统自己的菜单（iOS Callout / 安卓浮动条），所以显示
+ *    刻意延后 ~320ms，等它先落位，避免两条菜单叠在一起。
+ *
+ *  为什么一律「保存-恢复选区」：点浮层按钮时焦点会离开子页，选区可能被清掉。
+ *    每条命令执行前都用存下来的 Range 重新 addRange，所以连点两下（先加粗再改色）
+ *    也不会第二下失效。
+ *
+ *  只对 contenteditable 生效。input / textarea 里存的是纯文本，局部加粗无处安放，
+ *  在那种地方弹出来只会给用户一个点不动的按钮。
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var BAR_ID = 'hub-selbar';
+  var COLOR_KEY = 'hub_text_v1';      // 默认色点跟着「⚙️ 设置」里的标注色走
+
+  var SWATCHES = ['#1E2533', '#C0392B', '#1F6FB2', '#1E8449', '#6B46C1'];
+
+  var bar = null;
+  var savedDoc = null, savedWin = null, savedRange = null;
+  var timer = null, shown = false;
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------- 0) 设备形态 ---------- */
+  var coarseCache = null;
+  function isCoarse() {
+    if (coarseCache !== null) return coarseCache;
+    try {
+      if (window.matchMedia) coarseCache = !!window.matchMedia('(pointer: coarse)').matches;
+      else coarseCache = ('ontouchstart' in window) && window.innerWidth <= 780;
+    } catch (e) { coarseCache = false; }
+    return coarseCache;
+  }
+  function docked() { return isCoarse(); }
+
+  // iPhone 底部那条 home indicator：CSS 的 env() 读不进来，量一个探针元素
+  var safeCache = null;
+  function safeB() {
+    if (safeCache !== null) return safeCache;
+    safeCache = 0;
+    try {
+      var d = document.createElement('div');
+      d.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden';
+      document.body.appendChild(d);
+      safeCache = Math.round(d.getBoundingClientRect().height) || 0;
+      if (d.parentNode) d.parentNode.removeChild(d);
+    } catch (e) { safeCache = 0; }
+    return safeCache;
+  }
+
+  /* ---------- 1) 默认色点：跟「⚙️ 设置」打通 ---------- */
+  function prefs() {
+    try { if (window.HubPrefs && window.HubPrefs.get) return window.HubPrefs.get() || {}; } catch (e) {}
+    try { return JSON.parse(localStorage.getItem(COLOR_KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  function palette() {
+    var p = prefs(), out = SWATCHES.slice(), seen = {};
+    for (var i = 0; i < out.length; i++) seen[out[i].toLowerCase()] = 1;
+    // 用户在设置里配过的标注字色 / 高亮底排在最前，算「常用色」
+    var head = [];
+    if (p.mkFg && !seen[String(p.mkFg).toLowerCase()]) head.push(p.mkFg);
+    if (p.color && !seen[String(p.color).toLowerCase()]) head.push(p.color);
+    return head.concat(out).slice(0, 6);
+  }
+
+  /* ---------- 2) 建浮层 ---------- */
+  function build() {
+    if (bar || !document.body) return;
+    bar = document.createElement('div');
+    bar.id = BAR_ID;
+    bar.className = 'hub-selbar';
+    bar.setAttribute('aria-hidden', 'true');
+
+    var sw = palette();
+    var html = '';
+    html += '<button type="button" class="sb-btn" data-cmd="bold" title="加粗"><b>B</b></button>';
+    html += '<button type="button" class="sb-btn" data-cmd="underline" title="下划线"><u>U</u></button>';
+    html += '<button type="button" class="sb-btn sb-hl" data-hl="1" title="高亮底色">高亮</button>';
+    html += '<span class="sb-sep"></span>';
+    for (var i = 0; i < sw.length; i++) {
+      html += '<button type="button" class="sb-sw" data-color="' + sw[i] + '" title="文字颜色 ' + sw[i] + '"></button>';
+    }
+    html += '<span class="sb-sep"></span>';
+    html += '<button type="button" class="sb-btn sb-clear" data-cmd="removeFormat" title="清除格式">清除</button>';
+    bar.innerHTML = html;
+
+    // 色点把颜色写在 style 上（不能塞进类名拼 CSS，颜色是数据）
+    var dots = bar.querySelectorAll('.sb-sw');
+    for (var j = 0; j < dots.length; j++) dots[j].style.background = dots[j].getAttribute('data-color');
+
+    // 鼠标设备上按下就阻止默认行为：别把子页的选区清掉（视觉上也不闪）
+    bar.addEventListener('mousedown', function (ev) {
+      if (!isCoarse()) ev.preventDefault();
+    });
+    bar.addEventListener('click', function (ev) {
+      var t = ev.target;
+      while (t && t !== bar && !t.getAttribute) t = t.parentNode;
+      if (!t || t === bar) return;
+      if (t.getAttribute('data-cmd')) { run(t.getAttribute('data-cmd'), null); return; }
+      if (t.getAttribute('data-hl')) { run('hiliteColor', prefs().mkBg || '#FFE9A8'); return; }
+      if (t.getAttribute('data-color')) { run('foreColor', t.getAttribute('data-color')); return; }
+    });
+
+    document.body.appendChild(bar);
+
+    // 点浮层外面就收起来
+    var away = function (ev) {
+      if (!bar || !shown) return;
+      if (bar.contains(ev.target)) return;
+      hide();
+    };
+    document.addEventListener('mousedown', away, true);
+    document.addEventListener('touchstart', away, true);
+  }
+
+  /* ---------- 3) 选区采集 ---------- */
+  function frameOf(doc) {
+    var box = $('toolContainer');
+    if (!box) return null;
+    var fs = box.querySelectorAll('iframe'), i, d;
+    for (i = 0; i < fs.length; i++) {
+      d = null;
+      try { d = fs[i].contentDocument; } catch (e) { d = null; }
+      if (d && d === doc) return fs[i];
+    }
+    return null;
+  }
+
+  function editableOf(node) {
+    var n = node;
+    while (n && n.nodeType === 1) {
+      try { if (n.isContentEditable) return n; } catch (e) {}
+      n = n.parentNode;
+    }
+    return null;
+  }
+
+  function pickIn(doc, win) {
+    if (!doc || !win) return null;
+    var sel = null;
+    try { sel = win.getSelection(); } catch (e) { return null; }
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+    var txt = '';
+    try { txt = String(sel.toString() || ''); } catch (e) { txt = ''; }
+    if (!txt.replace(/\s/g, '')) return null;                 // 全空白不算选中
+    var rng = sel.getRangeAt(0);
+    var node = rng.startContainer;
+    if (node && node.nodeType === 3) node = node.parentNode;
+    if (!editableOf(node)) return null;                       // 不在可编辑区 → 不管
+    var r;
+    try { r = rng.getBoundingClientRect(); } catch (e) { return null; }
+    if (!r || (!r.width && !r.height)) return null;
+    return { doc: doc, win: win, range: rng, rect: r, text: txt };
+  }
+
+  // 有没有「非折叠、且有实字」的选区（不要求落在可编辑区里）
+  function hasSel(doc, win) {
+    try {
+      var s = win.getSelection();
+      if (!s || s.rangeCount === 0 || s.isCollapsed) return false;
+      return !!String(s.toString() || '').replace(/\s/g, '');
+    } catch (e) { return false; }
+  }
+
+  function pick() {
+    var hit = pickIn(document, window);
+    if (hit) return hit;
+    // 导航页里「有选区但不在可编辑区」时，说明用户此刻动的是导航页 ——
+    // 就不要再退回去捡子页里那个视觉上还高亮、其实已经失焦的选区了。
+    if (hasSel(document, window)) return null;
+    var box = $('toolContainer');
+    if (!box) return null;
+    var fs = box.querySelectorAll('iframe'), i, d, w;
+    for (i = 0; i < fs.length; i++) {
+      d = null; w = null;
+      try { d = fs[i].contentDocument; w = fs[i].contentWindow; } catch (e) { continue; }
+      hit = pickIn(d, w);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  // 子页坐标 → 导航页坐标
+  function toHost(hit) {
+    var r = hit.rect;
+    if (hit.doc === document) return { left: r.left, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+    var f = frameOf(hit.doc);
+    if (!f) return null;
+    var fr = f.getBoundingClientRect();
+    return { left: fr.left + r.left, top: fr.top + r.top, bottom: fr.top + r.bottom, width: r.width, height: r.height };
+  }
+
+  /* ---------- 4) 摆放 ---------- */
+  function place(hostRect) {
+    if (!bar) return;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    if (docked()) {
+      // dock 类里把 flex-wrap 关掉并取 max-content —— 否则收缩宽度会让工具条
+      // 在手机上折成两行（实测过 195×87 那种两行块）
+      bar.classList.add('dock');
+      var gap = 12 + safeB();
+      try {
+        var vv = window.visualViewport;
+        if (vv) gap = Math.max(12 + safeB(), Math.round(vh - vv.height - vv.offsetTop) + 12 + safeB());
+      } catch (e) {}
+      bar.style.transform = 'translateX(-50%)';
+      bar.style.left = '50%';
+      bar.style.top = 'auto';
+      bar.style.bottom = gap + 'px';
+      return;
+    }
+    bar.classList.remove('dock');
+    bar.style.transform = 'none';
+    bar.style.bottom = 'auto';
+    var w = bar.offsetWidth || 300, h = bar.offsetHeight || 48;
+    // 自描述状态：万一又出现「浮层没贴住选区」，读一眼这个属性就知道本次是按
+    // 什么盒子高度(h)、选区顶边(ht)、视口高(vh)算的 —— 不用再靠猜。
+    try { bar.setAttribute('data-geo', 'w=' + w + ' h=' + h + ' ht=' + Math.round(hostRect.top) + ' vh=' + vh); } catch (e) {}
+    var left = hostRect.left + hostRect.width / 2 - w / 2;
+    left = Math.max(8, Math.min(left, vw - w - 8));
+    var top = hostRect.top - h - 12;
+    if (top < 8) top = hostRect.bottom + 12;
+    if (top + h > vh - 8) top = Math.max(8, vh - h - 8);
+    bar.style.left = Math.round(left) + 'px';
+    bar.style.top = Math.round(top) + 'px';
+  }
+
+  /* ---------- 5) 显示 / 隐藏 ---------- */
+  var settleT = null;
+  function show(hit) {
+    build();
+    if (!bar) return;
+    bar.setAttribute('aria-hidden', 'false');
+    bar.classList.add('show');
+    shown = true;
+    refreshStates();
+    var host = toHost(hit);
+    if (!host) return;
+    place(host);
+    // 摆完再校两次，原因有两个：
+    //  ① 首帧里 offsetHeight 有时拿到的是「还没算上 padding/border」的高度
+    //     （实测差 14px = padding 12 + border 2），浮层会往下多留一截；
+    //  ② 选区的几何本身也可能还在动 —— 比如弹窗刚打开、字体度量没定、图片撑开。
+    // 每次都重新读一遍选区（而不是复用旧 rect），所以布局漂移也能跟上。
+    var settle = function () {
+      if (!shown || !savedDoc || !savedWin) return;
+      var h2 = pickIn(savedDoc, savedWin);
+      if (!h2) return;
+      savedRange = h2.range;
+      var hh = toHost(h2);
+      if (hh) place(hh);
+    };
+    try { requestAnimationFrame(settle); } catch (e) {}
+    clearTimeout(settleT);
+    settleT = setTimeout(settle, 240);
+  }
+
+  function hide() {
+    clearTimeout(settleT);
+    if (!bar || !shown) { savedRange = null; savedDoc = null; savedWin = null; return; }
+    shown = false;
+    bar.classList.remove('show');
+    bar.setAttribute('aria-hidden', 'true');
+    savedRange = null; savedDoc = null; savedWin = null;
+  }
+
+  var stateCache = {};
+  function refreshStates() {
+    if (!bar) return;
+    var cmds = ['bold', 'underline'], i, b;
+    for (i = 0; i < cmds.length; i++) {
+      var on = false;
+      if (savedDoc) { try { on = !!savedDoc.queryCommandState(cmds[i]); } catch (e) { on = false; } }
+      stateCache[cmds[i]] = on;
+      b = bar.querySelector('[data-cmd="' + cmds[i] + '"]');
+      if (b) { if (on) b.classList.add('on'); else b.classList.remove('on'); }
+    }
+  }
+
+  /* ---------- 6) 执行 ---------- */
+  function restore() {
+    if (!savedRange || !savedWin) return false;
+    try {
+      if (savedWin.focus) { try { savedWin.focus({ preventScroll: true }); } catch (e) { savedWin.focus(); } }
+    } catch (e) {}
+    try {
+      var sel = savedWin.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedRange);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function run(cmd, val) {
+    if (!savedDoc) return;
+    if (!restore()) return;
+    var d = savedDoc;
+    try {
+      if (cmd === 'foreColor' || cmd === 'hiliteColor' || cmd === 'backColor') {
+        // styleWithCSS 打开才能生成 <span style> 而不是老的 <font color>；
+        // 执行完立刻关回去，免得影响该页面自己后续的编辑行为。
+        try { d.execCommand('styleWithCSS', false, true); } catch (e) {}
+        var ok = false;
+        try { ok = d.execCommand(cmd, false, val); } catch (e) { ok = false; }
+        if (!ok && cmd === 'hiliteColor') { try { d.execCommand('backColor', false, val); } catch (e) {} }
+        try { d.execCommand('styleWithCSS', false, false); } catch (e) {}
+      } else {
+        d.execCommand(cmd, false, null);
+      }
+    } catch (e) {}
+    // 命令会改动 DOM，Range 跟着变 —— 重新读一次，用户连点第二下还认得出选区
+    setTimeout(function () {
+      var hit = pickIn(savedDoc, savedWin);
+      if (hit) { savedRange = hit.range; refreshStates(); var h = toHost(hit); if (h) place(h); }
+      else { hide(); }
+    }, 0);
+  }
+
+  /* ---------- 7) 触发 ---------- */
+  function scan() {
+    var hit = pick();
+    if (!hit) { hide(); return; }
+    savedDoc = hit.doc; savedWin = hit.win; savedRange = hit.range;
+    show(hit);
+  }
+
+  function schedule() {
+    clearTimeout(timer);
+    timer = setTimeout(scan, isCoarse() ? 320 : 60);   // 手机上给系统菜单让位
+  }
+
+  function reposition() {
+    if (!shown || !savedDoc || !savedWin) return;
+    var hit = pickIn(savedDoc, savedWin);
+    if (!hit) { hide(); return; }
+    savedRange = hit.range;
+    var host = toHost(hit);
+    if (host) place(host);
+  }
+
+  var bound = 0;
+  function bindDoc(doc, win) {
+    if (!doc) return;
+    try { if (doc.__hubSelBar) return; doc.__hubSelBar = 1; } catch (e) { return; }
+    doc.addEventListener('selectionchange', schedule, true);
+    doc.addEventListener('mouseup', schedule, true);
+    doc.addEventListener('touchend', schedule, true);
+    doc.addEventListener('keyup', schedule, true);
+    bound++;
+    if (win && win.addEventListener) {
+      win.addEventListener('scroll', function () { if (!docked()) reposition(); }, { passive: true });
+      win.addEventListener('resize', function () { if (!docked()) { hide(); schedule(); } }, { passive: true });
+      if (docked()) {
+        try {
+          var vv = win.visualViewport;
+          if (vv) vv.addEventListener('resize', function () { if (shown) place(null); });
+        } catch (e) {}
+      }
+    }
+  }
+
+  var boundAll = false;
+  function bindAll() {
+    if (boundAll) return;
+    bindDoc(document, window);
+    var box = $('toolContainer');
+    if (!box) return;                 // 容器还没建好 → 留给 boot 的重试，别锁死标志
+    boundAll = true;
+    box.addEventListener('load', function (ev) {
+      var f = ev.target;
+      if (!f || f.tagName !== 'IFRAME') return;
+      var kick = function () {
+        try { bindDoc(f.contentDocument, f.contentWindow); } catch (e) {}
+      };
+      // 工具页 load 之后常常还会自己重建几轮 DOM，多补几次，绑重了也由标记挡住
+      setTimeout(kick, 0); setTimeout(kick, 300); setTimeout(kick, 1200);
+    }, true);
+    var fs = box.querySelectorAll('iframe'), i;
+    for (i = 0; i < fs.length; i++) {
+      try { bindDoc(fs[i].contentDocument, fs[i].contentWindow); } catch (e) {}
+    }
+  }
+
+  function boot() {
+    try { build(); } catch (e) {}
+    var tries = 0;
+    var arm = function () {
+      bindAll();
+      if (!boundAll && ++tries < 25) setTimeout(arm, 160);
+    };
+    arm();
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') hide(); });
+  }
+
+  window.HubSelBar = {
+    init: boot, hide: hide, show: function () { scan(); },
+    docked: docked, palette: palette, boundCount: function () { return bound; },
+    barId: BAR_ID
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+
 
 
 
@@ -1756,7 +2203,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918p';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918q';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -3085,7 +3532,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918p';
+  var NAV_VER = 'V20260918q';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -3185,7 +3632,7 @@ document.addEventListener('pointerdown', e => {
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918p</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918q</div>
 </body>
 
 
