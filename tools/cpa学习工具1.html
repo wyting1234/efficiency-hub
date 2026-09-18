@@ -2857,6 +2857,17 @@
         .kp-mode:hover { background: var(--primary-bg); color: var(--primary-dark); }
         .kp-mode.active { background: var(--primary); color: #FAF7F1; }
         .kp-view { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+        /* ===== 速记三视角：textarea → 富文本容器（2026-09-18） =====
+           为什么非换不可：浮条（HubSelBar）只对 contenteditable 生效，textarea 存的是
+           纯字符串、局部变色无处安放 —— 于是「只有思维导图视角能变色」。换成 div 后：
+             · 纯文本语义不变（.value 存取器：读 = toText、写 = 纯文本按行渲染），
+               parse / 草稿 / 保存 / 导出 / 统计 全部零改动；
+             · 行首的缩进与编号照旧是文本的一部分（与 textarea 一致，切模版照样生效）；
+             · 节点自己的格式旁挂到 nd.h，与思维导图格子同一套「路径 + 纯文本双校验」。
+           min-height 不用另写：.cpa-rt 已取 var(--rec-ta-min)（本页 .rec-pane 定为 96px，
+           正是原 rows="3" 的高度）；div 随内容自然长高，不需要 textarea 那套 growTa。 */
+        .kp-view textarea, .cpa-rt.kp-ta { min-height: var(--rec-ta-min); }
+        .cpa-rt.kp-ta { font-size: 13px; }
         .kp-view[hidden] { display: none; }
         /* 列数开关：只有思维导图视角下才出现 */
         .kp-colgate { display: inline-flex; align-items: center; gap: 8px; }
@@ -2906,6 +2917,11 @@
             color: var(--text); white-space: pre-wrap; word-break: break-word; outline: none;
         }
         .kp-cell .kp-cell-in:empty::before { content: attr(data-ph); color: #B4A792; }
+        /* ★ 2026-09-18（需求 G）：知识树行名可选中上色 / 改名。
+           只动 outline，不碰 padding / border —— 上千行的树里，任何尺寸变化都会让整页抖一下。 */
+        .kt-name-ed { outline: none; }
+        .kt-name-ed:focus { background: rgba(138, 115, 88, .13); border-radius: 3px; }
+        .kt-name-ed ::selection { background: rgba(138, 115, 88, .28); }
         .kp-cell .kp-cell-in:focus { background: #FFFDF8; border-radius: 6px; }
         .kp-cell .kp-cell-ops { position: absolute; right: 4px; top: 4px; display: none; gap: 2px; }
         .kp-cell:hover .kp-cell-ops { display: flex; }
@@ -3724,11 +3740,11 @@
                                     </div>
 
                                     <div class="kp-view" data-kpview="default">
-                                        <textarea id="fKpQuick" rows="3" spellcheck="false" placeholder="例：&#10;1. 交易性金融资产&#10;1.1 初始确认金额&#10;2. 公允价值变动损益的结转"></textarea>
+                                        <div class="cpa-rt kp-ta" id="fKpQuick" data-kpvw="default" contenteditable="true" spellcheck="false" data-ph="例：&#10;1. 交易性金融资产&#10;1.1 初始确认金额&#10;2. 公允价值变动损益的结转"></div>
                                     </div>
 
                                     <div class="kp-view" data-kpview="outline" hidden>
-                                        <textarea id="fKpOutline" rows="3" spellcheck="false" placeholder="一行一个节点，用缩进表示层级（Tab 缩进 / Shift+Tab 反缩进）：&#10;第三章 金融资产&#10;  交易性金融资产&#10;    初始计量&#10;  债权投资&#10;    摊余成本"></textarea>
+                                        <div class="cpa-rt kp-ta" id="fKpOutline" data-kpvw="outline" contenteditable="true" spellcheck="false" data-ph="一行一个节点，用缩进表示层级（Tab 缩进 / Shift+Tab 反缩进）：&#10;第三章 金融资产&#10;  交易性金融资产&#10;    初始计量&#10;  债权投资&#10;    摊余成本"></div>
                                     </div>
 
                                     <div class="kp-view" data-kpview="mind" hidden>
@@ -3744,7 +3760,7 @@
                                     </div>
 
                                     <div class="kp-view" data-kpview="md" hidden>
-                                        <textarea id="fKpMd" rows="3" spellcheck="false" placeholder="# 1. 第三章 金融资产（回车自动续号，且保留 # / - 前缀）&#10;- 1.1 交易性金融资产&#10;  - 1.1.1 初始计量"></textarea>
+                                        <div class="cpa-rt kp-ta" id="fKpMd" data-kpvw="md" contenteditable="true" spellcheck="false" data-ph="# 1. 第三章 金融资产（回车自动续号，且保留 # / - 前缀）&#10;- 1.1 交易性金融资产&#10;  - 1.1.1 初始计量"></div>
                                     </div>
 
                                     <div class="kp-view" data-kpview="symbol" hidden>
@@ -4807,6 +4823,12 @@
                        免得存档里堆一堆 {} 空壳。 */
                     if (p.marks && typeof p.marks === 'object' && Object.keys(p.marks).length) {
                         o.marks = p.marks;
+                    }
+                    /* ★ 2026-09-18（需求 G）：知识树上给章 / 节行上的色。
+                       必须显式登记 —— slim 是挑字段写的白名单，漏掉就是「点了颜色、
+                       关了页面再回来就没了」，而且不报错。空对象不写。 */
+                    if (p.kpH && typeof p.kpH === 'object' && Object.keys(p.kpH).length) {
+                        o.kpH = p.kpH;
                     }
                     if (!p.builtin || p.customStructure) {
                         o.chapterNames = p.chapterNames;
@@ -13400,6 +13422,7 @@
                 (byKey[k] = byKey[k] || []).push(n);
             });
 
+            const kpRichIdx = ktCardRichIndex();
             combos.forEach(function (c) {
                 const key = c.course + '|' + c.chapter + '|' + c.section;
                 const list = byKey[key] || [];
@@ -13426,7 +13449,10 @@
                         tier: n.tier,                       // ★ 4–7 绝对层级
                         order: n.order, name: n.name, kidN: n.hasKids ? n.answers.length : 0,
                         crumb: n.path.join(' › '),
-                        virtual: !!n.virtual
+                        virtual: !!n.virtual,
+                        /* ★ 2026-09-18（需求 G）：知识点行的格式旁挂住在闪卡里 —— 见 ktCardRichIndex */
+                        rawSig: n.sig,
+                        h: kpRichIdx[n.sig] || null
                     });
                 });
                 /* ★ 需求1：这一格（科目 / 章 / 节）一条学习记录都没有 —— 上面只产知识点节点，
@@ -13754,6 +13780,69 @@
             if (p[0] === 'se') return { course: p[1] || '', ch: parseInt(p[2], 10) || 0, sec: parseInt(p[3], 10) || 0 };
             return { course: p[0] || '', ch: parseInt(p[1], 10) || 0, sec: parseInt(p[2], 10) || 0 };
         }
+        /* 行名的「系统前缀」（第 N 章 / 第 N 节 + 空格）。
+           逐字对齐 ktSevenTree 里拼行名的那两处（找不到第二份真源）。
+           为什么不从 n.name 里反推：名字本身可能带数字，反推会把「3 章法」误切成「法」。 */
+        function ktPreOf(n) {
+            var cs = ktNodeCS(n);
+            if (n && n.kind === 'chapter') return '第 ' + cs.ch + ' ' + L('chapter') + ' ';
+            if (n && n.kind === 'section') return '第 ' + cs.sec + ' ' + L('section') + ' ';
+            return '';
+        }
+        /* 知识点行的「格式旁挂」住在闪卡里（state.cards[*].qH）——
+           闪卡是知识点内容的唯一真源，树上再存一份必然打架（同需求 E「不为标记新增第二个存储」）。
+           先一次遍历编成 sig → qH 的表，避免知识树上千行各查一次。 */
+        function ktCardRichIndex() {
+            var out = {};
+            try {
+                if (typeof fcState === 'function') fcState();
+                var idx = state.cardIndex || {}, cards = state.cards || {}, sig;
+                for (sig in idx) {
+                    var c = cards[idx[sig]];
+                    if (c && c.qH) out[sig] = String(c.qH);
+                }
+            } catch (e) {}
+            return out;
+        }
+        /* 写回闪卡。卡不存在就按 fcSync 的同一形态补一张 ——
+           否则「树上第一次上色」会静默丢掉（用户以为点了没反应）。 */
+        function ktCardWrite(sigRaw, text, fmt) {
+            try {
+                if (!sigRaw) return false;
+                if (typeof fcState === 'function') fcState();
+                var id = '';
+                try { id = fcIdOf(sigRaw); } catch (e) { return false; }
+                if (!id) return false;
+                var cards = state.cards || (state.cards = {});
+                var card = cards[id];
+                if (!card) {
+                    var row = null;
+                    try {
+                        (fcWalkAll({ keepDeep: true }) || []).forEach(function (x) {
+                            if (!row && x && x.sig === sigRaw && !x.virtual) row = x;
+                        });
+                    } catch (e) {}
+                    if (!row) return false;
+                    card = {
+                        id: id, q: text, a: (row.answers || []).join('\n'), tags: [],
+                        src: {
+                            course: row.course, chapter: row.chapter, section: row.section,
+                            tier: row.tier, order: row.order, path: (row.path || []).slice()
+                        },
+                        edited: false, hidden: false, deleted: false, pinMine: false, manual: false,
+                        createdAt: dateToStr(new Date()), editedAt: ''
+                    };
+                    cards[id] = card;
+                }
+                if (card.hidden || card.deleted) return false;   // 用户明确删 / 隐藏过的卡不复活
+                card.q = text;
+                if (fmt) card.qH = fmt; else delete card.qH;
+                card.edited = true;
+                card.editedAt = dateToStr(new Date());
+                if (typeof saveData === 'function') saveData();
+                return true;
+            } catch (e) { return false; }
+        }
         /* 这个节点该亮哪几个符号。
            科目 / 章 / 节三个祖先行按 (科目, 章, 节) **逐级汇总** —— 收起时也要能一眼
            看出「这一章里有重点」；知识点行则额外要求**名字出现在那条记录的速记文本里**，
@@ -14079,14 +14168,18 @@
             const ktRowTip = ((n.raw && n.raw.crumb) ? n.raw.crumb + ' · ' : '') +
                 '第 ' + n.lv + ' 级 · ' + ktLvName(n.lv) +
                 (kids.length ? ' · ' + kids.length + ' 个子节点' : '') +
-                (ktMarkAny ? ' · 悬停『★ 重点 / ▲ 难点 / ？ 疑点』可切换标记显示' : '');
+                (ktMarkAny ? ' · 悬停『★ 重点 / ▲ 难点 / ？ 疑点』可切换标记显示' : '') +
+                /* ★ 2026-09-18（需求 G）：行名可直接选中上色 —— 能改名的只有知识点行 */
+                ((n.kind === 'chapter' || n.kind === 'section' || n.kind === 'kp')
+                    ? ' · 行名可选中上色' + (n.kind === 'kp' ? ' / 直接改名' : '')
+                    : '');
             let h = '<div class="kt-branch">';
             h += '<div class="kt-row kt-lv' + n.lv +
                  '" data-kt-sig="' + kpEsc(n.sig) + '" data-kt-lv="' + n.lv + '"' +
                  ' title="' + kpEsc(ktRowTip) + '">' +
                 caret +
                 ((NO && NO[n.sig]) ? '<span class="kt-no">' + kpEsc(NO[n.sig]) + '</span>' : '') +
-                '<span class="kt-name">' + ktLabelText(n, q) + '</span>' +
+                ktNameTag(n, q) +
                 /* ★ 2026-09-18（需求 D）：行尾的「层级角标」与「项数」两个小胶囊不再渲染。
                    用户原话：「去掉知识树里面重点难点疑点的图标前面小红框里面的东西，碍眼」——
                    在深色胶囊上，浅灰的 [层级符号] 与 ∷N 紧挨着 ★▲？，读起来像两粒碎屑。
@@ -14116,6 +14209,133 @@
             h += '</div>';
             stat.n++;
             return h;
+        }
+
+        /* ============ ★ 2026-09-18（需求 G）：知识树上的文字 / 颜色 ============
+           Tom 的原话：「为何只有思维导图视角下才有文字变色的功能，其视角以及
+           文字编辑界面尤其是知识树没有文字变色相关功能」。
+           知识树此前两件都不占：既不用 rtRender 画行名，也不是可编辑容器 ——
+           连速记里上好的色都看不到。这里补两件事：
+             · 显示：知识点行读**闪卡**的 qH；章 / 节行读 proj.kpH[sig]
+                     （套用前做「路径 + 纯文本双校验」，与 applyRichMap 同一口径）。
+             · 改写：行内选中文字 → 浮条上色 / 直接改名，落回**各自的原真源** ——
+                     知识点 → state.cards[id] 的 q / qH（没卡就按 fcSync 同一形态补一张）
+                     章 / 节 → proj.kpH（只给上学，**不许改名**：行名里还带着「第 N 章」前缀，
+                             在这儿改名得先拆前缀再回写 chapterNames / sectionNames，
+                             而 builtin 项目还会被迫切成 customStructure —— 风险远大于收益）
+                     科目   → 只读汇总行（下辖几十条记录，改名会连带 kpTree / 记录对不上）
+           为什么 commit 之后**不重画整棵树**：浮条按钮的 mousedown 被 preventDefault 了，
+           所以点色点不会 blur，改的是 DOM 现状；此时重画会把用户刚选中的 range 一起抹掉
+           —— 表现就是「第二下点了没反应」。数据落库 + 现状即显示，下一次自然重画再统一。 */
+        var ktEditSig = '';          // 正在行内编辑的行（非空时 ktRender 让路）
+        var ktEditT = null;
+        var ktEditBound = false;
+        var ktKpH = {};              // 章 / 节行的格式旁挂（ktRender 每轮刷新）
+
+        function ktMkStrip(h) { return String(h == null ? '' : h).replace(/<\/?mark\b[^>]*>/gi, ''); }
+        function ktToast(msg) {
+            try { if (typeof toast === 'function') { toast(msg); return; } } catch (e) {}
+            try { console.log('[kt] ' + msg); } catch (e2) {}
+        }
+
+        // 行名怎么画：有旁挂格式就用格式，否则退回原来的转义纯文本（含搜索高亮）。
+        // 搜索时**一律**退回纯文本 —— 高亮要标在搜索词上，套着格式会把它切碎。
+        function ktNameTag(n, q) {
+            var full = String(n.name || '');
+            var h = null;
+            if (n.kind === 'kp') h = (n.raw && n.raw.h) ? String(n.raw.h) : null;
+            else if (ktKpH[n.sig] && String(ktKpH[n.sig].t || '') === full) h = ktKpH[n.sig].h || null;
+            var body = (!q && h && typeof window.rtRender === 'function')
+                ? window.rtRender(h, full) : ktLabelText(n, q);
+            var ed = (n.kind === 'chapter' || n.kind === 'section' || n.kind === 'kp');
+            var pre = ed ? ktPreOf(n) : '';
+            return '<span class="kt-name' + (ed ? ' kt-name-ed' : '') + '"' +
+                (ed ? ' contenteditable="true" spellcheck="false"' : '') +
+                (ed ? ' data-kt-edit="' + kpEsc(n.sig) + '" data-kt-kind="' + n.kind + '"' : '') +
+                (ed ? ' data-kt-base="' + kpEsc(full) + '"' : '') +
+                (pre ? ' data-kt-pre="' + kpEsc(pre) + '"' : '') +
+                ((n.kind === 'kp' && n.raw && n.raw.rawSig) ? ' data-kt-sigraw="' + kpEsc(n.raw.rawSig) + '"' : '') +
+                '>' + body + '</span>';
+        }
+        function ktEditCommit(el) {
+            if (!el || !el.getAttribute) return;
+            var sig = el.getAttribute('data-kt-edit') || '';
+            var kind = el.getAttribute('data-kt-kind') || '';
+            var R = window.CpaRich;
+            if (!sig || !R) return;
+            var text = String(el.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+$/, '');
+            if (!text) return;                       // 整行被清空 → 不动数据（行名不是可空字段）
+            var html = R.sanitize(ktMkStrip(el.innerHTML));
+            var fmt = (html && R.looksMarkup(html)) ? html : null;
+            if (kind === 'kp') {
+                ktCardWrite(el.getAttribute('data-kt-sigraw') || '', text, fmt);
+                return;
+            }
+            /* 章 / 节：只取格式，名字**不可改** —— 行名里还带着「第 N 章」前缀，
+               在这儿改名得先拆前缀再回写 chapterNames / sectionNames，而 builtin 项目
+               还会被迫切成 customStructure，风险远大于收益。
+               ★ 数据层兜底：文字与渲染时不一致 → 整笔作废、把行名复原并明说。
+                 宁可字色丢一次，也不能把一个「对不上号」的格式存进去。
+                 复原时把**已存下的**格式一起画回去 —— 否则用户只是想试一下改名，
+                 已经上好的颜色会被这次「作废」连带擦掉。 */
+            var base = el.getAttribute('data-kt-base') || '';
+            if (base && text !== base) {
+                var _rec = ktKpH[sig];
+                el.innerHTML = R.render((_rec && String(_rec.t || '') === base) ? _rec.h : null, base);
+                ktToast('章 / 节的名字不能在知识树上改。想改请去「🎯 考试项目 → ✎ 编辑项目配置 → 大纲结构」；这里只支持选中上色。');
+                return;
+            }
+            var p = ktProj();
+            if (!p) return;
+            if (!p.kpH || typeof p.kpH !== 'object') p.kpH = {};
+            if (fmt) p.kpH[sig] = { t: text, h: fmt };
+            else delete p.kpH[sig];
+            if (!Object.keys(p.kpH).length) delete p.kpH;
+            /* 顺手把内存里的那份也刷新 —— ktKpH 只在 ktRender 里重建，而这里为了
+               不打断用户选区**刻意不重画**；不刷的话「上一次的格式」会一直停在旧值，
+               紧接着的「改名 → 复原」就画不出当前的颜色。 */
+            if (fmt) ktKpH[sig] = { t: text, h: fmt }; else delete ktKpH[sig];
+            saveProjects();
+        }
+        function ktEditBind() {
+            if (ktEditBound) return;
+            var body = document.getElementById('ktBody');
+            if (!body) return;
+            ktEditBound = true;
+            var isName = function (el) { return !!(el && el.classList && el.classList.contains('kt-name-ed')); };
+            body.addEventListener('focusin', function (ev) {
+                if (!isName(ev.target)) return;
+                ktEditSig = ev.target.getAttribute('data-kt-edit') || '';
+            });
+            /* 章 / 节行只让改「格式」：打字、粘贴、删除、回车一律挡掉，格式命令放行。
+               ★ 用**黑名单**（insert* / delete*）而不是白名单：inputType 的枚举各家浏览器
+                 不完全一致 —— 实测 Chromium 的「改字色」是规范里的 formatFontColor，
+                 不是 formatForeColor；照白名单写就会「能选中、点了颜色没反应」。
+               ⚠️ 实测：这条闸门挡得住键盘 / 粘贴 / IME，**挡不住程序化的
+                 execCommand('insertText')**（Chromium 忽略 execCommand 自发
+                 beforeinput 的 preventDefault）—— 所以 ktEditCommit 里还有一道数据层兜底。 */
+            body.addEventListener('beforeinput', function (ev) {
+                var el = ev.target;
+                if (!isName(el)) return;
+                if (el.getAttribute('data-kt-kind') === 'kp') return;   // 知识点行可改名
+                if (/^(insert|delete)/i.test(String(ev.inputType || ''))) ev.preventDefault();
+            });
+            body.addEventListener('input', function (ev) {
+                if (!isName(ev.target)) return;
+                var el = ev.target;
+                clearTimeout(ktEditT);
+                ktEditT = setTimeout(function () { ktEditCommit(el); }, 420);
+            });
+            body.addEventListener('blur', function (ev) {          // blur 不冒泡 → 捕获
+                if (!isName(ev.target)) return;
+                clearTimeout(ktEditT);
+                ktEditCommit(ev.target);
+                ktEditSig = '';
+            }, true);
+            body.addEventListener('keydown', function (ev) {
+                if (!isName(ev.target)) return;
+                if (ev.key === 'Enter' || ev.key === 'Escape') { ev.preventDefault(); ev.target.blur(); }
+            });
         }
 
         /* ============ ★ 2026-09-18：一键编号（复用「记录学习 → 模版设置」的编号模块）============
@@ -14196,7 +14416,12 @@
         function ktRender() {
             const body = document.getElementById('ktBody');
             if (!body) return;
+            /* ★ 2026-09-18（需求 G）：正在行内改字 / 上色时让路 —— 重画会把用户刚选的
+               range 一起抹掉，表现就是「颜色点不上 / 打字打一半被吞」。blur 时清空，只让一拍。 */
+            if (ktEditSig) return;
+            ktEditBind();
             const proj = ktProj();
+            ktKpH = (proj && proj.kpH && typeof proj.kpH === 'object') ? proj.kpH : {};
             const all = ktAllNodes();
             const statEl = document.getElementById('ktStat');
 
@@ -16927,6 +17152,213 @@
             return found;
         }
 
+        /* ================= 速记三视角：富文本容器读写（2026-09-18） =================
+           背景（Tom 问「为何只有思维导图视角能变色」）：默认 / 大纲 / MD 三个视角原本是
+           <textarea> —— 纯字符串容器，而浮条（HubSelBar）只认 contenteditable；
+           「格式旁挂」（CpaRich + nd.h）那套当时只接在思维导图格子上，所以只有它变色。
+           换成 <div contenteditable> 之后补三件事：
+             ① .value 存取器：读 = 纯文本（与 toFlat 同形），写 = 纯文本按行渲染
+                ⇒ parse / 草稿 / 保存 / 导出 / 统计 / 编号 全部零改动；
+             ② 渲染：每个节点的文字包一个 <span class="kpn" data-kp="1.2">，带格式的节点
+                用 rtRender 原样画回去；行首缩进与编号照旧是文本的一部分（与 textarea 一致）；
+             ③ 回读：把 DOM 行的 HTML 去掉行首「缩进 + 编号」前缀后旁挂到 nd.h ——
+                与格子同一套「路径 + 纯文本双校验」，对不上就宁丢格式、绝不改纯文本。 */
+
+        function kpPlain(e) {
+            if (!e) return '';
+            var t = window.CpaRich ? window.CpaRich.toText(e.innerHTML)
+                                   : String(e.textContent || '');
+            return String(t).replace(/\u00a0/g, ' ').replace(/[ \t]+$/gm, '');
+        }
+        // .value 存取器：让既有那十几处调用（parse / 草稿 / 清空 / 载入记录）一字不用改
+        function kpBindValue(e) {
+            if (!e || e.__kpVal) return;
+            try {
+                Object.defineProperty(e, 'value', {
+                    configurable: true,
+                    get: function () { return kpPlain(this); },
+                    set: function (v) {
+                        var R = window.CpaRich;
+                        var str = String(v == null ? '' : v).replace(/\u00a0/g, ' ');
+                        var body = R ? R.esc(str) : str.replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        this.innerHTML = body.replace(/\n/g, '<br>');
+                    }
+                });
+                e.__kpVal = 1;
+            } catch (err) {}
+        }
+        // 一行的行首前缀（缩进 + 编号 / MD 标记）—— 逐字对齐 toFlat / toOutline / toMD
+        function viewPrefix(m, p, d) {
+            var no = noStr(p);
+            if (m === 'outline') return new Array(d).join('  ') + (outlineNo && no ? (no + ' ') : '');
+            if (m === 'md') return (d === 1) ? ('# ' + no + ' ') : (new Array(d).join('  ') + '- ' + no + ' ');
+            return new Array(p.length).join('  ') + (no ? (no + ' ') : '');
+        }
+        function viewHTML(m, roots) {
+            var out = [];
+            walk(roots, function (n, p, d) {
+                var body = window.rtRender ? window.rtRender(n.h, n.t) : esc(n.t);
+                out.push(esc(viewPrefix(m, p, d)) +
+                    '<span class="kpn" data-kp="' + esc(p.join('.')) + '">' + body + '</span>');
+            });
+            return out.join('<br>');
+        }
+        function paintView(m) {
+            var e = el(IN_ID[m]);
+            if (!e) return;
+            kpBindValue(e);
+            e.innerHTML = viewHTML(m, tree);
+            if (window.CpaRich && !window.CpaRich.norm(e.innerHTML)) e.innerHTML = '';
+        }
+
+        /* ---- DOM → 行（与 CpaRich.toText 同一口径：<br> 与块级边界都算换行）---- */
+        function isBlockEl(tag) { return /^(DIV|P|LI|TR|H[1-6])$/.test(String(tag || '')); }
+        function domLines(root) {
+            var lines = [], cur = [];
+            (function walkDom(node) {
+                var kids = node.childNodes;
+                for (var i = 0; i < kids.length; i++) {
+                    var c = kids[i];
+                    if (c.nodeType === 3) { cur.push(c); continue; }
+                    if (c.nodeType !== 1) continue;
+                    if (c.tagName === 'BR') { lines.push(cur); cur = []; continue; }
+                    if (isBlockEl(c.tagName)) {
+                        if (cur.length) { lines.push(cur); cur = []; }
+                        walkDom(c);
+                        if (cur.length) { lines.push(cur); cur = []; }
+                        continue;
+                    }
+                    /* ★ 2026-09-18 修正：这里以前是 walkDom(c)（继续下钻），
+                       于是每一行只剩一串 #text 节点；stripPrefix 克隆这些
+                       文本节点克隆不出行内元素 ⇒ 用户刚上的
+                       <span style="color:…"> 在回读那一步被无声丢掉，表现出来
+                       就是「点了色，切个视角 / 一保存就没了」。
+                       现在把内联元素**整体**收进本行，不再下钻。 */
+                    cur.push(c);
+                }
+            })(root);
+            if (cur.length) lines.push(cur);
+            return lines;
+        }
+        function lineText(nodes) {
+            var s = '';
+            for (var i = 0; i < nodes.length; i++) s += String(nodes[i].textContent || '');
+            return s.replace(/\u00a0/g, ' ').replace(/\s+$/, '');
+        }
+        // 去掉行首 k 个字符（缩进 + 编号），后面的富文本结构原样保留
+        function stripPrefix(nodes, k) {
+            var box = document.createElement('div');
+            for (var i = 0; i < nodes.length; i++) {
+                var nd = nodes[i];
+                // .kpn 只是「这一行属于哪个节点」的外壳标记，不该跟着进 nd.h
+                if (nd.nodeType === 1 && nd.classList && nd.classList.contains('kpn')) {
+                    /* ★★ .kpn 只是「这一行属于哪个节点」的标记壳，不该进 nd.h。
+                       **但它自己身上可能就带着用户刚上的格式** —— 实测 Chromium 的
+                       execCommand('foreColor') 是直接把 style 加在 .kpn 上（不是套
+                       一层内层 span）：
+                         <span class="kpn" data-kp="1.1" style="color: rgb(30, 37, 51);">交易性金融资产</span>
+                       原来直接丢掉外壳 = 把色一起丢掉，这正是「思维导图能变色、
+                       默认 / 大纲 / MD 点了色却存不住」的真因。所以有 style 就补一层壳。 */
+                    var _sty = nd.getAttribute('style');
+                    var _host = box;
+                    if (_sty) {
+                        _host = document.createElement('span');
+                        _host.setAttribute('style', _sty);
+                        box.appendChild(_host);
+                    }
+                    for (var j = 0; j < nd.childNodes.length; j++) _host.appendChild(nd.childNodes[j].cloneNode(true));
+                } else box.appendChild(nd.cloneNode(true));
+            }
+            var left = k;
+            (function eat(node) {
+                while (left > 0 && node.firstChild) {
+                    var c = node.firstChild;
+                    if (c.nodeType === 3) {
+                        var len = c.data.length;
+                        if (len <= left) { left -= len; node.removeChild(c); }
+                        else { c.data = c.data.slice(left); left = 0; }
+                    } else if (c.nodeType === 1) {
+                        eat(c);
+                        if (left > 0) node.removeChild(c);
+                    } else { node.removeChild(c); }
+                }
+            })(box);
+            return box.innerHTML;
+        }
+        /* 把 DOM 里**当前**的格式回读进新树。为什么用「行尾定位节点文字」而不是行号对齐：
+           用户可能刚按过回车（多出空行），行号会错位；而「这一行的文字里含这个节点名」
+           是稳的 —— 与 kpRich 落盘时的「路径 + 纯文本双校验」同一口径。
+           行数对不上、或行里找不到节点文字 → 整行/整篇不回读（carryRich 搬回来的那份还在）。 */
+        function captureRich(m, roots) {
+            var R = window.CpaRich, e = el(IN_ID[m]);
+            if (!R || !e || !roots) return;
+            var all = domLines(e), lines = [];
+            for (var i = 0; i < all.length; i++) if (lineText(all[i]).trim()) lines.push(all[i]);
+            var flat = [];
+            walk(roots, function (n) { flat.push(n); });
+            if (lines.length !== flat.length) return;
+            for (var j = 0; j < flat.length; j++) {
+                var nd = flat[j], t = String(nd.t == null ? '' : nd.t);
+                if (!t) continue;
+                var full = lineText(lines[j]);
+                var at = full.lastIndexOf(t);
+                if (at < 0) continue;                      // 这一行认不出来 → 保留树里原有的 h
+                var html = R.sanitize(stripPrefix(lines[j], at));
+                if (html && R.looksMarkup(html) &&
+                    R.toText(html).replace(/\u00a0/g, ' ').replace(/\s+$/, '') === t) {
+                    nd.h = html;
+                } else {
+                    delete nd.h;                           // 这一行是权威读数：没格式就是没格式
+                }
+            }
+        }
+        /* ---- contenteditable 上的回车 / Tab ---- */
+        function curLine(root) {
+            var R = window.CpaRich;
+            if (!R || !R.caretLineIndex) return null;
+            var idx = R.caretLineIndex(root);
+            var ls = domLines(root);
+            if (idx < 0 || idx >= ls.length) return null;
+            return { i: idx, nodes: ls[idx], text: lineText(ls[idx]) };
+        }
+        // Tab / Shift+Tab：在光标所在行的行首加 / 去 2 个空格（与 textarea 版同一口径）
+        function kpIndentLine(root, out) {
+            var cur = curLine(root);
+            if (!cur || !cur.nodes.length) return;
+            var first = cur.nodes[0];
+            /* ★ 2026-09-18：domLines 现在把内联元素整体收进行里 —— 某一级没有
+               编号前缀时，行首就是 <span class="kpn">，所以要往里走一层找第一个文本节点。 */
+            var tn = first, guard = 0;
+            while (tn && tn.nodeType === 1 && guard++ < 8) tn = tn.firstChild;
+            if (!tn || tn.nodeType !== 3) return;
+            if (out) {
+                var m = String(tn.data).match(/^[ \t\u3000]{1,2}/);
+                if (!m) return;
+                tn.data = tn.data.slice(m[0].length);
+            } else {
+                tn.data = '  ' + tn.data;
+            }
+            try { root.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) {}
+        }
+        // 三视角的 contenteditable 键盘分支（textarea 那条老路原地保留，见下方 onTextKey）
+        function onTextKeyRich(ev, t) {
+            var R = window.CpaRich;
+            if (!R) return;
+            if (ev.key === 'Enter' && !ev.shiftKey) {
+                ev.preventDefault();
+                var line = R.caretLine(t) || '';
+                var c = lineCtx(line, line.length);
+                var nx = c.rest.trim() ? nextNoOf(c.rest) : '';
+                R.insertBreak(t, c.ind + c.marker + nx);
+                return;
+            }
+            if (ev.key === 'Tab') {
+                ev.preventDefault();
+                kpIndentLine(t, ev.shiftKey);
+            }
+        }
+
         /* ================= 视角读写 ================= */
         // 只有用户真的在文本框里改过，才把文本回读成树。
         // 否则每次切视角都会绕一圈纯文本：而「大纲视角」是纯缩进、承载不了空节点，
@@ -16940,16 +17372,24 @@
             var e = el(IN_ID[mode]);
             // ★ 纯文本视角被改过 → tree 会被 parse 重建，新树里没有 h；
             //   把「纯文本对得上」的节点的格式搬回去，避免切视角白丢一次格式。
-            if (e) { var _oldTree = tree; tree = parse(e.value); carryRich(_oldTree, tree); }
+            if (e) {
+                var _oldTree = tree, _nt = parse(kpPlain(e));
+                carryRich(_oldTree, _nt);
+                captureRich(mode, _nt);          // DOM 里当前的格式优先（用户刚上的色）
+                tree = _nt;
+            }
             viewDirty[mode] = false;
         }
+        // ★ 2026-09-18：三个视角现在是富文本容器 —— 不能再用 `el.value = 纯文本`
+        //   （那样每次切视角都会把节点格式洗掉），改走 paintView（渲染树 + nd.h）。
+        //   纯文本形态仍然随时可得：#fKpQuick.value 的**读**就是 toFlat 同形的纯文本。
         function writeViews() {
-            if (el('fKpQuick')) el('fKpQuick').value = toFlat(tree);
-            if (el('fKpOutline')) el('fKpOutline').value = toOutline(tree, outlineNo);
-            if (el('fKpMd')) el('fKpMd').value = toMD(tree);
+            paintView('default');
+            paintView('outline');
+            paintView('md');
         }
         function syncFlatOnly() {
-            if (el('fKpQuick')) el('fKpQuick').value = toFlat(tree);
+            paintView('default');
         }
         // ★★ 保存前必调：把**当前视角**的编辑回读进 tree，再把 tree 回写到三个文本框。
         //
@@ -17287,9 +17727,14 @@
             statTimer = setTimeout(function () {
                 if (mode !== m) { viewDirty[m] = false; return; }   // 已切走：syncFromView 刚回读过
                 var e = el(IN_ID[m]);
-                // ★ 纯文本视角被改过 → tree 会被 parse 重建，新树里没有 h；
-            //   把「纯文本对得上」的节点的格式搬回去，避免切视角白丢一次格式。
-            if (e) { var _oldTree = tree; tree = parse(e.value); carryRich(_oldTree, tree); }
+                // ★ 视角被改过 → tree 会被 parse 重建，新树里没有 h；先 carryRich 搬回
+                //   纯文本对得上的那份，再用 captureRich 覆盖成 DOM 里当前的格式。
+                if (e) {
+                    var _oldTree = tree, _nt = parse(kpPlain(e));
+                    carryRich(_oldTree, _nt);
+                    captureRich(m, _nt);
+                    tree = _nt;
+                }
                 viewDirty[m] = false;
                 updateStat();
             }, 400);
@@ -17319,6 +17764,9 @@
         function onTextKey(e) {
             var t = e.target;
             if (!t) return;
+            // ★ 2026-09-18：三个视角改成 contenteditable 之后，selectionStart / setRangeText
+            //   都不存在（老写法会把 pos 当成长度、回车续号插到行尾）—— 改走 Range 那条路。
+            if (t.isContentEditable) { onTextKeyRich(e, t); return; }
             var v = t.value, pos = (t.selectionStart == null) ? v.length : t.selectionStart;
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -18207,7 +18655,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918u</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918v</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -18253,6 +18701,25 @@ html.embedded #buildTag{display:none}
 /* 手机底部固定：不换行、按内容取宽。position:fixed + 无 width 时宽度是 shrink-to-fit，
    在 flex-wrap 容器里会缩成很窄并把工具条折成两行 —— 显式拿 max-content 才是一整条。 */
 .hub-selbar.dock{flex-wrap:nowrap;width:max-content}
+
+/* ★ 2026-09-18：色板自主可控 —— 取色器 / 默认色环 / 右键菜单。
+   .sb-sws 是色点 + ＋ 的容器：palette 变了由 renderSwatches() 就地重画，
+   不必重建整条浮条（重建会把 hover / 焦点状态一起丢掉）。 */
+.hub-selbar .sb-sws{display:flex;align-items:center;gap:5px;flex:none}
+.hub-selbar .sb-sw{position:relative}
+.hub-selbar .sb-sw.sb-def{box-shadow:inset 0 0 0 1px rgba(70,58,46,.35),0 0 0 2px var(--primary,#8A7358)}
+.hub-selbar .sb-add{position:relative;width:22px;height:22px;border-radius:50%;padding:0;flex:none;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  border:1px dashed var(--text-secondary,#6E6355);background:transparent;color:var(--text-secondary,#6E6355);font:700 13px/1 inherit}
+.hub-selbar .sb-add:hover{background:rgba(138,115,88,.16)}
+.hub-selbar .sb-add input{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;
+  opacity:0;border:0;padding:0;cursor:pointer}
+.hub-selbar .sb-ctx{position:absolute;top:calc(100% + 6px);z-index:2;display:flex;flex-direction:column;
+  gap:2px;padding:4px;border-radius:9px;background:var(--card-bg,#FAF7F1);color:var(--text,#33291F);border:1px solid var(--border,#E5DCCD);
+  box-shadow:0 8px 22px rgba(70,58,46,.22);min-width:124px}
+.hub-selbar .sb-ctx button{border:0;background:transparent;color:inherit;font:500 12px/1 inherit;
+  text-align:left;padding:7px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.hub-selbar .sb-ctx button:hover{background:rgba(138,115,88,.16)}
 /*##CPASELBAR_CSS_END##*/
 </style>
 
@@ -18335,15 +18802,129 @@ html.embedded #buildTag{display:none}
     try { if (window.HubPrefs && window.HubPrefs.get) return window.HubPrefs.get() || {}; } catch (e) {}
     try { return JSON.parse(localStorage.getItem(COLOR_KEY) || '{}') || {}; } catch (e) { return {}; }
   }
+  /* ★ 2026-09-18：色板自主可控 —————————————————————————
+     Tom 的原话：「还是不能自主选中文字编辑中的默认颜色」。
+     旧实现的色点只有两种来源：写死的 5 个 SWATCHES，或导航页 HubPrefs
+     注入的标注色 —— 在子页直链打开时一个都改不了。现在补三层：
+       ① ＋ 取色器：任选一个颜色，立即用在当前选区上，并进色板；
+       ② 右键色点：设为默认（挪到首位）/ 从色板移除 / 恢复跟随⚙️设置；
+       ③ 自定义色板存 localStorage['hub_swatches_v1']，默认色存 'hub_swatch_def_v1'。
+     谁的优先级高：用户**自己配过**色板就听用户的；没配过才去跟随导航页「⚙️ 设置」的
+     标注色（保持原行为，老用户升级后观感不变）。 */
+  var SW_KEY = 'hub_swatches_v1';
+  var SW_DEF_KEY = 'hub_swatch_def_v1';
+  var SW_MAX = 8;
+
+  function hexOK(c) { return /^#[0-9a-fA-F]{3,8}$/.test(String(c == null ? '' : c)); }
+  function readCustom() {
+    try {
+      var a = JSON.parse(localStorage.getItem(SW_KEY) || 'null');
+      if (!Array.isArray(a)) return null;
+      var out = [];
+      for (var i = 0; i < a.length && out.length < SW_MAX; i++) if (hexOK(a[i])) out.push(String(a[i]));
+      return out.length ? out : null;
+    } catch (e) { return null; }
+  }
+  function writeCustom(a) { try { localStorage.setItem(SW_KEY, JSON.stringify(a)); } catch (e) {} }
+  function defSwatch() { try { var d = localStorage.getItem(SW_DEF_KEY); return hexOK(d) ? d : ''; } catch (e) { return ''; } }
+  function setDefSwatch(c) { try { localStorage.setItem(SW_DEF_KEY, String(c)); } catch (e) {} }
+  // 默认色永远显示在第一位 ——「默认颜色」这件事必须一眼可见，不能靠用户记
+  function byDef(a) {
+    var d = defSwatch(), out = (a || []).slice(0, SW_MAX);
+    if (!d) return out;
+    var i = -1;
+    for (var k = 0; k < out.length; k++) if (String(out[k]).toLowerCase() === d.toLowerCase()) { i = k; break; }
+    if (i > 0) out.splice(0, 0, out.splice(i, 1)[0]);
+    else if (i < 0) { out.unshift(d); out = out.slice(0, SW_MAX); }
+    return out;
+  }
   function palette() {
+    var c = readCustom();
+    if (c) return byDef(c);
     var p = prefs(), out = SWATCHES.slice(), seen = {};
     for (var i = 0; i < out.length; i++) seen[out[i].toLowerCase()] = 1;
     // 用户在设置里配过的标注字色 / 高亮底排在最前，算「常用色」
     var head = [];
     if (p.mkFg && !seen[String(p.mkFg).toLowerCase()]) head.push(p.mkFg);
     if (p.color && !seen[String(p.color).toLowerCase()]) head.push(p.color);
-    return head.concat(out).slice(0, 6);
+    return byDef(head.concat(out).slice(0, SW_MAX));
   }
+  // 加一个色：进色板 + 立刻用在本段上（取色器那条路浮条多半已经因为失焦收起，
+  // 只加色点不给用户上色 = 「点了没反应」）
+  function addSwatch(c, apply) {
+    if (!hexOK(c)) return;
+    var cur = readCustom() || palette().slice();
+    var low = String(c).toLowerCase(), has = false;
+    for (var i = 0; i < cur.length; i++) if (String(cur[i]).toLowerCase() === low) { has = true; break; }
+    if (!has) { cur.push(String(c)); while (cur.length > SW_MAX) cur.shift(); }
+    writeCustom(cur);          // 第一次自定义 = 把当前色板固化下来，之后不再跟随设置
+    renderSwatches();
+    if (apply) run('foreColor', String(c));
+  }
+  function removeSwatch(c) {
+    var cur = readCustom() || palette().slice();
+    var low = String(c).toLowerCase(), out = [];
+    for (var i = 0; i < cur.length; i++) if (String(cur[i]).toLowerCase() !== low) out.push(cur[i]);
+    if (!out.length) return;   // 至少留一个：一个都不剩时连「恢复跟随设置」也点不到色点
+    writeCustom(out);
+    if (String(defSwatch()).toLowerCase() === low) setDefSwatch(out[0]);
+    renderSwatches();
+  }
+  function resetSwatch() {
+    try { localStorage.removeItem(SW_KEY); localStorage.removeItem(SW_DEF_KEY); } catch (e) {}
+    renderSwatches();
+  }
+  var lastPal = '';
+  function renderSwatches() {
+    if (!bar) return;
+    var host = bar.querySelector('.sb-sws');
+    if (!host) return;
+    var sw = palette(), d = defSwatch(), sig = sw.join(',') + '|' + d;
+    if (sig === lastPal && host.childNodes.length) return;
+    lastPal = sig;
+    var h = '';
+    for (var i = 0; i < sw.length; i++) {
+      var on = d && String(sw[i]).toLowerCase() === String(d).toLowerCase();
+      h += '<button type="button" class="sb-sw' + (on ? ' sb-def' : '') + '" data-color="' + sw[i] +
+        '" title="文字颜色 ' + sw[i] + '（右键：设为默认 / 从色板移除）"></button>';
+    }
+    h += '<button type="button" class="sb-add" title="自定义颜色：选一个色，立即用在选中的文字上，并加进色板">＋' +
+      '<input type="color" value="' + (d || sw[0] || '#C0392B') + '" aria-label="自定义文字颜色"></button>';
+    host.innerHTML = h;
+    var dots = host.querySelectorAll('.sb-sw');
+    for (var j = 0; j < dots.length; j++) dots[j].style.background = dots[j].getAttribute('data-color');
+  }
+  /* 右键菜单：只做三件事，全部落在本地偏好上，不碰任何业务数据 */
+  var ctxEl = null;
+  function closeCtx() { if (ctxEl && ctxEl.parentNode) ctxEl.parentNode.removeChild(ctxEl); ctxEl = null; }
+  function openCtx(dot) {
+    if (!bar || !dot) return;
+    closeCtx();
+    var c = dot.getAttribute('data-color');
+    ctxEl = document.createElement('div');
+    ctxEl.className = 'sb-ctx';
+    ctxEl.innerHTML =
+      '<button type="button" data-sbctx="def">⭐ 设为默认色</button>' +
+      '<button type="button" data-sbctx="del">✕ 从色板移除</button>' +
+      '<button type="button" data-sbctx="reset">↩ 跟随⚙️设置</button>';
+    ctxEl.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    ctxEl.addEventListener('click', function (e) {
+      var b = e.target;
+      while (b && b !== ctxEl && !(b.getAttribute && b.getAttribute('data-sbctx'))) b = b.parentNode;
+      if (!b || b === ctxEl) return;
+      var k = b.getAttribute('data-sbctx');
+      closeCtx();
+      if (k === 'def') { setDefSwatch(c); renderSwatches(); }
+      else if (k === 'del') removeSwatch(c);
+      else resetSwatch();
+    });
+    bar.appendChild(ctxEl);
+    try {
+      var br = bar.getBoundingClientRect(), dr = dot.getBoundingClientRect();
+      ctxEl.style.left = Math.max(4, Math.round(dr.left - br.left - 22)) + 'px';
+    } catch (e) {}
+  }
+
 
   /* ---------- 2) 建浮层 ---------- */
   function build() {
@@ -18353,26 +18934,39 @@ html.embedded #buildTag{display:none}
     bar.className = 'hub-selbar';
     bar.setAttribute('aria-hidden', 'true');
 
-    var sw = palette();
     var html = '';
     html += '<button type="button" class="sb-btn" data-cmd="bold" title="加粗"><b>B</b></button>';
     html += '<button type="button" class="sb-btn" data-cmd="underline" title="下划线"><u>U</u></button>';
     html += '<button type="button" class="sb-btn sb-hl" data-hl="1" title="高亮底色">高亮</button>';
     html += '<span class="sb-sep"></span>';
-    for (var i = 0; i < sw.length; i++) {
-      html += '<button type="button" class="sb-sw" data-color="' + sw[i] + '" title="文字颜色 ' + sw[i] + '"></button>';
-    }
+    html += '<span class="sb-sws"></span>';   // ★ 色点 + 取色器：由 renderSwatches() 现画（便于就地重画）
     html += '<span class="sb-sep"></span>';
     html += '<button type="button" class="sb-btn sb-clear" data-cmd="removeFormat" title="清除格式">清除</button>';
     bar.innerHTML = html;
-
-    // 色点把颜色写在 style 上（不能塞进类名拼 CSS，颜色是数据）
-    var dots = bar.querySelectorAll('.sb-sw');
-    for (var j = 0; j < dots.length; j++) dots[j].style.background = dots[j].getAttribute('data-color');
+    renderSwatches();
 
     // 鼠标设备上按下就阻止默认行为：别把子页的选区清掉（视觉上也不闪）
     bar.addEventListener('mousedown', function (ev) {
+      // ★ 例外：取色器是原生 <input type="color">，preventDefault 会把它拦掉
+      if (ev.target && ev.target.tagName === 'INPUT') return;
       if (!isCoarse()) ev.preventDefault();
+    });
+    bar.addEventListener('input', function (ev) {
+      var el = ev.target;
+      if (!el || el.tagName !== 'INPUT' || el.type !== 'color') return;
+      addSwatch(el.value, true);
+    });
+    bar.addEventListener('change', function (ev) {
+      var el = ev.target;
+      if (!el || el.tagName !== 'INPUT' || el.type !== 'color') return;
+      addSwatch(el.value, true);   // input / change 都会来，addSwatch 对自己幂等
+    });
+    bar.addEventListener('contextmenu', function (ev) {
+      var t = ev.target;
+      while (t && t !== bar && !(t.classList && t.classList.contains('sb-sw'))) t = t.parentNode;
+      if (!t || t === bar) return;
+      ev.preventDefault();
+      openCtx(t);
     });
     bar.addEventListener('click', function (ev) {
       var t = ev.target;
@@ -18560,6 +19154,7 @@ html.embedded #buildTag{display:none}
   }
 
   function hide() {
+    closeCtx();
     clearSettle();
     clearTimeout(retryT);
     retryN = 0;
@@ -18581,6 +19176,9 @@ html.embedded #buildTag{display:none}
       b = bar.querySelector('[data-cmd="' + cmds[i] + '"]');
       if (b) { if (on) b.classList.add('on'); else b.classList.remove('on'); }
     }
+    /* ★ 2026-09-18：色板跟随「⚙️ 设置」联动 —— refreshStates 在每次浮出与每次执行后都会跑，
+       renderSwatches 内部有签名短路（色板没变就直接返回），所以这里是个空转。 */
+    renderSwatches();
   }
 
   /* ---------- 6) 执行 ---------- */
@@ -18745,6 +19343,8 @@ html.embedded #buildTag{display:none}
   window.HubSelBar = {
     init: boot, hide: hide, show: function () { scan(); },
     docked: docked, palette: palette, boundCount: function () { return bound; },
+    swatches: palette, addSwatch: addSwatch, removeSwatch: removeSwatch,
+    setDefaultSwatch: setDefSwatch, resetSwatches: resetSwatch,
     barId: BAR_ID
   };
 
@@ -18958,6 +19558,26 @@ try { if (window.HubSelBar) window.HubSelBar.owner = 'cpa-page'; } catch (e) {}
         } catch (e) { return ''; }
     }
 
+    // 光标所在行的**行号**（0 起）。口径与 caretLine 完全一致：<br> 与块级边界都算换行。
+    // 为什么另要一个行号：contenteditable 上没有 selectionStart，要改「光标所在那一行」
+    // 的行首（Tab 缩进）就得先知道它是第几行。
+    function caretLineIndex(root) {
+        try {
+            var sel = window.getSelection();
+            if (!sel || !sel.rangeCount) return -1;
+            var r = sel.getRangeAt(0);
+            if (root && !root.contains(r.startContainer === root ? root : r.startContainer)) {
+                if (r.startContainer !== root) return -1;
+            }
+            var pre = r.cloneRange();
+            pre.setStart(root, 0);
+            var frag = pre.cloneContents();
+            var brs = frag.querySelectorAll('br').length;
+            var blk = frag.querySelectorAll('div,p,li').length;
+            return brs + (blk > 0 ? blk - 1 : 0);
+        } catch (e) { return -1; }
+    }
+
     // 回车续号：插 <br> 再插下一级前缀
     function insertBreak(e, prefix) {
         try {
@@ -19030,7 +19650,7 @@ try { if (window.HubSelBar) window.HubSelBar.owner = 'cpa-page'; } catch (e) {}
     window.CpaRich = {
         esc: esc, sanitize: sanitize, toText: toText, norm: norm, render: render,
         rawOf: rawOf, textOf: textOf, fmtOf: fmtOf, set: set, shim: shim,
-        caretLine: caretLine, insertBreak: insertBreak, cell: cell,
+        caretLine: caretLine, caretLineIndex: caretLineIndex, insertBreak: insertBreak, cell: cell,
         richMapOf: richMapOf, applyRichMap: applyRichMap, carryRich: carryRich,
         looksMarkup: looksMarkup
     };

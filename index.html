@@ -651,6 +651,26 @@
 /* 手机底部固定：不换行、按内容取宽。position:fixed + 无 width 时宽度是 shrink-to-fit，
    在 flex-wrap 容器里会缩成很窄并把工具条折成两行 —— 显式拿 max-content 才是一整条。 */
 .hub-selbar.dock{flex-wrap:nowrap;width:max-content}
+
+/* ★ 2026-09-18：色板自主可控 —— 取色器 / 默认色环 / 右键菜单。
+   .sb-sws 是色点 + ＋ 的容器：palette 变了由 renderSwatches() 就地重画，
+   不必重建整条浮条（重建会把 hover / 焦点状态一起丢掉）。 */
+.hub-selbar .sb-sws{display:flex;align-items:center;gap:5px;flex:none}
+.hub-selbar .sb-sw{position:relative}
+.hub-selbar .sb-sw.sb-def{box-shadow:inset 0 0 0 1px rgba(127,127,127,.45),0 0 0 2px var(--accent,#2563eb)}
+.hub-selbar .sb-add{position:relative;width:22px;height:22px;border-radius:50%;padding:0;flex:none;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  border:1px dashed var(--muted,#64748b);background:transparent;color:var(--muted,#64748b);font:700 13px/1 inherit}
+.hub-selbar .sb-add:hover{background:rgba(138,115,88,.16)}
+.hub-selbar .sb-add input{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;
+  opacity:0;border:0;padding:0;cursor:pointer}
+.hub-selbar .sb-ctx{position:absolute;top:calc(100% + 6px);z-index:2;display:flex;flex-direction:column;
+  gap:2px;padding:4px;border-radius:9px;background:var(--panel,#fff);color:var(--text,#1e2533);border:1px solid var(--border,#e2e8f0);
+  box-shadow:0 8px 22px rgba(70,58,46,.22);min-width:124px}
+.hub-selbar .sb-ctx button{border:0;background:transparent;color:inherit;font:500 12px/1 inherit;
+  text-align:left;padding:7px 9px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.hub-selbar .sb-ctx button:hover{background:rgba(138,115,88,.16)}
+
 </style>
 
 
@@ -1703,15 +1723,129 @@
     try { if (window.HubPrefs && window.HubPrefs.get) return window.HubPrefs.get() || {}; } catch (e) {}
     try { return JSON.parse(localStorage.getItem(COLOR_KEY) || '{}') || {}; } catch (e) { return {}; }
   }
+  /* ★ 2026-09-18：色板自主可控 —————————————————————————
+     Tom 的原话：「还是不能自主选中文字编辑中的默认颜色」。
+     旧实现的色点只有两种来源：写死的 5 个 SWATCHES，或导航页 HubPrefs
+     注入的标注色 —— 在子页直链打开时一个都改不了。现在补三层：
+       ① ＋ 取色器：任选一个颜色，立即用在当前选区上，并进色板；
+       ② 右键色点：设为默认（挪到首位）/ 从色板移除 / 恢复跟随⚙️设置；
+       ③ 自定义色板存 localStorage['hub_swatches_v1']，默认色存 'hub_swatch_def_v1'。
+     谁的优先级高：用户**自己配过**色板就听用户的；没配过才去跟随导航页「⚙️ 设置」的
+     标注色（保持原行为，老用户升级后观感不变）。 */
+  var SW_KEY = 'hub_swatches_v1';
+  var SW_DEF_KEY = 'hub_swatch_def_v1';
+  var SW_MAX = 8;
+
+  function hexOK(c) { return /^#[0-9a-fA-F]{3,8}$/.test(String(c == null ? '' : c)); }
+  function readCustom() {
+    try {
+      var a = JSON.parse(localStorage.getItem(SW_KEY) || 'null');
+      if (!Array.isArray(a)) return null;
+      var out = [];
+      for (var i = 0; i < a.length && out.length < SW_MAX; i++) if (hexOK(a[i])) out.push(String(a[i]));
+      return out.length ? out : null;
+    } catch (e) { return null; }
+  }
+  function writeCustom(a) { try { localStorage.setItem(SW_KEY, JSON.stringify(a)); } catch (e) {} }
+  function defSwatch() { try { var d = localStorage.getItem(SW_DEF_KEY); return hexOK(d) ? d : ''; } catch (e) { return ''; } }
+  function setDefSwatch(c) { try { localStorage.setItem(SW_DEF_KEY, String(c)); } catch (e) {} }
+  // 默认色永远显示在第一位 ——「默认颜色」这件事必须一眼可见，不能靠用户记
+  function byDef(a) {
+    var d = defSwatch(), out = (a || []).slice(0, SW_MAX);
+    if (!d) return out;
+    var i = -1;
+    for (var k = 0; k < out.length; k++) if (String(out[k]).toLowerCase() === d.toLowerCase()) { i = k; break; }
+    if (i > 0) out.splice(0, 0, out.splice(i, 1)[0]);
+    else if (i < 0) { out.unshift(d); out = out.slice(0, SW_MAX); }
+    return out;
+  }
   function palette() {
+    var c = readCustom();
+    if (c) return byDef(c);
     var p = prefs(), out = SWATCHES.slice(), seen = {};
     for (var i = 0; i < out.length; i++) seen[out[i].toLowerCase()] = 1;
     // 用户在设置里配过的标注字色 / 高亮底排在最前，算「常用色」
     var head = [];
     if (p.mkFg && !seen[String(p.mkFg).toLowerCase()]) head.push(p.mkFg);
     if (p.color && !seen[String(p.color).toLowerCase()]) head.push(p.color);
-    return head.concat(out).slice(0, 6);
+    return byDef(head.concat(out).slice(0, SW_MAX));
   }
+  // 加一个色：进色板 + 立刻用在本段上（取色器那条路浮条多半已经因为失焦收起，
+  // 只加色点不给用户上色 = 「点了没反应」）
+  function addSwatch(c, apply) {
+    if (!hexOK(c)) return;
+    var cur = readCustom() || palette().slice();
+    var low = String(c).toLowerCase(), has = false;
+    for (var i = 0; i < cur.length; i++) if (String(cur[i]).toLowerCase() === low) { has = true; break; }
+    if (!has) { cur.push(String(c)); while (cur.length > SW_MAX) cur.shift(); }
+    writeCustom(cur);          // 第一次自定义 = 把当前色板固化下来，之后不再跟随设置
+    renderSwatches();
+    if (apply) run('foreColor', String(c));
+  }
+  function removeSwatch(c) {
+    var cur = readCustom() || palette().slice();
+    var low = String(c).toLowerCase(), out = [];
+    for (var i = 0; i < cur.length; i++) if (String(cur[i]).toLowerCase() !== low) out.push(cur[i]);
+    if (!out.length) return;   // 至少留一个：一个都不剩时连「恢复跟随设置」也点不到色点
+    writeCustom(out);
+    if (String(defSwatch()).toLowerCase() === low) setDefSwatch(out[0]);
+    renderSwatches();
+  }
+  function resetSwatch() {
+    try { localStorage.removeItem(SW_KEY); localStorage.removeItem(SW_DEF_KEY); } catch (e) {}
+    renderSwatches();
+  }
+  var lastPal = '';
+  function renderSwatches() {
+    if (!bar) return;
+    var host = bar.querySelector('.sb-sws');
+    if (!host) return;
+    var sw = palette(), d = defSwatch(), sig = sw.join(',') + '|' + d;
+    if (sig === lastPal && host.childNodes.length) return;
+    lastPal = sig;
+    var h = '';
+    for (var i = 0; i < sw.length; i++) {
+      var on = d && String(sw[i]).toLowerCase() === String(d).toLowerCase();
+      h += '<button type="button" class="sb-sw' + (on ? ' sb-def' : '') + '" data-color="' + sw[i] +
+        '" title="文字颜色 ' + sw[i] + '（右键：设为默认 / 从色板移除）"></button>';
+    }
+    h += '<button type="button" class="sb-add" title="自定义颜色：选一个色，立即用在选中的文字上，并加进色板">＋' +
+      '<input type="color" value="' + (d || sw[0] || '#C0392B') + '" aria-label="自定义文字颜色"></button>';
+    host.innerHTML = h;
+    var dots = host.querySelectorAll('.sb-sw');
+    for (var j = 0; j < dots.length; j++) dots[j].style.background = dots[j].getAttribute('data-color');
+  }
+  /* 右键菜单：只做三件事，全部落在本地偏好上，不碰任何业务数据 */
+  var ctxEl = null;
+  function closeCtx() { if (ctxEl && ctxEl.parentNode) ctxEl.parentNode.removeChild(ctxEl); ctxEl = null; }
+  function openCtx(dot) {
+    if (!bar || !dot) return;
+    closeCtx();
+    var c = dot.getAttribute('data-color');
+    ctxEl = document.createElement('div');
+    ctxEl.className = 'sb-ctx';
+    ctxEl.innerHTML =
+      '<button type="button" data-sbctx="def">⭐ 设为默认色</button>' +
+      '<button type="button" data-sbctx="del">✕ 从色板移除</button>' +
+      '<button type="button" data-sbctx="reset">↩ 跟随⚙️设置</button>';
+    ctxEl.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    ctxEl.addEventListener('click', function (e) {
+      var b = e.target;
+      while (b && b !== ctxEl && !(b.getAttribute && b.getAttribute('data-sbctx'))) b = b.parentNode;
+      if (!b || b === ctxEl) return;
+      var k = b.getAttribute('data-sbctx');
+      closeCtx();
+      if (k === 'def') { setDefSwatch(c); renderSwatches(); }
+      else if (k === 'del') removeSwatch(c);
+      else resetSwatch();
+    });
+    bar.appendChild(ctxEl);
+    try {
+      var br = bar.getBoundingClientRect(), dr = dot.getBoundingClientRect();
+      ctxEl.style.left = Math.max(4, Math.round(dr.left - br.left - 22)) + 'px';
+    } catch (e) {}
+  }
+
 
   /* ---------- 2) 建浮层 ---------- */
   function build() {
@@ -1721,26 +1855,39 @@
     bar.className = 'hub-selbar';
     bar.setAttribute('aria-hidden', 'true');
 
-    var sw = palette();
     var html = '';
     html += '<button type="button" class="sb-btn" data-cmd="bold" title="加粗"><b>B</b></button>';
     html += '<button type="button" class="sb-btn" data-cmd="underline" title="下划线"><u>U</u></button>';
     html += '<button type="button" class="sb-btn sb-hl" data-hl="1" title="高亮底色">高亮</button>';
     html += '<span class="sb-sep"></span>';
-    for (var i = 0; i < sw.length; i++) {
-      html += '<button type="button" class="sb-sw" data-color="' + sw[i] + '" title="文字颜色 ' + sw[i] + '"></button>';
-    }
+    html += '<span class="sb-sws"></span>';   // ★ 色点 + 取色器：由 renderSwatches() 现画（便于就地重画）
     html += '<span class="sb-sep"></span>';
     html += '<button type="button" class="sb-btn sb-clear" data-cmd="removeFormat" title="清除格式">清除</button>';
     bar.innerHTML = html;
-
-    // 色点把颜色写在 style 上（不能塞进类名拼 CSS，颜色是数据）
-    var dots = bar.querySelectorAll('.sb-sw');
-    for (var j = 0; j < dots.length; j++) dots[j].style.background = dots[j].getAttribute('data-color');
+    renderSwatches();
 
     // 鼠标设备上按下就阻止默认行为：别把子页的选区清掉（视觉上也不闪）
     bar.addEventListener('mousedown', function (ev) {
+      // ★ 例外：取色器是原生 <input type="color">，preventDefault 会把它拦掉
+      if (ev.target && ev.target.tagName === 'INPUT') return;
       if (!isCoarse()) ev.preventDefault();
+    });
+    bar.addEventListener('input', function (ev) {
+      var el = ev.target;
+      if (!el || el.tagName !== 'INPUT' || el.type !== 'color') return;
+      addSwatch(el.value, true);
+    });
+    bar.addEventListener('change', function (ev) {
+      var el = ev.target;
+      if (!el || el.tagName !== 'INPUT' || el.type !== 'color') return;
+      addSwatch(el.value, true);   // input / change 都会来，addSwatch 对自己幂等
+    });
+    bar.addEventListener('contextmenu', function (ev) {
+      var t = ev.target;
+      while (t && t !== bar && !(t.classList && t.classList.contains('sb-sw'))) t = t.parentNode;
+      if (!t || t === bar) return;
+      ev.preventDefault();
+      openCtx(t);
     });
     bar.addEventListener('click', function (ev) {
       var t = ev.target;
@@ -1928,6 +2075,7 @@
   }
 
   function hide() {
+    closeCtx();
     clearSettle();
     clearTimeout(retryT);
     retryN = 0;
@@ -1949,6 +2097,9 @@
       b = bar.querySelector('[data-cmd="' + cmds[i] + '"]');
       if (b) { if (on) b.classList.add('on'); else b.classList.remove('on'); }
     }
+    /* ★ 2026-09-18：色板跟随「⚙️ 设置」联动 —— refreshStates 在每次浮出与每次执行后都会跑，
+       renderSwatches 内部有签名短路（色板没变就直接返回），所以这里是个空转。 */
+    renderSwatches();
   }
 
   /* ---------- 6) 执行 ---------- */
@@ -2113,6 +2264,8 @@
   window.HubSelBar = {
     init: boot, hide: hide, show: function () { scan(); },
     docked: docked, palette: palette, boundCount: function () { return bound; },
+    swatches: palette, addSwatch: addSwatch, removeSwatch: removeSwatch,
+    setDefaultSwatch: setDefSwatch, resetSwatches: resetSwatch,
     barId: BAR_ID
   };
 
@@ -2271,7 +2424,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918u';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918v';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -3600,7 +3753,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918u';
+  var NAV_VER = 'V20260918v';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
