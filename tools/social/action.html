@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>落地行动 · 人际交往与沟通</title>
+    <link rel="stylesheet" href="social.css?v=V20260918c">
+</head>
+<body data-page="action">
+
+    <!-- 移动端遮罩 -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <button class="menu-toggle" id="menuToggle">☰ <span>菜单</span></button>
+
+    <div class="app">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="logo">🧠</div>
+                <div>
+                    <h2>沟通复盘体系</h2>
+                    <small>人际交往 · 能力跃迁</small>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="section-label">🗂️ 总览</li>
+                    <li><a href="../人积极交往.html" data-nav="home"><span class="icon">🏠</span> 回首总览</a></li>
+                    <li class="section-label">📋 台账</li>
+                    <li><a href="record.html" data-nav="record"><span class="icon">📝</span> 复盘台账 <span class="badge" id="dailyCountBadge">0</span></a></li>
+                    <li class="section-label">📚 体系</li>
+                    <li><a href="model.html" data-nav="model"><span class="icon">📊</span> 5维能力模型</a></li>
+                    <li><a href="loop.html" data-nav="loop"><span class="icon">🔄</span> 三层复盘闭环</a></li>
+                    <li><a href="learn.html" data-nav="learn"><span class="icon">📖</span> 学习体系</a></li>
+                    <li><a href="toolkit.html" data-nav="toolkit"><span class="icon">🧰</span> 工具与模板</a></li>
+                    <li><a href="path.html" data-nav="path"><span class="icon">🚀</span> 进阶路径</a></li>
+                    <li><a href="action.html" data-nav="action"><span class="icon">✅</span> 落地行动</a></li>
+                    <li class="section-label">💎 储备</li>
+                    <li><a href="wisdom.html" data-nav="wisdom"><span class="icon">💎</span> 他山之玉</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">v3.0 · 分页版 · 本地存储</div>
+        </aside>
+
+        <!-- ===== 主内容 ===== -->
+        <main class="main">
+
+            <nav class="crumb"><a href="../人积极交往.html">← 总览</a><span class="sep">/</span><span class="cur">落地行动</span></nav>
+
+<section class="content-section" id="part6">
+                <h2><span class="emoji">✅</span> 六、落地行动 · 年度-月度-周度三级联动</h2>
+                <p>通过左侧时间树选择周次，再配合下方类别筛选，精确定位行为清单。类别已按沟通能力五维预设，助您聚焦具体能力提升。</p>
+
+                <div class="category-tree">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+                        <strong>📂 时间层级（年 / 月 / 周）</strong>
+                        <div>
+                            <button class="btn btn-primary btn-sm" onclick="addYear()">➕ 添加年份</button>
+                            <button class="btn btn-outline btn-sm" onclick="openCategoryManager()">📋 管理类别</button>
+                        </div>
+                    </div>
+                    <div id="treeContainer"></div>
+                </div>
+
+                <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px;">
+                    <span style="font-weight:600; color:var(--text-soft);">筛选：</span>
+                    <select id="categoryFilter" onchange="renderActions()" style="padding:6px 12px; border:1px solid var(--border); border-radius:6px; font-size:14px;">
+                        <option value="">全部类别</option>
+                    </select>
+                    <span style="font-size:13px; color:var(--text-muted);">（按沟通能力维度筛选）</span>
+                </div>
+
+                <div style="margin-top:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <h3 id="selectedPathLabel" style="margin:0; font-size:18px;">📌 请选择周次</h3>
+                        <button class="btn btn-success btn-sm" onclick="showAddAction()">➕ 新增行动</button>
+                    </div>
+                    <div id="actionListContainer" class="action-list" style="margin-top:12px;">
+                        <div class="empty-state"><div class="icon">📋</div><p>请点击树中的周次节点查看行动清单</p></div>
+                    </div>
+                </div>
+
+                <div class="modal-overlay" id="actionModal">
+                    <div class="modal">
+                        <h3 id="actionModalTitle">✏️ 新增行动项</h3>
+                        <div class="form-group">
+                            <label>标题 <span class="hint">必填</span></label>
+                            <input id="actionTitle" placeholder="例：完成一次主动倾听练习">
+                        </div>
+                        <div class="form-group">
+                            <label>详细描述</label>
+                            <textarea id="actionDesc" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>所属类别（沟通能力维度）</label>
+                            <select id="actionCategory"><option value="">无</option></select>
+                        </div>
+                        <input type="hidden" id="actionEditId">
+                        <div class="btn-group">
+                            <button class="btn btn-outline" onclick="closeActionModal()">取消</button>
+                            <button class="btn btn-primary" onclick="saveAction()">保存</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-overlay" id="categoryModal">
+                    <div class="modal">
+                        <h3>📂 管理类别（沟通能力维度）</h3>
+                        <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">添加、删除、重命名类别。点击 ✏️ 可重命名，点击 🗑️ 删除。</p>
+                        <div id="categoryTreeContainer" style="margin-bottom:16px;"></div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                            <button class="btn btn-primary btn-sm" onclick="addRootCategory()">➕ 添加根类别</button>
+                            <button class="btn btn-danger btn-sm" onclick="resetDefaultCategories()">🔄 重置为默认类别</button>
+                        </div>
+                        <div class="btn-group" style="margin-top:16px;">
+                            <button class="btn btn-outline" onclick="closeCategoryManager()">关闭</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 页脚 -->
+            <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:40px;text-align:center;color:var(--text-muted);font-size:13px;">
+                🧠 人际交往与沟通管理 · 复盘学习体系 &mdash; 数据本地存储
+            </div>
+
+        </main>
+    </div>
+
+    <script src="social-core.js?v=V20260918c"></script>
+<!-- build-tag:begin（技能 §21/§22：由推送脚本维护，勿手改） -->
+<style>
+html.embedded #buildTag{display:none}
+#buildTag{position:fixed;left:8px;bottom:8px;z-index:30;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;padding:4px 7px;border-radius:6px;background:rgba(15,23,42,.5);color:#fff;opacity:.62;pointer-events:none;user-select:none;white-space:nowrap}
+@media print{#buildTag{display:none}}
+</style>
+<script>/* ① 嵌在 iframe 里时隐藏自己的徽标（否则与导航徽标同位置叠字）② 把页面内
+   标了 data-build-ver 的位置同步成同一个版本串 —— 版本只有一个字面量，就是下面那个 div */
+(function(){
+  try{ if(window.self!==window.top) document.documentElement.className += ' embedded'; }catch(e){}
+  function sync(){
+    var el=document.getElementById('buildTag'); if(!el) return;
+    var v=el.textContent.trim();
+    var n=document.querySelectorAll('[data-build-ver]');
+    for(var i=0;i<n.length;i++) if(n[i].textContent.trim()!==v) n[i].textContent=v;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+})();
+</script>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918c</div>
+<!-- build-tag:end -->
+</body>
+</html>
