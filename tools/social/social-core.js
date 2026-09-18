@@ -784,6 +784,15 @@
                 renderIfThen();
             }
 
+            // 日复盘底部的引导条 → 切到「如果就」标签页并回到页首
+            function gotoIfThenTab() {
+                const btn = document.querySelector('#recordTabs .tab-btn[data-tab="tabIfThen"]');
+                if (btn) btn.click();
+                try { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+                catch (e) { window.scrollTo(0, 0); }
+            }
+            window.gotoIfThenTab = gotoIfThenTab;
+
             // ---- 周练习 ----
             function getWeek() { return getStore(STORAGE_WEEK) || []; }
 
