@@ -2925,6 +2925,48 @@
             .kp-tmpl-desc { margin-left: 0; }
         }
 
+        /* ===== 🔣 「每级符号」选择器（2026-09-18）=====
+           形态对齐参考图的 8 宫格：一行一个层级，每格一个符号。
+           尺寸由内容决定（34px 方格），不参与 flex 收缩 —— 否则窄屏会被压成竖条。 */
+        .kp-sym-list { display: flex; flex-direction: column; gap: 7px; }
+        .kp-sym-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .kp-sym-cap { flex: 0 0 auto; min-width: 128px; font-size: 12px; font-weight: 600; color: var(--primary-dark); }
+        .kp-sym-cap i { font-style: normal; font-weight: 400; color: var(--text-secondary); }
+        .kp-sym-tiles { display: flex; gap: 5px; flex-wrap: wrap; }
+        .kp-sym-tile {
+            flex: 0 0 auto; width: 34px; height: 34px; min-width: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: #FFFDF8; border: 1px solid var(--border); border-radius: 7px;
+            font-size: 15px; line-height: 1; color: #3E372E; cursor: pointer;
+            padding: 0; font-family: inherit; transition: var(--transition);
+        }
+        .kp-sym-tile:hover { border-color: var(--primary-light); background: #fff; }
+        .kp-sym-tile.on { border-color: var(--primary); background: var(--primary-bg); box-shadow: inset 0 0 0 1px var(--primary); }
+        .kp-sym-tile.kp-sym-none { color: #A8997F; font-size: 13px; }
+        .kp-sym-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+        .kp-sym-pane-note { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+        .kp-sym-preview {
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            background: #FDFBF7; padding: 11px 13px;
+        }
+        /* 符号列：与 .kp-hno 同一列位，但左对齐（符号不需要右对齐去贴数字） */
+        .kp-hier-sym .kp-hno { min-width: 18px; text-align: left; font-size: 12px; letter-spacing: 0; }
+        .kp-hier-sym .kp-hrow.kp-hlv1 > .kp-hno { font-size: 13px; }
+
+        /* ===== 知识树「一键编号」的行首编号（只影响显示，不写任何数据） ===== */
+        .kt-noctl { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+        /* ★ 2026-09-18：.kt-bar 是 flex-wrap 容器，窄宽度下会把这一组当可压元素 ——
+           按钮文字被压成两行（实测 1540px 视口就复现）。这里明确「不换行、不收缩」，
+           让 flex 去换行整组，而不是压扁按钮。下拉限宽避免它自己撑破布局。 */
+        .kt-noctl .fc-btn { padding: 3px 9px; font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
+        .kt-noctl select { flex: 0 0 auto; max-width: 230px; }
+        .kt-no {
+            flex: 0 0 auto; font-size: 11px; font-weight: 700; letter-spacing: .2px;
+            color: #9C8A6B; font-family: ui-monospace, Consolas, "Courier New", monospace;
+        }
+        .kt-lv1 > .kt-no, .kt-lv2 > .kt-no { color: rgba(255, 253, 248, .92); }
+        .kt-lv3 > .kt-no { color: #7E7059; }
+
         /* ===== 学习记录列表：展示内容 / 展示方式 控件条 ===== */
         .rec-display-bar {
             display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -3307,6 +3349,7 @@
                                             <button type="button" class="kp-mode" data-kpmode="outline" title="缩进表示层级，Tab / Shift+Tab 调整">大纲视角</button>
                                             <button type="button" class="kp-mode" data-kpmode="mind" title="列 = 层级，父单元格纵向合并">思维导图视角</button>
                                             <button type="button" class="kp-mode" data-kpmode="md" title="Markdown 源码，可编辑并与其他视角双向同步">MD视角</button>
+                                            <button type="button" class="kp-mode" data-kpmode="symbol" title="行首符号，每个层级一个符号（在「🧩 模版设置 → 每级符号」里配置；只读预览）">符号视角</button>
                                         </span>
                                         <span class="kp-colgate" id="kpColGate" hidden>
                                             <span class="kp-mode-cap">列数</span>
@@ -3339,6 +3382,11 @@
 
                                     <div class="kp-view" data-kpview="md" hidden>
                                         <textarea id="fKpMd" rows="3" spellcheck="false" placeholder="# 1. 第三章 金融资产（回车自动续号，且保留 # / - 前缀）&#10;- 1.1 交易性金融资产&#10;  - 1.1.1 初始计量"></textarea>
+                                    </div>
+
+                                    <div class="kp-view" data-kpview="symbol" hidden>
+                                        <div class="kp-sym-pane-note">🔣 符号视角 —— 行首符号按层级取，每个层级可以在「🧩 模版设置 → 每级符号」里单独换。<b>本视角只读</b>（符号是展示形态，不是内容）；要改文字请切回「默认」或「大纲视角」。</div>
+                                        <div class="kp-sym-preview" id="kpSymPreview"></div>
                                     </div>
 
                                     <div class="kp-bar">
@@ -3376,11 +3424,17 @@
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="cn-classic" /> <span class="kp-tmpl-name">一、 / (一) / 1. / (1) / ①</span><span class="kp-tmpl-desc">中文公文体：一、（一）1.（1）① 递进（本工具最深 4 级，① 暂无层级可用）</span></label>
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="arabic" /> <span class="kp-tmpl-name">1. / 1.1 / 1.1.1 / 1.1.1.1</span><span class="kp-tmpl-desc">阿拉伯多级（默认）：每级都是十进制路径，最通用</span></label>
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="part" /> <span class="kp-tmpl-name">第1部分 / 第1章 / 第1节 / 1.1</span><span class="kp-tmpl-desc">教材体：部分 → 章 → 节 → 节内序号.要点序号</span></label>
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="roman7" /> <span class="kp-tmpl-name">I, II / A, B / 1, 2 / a, b / (1) / (i) / a.</span><span class="kp-tmpl-desc">罗马体系（七级）：大写罗马 → 大写字母 → 阿拉伯 → 小写字母 → (阿拉伯) → (小写罗马) → 小写字母加句点。正好对上知识树的七级链路（科目/章/节/知识点 1–4 级）</span></label>
                                     </div>
                                 </div>
                                 <div class="field">
                                     <label>预览 <span style="font-weight:400;color:var(--text-secondary);">(按当前模版渲染现有内容；没有内容时用示例)</span></label>
                                     <pre class="kp-tmpl-preview" id="kpTmplPreview"></pre>
+                                </div>
+                                <div class="field">
+                                    <label>🔣 每级符号 <span style="font-weight:400;color:var(--text-secondary);">(「符号视角」的行首符号 —— 七个层级各选一个，∅ = 该级不显示符号。与上面的编号模版互不干扰)</span></label>
+                                    <div class="kp-sym-list" id="kpSymList"></div>
+                                    <div class="kp-sym-hint" id="kpSymHint"></div>
                                 </div>
                                 <div class="kp-bar">
                                     <button type="button" id="kpTmplApply" title="按当前模版重新编号（等同于「一键编号」）">🔢 按此模版重新编号</button>
@@ -3465,7 +3519,9 @@
             <div class="rec-chips" id="recViewChips">
                 <button type="button" class="rec-chip active" data-rvview="default" title="一行一个知识点（标签形式）">默认</button>
                 <button type="button" class="rec-chip" data-rvview="outline" title="缩进表示层级，编号保留">大纲视角</button>
+                <button type="button" class="rec-chip" data-rvview="mind" title="纵向树 + 连线：层级由缩进与连线表达（无编号）">思维导图视角</button>
                 <button type="button" class="rec-chip" data-rvview="md" title="Markdown 源码，方便复制">MD视角</button>
+                <button type="button" class="rec-chip" data-rvview="symbol" title="行首符号，每个层级一个符号（在「🧩 模版设置 → 每级符号」里配置）">符号视角</button>
             </div>
             <span class="rec-dbar-stat" id="recDbarStat"></span>
         </div>
@@ -3489,6 +3545,10 @@
                     <label>科目 <select id="ktCourse"></select></label>
                     <label>章 <select id="ktChapter"></select></label>
                     <label>节 <select id="ktSection"></select></label>
+                    <span class="kt-noctl">
+                        <button type="button" class="fc-btn" id="ktNumberBtn" title="按编号模版给每一行加上行首编号（只影响本页显示，不改动科目/章/节与学习记录）">🔢 一键编号</button>
+                        <select id="ktNoTmpl" title="编号模版（与「📝 学习记录 → 🧩 模版设置」共用同一份偏好）。七级依次为：1 级 I 大写罗马 · 2 级 A 大写字母 · 3 级 1 阿拉伯数字 · 4 级 a 小写字母 · 5 级 (1) 括号阿拉伯 · 6 级 (i) 括号小写罗马 · 7 级 a. 小写字母加句点"></select>
+                    </span>
                     <span class="fc-spacer"></span>
                     <!-- 2026-09-17（按 Tom 红框所指删除）：去掉「显示 第」前缀标签 ——
                          两个下拉自带的「第X级 · 知识点Y级」已说明含义，前缀只是白占横向宽度。 -->
@@ -4204,6 +4264,11 @@
         //    不能因为「只有这个模块用」就摆在模块里 —— 迁移/初始化代码会先跑到。
         const KT_KP_OFFSET = 3;          // 知识点内部第 1 层 = 链路第 4 级
         const KT_KP_MAXLV  = 4;          // 知识点内部最深 4 层（速记 4 列）
+        // ★ 2026-09-18：把「知识点内部层级 → 链路绝对层级」的偏移量挂到 window，
+        //   供第 2 个 <script> 块（知识点编辑器 / 罗马编号体系）读取。
+        //   两个 <script> 块各自被 IIFE 包裹、作用域不共享，只能这样透出；
+        //   好处是偏移量只保留**一处真源**，不会在两块之间各写一份然后漂移。
+        window.CpaChain = { KP_OFFSET: KT_KP_OFFSET, KP_MAXLV: KT_KP_MAXLV };
 
         const DEFAULT_PROJECTS = [{
             id: 'cpa',
@@ -12076,6 +12141,9 @@
             // 缺失 / null → 自动档（不是 1，也不是 3）
             if (state.ktCfg.to === undefined || state.ktCfg.to === null) state.ktCfg.to = KT_TO_AUTO;
             if (state.ktCfg.to !== KT_TO_AUTO && state.ktCfg.to < state.ktCfg.from) state.ktCfg.to = state.ktCfg.from;
+            // ★ 2026-09-18：「一键编号」开关。只存开关本身 —— 模版是**共享偏好**
+            //   （hub_cpa_kp_tmpl_v1，与「记录学习 → 模版设置」同一份），不在这里存第二份。
+            if (state.ktCfg.num === undefined || state.ktCfg.num === null) state.ktCfg.num = false;
             return state.ktCfg;
         }
 
@@ -12475,7 +12543,7 @@
         // 一棵「分支」= 节点本身 + （展开时）它的子级容器。
         // 结构对齐参考图：kt-row 是色块/文字，kt-kids 是右移一档的下一层，
         // 连接线由 CSS 的直角折线画（.kt-kids 的左边框 + 每个分支的短横线）。
-        function ktBranchHTML(n, expd, q, matched, keep, stat) {
+        function ktBranchHTML(n, expd, q, matched, keep, stat, NO) {
             const kids = n.children || [];
             const open = !!expd[n.sig];
             const caret = kids.length
@@ -12492,6 +12560,7 @@
                  '" data-kt-sig="' + kpEsc(n.sig) + '" data-kt-lv="' + n.lv + '"' +
                  (n.raw && n.raw.crumb ? ' title="' + kpEsc(n.raw.crumb) + '"' : '') + '>' +
                 caret +
+                ((NO && NO[n.sig]) ? '<span class="kt-no">' + kpEsc(NO[n.sig]) + '</span>' : '') +
                 '<span class="kt-name">' + ktLabelText(n, q) + '</span>' +
                 '<span class="kt-lvb" title="第 ' + n.lv + ' 级 · ' + kpEsc(ktLvName(n.lv)) + '">' +
                     kpEsc(ktLvName(n.lv)) + '</span>' +
@@ -12508,13 +12577,80 @@
                     });
                     h += '<div class="kt-kids' + (allLeaf ? ' kt-leaves' : '') + '">' +
                         vis.map(function (c) {
-                            return ktBranchHTML(c, expd, q, matched, keep, stat);
+                            return ktBranchHTML(c, expd, q, matched, keep, stat, NO);
                         }).join('') + '</div>';
                 }
             }
             h += '</div>';
             stat.n++;
             return h;
+        }
+
+        /* ============ ★ 2026-09-18：一键编号（复用「记录学习 → 模版设置」的编号模块）============
+           口径（这四条决定了「换个显示范围再看，编号不变样」）：
+             · 编号按**七级链路的绝对层级**算：1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级；
+             · 章 / 节两级取**真实章号 / 节号**（写在 sig 里），不取「筛选后的第几个」——
+               否则只筛出「第 3 章」时它会显示成 A，和行名里的「第 3 章」自相矛盾；
+             · 编号在**未裁剪的树**上算完，再按 sig 回填到裁剪后的节点 —— 所以调
+               「显示 第 X–Y 级」不会让同一份大纲换一副编号；
+             · **只影响显示**：不写 project.kpTree、不写学习记录。本模块的只读契约不变。 */
+        function ktNoText(path) {
+            try {
+                if (window.CpaKpEditor && typeof window.CpaKpEditor.noStrOf === 'function') {
+                    const s = window.CpaKpEditor.noStrOf(path);
+                    if (s) return s;
+                }
+            } catch (e) {}
+            return path.join('.');
+        }
+        function ktTmplList() {
+            try {
+                if (window.CpaKpEditor && typeof window.CpaKpEditor.tmplList === 'function') {
+                    const a = window.CpaKpEditor.tmplList();
+                    if (a && a.length) return a;
+                }
+            } catch (e) {}
+            return [{ id: 'arabic', name: '1. / 1.1 / 1.1.1 / 1.1.1.1' }];
+        }
+        function ktCurTmpl() {
+            try {
+                if (window.CpaKpEditor && typeof window.CpaKpEditor.getTmpl === 'function') {
+                    const v = window.CpaKpEditor.getTmpl();
+                    if (v) return v;
+                }
+            } catch (e) {}
+            return 'arabic';
+        }
+        function ktTmplName(id) {
+            try {
+                if (window.CpaKpEditor && typeof window.CpaKpEditor.tmplNameOf === 'function') {
+                    return window.CpaKpEditor.tmplNameOf(id);
+                }
+            } catch (e) {}
+            return String(id);
+        }
+        function ktToast(m) { try { if (typeof showToast === 'function') showToast(m); } catch (e) {} }
+        // 章 / 节用真实编号（sig = ch|科目|章 或 se|科目|章|节），其余用同级次序号
+        function ktNoPathNum(n, idx) {
+            try {
+                const p = String((n && n.sig) || '').split('|');
+                if (n.kind === 'chapter' && p[0] === 'ch') return parseInt(p[2], 10) || idx;
+                if (n.kind === 'section' && p[0] === 'se') return parseInt(p[3], 10) || idx;
+            } catch (e) {}
+            return idx;
+        }
+        function ktPaintNoCtl() {
+            const cfg = ktState();
+            const sel = document.getElementById('ktNoTmpl');
+            if (sel) {
+                const cur = cfg.num ? ktCurTmpl() : '';
+                sel.innerHTML = '<option value="">不编号</option>' + ktTmplList().map(function (t) {
+                    return '<option value="' + kpEsc(t.id) + '"' + (t.id === cur ? ' selected' : '') + '>' +
+                        kpEsc(t.name) + '</option>';
+                }).join('');
+            }
+            const btn = document.getElementById('ktNumberBtn');
+            if (btn) btn.classList.toggle('active', !!cfg.num);
         }
 
         // ---------- 主渲染 ----------
@@ -12526,6 +12662,7 @@
             const statEl = document.getElementById('ktStat');
 
             ktFillSelects(all, proj);
+            ktPaintNoCtl();
 
             if (!all.length) {
                 if (statEl) statEl.textContent = '尚未导入知识点';
@@ -12533,12 +12670,26 @@
                 body.innerHTML = '<div class="kt-empty">这个项目还没有可展示的层级。<br>' +
                     '<b>科目 / 章 / 节</b>（第 1–3 级）在 <b>🎯 考试项目 → ✎ 编辑项目配置 → 大纲结构</b> 里填；<br>' +
                     '<b>知识点</b>（第 4 级往下）在 <b>📝 学习记录 → 知识点速记</b> 里写 —— ' +
-                    '速记三列占第 4–5 级、四列占第 4–6 级。</div>';
+                    // ★ 2026-09-18 更正：旧文案写「三列占 4–5 级、四列占 4–6 级」，
+                    //   与 KT_KP_OFFSET 的契约（3 列 = 链路第 4–6 级 / 4 列 = 第 4–7 级，
+                    //   见 handleFormSubmit 的 kpCols 注释）矛盾，会把用户对层级的理解带偏。
+                    '速记三列占第 4–6 级、四列占第 4–7 级（列数 = 层数）。</div>';
                 return;
             }
 
             const cfg = ktState();
             const rawTree = ktSevenTree(cfg, all, proj);
+            // ★ 一键编号：在**未裁剪**的 rawTree 上算，键是 sig（见上方 ktNoText 的口径说明）
+            const NO = {};
+            if (cfg.num) {
+                (function ktNoWalk(list, path) {
+                    (list || []).forEach(function (n, i) {
+                        const p = path.concat([ktNoPathNum(n, i + 1)]);
+                        NO[n.sig] = ktNoText(p);
+                        ktNoWalk(n.children, p);
+                    });
+                })(rawTree, []);
+            }
             // 按「知识点最深 tier + 3」夹取：树只有 2 级时，「显示到第 6 级」应当等价于
             // 「全开」，统计条也不该报出一个超出实际深度的级数（旧写死 KT_MAX_LV）。
             const toLv = ktResolveTo(ktMaxTier(all) + 3);
@@ -12559,7 +12710,8 @@
                 if (+cfg.section > 0) parts.push('第 ' + cfg.section + L('section'));
                 statEl.textContent = parts.join(' · ') + ' —— ' + total + ' 个节点' +
                     ' · 七级链路（科目›章›节›知识点1–4级）' +
-                    ' · 显示 第' + cfg.from + '–' + visTo + ' 级' + (cfg.to === KT_TO_AUTO ? '（默认档）' : '');
+                    ' · 显示 第' + cfg.from + '–' + visTo + ' 级' + (cfg.to === KT_TO_AUTO ? '（默认档）' : '') +
+                    (cfg.num ? ' · 编号模版「' + ktTmplName(ktCurTmpl()) + '」' : '');
             }
 
             if (!total) {
@@ -12606,7 +12758,7 @@
             const stat = { n: 0 };
             const html = tree.map(function (n) {
                 if (q && !keep[n.sig] && !matched[n.sig]) return '';
-                return ktBranchHTML(n, expd, q, matched, keep, stat);
+                return ktBranchHTML(n, expd, q, matched, keep, stat, NO);
             }).join('');
 
             if (q && !stat.n) {
@@ -12646,6 +12798,38 @@
                     ktRender();
                 });
             }
+
+            // ★ 2026-09-18：一键编号（开关 + 模版）
+            const numBtn = document.getElementById('ktNumberBtn');
+            if (numBtn) numBtn.addEventListener('click', function () {
+                const cfg = ktState();
+                cfg.num = !cfg.num;
+                saveData();
+                ktPaintNoCtl();
+                ktRender();
+                ktToast(cfg.num
+                    ? ('已按编号模版「' + ktTmplName(ktCurTmpl()) + '」给每一行加上编号（只影响本页显示）')
+                    : '已关闭行首编号');
+            });
+            const numSel = document.getElementById('ktNoTmpl');
+            if (numSel) numSel.addEventListener('change', function () {
+                const cfg = ktState();
+                const v = numSel.value || '';
+                if (!v) {
+                    cfg.num = false;
+                } else {
+                    cfg.num = true;
+                    // 模版是共享偏好：在这里改 = 在「记录学习 → 模版设置」里改
+                    try {
+                        if (window.CpaKpEditor && typeof window.CpaKpEditor.setTmpl === 'function') {
+                            window.CpaKpEditor.setTmpl(v);
+                        }
+                    } catch (e) {}
+                }
+                saveData();
+                ktPaintNoCtl();
+                ktRender();
+            });
 
             const expAll = document.getElementById('ktExpandAll');
             if (expAll) expAll.addEventListener('click', function () { ktSetAllOpen(true); });
@@ -14591,7 +14775,7 @@
         var REC_SHOW_KEY   = 'hub_cpa_rec_show_v1';
         var REC_KPVIEW_KEY = 'hub_cpa_rec_kpview_v1';
         var DRAFT_MS    = 10000;
-        var VIEWS       = ['default', 'outline', 'mind', 'md'];
+        var VIEWS       = ['default', 'outline', 'mind', 'md', 'symbol'];
         var IN_ID       = { default: 'fKpQuick', outline: 'fKpOutline', md: 'fKpMd' };
         var MAXD        = 4;                                   // 树最深支持 4 层
         var COLS_N      = { 3: '30fr 32fr 38fr', 4: '24fr 25fr 25fr 26fr' };
@@ -14613,10 +14797,10 @@
         };
         // ★ 视角顺序与编辑器的 VIEWS 对齐（default / outline / mind / md）。
         //   mind = 思维导图视角：知识点的纵向树形态（带连线、无编号）。
-        var REC_KPVIEWS = ['default', 'outline', 'mind', 'md'];
+        var REC_KPVIEWS = ['default', 'outline', 'mind', 'md', 'symbol'];
         var REC_KPVIEW_NAME = {
             default: '默认', outline: '大纲视角',
-            mind: '思维导图视角', md: 'MD视角'
+            mind: '思维导图视角', md: 'MD视角', symbol: '符号视角'
         };
         var recShow = { kp: true, ps: true, mem: true, other: true };
         var recKpView = 'default';
@@ -14688,6 +14872,66 @@
             if (/^[①-⑳⑴-⒇❶-❿]/.test(body)) return { id: 'circ', d: 1 };
             return null;
         }
+        /* ★ 2026-09-18：罗马体系（7 级）的行首编号剥离。
+           为什么不能直接塞进 stripNoInner：
+             stripNoInner 是对**所有**文本无条件生效的，而罗马体系的 4 级标记就是
+             「单个小写字母 + 空格」—— 无条件剥会把「pe」「pb」「kdj」这类以英文字母开头的
+             正文吃掉一格（本工具的 CPA 知识点里全是这种词）。所以这里按**该行缩进深度**
+             只认那一级该有的形态，而且**只在当前模版就是 roman7 时调用**（见 parse）。
+           还有一条：我们自己的序列化器（toFlat / toOutline）是「编号 + 缩进」同时输出的，
+           缩进永远能把层级说清楚，所以这里剥标记纯粹是为了不把编号写进节点名。 */
+        // 第 d 级第 n 项的编号形态 —— 与 noStr 的 roman7 分支**一一对应**。
+        // 两处必须一起改：只改一处就会出现「写出去的编号解析不回来」，
+        // 表现为切一次模版再把文本贴回来、编号被写进节点名。
+        // 罗马体系的编号按**链路绝对层级**写：速记内部第 1 层 = 链路第 4 级。
+        // 这个偏移量就是 block 1 的 KT_KP_OFFSET —— 两个 <script> 块各自被 IIFE
+        // 包着、作用域不共享，所以由 block 1 挂到 window.CpaChain 再读回来
+        // （单一真源，不在这里写死常量，避免两处漂移）。读不到时退回 3。
+        var ROMAN7_OFF = (function () {
+            try {
+                var c = window.CpaChain;
+                if (c && typeof c.KP_OFFSET === 'number') return c.KP_OFFSET;
+            } catch (e) {}
+            return 3;
+        })();
+        function roman7Tok(d, n) {
+            d = parseInt(d, 10) || 1; n = parseInt(n, 10) || 1;
+            if (d === 1) return romanNo(n);
+            if (d === 2) return alphaNo(n, false);
+            if (d === 3) return String(n);
+            if (d === 4) return alphaNo(n, true);
+            if (d === 5) return '(' + n + ')';
+            if (d === 6) return '(' + romanNo(n).toLowerCase() + ')';
+            if (d === 7) return alphaNo(n, true) + '.';
+            return String(n);
+        }
+        /* ★ 2026-09-18 改法：从「按层级做形态泛匹配」改成「按序位逐字比对」。
+           为什么必须改 —— 罗马体系的第 2 / 4 级标记就是**单个字母 + 空格**（A / a），
+           「单字母 + 空白」这种形态无法区分「编号 A」和「正文 PE」：
+             · 第 2 级正文「PE 估值法」 → 剥成「估值法」
+             · 第 4 级正文「pe 市盈率」 → 剥成「市盈率」
+           CPA 知识点里这类英文缩写是主体，等于每存一次记录就静默吃掉一格正文。
+           形态确实分不出来，但**序位**可以：第 d 级的第 k 个节点，编号必然是
+           roman7Tok(d, k)。expect 由 parse 按兄弟序位算出（见 parse 里的 sib），
+           对不上就不剥 —— 宁可留着编号，也不吃正文。 */
+        function cutRomanNo(body, depth, expect) {
+            var d = Math.max(1, Math.min(7, parseInt(depth, 10) || 1));
+            var out = String(body || '');
+            if (!out) return out;
+            var tok = roman7Tok(d, expect);
+            if (!tok) return out;
+            var head = out.replace(/^[ \t\u3000]+/, '');
+            var pad = out.length - head.length;
+            if (head === tok) return out.slice(pad + tok.length).replace(/^[ \t\u3000]+/, '');
+            if (head.indexOf(tok) === 0) {
+                var nxt = head.charAt(tok.length);
+                if (nxt === ' ' || nxt === '\t' || nxt === '\u3000') {
+                    return out.slice(pad + tok.length).replace(/^[ \t\u3000]+/, '');
+                }
+            }
+            return out;
+        }
+
         // 剥掉行首编号（含中文 / 括号 / 圆圈），交给后面的 stripNoInner 兜底
         function cutSeqNo(body) {
             return String(body || '')
@@ -14702,6 +14946,11 @@
         function parse(text) {
             var roots = [], lv = [], k;
             for (k = 0; k < MAXD; k++) lv.push(null);
+            // sib[d] = 第 d 级已出过的兄弟节点数（进入更深一层时归零）。
+            // 罗马体系靠它算出「这一行本该是第几号」，从而把编号剥离做成**逐字比对**
+            // 而不是形态泛匹配 —— 否则正文里的 PE / pe 会被当编号吃掉（见 cutRomanNo）。
+            var sib = [];
+            for (k = 0; k <= MAXD; k++) sib.push(0);
 
             // ---- 第 1 遍：拆行 + 预扫描序号体系 ----
             // 为什么要预扫描？因为「1.」到底是第 1 级还是第 3 级，取决于本文档里
@@ -14794,9 +15043,21 @@
                 if (lvl > MAXD) lvl = MAXD;
                 if (lvl < 1) lvl = 1;
 
+                // 这一行最终挂在哪个层级：挂不上父级时实际会变成根（第 1 级，见下方 else 分支），
+                // 所以序位也要按那个层级算，否则编号与树对不上。
+                var sibLvl = (lvl > 1 && lv[lvl - 2]) ? lvl : 1;
+                var expIdx = (sib[sibLvl] || 0) + 1;
+
                 // 只有编号没有内容的空行（模版的「第一章」「一、」「(1)」）必须保留，
                 // 否则层级会塌；纯标点残渣才丢。
                 if (body) {
+                    if (tmpl === 'roman7') {
+                        var b0 = body;
+                        body = cutRomanNo(body, lvl + ROMAN7_OFF, expIdx);   // +偏移：编号是链路绝对层级
+                        // 编号体系命中过 seqKind 时 lvl 可能来自体系基准、与缩进不同口径，
+                        // 兜一次缩进深度；仍然对不上就保留原样（不猜）。
+                        if (body === b0 && indentLvl !== lvl) body = cutRomanNo(body, indentLvl + ROMAN7_OFF, expIdx);
+                    }
                     body = stripNoInner(body).trim();
                     if (body && !/[\u4e00-\u9fa5A-Za-z0-9]/.test(body)) return;
                 } else if (!r.seq && !r.isHeading) {
@@ -14815,6 +15076,9 @@
                     for (k = 0; k < MAXD; k++) lv[k] = null;
                     lv[0] = node;
                 }
+                // 兄弟序位推进：同级 +1、更深层归零（与上面 lv 的清理口径一致）
+                sib[sibLvl] = (sib[sibLvl] || 0) + 1;
+                for (k = sibLvl + 1; k <= MAXD; k++) sib[k] = 0;
                 if (r.isHeading) headingDepth = lvl;
             });
             return roots;
@@ -14850,7 +15114,23 @@
             n = parseInt(n, 10);
             return (n >= 1 && n <= 20) ? String.fromCharCode(0x245F + n) : ('(' + n + ')');
         }
-        function noStr(p) {
+        // ★ 2026-09-18：「罗马体系」用的两套字序。
+        //   罗马数字列到 20 就够（再深回退阿拉伯 —— 否则一个 40 字符的行首编号会把整行撑爆）；
+        //   英文字母按 A..Z、AA..AZ、BA.. 双射进位（与技能里版本号的字母序列同一套算法）。
+        var ROMAN_N = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII','XIV',
+                       'XV','XVI','XVII','XVIII','XIX','XX'];
+        function romanNo(n) {
+            n = parseInt(n, 10);
+            return (n >= 1 && n <= ROMAN_N.length) ? ROMAN_N[n - 1] : String(n);
+        }
+        function alphaNo(n, lower) {
+            n = parseInt(n, 10);
+            if (!(n >= 1)) return String(n);
+            var s = '';
+            while (n > 0) { var r = (n - 1) % 26; s = String.fromCharCode(97 + r) + s; n = Math.floor((n - 1) / 26); }
+            return lower ? s : s.toUpperCase();
+        }
+        function noStr(p, abs) {
             var a = p, d = p.length;
             if (tmpl === 'cn-chapter') {                 // 第一章 / 1.1 / 1.1.1 / (1) / ①
                 if (d === 1) return '第' + cnNum(a[0]) + '章';
@@ -14871,6 +15151,18 @@
                 if (d === 2) return '第' + a[1] + '章';
                 if (d === 3) return '第' + a[2] + '节';
                 return a[2] + '.' + a[3];
+            }
+            if (tmpl === 'roman7') {                     // I / A / 1 / a / (1) / (i) / a.（链路 1–7 级）
+                // ★ 按**链路绝对层级**编号，不是「速记内部层级」。
+                //   速记内部第 1 层 = 链路第 4 级（KT_KP_OFFSET），所以要 +ROMAN7_OFF。
+                //   为什么必须加：同一个知识点，速记里写 a、知识树里也必须写 a。
+                //   不加的话速记顶层写 I、知识树同一节点写 a ——「速记第 1 级」和
+                //   「知识树第 4 级」讲的就不是一回事了（见 KT_KP_OFFSET 的口径注释）。
+                //   abs=true 表示 path 已经是链路绝对层级（知识树 ktNoText 用），不再加。
+                var kd = abs ? d : (d + ROMAN7_OFF);
+                // 罗马体系只定义到 7 级；更深退回十进制路径（形如 1.2.3），不编造新形态
+                if (kd > 7) return a.join('.');
+                return roman7Tok(kd, a[d - 1]);
             }
             // arabic：一级带点（1.），二级起是完整十进制路径（1.1 / 1.1.1 / 1.1.1.1）
             var s2 = a.join('.');
@@ -14942,7 +15234,8 @@
         var viewDirty = { default: false, outline: false, md: false };
         function resetDirty() { viewDirty = { default: false, outline: false, md: false }; }
         function syncFromView() {
-            if (mode === 'mind') return;          // 网格直接改 tree，不需要回读
+            // 网格直接改 tree；符号视角是只读渲染，也没有任何文本要回读
+            if (mode === 'mind' || mode === 'symbol') return;
             if (!viewDirty[mode]) return;         // 文本没被人动过，树就是最新的
             var e = el(IN_ID[mode]);
             if (e) tree = parse(e.value);
@@ -14993,6 +15286,7 @@
             updateStat();
             growAll();
             paintTmpl();
+            renderSymPane();
         }
         function setMode(next, keepTree) {
             if (VIEWS.indexOf(next) < 0) next = 'default';
@@ -15510,8 +15804,53 @@
             { id: 'cn-chapter', name: '第一章 / 1.1 / 1.1.1 / (1) / ①' },
             { id: 'cn-classic', name: '一、 / (一) / 1. / (1) / ①' },
             { id: 'arabic',     name: '1. / 1.1 / 1.1.1 / 1.1.1.1' },
-            { id: 'part',       name: '第1部分 / 第1章 / 第1节 / 1.1' }
+            { id: 'part',       name: '第1部分 / 第1章 / 第1节 / 1.1' },
+            // ★ 2026-09-18 新增「罗马体系」（Tom 指定的七级体系，正好对上知识树的七级链路）：
+            //     1 级 I,II,III（大写罗马） 2 级 A,B,C（大写字母） 3 级 1,2,3（阿拉伯）
+            //     4 级 a,b,c（小写字母）    5 级 (1),(2)（括号阿拉伯）
+            //     6 级 (i),(ii)（括号小写罗马） 7 级 a.,b.（小写字母加句点）
+            { id: 'roman7',     name: 'I / A / 1 / a / (1) / (i) / a.' }
         ];
+
+        /* ★ 2026-09-18：符号视角的 8 个候选符号（形态对齐参考图：∅ ● ■ ◆ ∷ ▷ ✓ ✧）。
+           「每级一个符号」—— 七个层级各选一个，none 表示该级不显示符号。
+           ∷ 是「四点簇」（U+2237），参考图那一格是 4 个小菱形；单个字形里没有正好 2×2
+           菱形的字符，四点是最接近且在等宽 / 非等宽字体下都不会缺字形的选择。 */
+        var SYMS = [
+            { id: 'none',    ch: '',   name: '无' },
+            { id: 'dot',     ch: '●',  name: '实心圆' },
+            { id: 'square',  ch: '■',  name: '实心方' },
+            { id: 'diamond', ch: '◆',  name: '实心菱形' },
+            { id: 'dots4',   ch: '∷',  name: '四点簇' },
+            { id: 'tri',     ch: '▷',  name: '三角' },
+            { id: 'check',   ch: '✓',  name: '对勾' },
+            { id: 'star4',   ch: '✧',  name: '四角星' }
+        ];
+        var SYM_KEY  = 'hub_cpa_kp_sym_v1';
+        var SYM_LV   = ['科目', '章', '节', '知识点1级', '知识点2级', '知识点3级', '知识点4级'];
+        var SYM_DEF  = ['dot', 'square', 'diamond', 'tri', 'check', 'star4', 'dots4'];
+        var symIds   = SYM_DEF.slice();
+        function symIndex(id) {
+            for (var i = 0; i < SYMS.length; i++) if (SYMS[i].id === id) return i;
+            return -1;
+        }
+        function symLoad() {
+            var out = SYM_DEF.slice();
+            try {
+                var raw = load(SYM_KEY);
+                if (raw) {
+                    var a = JSON.parse(raw);
+                    if (a && a.length) for (var i = 0; i < 7; i++) if (symIndex(a[i]) >= 0) out[i] = a[i];
+                }
+            } catch (e) {}
+            return out;
+        }
+        // 第 lv 级的符号（lv 从 1 起；超过 7 级沿用第 7 级 —— 与 noStr 的七级上限同口径）
+        function symCh(lv) {
+            var i = Math.max(1, Math.min(7, parseInt(lv, 10) || 1)) - 1;
+            var s = SYMS[symIndex(symIds[i])];
+            return s ? s.ch : '';
+        }
         var DEMO_TREE = [{ t: '金融资产', c: [{ t: '交易性金融资产', c: [{ t: '初始计量', c: [{ t: '入账价值', c: [] }] }] }] }];
         function tmplName(id) {
             for (var i = 0; i < TMPLS.length; i++) if (TMPLS[i].id === id) return TMPLS[i].name;
@@ -15602,6 +15941,7 @@
             if (v === 'md') return '<pre class="rec-pre rec-pre-md">' + esc(toMD(roots)) + '</pre>';
             if (v === 'outline') return '<pre class="rec-pre">' + esc(toOutline(roots, true)) + '</pre>';
             if (v === 'mind') return kpMindHtml(roots, recMaxLv(rec));
+            if (v === 'symbol') return kpSymHtml(roots, recMaxLv(rec));
             return kpHierHtml(roots, recMaxLv(rec));
         }
 
@@ -15655,6 +15995,69 @@
             })(roots, 1);
             return out.length ? ('<div class="kp-mind">' + out.join('') + '</div>')
                               : '<span class="rec-kp-empty">未记录</span>';
+        }
+
+        // ★ 2026-09-18（需求：展示模式增加符号，每个层级可选用不同符号）
+        // 符号视角：行首一个符号，层级仍靠缩进表达。骨架与「默认」（.kp-hier / .kp-hrow）
+        // **完全一致**，只把 .kp-hno 里的编号换成符号 —— 于是两种方式来回切，排版不跳动。
+        // 符号取自「🧩 模版设置 → 每级符号」，与编号模版互不干扰（改模版不会动符号）。
+        function kpSymHtml(roots, maxLv) {
+            var lim = (typeof maxLv === 'number' && maxLv > 0) ? maxLv : 0;
+            var out = [];
+            (function walk(list, d) {
+                (list || []).forEach(function (n) {
+                    var deep = lim && d > lim;
+                    out.push('<div class="kp-hrow kp-hlv' + Math.min(d, 4) + (deep ? ' kp-hdeep' : '') + '"' +
+                        (deep ? ' title="这一层进卡片反面（答案层），不单独出卡"' : '') + '>' +
+                        '<span class="kp-hno kp-symno">' + esc(symCh(d + ROMAN7_OFF)) + '</span>' +
+                        '<span class="kp-htext">' + esc(n.t) + '</span></div>');
+                    walk(n.c || [], d + 1);
+                });
+            })(roots, 1);
+            return out.length ? ('<div class="kp-hier kp-hier-sym">' + out.join('') + '</div>')
+                              : '<span class="rec-kp-empty">未记录</span>';
+        }
+        // 表单里「符号视角」面板（只读预览）
+        function renderSymPane() {
+            var box = el('kpSymPreview');
+            if (!box) return;
+            box.innerHTML = tree.length ? kpSymHtml(tree, 0)
+                : '<span class="rec-kp-empty">还没有内容 —— 先在「默认」或「大纲视角」里输入，回到这里就能看到符号形态。</span>';
+        }
+        // 模版设置里的「每级符号」8 宫格
+        function paintSymTiles() {
+            var box = el('kpSymList');
+            if (!box) return;
+            var h = '';
+            for (var lv = 1; lv <= 7; lv++) {
+                h += '<div class="kp-sym-row"><span class="kp-sym-cap">第 ' + lv + ' 级 <i>' + esc(SYM_LV[lv - 1]) + '</i></span>' +
+                     '<span class="kp-sym-tiles">' +
+                     SYMS.map(function (s) {
+                         var on = (s.id === symIds[lv - 1]);
+                         return '<button type="button" class="kp-sym-tile' + (on ? ' on' : '') +
+                             (s.id === 'none' ? ' kp-sym-none' : '') + '" data-symlv="' + lv +
+                             '" data-symid="' + s.id + '" title="' + esc(s.name) + '">' +
+                             (s.ch || '∅') + '</button>';
+                     }).join('') + '</span></div>';
+            }
+            box.innerHTML = h;
+            var hint = el('kpSymHint');
+            if (hint) hint.textContent = '当前：' + SYM_LV.map(function (nm, i) {
+                return '第' + (i + 1) + '级 ' + (symCh(i + 1) || '（不显示）');
+            }).join(' · ') + '　（速记 ' + colCount + ' 列 → 只用第 ' +
+                (ROMAN7_OFF + 1) + '–' + (ROMAN7_OFF + colCount) + ' 级的符号；'
+                + '第 1–' + ROMAN7_OFF + ' 级是科目/章/节，速记不涉及）';
+        }
+        function setSym(lv, id) {
+            lv = parseInt(lv, 10);
+            if (!(lv >= 1 && lv <= 7) || symIndex(id) < 0) return;
+            if (symIds[lv - 1] === id) { paintSymTiles(); return; }
+            symIds[lv - 1] = id;
+            store(SYM_KEY, JSON.stringify(symIds));
+            paintSymTiles();
+            renderSymPane();
+            reRenderRecords();                     // 记录列表若正停在「符号视角」，跟着变
+            toast('第 ' + lv + ' 级（' + SYM_LV[lv - 1] + '）的符号已改为' + (symCh(lv) ? '「' + symCh(lv) + '」' : '「不显示」'));
         }
 
         // ★ 2026-09-17 需求 3：**只读 excel 网格** —— 复习面板「上期学习内容」用。
@@ -15727,6 +16130,13 @@
             });
             eachNode('#kpCols .kp-mode', function (b) {
                 b.addEventListener('click', function () { setCols(b.getAttribute('data-kpcols')); });
+            });
+            symIds = symLoad();
+            paintSymTiles();
+            var symBox = el('kpSymList');
+            if (symBox) symBox.addEventListener('click', function (ev) {
+                var tb = (ev.target && ev.target.closest) ? ev.target.closest('.kp-sym-tile') : null;
+                if (tb) setSym(tb.getAttribute('data-symlv'), tb.getAttribute('data-symid'));
             });
             eachNode('#recTabs .rec-tab', function (b) {
                 b.addEventListener('click', function () { setTab(b.getAttribute('data-rec')); });
@@ -15815,7 +16225,15 @@
             parseText: parse,
             toOutlineText: toOutline,
             toMdText: toMD,
-            kpBlockHtml: kpBlockHtml
+            kpBlockHtml: kpBlockHtml,
+            kpSymHtml: kpSymHtml,
+            // ★ 2026-09-18：把「编号模块」透出给知识树页 —— 一键编号复用同一套模版与算法
+            //   （TMPLS + noStr），所以在哪一页换模版，另一页跟着变，不存在第二份实现。
+            tmplList: function () { return TMPLS.slice(); },
+            tmplNameOf: tmplName,
+            noStrOf: function (path) { return noStr(path, true); },   // true = path 已是链路绝对层级
+            symChOf: symCh,
+            symbolList: function () { return SYMS.slice(); }
         };
         // 记录列表（主应用渲染）读这里：哪些内容要展示、知识点按哪种方式展示
         window.CpaRecView = {
@@ -15870,7 +16288,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917ab</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918a</div>
 <!-- build-tag:end -->
 </body>
 </html>
