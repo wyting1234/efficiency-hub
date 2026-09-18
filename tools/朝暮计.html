@@ -122,6 +122,16 @@
         header.bar .title .filter-toggle .arrow.open {
             transform: rotate(180deg);
         }
+        /* v52：归档口径标题里的「返回」小按钮（样式对齐周期按钮） */
+        header.bar .title .arch-back {
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 2px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
         header.bar .title .filter-dropdown {
             position: absolute;
             top: 100%;
@@ -3588,6 +3598,16 @@
         #app.has-bg header.bar .left span,
         #app.has-bg header.bar .right span{color:#333}
         #app.has-bg .nav{background:rgba(255,255,255,.9);backdrop-filter:blur(6px)}
+        /* v52：手机端去掉顶栏 / 底栏的毛玻璃。
+           backdrop-filter 要在每一帧把身后的内容重新模糊一遍 —— 底图铺满全屏时这是最贵的
+           一笔光栅开销（切页、滚动都要吃它）。桌面端保留原有效果，手机端把白底从
+           .86/.9 提到 .94/.95，肉眼几乎看不出差别，但少掉一整层模糊。
+           注：headless 无真 GPU，这笔开销在桌面无头环境里量不出来，故按「手机去、桌面留」
+           的保守口径处理，而不是拿量不出的数字下结论。 */
+        @media (max-width: 899px) {
+            #app.has-bg header.bar { background: rgba(255,255,255,.94); backdrop-filter: none; }
+            #app.has-bg .nav { background: rgba(255,255,255,.95); backdrop-filter: none; }
+        }
         main{transition:background .2s}
 
         /* v24：区域级背景 —— 视图·日历 / 视图·信息展示区 / 日记本。
@@ -3748,6 +3768,11 @@
         body.zp-parts .year-month{background:rgba(255,255,255,var(--zp-card,1))}
         /* 当前月高亮：把主色混进已透明化的卡片底上，避免 zp 规则吃掉高亮 */
         body.zp-parts .year-month.cur{background:color-mix(in srgb, var(--main) 10%, rgba(255,255,255,var(--zp-card,1)))}
+        /* v52：月视图「非本月」格子(.cd.off)此前是实心 #fafafa —— 容器 .month-grid 早已被
+           栏目透明度透明化，这个子格子没有，于是设了底图后日历上会留下成片实心浅色方块。
+           实测（2026-09 月视图 / 底图开启）：42 个格子里 12 个不透明，下面整两行底图被盖掉。
+           v36/v37 修的都是容器级，漏的正是子级；判据是「子级不能比容器更不透明」。 */
+        body.zp-parts .month-grid .body .cd.off{background:rgba(250,250,250,var(--zp-card,1))}
         /* ===== v31：边线与字浮（单独入口「✒️ 边线与字浮」）=====
            目标效果：只能看到页面背景和栏目上的字，就好像字直接写在背景上。
            · 字浮：内容卡片白底按 --ink-card 透明化，白底浓度 0 = 纯字浮
@@ -3795,6 +3820,9 @@
             border-color: transparent !important;
             box-shadow: inset 0 0 0 var(--ink-bd-w,1px) var(--ink-bd-c,rgba(45,52,54,.55)) !important;
         }
+        /* v52：字浮态下同一个格子也要一起透掉。单独写一条而不并进上面那条选择器列表 ——
+           那条带 inset 边线，并进去等于每个「非本月」空格子都长出一圈描边。 */
+        body.ink-on .month-grid .body .cd.off { background-color: rgba(255,255,255,var(--ink-card,0)) !important; }
         /* 选中态 tab 保留主色底，保证可读 */
         body.ink-on .viewtabs span.on {
             background-color: var(--main) !important;
@@ -6071,6 +6099,13 @@
         if (p === 'focus' && !_goKeepFocusView && fState !== 'run') { focusView = 'cards'; focusCard = null; }
         _goKeepFocusView = false;
         page = p;
+        /* v52：已完成清单是「临时下钻口径」，不是常驻筛选 —— 从别处回到清单页
+           （含在清单页再点一次底栏「清单」）时自动复位。
+           旧行为下 filter 一直粘在 archived：四象限永远铺着归档内容，看起来像卡住了，
+           得先点侧栏「清单列表」再点「四象限」才恢复（用户报的就是这条路径）。
+           只复位 archived，不动 today/week 等周期筛选 —— 那些在标题里写着自己是谁，
+           用户不会误解；archived 会把标题整条换成「已完成清单」，语义已经变成另一个模式。 */
+        if (p === 'list' && filter === 'archived') filter = 'all';
         if (p !== 'list') { batchMode = false;
             batchSel.clear(); }   // 离开清单页自动退出批量编辑
         closeSidebar();
@@ -6102,6 +6137,15 @@
         // v5：每个页面都有自己的汉堡菜单（含背景与图片入口），不再隐藏任何页的右侧按钮
         document.querySelector('header.bar .right').style.visibility = 'visible';
         updateSidebarCounts();
+        /* v52：侧边栏内容必须跟着当前页走。
+           rSidebar() 此前只在 toggleSidebar()（点汉堡把侧栏展开）里被调用一次，
+           而 v43 起电脑版侧边栏是常驻的 —— CSS 直接
+           html[data-view="desktop"] #sidebar { transform: none; } 把它摆在屏幕上，
+           永远不走「展开」那条路，于是切页后侧栏还停在上一个页面的标题与菜单，
+           首屏更是整块空的（实测 #sidebarMenu 子元素 0 个），必须手动点一次汉堡才填上。
+           只在侧栏真的可见时才刷：常驻的电脑版，或手动展开的手机/自动版。
+           收起状态刷它纯属白干 —— 展开那一刻 toggleSidebar() 会自己刷一次。 */
+        if (sidebarOpen || document.documentElement.getAttribute('data-view') === 'desktop') rSidebar();
         renderMenu();
         updateMenuUI();
         updateSettingsUI();
@@ -6166,6 +6210,7 @@
                 titleEl.innerHTML = `
                 <span class="title-text" style="display:flex;align-items:center;gap:6px;justify-content:center;width:100%;">
                     <span>${isArch ? '✅ 已完成清单·' + cnt + ' 项' : '四象限 ' + filterLabel + '·' + cnt + '待办'}</span>
+                    ${archBackHTML()}
                     <span class="filter-toggle" onclick="toggleFilter()">周期 <span class="arrow ${filter!=='all'?'open':''}">▾</span></span>
                     <span class="qfont-ctl" onclick="event.stopPropagation()"><span onclick="quadFontStep(-1)" title="缩小四象限字体">A−</span><span onclick="quadFontStep(1)" title="放大四象限字体">A+</span></span>
                 </span>
@@ -6177,6 +6222,7 @@
                 titleEl.innerHTML = `
                 <span class="title-text" style="display:flex;align-items:center;gap:6px;justify-content:center;width:100%;">
                     <span>${label} <span style="font-weight:400;font-size:12px;opacity:0.8;">${filterLabel} · ${cnt}</span></span>
+                    ${archBackHTML()}
                     <span class="filter-toggle" onclick="toggleFilter()">周期 <span class="arrow ${filter!=='all'?'open':''}">▾</span></span>
                 </span>
                 ${dropdown}`;
@@ -6184,6 +6230,14 @@
         } else {
             titleEl.innerHTML = `<span class="title-text">${PGT[page] || '清单'}</span>`;
         }
+    }
+
+    /* v52：归档口径的显式出口 —— 以前要出去只能靠「周期」下拉选「全部」，
+       或者先点侧栏「清单列表」再点「四象限」，没有任何一眼可见的返回。 */
+    function archBackHTML() {
+        return filter === 'archived'
+            ? '<span class="arch-back" onclick="event.stopPropagation();filter=\'all\';closeFilter();render()">\u2190 \u8fd4\u56de</span>'
+            : '';
     }
 
     /* 按页面设置右上角图标与行为 */
@@ -19461,7 +19515,14 @@
     /* 把一条背景记录（图片 dataURL 或 预设 css）铺到目标元素上 */
     function applyRecToEl(el, rec) {
         if (!el) return;
+    /* v52：幂等化 —— applyBg() 在每一次 render()（切页、切标签、勾任务…）里都会重跑，
+       而这些写入即使值没变也会把元素 style 置脏，连带让整屏底图产生绘制失效。
+       这是「加了背景图之后切页发涩」最直接的一笔。
+       做法：把本次要写的值拼成签名缓存在元素上，签名没变就整段跳过。
+       注意 k 里含 clientWidth —— 窗口尺寸变化时签名会跟着变，所以 resize 重铺仍然有效。 */
         if (!rec || (!rec.d && !rec.css)) {
+            if (el.__bgSig === 'v52e') return;
+            el.__bgSig = 'v52e';
             el.style.backgroundImage = '';
             el.style.backgroundColor = '';
             el.style.backgroundSize = '';
@@ -19469,6 +19530,13 @@
             el.style.backgroundRepeat = '';
             return;
         }
+        /* v42：x/y 按「设置时舞台宽度 rec.bw」记录，元素宽度变了要等比缩放偏移量。
+           v52：提前算出 k 并纳入签名（bw 为 0 的旧记录不读 clientWidth，不产生强制同步布局）。 */
+        const bw = +rec.bw || 0;
+        const k = (bw > 0 && el.clientWidth > 0) ? Math.min(3, Math.max(0.25, el.clientWidth / bw)) : 1;
+        const _sig = [rec.d || '', rec.css || '', rec.crop ? 1 : 0, +rec.x || 0, +rec.y || 0, bw, k].join('\u0001');
+        if (el.__bgSig === _sig) return;
+        el.__bgSig = _sig;
         el.style.backgroundRepeat = 'no-repeat';
         el.style.backgroundSize = 'cover';
         if (rec.css) {
@@ -19485,9 +19553,8 @@
             el.style.backgroundImage = `url("${rec.d}")`;
             /* v42：背景图跟随网页尺寸自适应 —— x/y 是按「设置时舞台宽度 rec.bw」记录的，
                元素宽度变了就等比缩放偏移量，构图跟随窗口变化（cover 本身已随尺寸缩放）。
-               旧记录没有 bw，保持原样不动。 */
-            const bw = +rec.bw || 0;
-            const k = (bw > 0 && el.clientWidth > 0) ? Math.min(3, Math.max(0.25, el.clientWidth / bw)) : 1;
+               旧记录没有 bw，保持原样不动。
+               v52：bw / k 已提到函数开头（签名要用 k），这里不再重复声明。 */
             el.style.backgroundPosition = (-(rec.x || 0) * k) + 'px ' + (-(rec.y || 0) * k) + 'px';
         }
     }
@@ -19578,13 +19645,28 @@
         }
         if (pageRec && (pageRec.d || pageRec.css)) {
             applyRecToEl(appEl, pageRec);
-            appEl.classList.add('has-bg');
-            // 页面级底图可见度：遮罩越透，图片越明显
+            /* v52：classList.add 不是幂等的 —— DOM 规范里它无条件重跑 update steps，
+               token 已存在也照样把 class 属性重写一遍，于是每次 render 都产生一次
+               #app 的 class 变更。而 #app.has-bg 是约 28 条选择器的锚点。
+               实测（10× render）：这一笔从 10 次变更降到 0。 */
+            if (!appEl.classList.contains('has-bg')) appEl.classList.add('has-bg');
+            /* 页面级底图可见度：遮罩越透，图片越明显。
+               v52：加同值缓存。--pagemask 挂在 #app 上，而 Chrome 对自定义属性不做
+               同值去重（实测：同一个值写 10 次 = 10 次 style 属性变更），
+               于是每次 render 都白改一次根元素，并连带引用它的 #app.has-bg main 重算背景。
+               实测（10× render，photo 底图）：这一笔从 10 次变更降到 0。 */
             const pm = bgMaskFromAlpha(pageRec.alpha == null ? 55 : pageRec.alpha);
-            appEl.style.setProperty('--pagemask', String(pm.mask));
+            const pmv = String(pm.mask);
+            if (appEl.__pmv !== pmv) {
+                appEl.__pmv = pmv;
+                appEl.style.setProperty('--pagemask', pmv);
+            }
         } else {
             applyRecToEl(appEl, null);
-            appEl.classList.remove('has-bg');
+            if (appEl.classList.contains('has-bg')) appEl.classList.remove('has-bg');
+            /* 没底图了就把缓存清掉：否则「设过图 → 清图 → 再设同一张图」
+               会因为缓存还留着而写不进去，遮罩停在上一次的值。 */
+            appEl.__pmv = null;
         }
         // 四象限：四个格子各自独立，各自透明度
         document.querySelectorAll('.quad').forEach((el, i) => {
@@ -19629,17 +19711,30 @@
     function applyPageParts() {
         const b = document.body;
         if (!b) return;
-        b.classList.remove('zp-parts');
-        ['--zp-bar','--zp-card','--zp-text','--zp-foot','--zp-accent','--zp-fc','--zp-ring'].forEach(v => b.style.removeProperty(v));
+        /* v52：先算出「目标状态」，再和上次比 —— 原来不管有没有变化，都先 remove 再 add
+           body 的 zp-parts、再移除并重设 7 个 body 级 CSS 变量。这些变量被约 28 条规则引用，
+           等于每切一次页就把整棵树重算一遍样式，并把整屏底图连带标脏。
+           幂等化后同一状态只写一次。 */
+        const ZP_VARS = ['--zp-bar','--zp-card','--zp-text','--zp-foot','--zp-accent','--zp-fc','--zp-ring'];
+        const clearZP = function () {
+            b.classList.remove('zp-parts');
+            ZP_VARS.forEach(function (v) { b.style.removeProperty(v); });
+        };
         let scope = page, rec = BG.pages[scope];
         if (page === 'focus' && focusView === 'timer') { scope = 'focustimer'; rec = BG.pages.focustimer; }
         if (!rec || (!rec.d && !rec.css)) { scope = 'page'; rec = BG.page; }
-        if (!rec || (!rec.d && !rec.css)) return;
+        if (!rec || (!rec.d && !rec.css)) {
+            if (b.__zpSig === 'off') return;
+            b.__zpSig = 'off';
+            clearZP();
+            return;
+        }
         /* v26：覆盖层整体透明度（100 = 不干预）。
            cov < 100 时，所有盖在图上的部件都按「自身透明度 × cov」压透 ——
            用户没逐栏调过就取该角色的默认值，这样一根滑杆即可整体透出底图。 */
         const cov = bgCoverOf(rec) / 100;
-        let anyUser = cov < 0.995;
+        const anyUser = cov < 0.995;
+        const vals = {};
         bgPartsTpl(scope).forEach(p => {
             const v = rec.parts ? rec.parts[p.k] : null;
             /* v26：op 兼容两种形态 —— number（仅透明度）/ object（{op,img}，v25 栏目图）。
@@ -19647,8 +19742,14 @@
             const raw = (v == null) ? null : (typeof v === 'object' ? v.op : v);
             const base = (raw == null || isNaN(+raw)) ? bgPartBaseOp(p.role)
                 : Math.max(0, Math.min(100, +raw));
-            const cssVar = '--zp-' + (p.role || 'card');
-            try { b.style.setProperty(cssVar, (base * cov / 100).toFixed(3)); } catch (e) {}
+            vals['--zp-' + (p.role || 'card')] = (base * cov / 100).toFixed(3);
+        });
+        const sig = scope + '|' + (anyUser ? 1 : 0) + '|' + JSON.stringify(vals);
+        if (b.__zpSig === sig) return;
+        b.__zpSig = sig;
+        clearZP();
+        Object.keys(vals).forEach(function (k) {
+            try { b.style.setProperty(k, vals[k]); } catch (e) {}
         });
         if (anyUser) b.classList.add('zp-parts');
     }
@@ -20286,7 +20387,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918m</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918p</div>
 <!-- build-tag:end -->
 </body>
 </html>
