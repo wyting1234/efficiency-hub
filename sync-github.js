@@ -1902,12 +1902,32 @@
     const ids = moduleIds();
     if (!ids.length) return null;
     const hit = Object.create(null);
+    const miss = [];
     for (let i = 0; i < keys.length; i++) {
+      // ★ 导航页自己的状态键（AUTO_IGNORE_PREFIXES：hub_* / __hub_* / ehub_autosync）不属于任何工具页：
+      //   「本机这条写入不必触发同步」与「没有工具页需要为它重载」是同一个事实的两面。
+      //   若不跳过，它们会走 shardOfKey 的兜底 → 例如 hub_lastModule → 'hub' → 不是模块 id
+      //   → 整个函数退化成「全刷」。而 hub_lastModule **每次切换工具都会变**、
+      //   hub_versions_cache_v1 每次查版本都会变，两端又不一致 —— 也就是说
+      //   **几乎每一次同步都会带回一条 hub_* 的更新，于是每一次同步都退化成全刷**，
+      //   用户切到别的工具时会发现滚动位置/展开状态全被重置。
+      //   这条跳过其实比补 MODULES 名单更要紧，别删。
+      if (isAutoIgnoredKey(keys[i])) continue;
       const id = shardOfKey(keys[i]);
-      if (ids.indexOf(id) < 0) return null;       // 有一个键不属于任何模块 → 全刷
-      hit[id] = 1;
+      // 认不出来 → 保守退化成「全刷所有已加载工具页」。不会漏刷（因此不会丢数据），
+      // 但它同时是「登记表有缺口」的症状：动一个没登记的键就要把所有工具页刷一遍。
+      // 这里把缺口键名报出来，让问题自己暴露，不用等人去猜 —— 只 warn，不弹窗、不打扰。
+      // 补法：把键登记进 index.html 的 MODULES[].keys（登记 cpa_x 即可覆盖 cpa_x_*）。
+      if (ids.indexOf(id) < 0) { if (miss.indexOf(keys[i]) < 0) miss.push(keys[i]); }
+      else hit[id] = 1;
     }
-    return Object.keys(hit);
+    if (miss.length) {
+      try {
+        console.warn('[sync] 这些键没有登记到任何模块，本次同步退化为「刷新全部工具页」：' +
+          miss.join(', ') + '（请登记进 index.html 的 MODULES[].keys）');
+      } catch (e) {}
+    }
+    return miss.length ? null : Object.keys(hit);
   }
 
   // 侧栏那行「云端有新数据 · 立即刷新」提示。只在有待重载时出现，不进弹窗、不打断。
@@ -2305,6 +2325,34 @@
   // hub_*：导航页自己的界面状态（主题 / 侧栏折叠 / 拖拽排序 / 上次打开的工具…）。
   //        用户切个主题就触发一次同步毫无必要。
   const AUTO_IGNORE_PREFIXES = ['hub_', '__hub_', 'ehub_autosync'];
+  // ★ 2026-09-18 修正：上面那条 'hub_' 是按「导航页状态」设的。实测导航页 hub_ 前缀的键恰好 10 个，
+  //   全是界面状态，没问题；但 tools/cpa学习工具1.html 写的 hub_cpa_* 也被它一刀切吞掉了 ——
+  //   而 hub_cpa_* 是**考证工具的业务偏好**（编号模版 / 每级符号 / 列数 / 记录页签 / 展示方式 / 速记视角）。
+  //   用户改完模版却不触发同步 ⇒ 换台设备看不到。这与「切个主题不必同步」是两回事。
+  //   只对考证工具的偏好键开例外；导航页自己的 hub_* 仍然全部忽略。
+  const AUTO_IGNORE_EXCEPT = ['hub_cpa_'];
+  // 例外里再摘出去的一类：草稿。它是 setInterval(10s) 自动落盘的**本机临时态**
+  // （cur.html 里的 DRAFT_MS = 10000），不是「用户改了业务偏好」。
+  // 放它进来，用户在记录表单里打字就会每分钟排一次同步，纯属浪费；
+  // 而且跨设备传草稿本身也可疑 —— 草稿的含义是「我正在写的这一份」。
+  const AUTO_IGNORE_TRANSIENT = ['hub_cpa_draft_v1'];
+
+  // 这个键的写入该不该触发自动同步？true = 忽略（不触发）。
+  // 逻辑：先看命不命中忽略前缀；命中后再看是不是「例外中的例外（临时态）」——
+  //       是 → 照旧忽略；再看是不是业务偏好例外 —— 是 → 不忽略（触发同步）。
+  function isAutoIgnoredKey(k) {
+    for (let i = 0; i < AUTO_IGNORE_PREFIXES.length; i++) {
+      if (k.indexOf(AUTO_IGNORE_PREFIXES[i]) !== 0) continue;
+      for (let j = 0; j < AUTO_IGNORE_TRANSIENT.length; j++) {
+        if (k.indexOf(AUTO_IGNORE_TRANSIENT[j]) === 0) return true;
+      }
+      for (let m = 0; m < AUTO_IGNORE_EXCEPT.length; m++) {
+        if (k.indexOf(AUTO_IGNORE_EXCEPT[m]) === 0) return false;
+      }
+      return true;
+    }
+    return false;
+  }
 
   let autoCfg = { on: true, preset: 'normal', lastAt: 0, lastDesc: '', lastOk: true, failStreak: 0, log: [] };
   let autoTimer = null;        // debounce：本机数据变动后的「停顿计时」
@@ -2423,9 +2471,7 @@
     if (!autoCfg.on) return;
     if (!key) return;
     const k = String(key);
-    for (let i = 0; i < AUTO_IGNORE_PREFIXES.length; i++) {
-      if (k.indexOf(AUTO_IGNORE_PREFIXES[i]) === 0) return;
-    }
+    if (isAutoIgnoredKey(k)) return;
     let v = null;
     try { v = localStorage.getItem(k); } catch (e) {}
     if (isExcludedKey(k, v)) return;   // 背景大图 / 内部键 / 同步自身的技术键
@@ -2759,7 +2805,15 @@
       hookOk: () => autoHookOk,
       // 延迟重载的观测口子：自动化测试靠它确认「后台同步没刷当前工具」
       pendingReload: () => Object.keys(pendingReload),
-      flushReload: () => flushPendingReload()
+      flushReload: () => flushPendingReload(),
+      // 分片归属诊断口子（回归测试用）：shardOfKey 把某个键归到了哪个模块。
+      // 归不到任何模块 → modulesOfKeys 会让本次同步退化成「全刷」，见该函数注释。
+      shardOf: (k) => shardOfKey(k),
+      moduleIds: () => moduleIds(),
+      // 「变化键 → 该刷哪些模块」的直接口子。返回 null = 认不出来、退化成全刷。
+      modulesOf: (ks) => modulesOfKeys(ks),
+      // 该键的写入是否被忽略（不触发自动同步）
+      autoIgnored: (k) => isAutoIgnoredKey(String(k)),
     }
   };
 })();
