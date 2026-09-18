@@ -19390,7 +19390,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918z</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918aa</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -19584,7 +19584,8 @@ html.embedded #buildTag{display:none}
 
   function hexOK(c) { return /^#[0-9a-fA-F]{3,8}$/.test(String(c == null ? '' : c)); }
   function writeCustom(a) { try { localStorage.setItem(SW_KEY, JSON.stringify(a)); } catch (e) {} }
-  function setDefSwatch(c) { try { localStorage.setItem(SW_DEF_KEY, String(c)); } catch (e) {} }
+  /* 原始写盘口（只在保存那一刻用；不进草稿、不重画） */
+  function swWriteDef(c) { try { localStorage.setItem(SW_DEF_KEY, String(c)); } catch (e) {} }
   function defSwatch() { try { var d = localStorage.getItem(SW_DEF_KEY); return hexOK(d) ? d : ''; } catch (e) { return ''; } }
 
   /* 不足 5 位补白：色位是固定的，不能「少一个就少排一个」——那样浮条会一直抖 */
@@ -19677,7 +19678,7 @@ html.embedded #buildTag{display:none}
       try { localStorage.removeItem(SW_KEY); localStorage.removeItem(SW_DEF_KEY); } catch (e) {}
     } else {
       writeCustom(swDraft.sw.slice(0, SW_MAX));
-      setDefSwatch(swDraft.def || swDraft.sw[0] || SW_WHITE);
+      swWriteDef(swDraft.def || swDraft.sw[0] || SW_WHITE);
     }
     swDraft = null;
     renderSwatches();
@@ -19727,6 +19728,17 @@ html.embedded #buildTag{display:none}
       d.sw[at < 0 ? 0 : at] = nc;
     }
     d.def = nc;
+  }
+  /* ★ 2026-09-18（需求 M 收口）：**对外的** setDefaultSwatch 也必须走草稿。
+     原来这个函数是一句裸 localStorage.setItem —— 于是「浮条右键设默认」走草稿
+     （要按保存），而 HubSelBar.setDefaultSwatch 这个导出口却直接落盘并**绕过
+     草稿**：写了 key 但浮条当场不变（要刷新才看得见），也撤销不了。
+     现在三者（右键 / 设置页 / 这个 API）都归到 swSetDef 同一条不变量上。 */
+  function setDefSwatch(c) {
+    var d = swEdit();
+    d.touched = true;                 // 从这一刻起「有未保存的改动」
+    swSetDef(d, c);
+    renderSwatches();
   }
   /* 默认色永远显示在第一位 ——「默认颜色」这件事必须一眼可见，不能靠用户记 */
   function byDef(a, d) {
