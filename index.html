@@ -2052,6 +2052,13 @@
         } catch (e) {}
       }
     }
+    // ★ 绑定之前就已经存在的选区，不会再有第二次 selectionchange 来通知我们 ——
+    //   子页 iframe 一换 src 就是一个**全新的 document**（旧 document 上的绑定标记
+    //   不跟着过来），从 DOM 可解析（#editor 已存在）到 load 之间有一段实打实的窗口。
+    //   线上实测：打开日记后 676ms 就绪并可选中，但 1500ms 才 load 完成绑定 ——
+    //   中间这段选中动作落在「没有任何监听者」的空档里，浮层就永远不出现。
+    //   所以绑定完成时先看一眼有没有现成的选区，有就补一次扫描。
+    try { if (hasSel(doc, win)) schedule(); } catch (e) {}
   }
 
   var boundAll = false;
@@ -2076,6 +2083,7 @@
     }
   }
 
+  var watchT = null;
   function boot() {
     try { build(); } catch (e) {}
     var tries = 0;
@@ -2084,6 +2092,21 @@
       if (!boundAll && ++tries < 25) setTimeout(arm, 160);
     };
     arm();
+    // 再补一道很便宜的巡检。工具页 iframe 的 load 有可能在代理装好之前就结束、
+    // 或者被浏览器合并掉，光靠 load 代理 + 4s 的 boot 重试还是可能漏掉一个 document。
+    // 这里只做「还没绑过的 document 才绑」，有 __hubSelBar 标记挡着，重复调用是空转；
+    // 页面不可见时直接跳过，等于零成本。
+    if (!watchT) {
+      watchT = setInterval(function () {
+        if (document.hidden) return;
+        var box = $('toolContainer');
+        if (!box) return;
+        var fs = box.querySelectorAll('iframe'), i;
+        for (i = 0; i < fs.length; i++) {
+          try { bindDoc(fs[i].contentDocument, fs[i].contentWindow); } catch (e) {}
+        }
+      }, 1000);
+    }
     document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') hide(); });
   }
 
@@ -2248,7 +2271,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918r';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918s';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -3577,7 +3600,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918r';
+  var NAV_VER = 'V20260918s';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -3677,7 +3700,7 @@ document.addEventListener('pointerdown', e => {
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918r</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918s</div>
 </body>
 
 
