@@ -602,6 +602,29 @@
   }
 
 
+  /* ---------- ⚙️ 设置面板（全站外观 / 输入文本 / 标注） ---------- */
+  .side-btn-val{margin-left:auto;font-size:11.5px;color:#7b8ba6;flex:none}
+  .pf-sec{border-top:1px solid var(--border);padding:14px 0 2px}
+  .pf-sec:first-of-type{border-top:0;padding-top:0}
+  .pf-h{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--accent);margin-bottom:10px}
+  .pf-row{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px}
+  .pf-lab{flex:0 0 76px;font-size:13px;color:var(--muted);padding-top:6px}
+  .pf-ctl{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .pf-ctl label{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px}
+  .pf-seg{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+  .pf-seg button{border:0;background:var(--panel);color:var(--muted);font-size:12.5px;padding:7px 12px;cursor:pointer;transition:.15s;font-family:inherit}
+  .pf-seg button+button{border-left:1px solid var(--border)}
+  .pf-seg button:hover{color:var(--text)}
+  .pf-seg button.on{background:var(--accent);color:#fff}
+  .pf-seg button.on:hover{color:#fff}
+  .pf-sel{border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:9px;font-size:13px;padding:7px 9px;font-family:inherit;max-width:100%}
+  .pf-color{width:36px;height:29px;padding:0;border:1px solid var(--border);border-radius:7px;background:var(--panel);cursor:pointer}
+  .pf-mini{border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:12px;padding:5px 9px;border-radius:8px;cursor:pointer;font-family:inherit;line-height:1.5}
+  .pf-mini:hover{border-color:var(--accent);color:var(--accent)}
+  .pf-note{flex:1 0 100%;font-size:12px;color:var(--muted);line-height:1.65}
+  .pf-prev{flex:1 0 100%;background:var(--bg);border:1px dashed var(--border);border-radius:9px;padding:9px 11px;font-size:13.5px;line-height:1.75}
+  .pf-foot{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);padding-top:14px;margin-top:8px}
+  code.pf-k{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:12px}
 </style>
 
 
@@ -758,7 +781,7 @@
     <div class="side-foot">
 
 
-      <div class="side-btn" id="toggleTheme"><span id="themeIco">🌙</span><span id="themeTxt">夜间模式</span></div>
+      <div class="side-btn" id="openPref" title="外观与文字设置（全站通用）"><span>⚙️</span><span>设置</span><span class="side-btn-val" id="prefBtnVal">日间</span></div>
 
 
 
@@ -863,6 +886,134 @@
 
 <!-- Data Management Modal -->
 
+
+<!-- ⚙️ 全站设置（外观主题 / 输入文本 / 标注）—— 由 HubPrefs 驱动，配置写在 hub_text_v1 -->
+<div class="modal-mask" id="prefModal">
+  <div class="modal modal-wrap" style="width:600px">
+    <button class="modal-close" id="closePref">×</button>
+    <h2>⚙️ 设置</h2>
+    <p class="m-sub">这里配的是<b>全站通用</b>的外观与文字样式：导航页和每个子工具一起生效，<b>已打开的子页当场生效</b>、不用刷新。配置记在 <code class="pf-k">hub_text_v1</code>，属于工作台偏好 —— 清空数据时不会被删掉。</p>
+
+    <div class="pf-sec">
+      <div class="pf-h">外观主题</div>
+      <div class="pf-row">
+        <div class="pf-lab">显示模式</div>
+        <div class="pf-ctl">
+          <div class="pf-seg" id="pfTheme">
+            <button type="button" data-v="light">☀️ 日间</button>
+            <button type="button" data-v="dark">🌙 夜间</button>
+            <button type="button" data-v="auto">🖥️ 跟随系统</button>
+          </div>
+        </div>
+      </div>
+      <div class="pf-row">
+        <div class="pf-lab">子页深色</div>
+        <div class="pf-ctl">
+          <div class="pf-seg" id="pfScope">
+            <button type="button" data-v="auto">智能全覆盖</button>
+            <button type="button" data-v="base">只改基础色</button>
+          </div>
+          <div class="pf-note">夜间模式会同时注入到所有子工具。「智能全覆盖」会逐个元素把浅色底压暗、深色字提亮（保留色相）；个别工具局部偏色就切「只改基础色」，只翻底色与正文色。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pf-sec">
+      <div class="pf-h">输入文本</div>
+      <div class="pf-row">
+        <div class="pf-lab">生效范围</div>
+        <div class="pf-ctl">
+          <label><input type="checkbox" id="pfInput"> 输入框 / 文本域</label>
+          <label><input type="checkbox" id="pfEdit"> 富文本编辑器</label>
+          <label><input type="checkbox" id="pfBody"> 正文</label>
+          <div class="pf-note">「正文」作用于整页文字（会连带改各工具标题的观感，谨慎打开）。</div>
+        </div>
+      </div>
+      <div class="pf-row">
+        <div class="pf-lab">字体</div>
+        <div class="pf-ctl">
+          <select class="pf-sel" id="pfFont">
+            <option value="">跟随各工具</option>
+            <option value="-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,&quot;PingFang SC&quot;,&quot;Microsoft YaHei&quot;,sans-serif">系统默认</option>
+            <option value="&quot;Microsoft YaHei&quot;,微软雅黑,sans-serif">微软雅黑</option>
+            <option value="&quot;SimHei&quot;,黑体,&quot;Microsoft YaHei&quot;,sans-serif">黑体</option>
+            <option value="&quot;SimSun&quot;,宋体,serif">宋体</option>
+            <option value="&quot;KaiTi&quot;,&quot;STKaiti&quot;,楷体,serif">楷体</option>
+            <option value="&quot;FangSong&quot;,&quot;STFangsong&quot;,仿宋,serif">仿宋</option>
+            <option value="&quot;Consolas&quot;,&quot;Courier New&quot;,monospace">等宽</option>
+          </select>
+        </div>
+      </div>
+      <div class="pf-row">
+        <div class="pf-lab">字号 / 行高</div>
+        <div class="pf-ctl">
+          <select class="pf-sel" id="pfSize">
+            <option value="">字号跟随</option>
+            <option value="13px">13 px</option>
+            <option value="14px">14 px</option>
+            <option value="15px">15 px</option>
+            <option value="16px">16 px</option>
+            <option value="18px">18 px</option>
+            <option value="20px">20 px</option>
+          </select>
+          <select class="pf-sel" id="pfLh">
+            <option value="">行高跟随</option>
+            <option value="1.4">1.4</option>
+            <option value="1.6">1.6</option>
+            <option value="1.8">1.8</option>
+            <option value="2">2.0</option>
+          </select>
+        </div>
+      </div>
+      <div class="pf-row">
+        <div class="pf-lab">文字颜色</div>
+        <div class="pf-ctl">
+          <input type="color" class="pf-color" id="pfColor" value="#1e2533">
+          <button type="button" class="pf-mini" id="pfColorClear">跟随各工具</button>
+          <span class="pf-mini" id="pfColorVal" style="border-style:dashed;cursor:default">跟随</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pf-sec">
+      <div class="pf-h">标注</div>
+      <div class="pf-row">
+        <div class="pf-lab">标注样式</div>
+        <div class="pf-ctl">
+          <label><input type="checkbox" id="pfMkHl"> 高亮底</label>
+          <label><input type="checkbox" id="pfMkUl"> 下划线</label>
+          <label><input type="checkbox" id="pfMkBold"> 加粗</label>
+          <label><input type="checkbox" id="pfMkItalic"> 斜体</label>
+        </div>
+      </div>
+      <div class="pf-row">
+        <div class="pf-lab">标注配色</div>
+        <div class="pf-ctl">
+          <input type="color" class="pf-color" id="pfMkBg" value="#FFE9A8">
+          <input type="color" class="pf-color" id="pfMkFg" value="#8a5a00">
+          <button type="button" class="pf-mini" id="pfMkFgClear">字色跟随</button>
+        </div>
+      </div>
+      <div class="pf-row">
+        <div class="pf-lab">预览</div>
+        <div class="pf-ctl">
+          <div class="pf-prev" id="pfPrev">被标出来的文字长这样：<span class="hub-mark">这里是标注</span>，普通文字不受影响。</div>
+        </div>
+      </div>
+      <div class="pf-row">
+        <div class="pf-lab">怎么用</div>
+        <div class="pf-ctl">
+          <div class="pf-note">任何页面里把文字包进 <code class="pf-k">&lt;mark&gt;</code>、或加类名 <code class="pf-k">hub-mark</code>，就套用这套标注样式；日记工具「高亮」按钮用的也是这里的底色。同一套样式在子页里也生效（无需子页配合）。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pf-foot">
+      <button class="m-btn" id="pfReset">恢复默认</button>
+      <button class="m-btn primary" id="pfDone">完成</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-mask" id="dataModal">
 
@@ -1014,6 +1165,448 @@
 <div id="toast"></div>
 
 
+<script>
+/* ============================================================
+ *  HubPrefs —— 全站「设置」：外观主题 + 输入文本 + 标注
+ *  ------------------------------------------------------------
+ *  为什么单独一个脚本块、并且排在主脚本之前：
+ *    主脚本 init() 里要调用 HubPrefs.init()；这里只定义、不在定义期碰 DOM，
+ *    依赖（applyTheme / #prefModal / #toolContainer）由调用时机保证。
+ *
+ *  这个模块为什么存在（两块老问题）：
+ *    ① 主题原来只写在导航页自己的 <html data-theme> 上。子工具跑在 iframe 里，
+ *       各画各的 —— 导航页切了夜间，子页照样白，「日间/夜间」只对了半边。
+ *    ② 字体/颜色偏好各工具各存各的（比如日记的 diary_editor_font），互不相通，
+ *       换一个工具就得重设一遍。
+ *    现在收成一个键 hub_text_v1，由导航页在写入后**主动注入**每个子页
+ *    （同源 iframe → 直接改 contentDocument，不需要子页配合改造），并镜像旧的
+ *    hub_theme 兼容既有逻辑。所谓「全局通用」= 所有子页读同一份：在导航页改一次，
+ *    已经打开的子页当场生效，不用刷新。
+ *
+ *  子页深色分两档（用户可切）：
+ *    base —— 只把 html/body 底色、正文色、输入框底色翻深（纯 CSS，最保守、最稳）；
+ *    auto —— 再逐个元素读计算样式，把「浅色底」按色相压暗、「深色字」提亮。
+ *            实现上刻意拆成**先全读、再全写**两阶段：边读边写会让每次写入都让
+ *            样式表失效，next 次 getComputedStyle 又要重算 —— 上千个元素就是 O(n²)。
+ *            工具页是动态渲染的，所以挂 MutationObserver 在 DOM 变动后补一遍。
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  var PREF_KEY = 'hub_text_v1';
+  var THEME_KEY = 'hub_theme';
+  var STYLE_ID = 'hub-gs';
+  var DARK_ATTR = 'data-hub-dark';
+
+  /* 默认值刻意取「不改动」：字体/字号/行高/颜色留空 = 跟随各工具，
+     所以什么都没配的时候本模块注入的 CSS 几乎不产生视觉效果。
+     标注只对 mark / .hub-mark 生效，也不会误伤既有页面。 */
+  var DEFAULTS = {
+    theme: 'light', darkScope: 'auto',
+    scopeInput: true, scopeEdit: true, scopeBody: false,
+    font: '', size: '', lh: '', color: '',
+    mkHl: true, mkUl: false, mkBold: false, mkItalic: false,
+    mkBg: '#FFE9A8', mkFg: ''
+  };
+  var KEYS = (function () { var a = [], k; for (k in DEFAULTS) a.push(k); return a; })();
+
+  var prefs = null;
+
+  function clone(o) { var r = {}, k; for (k in o) r[k] = o[k]; return r; }
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------- 存取 ---------- */
+  function load() {
+    var got = null, next, i, k;
+    try { got = JSON.parse(localStorage.getItem(PREF_KEY) || 'null'); } catch (e) { got = null; }
+    if (!got || typeof got !== 'object') got = {};
+    next = clone(DEFAULTS);
+    for (i = 0; i < KEYS.length; i++) { k = KEYS[i]; if (got[k] !== undefined && got[k] !== null) next[k] = got[k]; }
+    // 老用户升级：hub_text_v1 里还没有主题时，沿用旧的 hub_theme，别把用户的夜间设置弄丢
+    if (got.theme === undefined) {
+      var t = null;
+      try { t = localStorage.getItem(THEME_KEY); } catch (e) {}
+      if (t === 'dark' || t === 'light') next.theme = t;
+    }
+    return next;
+  }
+
+  function save() {
+    try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) {}
+    try { if (prefs.theme !== 'auto') localStorage.setItem(THEME_KEY, prefs.theme); } catch (e) {}
+  }
+
+  // 主题「偏好」只有三个值，落到页面上只有两个 —— 解析只在这里做一次
+  function darkOn() {
+    if (prefs === null) return false;
+    if (prefs.theme === 'dark') return true;
+    if (prefs.theme === 'light') return false;
+    try { return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); } catch (e) { return false; }
+  }
+
+  /* ---------- 1) 生成注入用的 CSS ----------
+     只注入「用户真配了东西」的规则：font/size/lh/color 全空时连选择器都不产生，
+     这样默认状态下子页与本模块互不相干（出问题也容易二分定位）。 */
+  var SEL_INPUT = 'input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range])' +
+    ':not([type=file]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image]):not([type=hidden]),textarea,select';
+  var SEL_EDIT = '[contenteditable="true"],[contenteditable=""],.hub-text-edit';
+  var SEL_MARK = 'mark,.hub-mark,[data-hub-mark]';
+
+  function cssText(isFrame) {
+    var out = ['/* efficiency-hub 全站设置注入（键 ' + PREF_KEY + '）；要改请回导航页「⚙️ 设置」 */'];
+    var decl = '';
+    if (prefs.font) decl += 'font-family:' + prefs.font + ' !important;';
+    if (prefs.size) decl += 'font-size:' + prefs.size + ' !important;';
+    if (prefs.lh) decl += 'line-height:' + prefs.lh + ' !important;';
+    if (prefs.color) decl += 'color:' + prefs.color + ' !important;';
+    if (decl) {
+      var sel = [];
+      if (prefs.scopeInput) sel.push(SEL_INPUT);
+      if (prefs.scopeEdit) sel.push(SEL_EDIT);
+      if (sel.length) out.push(sel.join(',') + '{' + decl + '}');
+      if (prefs.scopeBody) {
+        // 正文刻意不加 !important：各工具的标题字号/层级是它自己的排版语言，
+        // 我们只改继承下来的字体族 / 颜色 / 行高，不越权去压它显式声明的字号。
+        var b = '';
+        if (prefs.font) b += 'font-family:' + prefs.font + ';';
+        if (prefs.color) b += 'color:' + prefs.color + ';';
+        if (prefs.lh) b += 'line-height:' + prefs.lh + ';';
+        if (b) out.push('body{' + b + '}');
+      }
+    }
+    if (prefs.mkHl || prefs.mkUl || prefs.mkBold || prefs.mkItalic) {
+      var m = 'background-color:' + (prefs.mkHl ? prefs.mkBg : 'transparent') + ' !important;';
+      if (prefs.mkFg) m += 'color:' + prefs.mkFg + ' !important;';
+      if (prefs.mkUl) m += 'text-decoration:underline !important;';
+      if (prefs.mkBold) m += 'font-weight:700 !important;';
+      if (prefs.mkItalic) m += 'font-style:italic !important;';
+      out.push(SEL_MARK + '{' + m + 'border-radius:3px;padding:0 2px}');
+    }
+    if (isFrame && darkOn()) {
+      // 子页深色的保底层：即使 JS 换算没跑（或没有可换算的元素），
+      // 至少底色/正文色/输入框是深色的，不会出现「深底里嵌一块白」。
+      out.push('html[' + DARK_ATTR + ']{color-scheme:dark}');
+      out.push('html[' + DARK_ATTR + '],html[' + DARK_ATTR + '] body{background-color:#161A20 !important;color:#E7EAF0 !important}');
+      out.push('html[' + DARK_ATTR + '] input,html[' + DARK_ATTR + '] textarea,html[' + DARK_ATTR + '] select' +
+        '{background-color:#1E232B !important;color:#E7EAF0 !important;border-color:#39404B !important}');
+      out.push('html[' + DARK_ATTR + '] ::placeholder{color:#8A93A3 !important}');
+      out.push('html[' + DARK_ATTR + '] table,html[' + DARK_ATTR + '] th,html[' + DARK_ATTR + '] td{border-color:#39404B !important}');
+    }
+    return out.join('\n');
+  }
+
+  /* ---------- 2) 颜色换算（纯函数，方便单测） ---------- */
+  function parseColor(s) {
+    if (!s) return null;
+    var m = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s\/]+([\d.]+))?\s*\)/.exec(s);
+    if (!m) return null;
+    var a = m[4] === undefined ? 1 : parseFloat(m[4]);
+    if (!(a > 0.03)) return null;                 // 近乎全透明 → 不参与换算
+    return { r: +m[1], g: +m[2], b: +m[3], a: a };
+  }
+  function lumOf(c) { return (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) / 255; }
+  function toHsl(c) {
+    var r = c.r / 255, g = c.g / 255, b = c.b / 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), h = 0, s = 0, l = (mx + mn) / 2, d = mx - mn;
+    if (d > 0) {
+      s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if (mx === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+    }
+    return { h: h, s: s, l: l };
+  }
+  function hsl2(h, s, l) {
+    s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
+    return 'hsl(' + Math.round(h) + ',' + Math.round(s * 100) + '%,' + Math.round(l * 100) + '%)';
+  }
+  // 浅色底 → 深色底：保留色相、压低饱和，亮度落进 [6.5%, 30%]（白 → 7.5%）
+  function darkBg(c) {
+    var x = toHsl(c), nl = 0.075 + (1 - x.l) * 0.135;
+    return hsl2(x.h, Math.min(x.s, 0.34), Math.max(0.065, Math.min(0.30, nl)));
+  }
+  // 深色字 → 浅色字：保留色相，亮度落进 [72%, 90%]
+  function darkFg(c) {
+    var x = toHsl(c), nl = 0.90 - x.l * 0.18;
+    return hsl2(x.h, Math.min(x.s, 0.42), Math.max(0.72, Math.min(0.90, nl)));
+  }
+  function darkLine(c) { var x = toHsl(c); return hsl2(x.h, Math.min(x.s, 0.30), 0.24); }
+
+  /* ---------- 3) 智能深色 ---------- */
+  var SKIP = { IMG: 1, VIDEO: 1, CANVAS: 1, SVG: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, PICTURE: 1, MAP: 1, STYLE: 1, SCRIPT: 1, LINK: 1, META: 1, TITLE: 1, BR: 1 };
+  var BUDGET = 9000;   // 单次遍历的元素上限：超过就只处理前 BUDGET 个（避免超大页面卡死）
+
+  function dstate(doc) {
+    if (!doc.__hubDark) doc.__hubDark = { recs: [], mo: null, timer: 0, writing: false };
+    return doc.__hubDark;
+  }
+  // el.__hubRec 记住「被我们改之前的行内值」：回退时原样写回去，
+  // 不改动任何我们没碰过的属性（所以关掉深色 = 页面回到原状，不是「另一套样式」）。
+  function paint(doc, list, from) {
+    var S = dstate(doc), end = Math.min(list.length, from + 900), i, it, el, r;
+    S.writing = true;
+    for (i = from; i < end; i++) {
+      it = list[i]; el = it.el;
+      if (!el.__hubRec) { r = { el: el, bg: el.style.backgroundColor, fg: el.style.color, bc: el.style.borderColor }; el.__hubRec = r; S.recs.push(r); }
+      try {
+        if (it.bg) el.style.backgroundColor = it.bg;
+        if (it.fg) el.style.color = it.fg;
+        if (it.bc) el.style.borderColor = it.bc;
+      } catch (e) {}
+    }
+    S.writing = false;
+    if (end < list.length) setTimeout(function () { paint(doc, list, end); }, 16);
+  }
+
+  function autoDark(doc, on) {
+    var S = dstate(doc), win = doc.defaultView || window, i, r;
+    if (!on) {
+      for (i = 0; i < S.recs.length; i++) {
+        r = S.recs[i];
+        try { r.el.style.backgroundColor = r.bg; r.el.style.color = r.fg; r.el.style.borderColor = r.bc; } catch (e) {}
+        try { r.el.__hubRec = null; } catch (e) {}
+      }
+      S.recs = [];
+      if (S.mo) { try { S.mo.disconnect(); } catch (e) {} S.mo = null; }
+      return;
+    }
+    var root = doc.body || doc.documentElement;
+    if (!root) return;
+    var nodes;
+    try { nodes = root.querySelectorAll('*'); } catch (e) { return; }
+    // 阶段一：只读 —— 一次性取完计算样式，中间不写任何东西（写会让后面每次读都重算）
+    var list = [], n = Math.min(nodes.length, BUDGET), el, cs, item, b, f, d;
+    for (i = 0; i < n; i++) {
+      el = nodes[i];
+      if (SKIP[el.tagName] === 1) continue;
+      try { cs = win.getComputedStyle(el); } catch (e) { continue; }
+      if (!cs) continue;
+      item = null;
+      b = parseColor(cs.backgroundColor);
+      if (b && lumOf(b) > 0.42) { item = { el: el, bg: darkBg(b), fg: '', bc: '' }; }
+      f = parseColor(cs.color);
+      if (f && lumOf(f) < 0.62) { if (!item) item = { el: el, bg: '', fg: '', bc: '' }; item.fg = darkFg(f); }
+      try {
+        if (parseFloat(cs.borderTopWidth) > 0) { d = parseColor(cs.borderTopColor); if (d && lumOf(d) > 0.62) { if (!item) item = { el: el, bg: '', fg: '', bc: '' }; item.bc = darkLine(d); } }
+      } catch (e) {}
+      if (item) list.push(item);
+    }
+    // 阶段二：只写 —— 分片写，每片之间让出主线程
+    paint(doc, list, 0);
+    // 动态渲染的工具：DOM 一变就补一遍（防抖 400ms）。
+    // 只观察 childList —— 我们自己写的是 style 属性，不会触回来，不存在自激。
+    if (!S.mo && win.MutationObserver) {
+      try {
+        S.mo = new win.MutationObserver(function () {
+          if (S.writing) return;
+          clearTimeout(S.timer);
+          S.timer = setTimeout(function () {
+            if (prefs && darkOn() && prefs.darkScope === 'auto') autoDark(doc, true);
+          }, 400);
+        });
+        S.mo.observe(root, { childList: true, subtree: true });
+      } catch (e) {}
+    }
+  }
+
+  /* ---------- 4) 注入 ---------- */
+  function applyToDoc(doc, isFrame) {
+    if (!doc || !doc.documentElement) return false;
+    try {
+      var head = doc.head || doc.documentElement;
+      var st = doc.getElementById ? doc.getElementById(STYLE_ID) : null;
+      if (!st) { st = doc.createElement('style'); st.id = STYLE_ID; head.appendChild(st); }
+      st.textContent = cssText(!!isFrame);
+    } catch (e) { return false; }
+    if (isFrame) {
+      var dark = darkOn();
+      try { if (dark) doc.documentElement.setAttribute(DARK_ATTR, '1'); else doc.documentElement.removeAttribute(DARK_ATTR); } catch (e) {}
+      autoDark(doc, !!(dark && prefs.darkScope === 'auto'));
+    }
+    return true;
+  }
+
+  function eachFrame(fn) {
+    var box = $('toolContainer');
+    if (!box) return;
+    var fs = box.querySelectorAll('iframe'), i, d;
+    for (i = 0; i < fs.length; i++) {
+      d = null;
+      try { d = fs[i].contentDocument; } catch (e) { d = null; }   // 跨域模块读不到 → 跳过，不影响别的
+      if (d) fn(d, fs[i]);
+    }
+  }
+
+  function applyAll() {
+    if (prefs === null) prefs = load();
+    try {
+      var de = document.documentElement;
+      de.setAttribute('data-theme', darkOn() ? 'dark' : 'light');
+      de.setAttribute('data-theme-pref', prefs.theme);
+      var st = document.getElementById(STYLE_ID);
+      if (!st) { st = document.createElement('style'); st.id = STYLE_ID; (document.head || de).appendChild(st); }
+      // 导航页自己不做智能深色：它本来就自带一套正经的深色主题变量，
+      // 在上面再叠一层逐元素换算只会把侧栏也一起搅浑。
+      st.textContent = cssText(false);
+    } catch (e) {}
+    eachFrame(function (doc) { applyToDoc(doc, true); });
+    var v = $('prefBtnVal');
+    if (v) v.textContent = prefs.theme === 'auto' ? '跟随系统' : (darkOn() ? '夜间' : '日间');
+  }
+
+  function setPref(k, v) {
+    if (prefs === null) prefs = load();
+    if (!(k in DEFAULTS)) return;
+    prefs[k] = v;
+    save();
+    applyAll();
+    syncUI();
+  }
+  function setTheme(t) {
+    if (t !== 'light' && t !== 'dark' && t !== 'auto') return;
+    setPref('theme', t);
+  }
+  function reset() {
+    prefs = clone(DEFAULTS);
+    save();
+    applyAll();
+    syncUI();
+  }
+
+  /* ---------- 5) 面板 ---------- */
+  function segInit(el, key) {
+    if (!el) return;
+    var bs = el.querySelectorAll('button');
+    for (var i = 0; i < bs.length; i++) {
+      (function (b) {
+        b.addEventListener('click', function () { setPref(key, b.getAttribute('data-v')); });
+      })(bs[i]);
+    }
+  }
+
+  function syncUI() {
+    if (prefs === null) return;
+    var i, j, e, bs;
+    var seg = { pfTheme: 'theme', pfScope: 'darkScope' };
+    for (var sid in seg) {
+      e = $(sid);
+      if (!e) continue;
+      bs = e.querySelectorAll('button');
+      for (j = 0; j < bs.length; j++) bs[j].className = (bs[j].getAttribute('data-v') === prefs[seg[sid]] ? 'on' : '');
+    }
+    var cb = { pfInput: 'scopeInput', pfEdit: 'scopeEdit', pfBody: 'scopeBody', pfMkHl: 'mkHl', pfMkUl: 'mkUl', pfMkBold: 'mkBold', pfMkItalic: 'mkItalic' };
+    for (var cid in cb) { e = $(cid); if (e) e.checked = !!prefs[cb[cid]]; }
+    var sl = { pfFont: 'font', pfSize: 'size', pfLh: 'lh' };
+    for (var sid2 in sl) { e = $(sid2); if (e) e.value = prefs[sl[sid2]] || ''; }
+    e = $('pfColor'); if (e) e.value = prefs.color || '#1e2533';
+    e = $('pfColorVal'); if (e) e.textContent = prefs.color || '跟随';
+    e = $('pfColorClear'); if (e) e.textContent = prefs.color ? '取消颜色' : '跟随各工具';
+    e = $('pfMkBg'); if (e) e.value = prefs.mkBg || '#FFE9A8';
+    e = $('pfMkFg'); if (e) e.value = prefs.mkFg || '#8a5a00';
+    e = $('pfMkFgClear'); if (e) e.textContent = prefs.mkFg ? '取消字色' : '字色跟随';
+  }
+
+  function openPanel() { var pm = $('prefModal'); if (!pm) return; syncUI(); pm.classList.add('show'); }
+  function closePanel() { var pm = $('prefModal'); if (pm) pm.classList.remove('show'); }
+
+  var wired = false;
+  function wire() {
+    if (wired) return;
+    var pm = $('prefModal');
+    if (!pm) return;                       // 面板 DOM 不在（例如被裁掉的精简版）→ 静默跳过
+    wired = true;
+    var e;
+    e = $('openPref'); if (e) e.addEventListener('click', openPanel);
+    e = $('closePref'); if (e) e.addEventListener('click', closePanel);
+    e = $('pfDone'); if (e) e.addEventListener('click', closePanel);
+    e = $('pfReset'); if (e) e.addEventListener('click', function () {
+      reset();
+      try { toast('已恢复默认外观与文字设置'); } catch (err) {}
+    });
+    pm.addEventListener('click', function (ev) { if (ev.target === pm) closePanel(); });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && pm.classList.contains('show')) closePanel();
+    });
+
+    segInit($('pfTheme'), 'theme');
+    segInit($('pfScope'), 'darkScope');
+
+    var cb = { pfInput: 'scopeInput', pfEdit: 'scopeEdit', pfBody: 'scopeBody', pfMkHl: 'mkHl', pfMkUl: 'mkUl', pfMkBold: 'mkBold', pfMkItalic: 'mkItalic' };
+    for (var cid in cb) {
+      (function (id, k) {
+        var el = $(id);
+        if (el) el.addEventListener('change', function () { setPref(k, !!el.checked); });
+      })(cid, cb[cid]);
+    }
+    var sl = { pfFont: 'font', pfSize: 'size', pfLh: 'lh' };
+    for (var sid in sl) {
+      (function (id, k) {
+        var el = $(id);
+        if (el) el.addEventListener('change', function () { setPref(k, el.value); });
+      })(sid, sl[sid]);
+    }
+    var pairs = [['pfColor', 'color', 'input'], ['pfMkBg', 'mkBg', 'input'], ['pfMkFg', 'mkFg', 'input']];
+    for (var i = 0; i < pairs.length; i++) {
+      (function (id, k) {
+        var el = $(id);
+        if (el) el.addEventListener('input', function () { setPref(k, el.value); });
+      })(pairs[i][0], pairs[i][1]);
+    }
+    e = $('pfColorClear'); if (e) e.addEventListener('click', function () { setPref('color', ''); });
+    e = $('pfMkFgClear'); if (e) e.addEventListener('click', function () { setPref('mkFg', ''); });
+  }
+
+  /* ---------- 6) 子页 ---------- */
+  function hookFrames() {
+    var box = $('toolContainer');
+    if (!box) return;
+    box.addEventListener('load', function (ev) {
+      var f = ev.target;
+      if (!f || f.tagName !== 'IFRAME') return;
+      var kick = function () {
+        var d = null;
+        try { d = f.contentDocument; } catch (e) { d = null; }
+        if (d) applyToDoc(d, true);
+      };
+      // 工具页 load 之后通常还会自己渲染一两轮（先骨架后真内容），
+      // 只注入一次的话，很多工具会把我们刚算完的深色连节点一起换掉。
+      setTimeout(kick, 0); setTimeout(kick, 300); setTimeout(kick, 1200);
+    }, true);
+  }
+
+  function init() {
+    prefs = load();
+    wire();
+    applyAll();
+    syncUI();
+    hookFrames();
+    // 「跟随系统」要跟着系统变
+    try {
+      var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+      if (mq) {
+        var on = function () { if (prefs && prefs.theme === 'auto') applyAll(); };
+        if (mq.addEventListener) mq.addEventListener('change', on);
+        else if (mq.addListener) mq.addListener(on);
+      }
+    } catch (e) {}
+    return prefs;
+  }
+
+  window.HubPrefs = {
+    init: init, open: openPanel, close: closePanel,
+    get: function () { return clone(prefs || DEFAULTS); },
+    set: setPref, setTheme: setTheme, reset: reset,
+    applyAll: applyAll, applyToDoc: applyToDoc,
+    applyToFrame: function (f) { try { return applyToDoc(f.contentDocument, true); } catch (e) { return false; } },
+    darkOn: darkOn, cssText: cssText, prefKey: PREF_KEY, styleId: STYLE_ID, darkAttr: DARK_ATTR,
+    markSelector: SEL_MARK,
+    parseColor: parseColor, lumOf: lumOf, toHsl: toHsl, darkBg: darkBg, darkFg: darkFg
+  };
+})();
+</script>
+
+
 
 
 
@@ -1031,28 +1624,33 @@ const MODULES = [
 // ⚠️ 所以**每个工具新写一个 localStorage 键，都要来这儿登记**（可用前缀：登记了 cpa_x，
 //    cpa_x_yyy 也算 cpa）。漏登记的后果不是丢数据，而是「后台同步无谓刷新所有工具」——
 //    会打断用户正在填的表单。tools/cpa学习工具1.html 的 hub_cpa_* 就踩过这个坑（2026-09-18）。
+//
+// ★ 2026-09-18（W15）一次性补齐 18 个漏登记的键，并把这个表与 tools/backup-hub.js 的 MANIFEST
+//   对齐：两者是「同一个事实的两份抄写」（前者管同步分片、后者管备份分组），抄漏了就会出现
+//   「备份按 A 分组、同步按 B 重载」。backup-hub.js 现在会在导航页里**并集**本表（MODULES 在场时以它为准），
+//   审计脚本 audit_keys.py 也会把两份清单的差异直接打出来。改这里时顺手看一眼 backup-hub.js。
 
 
 
-  {id:'cpa',   name:'考证学习进度', file:'tools/cpa学习工具1.html',  icon:'📚', desc:'多考试项目备考：CPA / 法考等进度、章节与目标导入', keys:['cpa_learning_data_v3','cpa_learning_data_v3_cpa','cpa_study_projects_v1','cpa_study_current_project_v1','cpa_sidebar_folded_v1','cpa_appearance_v1','hub_cpa']},
+  {id:'cpa',   name:'考证学习进度', file:'tools/cpa学习工具1.html',  icon:'📚', desc:'多考试项目备考：CPA / 法考等进度、章节与目标导入', keys:['cpa_learning_data_v3','cpa_learning_data_v3_cpa','cpa_study_projects_v1','cpa_study_current_project_v1','cpa_sidebar_folded_v1','cpa_appearance_v1','hub_cpa','accCheck_v3_migrated']},
 
 
-  {id:'work',  name:'工作管理系统', file:'tools/工作管理系统.html',  icon:'🗂️', desc:'工作日志、待办、周报与人员管理', keys:['workLogs','workTodos','workWeekly','workStaff']},
+  {id:'work',  name:'工作管理系统', file:'tools/工作管理系统.html',  icon:'🗂️', desc:'工作日志、待办、周报与人员管理', keys:['workLogs','workTodos','workWeekly','workStaff','workCategories']},
 
 
-  {id:'diary', name:'日记',         file:'tools/日记.html',          icon:'📝', desc:'每日随笔、心情与照片记录',     keys:['diary_app_data']},
+  {id:'diary', name:'日记',         file:'tools/日记.html',          icon:'📝', desc:'每日随笔、心情与照片记录',     keys:['diary_app_data','diary_app_draft','diary_editor_font']},
 
 
-  {id:'time',  name:'时间统计',     file:'tools/时间统计.html',      icon:'⏱️', desc:'柳比歇夫法时间开销记录与分析', keys:['timeRecords','timeTodos']},
+  {id:'time',  name:'时间统计',     file:'tools/时间统计.html',      icon:'⏱️', desc:'柳比歇夫法时间开销记录与分析', keys:['timeRecords','timeTodos','timeCategoriesV2','timeTimerState','timeTimerHistory','timeDoneFolded']},
 
 
   {id:'dream', name:'梦想成真',     file:'tools/梦想成真.html',      icon:'🌟', desc:'目标拆解、习惯打卡与愿景板',   keys:['dreamGoals','dreamDiaries','dreamHabits','dreamHabitRecords']},
 
 
-  {id:'info',  name:'信息研判',     file:'tools/消息获取.html',      icon:'📡', desc:'多维信息收集与研判',           keys:['multi_info_records']},
+  {id:'info',  name:'信息研判',     file:'tools/消息获取.html',      icon:'📡', desc:'多维信息收集与研判',           keys:['multi_info_records','info_categories']},
 
 
-  {id:'box',   name:'收纳盒',       file:'tools/王鑫迪的收纳盒.html', icon:'🧺', desc:'物品 / 资料收纳与检索',         keys:['organizer_items_v2','organizer_theme']},
+  {id:'box',   name:'收纳盒',       file:'tools/王鑫迪的收纳盒.html', icon:'🧺', desc:'物品 / 资料收纳与检索',         keys:['organizer_items_v2','organizer_theme','storage_categories']},
 
 
   {id:'reading', name:'阅读·思享',   file:'tools/阅读 (2).html',        icon:'📖', desc:'读书笔记、书单与阅读记录',     keys:['reading_think_system_v1']},
@@ -1080,12 +1678,12 @@ const MODULES = [
 
 
   {id:'social',     name:'人际交往与沟通',   file:'tools/人积极交往.html',      icon:'🤝', desc:'人际沟通管理 · 日/周/月复盘与统计', keys:['comm_daily','comm_week','comm_month','tool_dialog','tool_relation','tool_script','action_plan_data','action_categories','wisdom_data','if_then_plans','if_then_categories']},
-  {id:'learning',   name:'学习目标管理',   file:'tools/学习目标管理台.html',  icon:'🎯', desc:'WorkBuddy 学习目标管理台', keys:[]},
-  {id:'previewer',  name:'代码预览器',     file:'tools/code-previewer.html',  icon:'💻', desc:'在线编辑 HTML/CSS/JS 并实时预览', keys:[]},
-  {id:'travel',     name:'旅行助手',       file:'tools/旅行助手.html',        icon:'🧭', desc:'旅游规划：城市·天气·衣/食/住/行/玩·预算·日记', keys:['roam_assistant_trips','roam_assistant_active_trip']},
-  {id:'chaomu', name:'朝暮计', file:'tools/朝暮计.html', icon:'🌅', desc:'习惯打卡 · 任务清单 · 视图 · 专注计时', keys:['chaomuji_web_v27','chaomuji_web_v27_bg']},
+  {id:'learning',   name:'学习目标管理',   file:'tools/学习目标管理台.html',  icon:'🎯', desc:'WorkBuddy 学习目标管理台', keys:['wb_goal','wb_goal_seeded','wb_goal_draft','wb_ex','wb_ex_seeded']},
+  {id:'previewer',  name:'代码预览器',     file:'tools/code-previewer.html',  icon:'💻', desc:'在线编辑 HTML/CSS/JS 并实时预览', keys:['previewer_html','previewer_css','previewer_js']},
+  {id:'travel',     name:'旅行助手',       file:'tools/旅行助手.html',        icon:'🧭', desc:'旅游规划：城市·天气·衣/食/住/行/玩·预算·日记', keys:['roam_assistant','roam_assistant_trips','roam_assistant_active_trip','roam_last_tab']},
+  {id:'chaomu', name:'朝暮计', file:'tools/朝暮计.html', icon:'🌅', desc:'习惯打卡 · 任务清单 · 视图 · 专注计时', keys:['chaomuji_web_v27','chaomuji_web_v27_bg','chaomuji_diary_v1','zmv_view_mode','__zmq']},
 
-  {id:'studybk', name:'备考学习工作台', file:'tools/备考学习工作台.html', icon:'📐', desc:'科目/章节/知识点掌握热力图 · 记忆曲线复习 · 考点与感悟', keys:['wb_bk_profile','wb_bk_subjects','wb_bk_todos','wb_bk_time','wb_bk_checks','wb_bk_reviews','wb_bk_issues','wb_bk_gains','wb_bk_kps','wb_bk_kpch','wb_bk_heat','wb_bk_stg']},
+  {id:'studybk', name:'备考学习工作台', file:'tools/备考学习工作台.html', icon:'📐', desc:'科目/章节/知识点掌握热力图 · 记忆曲线复习 · 考点与感悟', keys:['wb_bk_profile','wb_bk_subjects','wb_bk_todos','wb_bk_time','wb_bk_checks','wb_bk_reviews','wb_bk_issues','wb_bk_gains','wb_bk_kps','wb_bk_kpch','wb_bk_heat','wb_bk_stg','cpaMasteryTree_v1','cpaMasteryScore_v1','cpaMasterySub_v1','cpaTreeEditMode_v1','cpaTreeLv_v1','cpaScoreCols_v1']},
 
 
 
@@ -1096,7 +1694,9 @@ const MODULES = [
 
 
 
-const HUB_KEYS = ['hub_lastModule','hub_theme'];
+// 清空数据 / 覆盖导入时要保留的「工作台自身偏好」：它们是设置，不是业务数据。
+// hub_text_v1 = ⚙️ 设置面板（主题 + 输入文本 + 标注）的全部内容；hub_site_name = 站点名。
+const HUB_KEYS = ['hub_lastModule','hub_theme','hub_text_v1','hub_site_name'];
 
 
 const HUB_CUSTOM_KEY = 'hub_custom_modules';   // 自定义模块
@@ -1156,7 +1756,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918m';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918n';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -1868,15 +2468,12 @@ function clearData(){
 
 function applyTheme(t){
 
-
-  document.documentElement.setAttribute('data-theme',t);
-
-
-  $('#themeIco').textContent = t==='dark'?'☀️':'🌙';
-
-
-  $('#themeTxt').textContent = t==='dark'?'日间模式':'夜间模式';
-
+  /* 主题的唯一出口交给 HubPrefs：它负责解析「跟随系统」，并把结果同时注入导航页
+     和所有子页 iframe。HubPrefs 不在时（极简裁剪版）退回原来的单页行为。 */
+  if(window.HubPrefs){ try{ HubPrefs.setTheme(t); return; }catch(e){} }
+  document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light');
+  var v=document.getElementById('prefBtnVal');
+  if(v) v.textContent = t==='dark'?'夜间':'日间';
 
 }
 
@@ -2259,10 +2856,14 @@ try{
   // 主题
 
 
-  const savedTheme=localStorage.getItem('hub_theme')||'light';
-
-
-  applyTheme(savedTheme);
+  // 主题 + 全站外观/文字设置：HubPrefs 负责解析主题、注入子页、挂「⚙️ 设置」面板。
+  // 必须排在上面的 buildIframes() 之后 —— 它要往已经建好的 iframe 里注入。
+  if(window.HubPrefs){
+    try{ HubPrefs.init(); }catch(e){ console.warn('[设置] HubPrefs 初始化失败：',e); }
+  }else{
+    const savedTheme=localStorage.getItem('hub_theme')||'light';
+    applyTheme(savedTheme);
+  }
 
 
   // 站点名称持久化
@@ -2289,7 +2890,8 @@ try{
   siteNameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); siteNameEl.blur(); } });
 
 
-  $('#toggleTheme').addEventListener('click',toggleTheme);
+  // 「⚙️ 设置」的开关、面板内所有控件、以及子页注入，都由 HubPrefs 自己挂
+// （面板 DOM 与逻辑同源，省得两边各挂一半、改一处忘一处）。
 
 
 
@@ -2474,7 +3076,7 @@ document.addEventListener('pointerdown', e => {
 
 
 <!-- 统一数据备份中心：入口已合并到侧边栏「云端同步」，提供全站备份/恢复/快照/体检 -->
-<script src="tools/backup-hub.js?v=54"></script>
+<script src="tools/backup-hub.js?v=55"></script>
 
 
 <script>
@@ -2483,7 +3085,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918m';
+  var NAV_VER = 'V20260918n';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -2583,7 +3185,7 @@ document.addEventListener('pointerdown', e => {
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918m</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918n</div>
 </body>
 
 
