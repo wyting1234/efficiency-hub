@@ -252,6 +252,48 @@
         }
         .proj-dialog .pd-btn.primary { background: var(--primary, #8A7358); color: #fff; border-color: var(--primary, #8A7358); }
         .proj-dialog .pd-btn.danger { color: #A32D2D; border-color: rgba(199, 62, 58, 0.4); margin-right: auto; }
+        /* ★ 需求1（2026-09-18）：编辑项目配置里多了「内容模块」（章 / 节 重难疑点预配置），
+           每行是「章名 + 三个 chip」，520px 会把章名挤成省略号 —— 单独加宽到 680px，
+           其余三个用 .proj-dialog 的弹窗（层级名称 / 科目 / 新增层级）不受影响。 */
+        .proj-dialog.pd-wide { max-width: 680px; }
+        @media (max-width: 720px) { .proj-dialog.pd-wide { max-width: 100%; } }
+        /* ---- 内容模块：章 / 节 重难疑点预配置 ---- */
+        .pm-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; }
+        .pm-legend { display: inline-flex; align-items: center; font-size: 11px; color: #8A7358; }
+        .pm-dot { font-style: normal; font-weight: 700; border-radius: 4px; padding: 0 3px; margin-left: 7px; }
+        .pm-legend .pm-dot:first-child { margin-left: 0; }
+        .pm-d-key { color: #B23A28; background: #FBEAE7; }
+        .pm-d-hard { color: #A96C0B; background: #FCF2E0; }
+        .pm-d-doubt { color: #2E6DA4; background: #E9F1F9; }
+        .pm-sp { flex: 1 1 auto; }
+        .pm-mini { border: 1px solid #D9CDB8; background: #FBF7EF; color: #6F5C45; border-radius: 7px;
+                   padding: 3px 9px; font-size: 11.5px; font-family: inherit; cursor: pointer; transition: .15s; }
+        .pm-mini:hover { background: #F1E9DA; border-color: #C7B79C; }
+        /* 列表要能滚：会计 30 章 × 每章若干节，全摊开是一两百行 —— 不给上限会把弹窗撑得比屏幕还高 */
+        .pm-list { max-height: 300px; overflow: auto; border: 1px solid #E7DFD0; border-radius: 9px;
+                   background: #FDFBF7; padding: 6px 8px; }
+        .pm-course { font-size: 11px; font-weight: 700; color: #8A7358; letter-spacing: .3px;
+                     margin: 5px 0 3px; padding-bottom: 2px; border-bottom: 1px dashed #E7DFD0; }
+        .pm-course:first-child { margin-top: 0; }
+        .pm-row { display: flex; align-items: center; gap: 6px; padding: 1px 2px; border-radius: 6px; }
+        .pm-row:hover { background: #F4EEE3; }
+        .pm-row.pm-sec { padding-left: 20px; }
+        .pm-fold { border: 0; background: transparent; color: #A99A83; font-size: 11px; width: 14px;
+                   padding: 0; cursor: pointer; font-family: inherit; flex: 0 0 auto; }
+        .pm-name { font-size: 12px; color: #5B4E3D; flex: 1 1 auto; min-width: 0;
+                   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pm-row.pm-ch .pm-name { font-weight: 600; }
+        .pm-row.pm-sec .pm-name { color: #7A6A56; }
+        .pm-chips { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+        .pm-chip { border: 1px solid #E2D8C6; background: #FFFDF8; color: #BFB4A2; border-radius: 6px;
+                   width: 25px; height: 22px; line-height: 1; font-size: 12px; font-weight: 700;
+                   padding: 0; cursor: pointer; font-family: inherit; transition: .12s; }
+        .pm-chip:hover { border-color: #C7B79C; color: #8A7358; }
+        .pm-chip.on { color: #FAF7F1; border-color: transparent; }
+        .pm-chip.pm-c-key.on { background: #B23A28; }
+        .pm-chip.pm-c-hard.on { background: #A96C0B; }
+        .pm-chip.pm-c-doubt.on { background: #2E6DA4; }
+        .pm-empty { font-size: 11.5px; color: #A99A83; padding: 7px 2px; line-height: 1.7; }
 
         .course-list-title {
             font-size: 12px;
@@ -2898,9 +2940,29 @@
         .heat-sum { display: flex; gap: 20px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-secondary); margin: 4px 0 14px; }
         .heat-sum b { color: var(--primary-dark); font-size: 16px; margin-right: 3px; font-weight: 700; }
         .heat-scroll { overflow-x: auto; padding-bottom: 4px; }
-        table.heat-tbl { border-collapse: separate; border-spacing: 5px; }
+        /* ★ 需求 G-2（2026-09-18）：界面宽度自适应。
+           原来每格写死 58px：会计 30 章 = 30×(58+5)+行首 ≈ 2000px，横向滚动条必然出现。
+           现在 table-layout:fixed + 表格铺满容器 → 列宽由容器平分，格数越多每格越窄；
+           上下限交给外层 .heat-fit 的 max-width / min-width 卡住（数值在 heatMatrixHTML
+           里按章数算出来，不是拍脑袋的常量）：
+             · 章少 → 表格最宽只到「每格 58px」，不会把 4 格撑成 4 个大方块；
+             · 章极多 → 表格最窄保底「每格 18px」（11px 字号下 2–3 个字符的底线），
+              低于这个数数字就糊了，此时才允许滚动。
+              ⚠️ 原写 26px —— 那是「格子看着舒服」的宽度，不是可读下限；拿它当下限，
+              30 章的表格在 1440 宽的桌面（内容区 931px）都放不下，反而逼出横向滚动。
+           行首列必须在 .heat-corner 上写死宽度：fixed 布局下图省宽度只认第一行，
+           「科目 ＼ 章」和纵轴节名共用同一列，不写死就会被平分掉一大半。 */
+        /* ★ 需求 G-2 修（2026-09-18 v2）：上限用 CSS 变量喂进来，**不要**再用
+           inline style="max-width:…px" —— inline max-width 会盖掉这条 100% 上限，
+           于是 30 章那份 2027px 的预算把宽屏下的表格撑到 1067px（容器只有 931px），
+           「宽度自适应」等于没做。改成 min(--fitmax, 100%)：
+             · 章少（fitmax < 容器）→ 表格只到 fitmax，不会把 4 格撑成 4 个大方块；
+             · 章多（fitmax > 容器）→ 100% 生效，铺满容器、不再溢出。 */
+        .heat-fit { max-width: min(var(--fitmax, 100%), 100%); }
+        table.heat-tbl { border-collapse: separate; border-spacing: 5px; table-layout: fixed; width: 100%; }
         .heat-tbl th { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); padding: 0 2px 4px; text-align: center; white-space: nowrap; }
-        .heat-tbl th.heat-corner { text-align: right; padding-right: 10px; font-size: 11px; color: #A99A83; }
+        .heat-tbl th.heat-corner { width: 132px; text-align: right; padding-right: 10px; font-size: 11px; color: #A99A83; }
+        .heat-tbl.heat-full th.heat-corner { width: 158px; }
         .heat-tbl th.heat-rowhead { text-align: right; padding-right: 10px; color: #7A6A56; white-space: nowrap; }
         /* ===== ★ 2026-09-18（需求 F-2）：标题详略 =====
            简略（默认）＝ 现状：横轴只写章号，完整名称留在悬停提示里。
@@ -2908,7 +2970,11 @@
            横轴标题动辄 8–12 个字，横排会把每列撑到 100px+ 并逼出横向滚动条，
            所以详细模式下横轴**竖排** —— 中文天然能直书，列宽回到 ~20px，
            高度按标题长度自然增长。纵轴在左侧，保持横排但允许换行。 */
-        .heat-tbl.heat-full th.heat-colhead {
+        /* ★ 需求 G-1（2026-09-18）：横轴表头**两种模式都竖排**。
+           为什么简略也竖：横排的「第1章」是 3 个字宽（≈36px），会计 30 章就是 1100px，
+           刚把横向滚动条请回来 —— 竖排后每列只要约 14px，30 章正好落在视口里。
+           （旧版简略模式只印「1」「2」这种光秃秃的章号，用户反馈看不懂。） */
+        .heat-tbl th.heat-colhead {
             writing-mode: vertical-rl; text-orientation: upright;
             letter-spacing: 0; line-height: 1.05; padding: 2px 0 5px;
             font-size: 11px; white-space: nowrap; vertical-align: bottom;
@@ -2916,20 +2982,34 @@
         /* 章号与章名拆成两段：章号小一号、浅一档，不再和章名抢视觉重心。
            关键是两者**之间不留空格** —— 竖排里一个空格就是实打实的一格高度，
            「第 1 章 C++语言入门」曾因此被撑到 12 格（去掉空格后是 10 格）。 */
+        /* 简略模式下 .hc-num 就是全部内容（「第1章」），不能像详细那样压到 9.5px */
+        .heat-tbl th.heat-colhead .hc-num { font-size: 10.5px; color: #7A6A56; }
         .heat-tbl.heat-full th.heat-colhead .hc-num { font-size: 9.5px; color: #A99A83; }
         .heat-tbl.heat-full th.heat-colhead .hc-nm { font-size: 11px; }
         .heat-tbl.heat-full th.heat-rowhead {
-            white-space: normal; max-width: 158px; line-height: 1.35; font-size: 11px;
+            white-space: normal; line-height: 1.35; font-size: 11px;
         }
         /* 「全部科目」模式下每个科目一张图：用小标题把它和上一张隔开 */
         .heat-sub { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 20px 0 6px; }
         .heat-sub:first-child { margin-top: 2px; }
         .heat-sub > b { font-size: 13.5px; color: var(--primary-dark); }
         .heat-sub > span { font-size: 11.5px; color: var(--text-secondary); }
+        /* ★ 需求 G-2：宽度不再写死 —— 列宽由 .heat-fit 的 max/min 与容器共同决定。
+           只留高度（高度不会因为列变窄而挤）与「章特别多时降一档字号」的兜底。 */
         .heat-tbl td.heat-cell {
-            width: 58px; height: 42px; border-radius: 8px; text-align: center; vertical-align: middle;
+            height: 42px; border-radius: 8px; text-align: center; vertical-align: middle;
             font-size: 12.5px; font-weight: 700; border: 1px solid transparent; cursor: default;
+            overflow: hidden;
         }
+        .heat-tbl.heat-dense td.heat-cell { font-size: 11px; }
+        /* ★ 需求 G-3（2026-09-18）：表尾「均值」行 —— 每章一格的横向汇总。
+           放最下面一行而不是最右边一列：这页的读法就是「自上而下看一列」，
+           行尾多一列会被误读成「这一节的一部分」。色系沿用同一套档位（便于横向比），
+           只加一条上边框把它和数据行分开。 */
+        .heat-tbl tr.heat-avgrow > th.heat-rowhead { color: #7A6A56; font-weight: 700; }
+        .heat-tbl tr.heat-avgrow > th,
+        .heat-tbl tr.heat-avgrow > td { box-shadow: inset 0 2px 0 -1px #D9CDB8; }
+        .heat-tbl td.heat-avgcell { height: 34px; font-size: 12px; }
         .heat-cell.hc-off { background: #F6F2EA; color: #C6BCAA; border: 1px dashed #E7DFD0; font-weight: 400; }
         /* 掌握程度 5 档：由红（薄弱）到深绿（熟练）—— 与工作台里「了解/熟悉/掌握/通过」同一语义方向 */
         .hc-m1 { background: #C4705C; color: #FBF3EF; }
@@ -3046,6 +3126,13 @@
         .kt-mark-key   { color: #B23A28; background: #FBEAE7; font-weight: 700; }
         .kt-mark-hard  { color: #A96C0B; background: #FCF2E0; font-weight: 700; }
         .kt-mark-doubt { color: #2E6DA4; background: #E9F1F9; font-weight: 700; }
+        /* ★ 需求3：标记来源用边框区分 —— 预设（计划层，来自项目配置）＝虚线轮廓，
+           记录（执行层，来自学习记录）＝实底。两者都有时按记录走（实底）——
+           「确实标过」比「打算标」更强，没必要再叠一层视觉噪音。 */
+        .kt-mark.kt-src-preset { outline: 1px dashed currentColor; outline-offset: -1px; }
+        /* ★ 需求3：三个标记开关成一组。窄屏由 flex 整组换行，不把按钮压成两行。 */
+        .kt-mkctl { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+        .kt-mkctl .kt-mkb { padding: 3px 9px; font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
         /* 深色行（科目 / 章）上换个底，不然红底红字糊成一片 */
         .kt-lv1 > .kt-mark, .kt-lv2 > .kt-mark { background: rgba(255, 253, 248, .94); }
 
@@ -3656,10 +3743,19 @@
                     </span>
                     <!-- ★ 2026-09-18（需求 C）：把行尾的「层级名 / N 项」换成符号 -->
                     <button type="button" class="fc-btn" id="ktSymBtn" title="符号显示：把每行行尾的「层级名」（科目/章/节/知识点N级）与「N 项」换成符号。层级符号取自「模版设置 → 🔣 每级符号」，与编号体系的符号体同源">🔣 符号</button>
-                    <!-- ★ 2026-09-18（追加）：重点 / 难点 / 疑点 的显示开关 —— 独立于符号按钮。
-                         数据只来自 📝 学习记录编辑界面里勾的三个标记（record.marks），
-                         知识树这边只读、不回写。 -->
-                    <button type="button" class="fc-btn" id="ktMarkBtn" title="显示 📝 学习记录里标好的「重点 ★ / 难点 ▲ / 疑点 ？」。数据源就是学习记录的编辑界面（理解程度与学习状态自评中间那三个 chip）；科目 / 章 / 节逐级汇总，知识点行还要求名字出现在那条记录的速记文本里。本页只读，不回写">★ 标记</button>
+                    <!-- ★ 2026-09-18（追加，需求3）：重点 / 难点 / 疑点 的显示开关。
+                         三个符号**可以同时出**，各有一个开关、各自点亮，互相独立
+                         （也独立于左边的「🔣 符号」）。
+                         数据有两个来源，知识树取并集：
+                           ① 🎯 考试项目 → ✎ 编辑项目配置 →「内容模块」预先配好的章 / 节（计划层）；
+                           ② 📝 学习记录编辑界面勾的 record.marks（执行层）。
+                         预设＝虚线轮廓、记录＝实底，一眼分得清「计划中的」和「确实标过的」。
+                         本页只读，不回写任何一边。 -->
+                    <span class="kt-mkctl" id="ktMkCtl">
+                        <button type="button" class="fc-btn kt-mkb" id="ktMarkBtn_key" data-ktmark="key" title="重点 ★：显示 📝 学习记录里标的，以及「编辑项目配置 → 内容模块」里预设的「重点」。三个符号可以同时显示">★ 重点</button>
+                        <button type="button" class="fc-btn kt-mkb" id="ktMarkBtn_hard" data-ktmark="hard" title="难点 ▲：显示 📝 学习记录里标的，以及「编辑项目配置 → 内容模块」里预设的「难点」。三个符号可以同时显示">▲ 难点</button>
+                        <button type="button" class="fc-btn kt-mkb" id="ktMarkBtn_doubt" data-ktmark="doubt" title="疑点 ？：显示 📝 学习记录里标的，以及「编辑项目配置 → 内容模块」里预设的「疑点」。三个符号可以同时显示">？ 疑点</button>
+                    </span>
                     <span class="fc-spacer"></span>
                     <!-- 2026-09-17（按 Tom 红框所指删除）：去掉「显示 第」前缀标签 ——
                          两个下拉自带的「第X级 · 知识点Y级」已说明含义，前缀只是白占横向宽度。 -->
@@ -4467,7 +4563,11 @@
                         projectType: sp.projectType || (base ? base.projectType : 'exam'),
                         levelLabels: Object.assign({}, DEFAULT_LEVEL_LABELS, sp.levelLabels || (base ? base.levelLabels : {})),
                         examDate: sp.examDate || '',
-                        reviewIntervals: (Array.isArray(sp.reviewIntervals) && sp.reviewIntervals.length) ? sp.reviewIntervals.slice() : DEFAULT_REVIEW_INTERVALS.slice()
+                        reviewIntervals: (Array.isArray(sp.reviewIntervals) && sp.reviewIntervals.length) ? sp.reviewIntervals.slice() : DEFAULT_REVIEW_INTERVALS.slice(),
+                        /* ★ 需求1：内容模块预配置的章 / 节 重难疑点。
+                           { '科目': { '章|节': ['key','hard','doubt'] } }，节写 0 = 章级。
+                           ⚠️ loadProjects 是**逐字段重建**对象的，不在这里列出来就会丢。 */
+                        marks: (sp.marks && typeof sp.marks === 'object') ? sp.marks : null
                     };
                     if (p.builtin && !p.customStructure && base) {
                         // 内置结构来自代码常量，不占用 localStorage
@@ -4525,6 +4625,14 @@
                         examDate: p.examDate || '',
                         reviewIntervals: (Array.isArray(p.reviewIntervals) && p.reviewIntervals.length) ? p.reviewIntervals : DEFAULT_REVIEW_INTERVALS.slice()
                     };
+                    /* ★ 需求1：同样必须**显式登记**。slim 是「挑字段写」的白名单，
+                       漏掉的字段会被静默丢掉 —— 表现就是「弹窗里点了、保存了，
+                       树上一个符号都不出」，且没有任何报错。
+                       空对象直接不写（undefined 会被 JSON.stringify 丢掉），
+                       免得存档里堆一堆 {} 空壳。 */
+                    if (p.marks && typeof p.marks === 'object' && Object.keys(p.marks).length) {
+                        o.marks = p.marks;
+                    }
                     if (!p.builtin || p.customStructure) {
                         o.chapterNames = p.chapterNames;
                         o.sectionNames = p.sectionNames;
@@ -7891,6 +7999,133 @@
             return { courses: courses, chapterNames: chapterNames, sectionNames: sectionNames, kpTree: kpTree };
         }
 
+        // ---------- 「内容模块」章 / 节 重难疑点预配置（需求1，2026-09-18） ----------
+        /* 这个区解决的是一件具体的事：知识树上的 ★▲？ 原先只有「📝 学习记录里勾过」
+           一个来源，于是「我**打算**把第 3 章当重点」根本没有地方放 —— 要么等学完再补
+           （补的时候已经忘了当初为什么记号它），要么就干脆不标。两种做法都会让树上的
+           符号越来越乱，正是用户说的「混乱」。
+           现在拆成两层，各管各的：
+             · 计划层 = 这里配的：按 章 / 节 事先定下来，改它不碰学习记录；
+             · 执行层 = 📝 学习记录里勾的：学到哪标到哪。
+           知识树取**并集**展示，预设画虚线轮廓、记录画实底 —— 一眼分得清「计划中的」
+           和「确实标过的」。两层互不覆盖：删掉一边，另一边还在。
+           落盘口径：proj.marks = { '科目': { '章|节': ['key','hard','doubt'] } }，
+           节写 0 表示**章级**预设（'3|0' = 第 3 章整章）。按**编号**存而不是按名字存 ——
+           大纲里改名不动编号，预设就不会因为改名而丢。 */
+        function pdOutlineOf(proj, course) {
+            const out = [];
+            const cn = (proj && proj.chapterNames && proj.chapterNames[course]) || {};
+            const sn = (proj && proj.sectionNames && proj.sectionNames[course]) || {};
+            let maxCh = 0;
+            Object.keys(cn).forEach(function (k) {
+                const n = parseInt(k, 10);
+                if (!isNaN(n) && n > maxCh) maxCh = n;
+            });
+            for (let ch = 1; ch <= maxCh; ch++) {
+                const list = Array.isArray(sn[ch]) ? sn[ch] : [];
+                const secs = [];
+                for (let i = 0; i < list.length; i++) {
+                    secs.push({ sec: i + 1, name: String(list[i] == null ? '' : list[i]).trim() });
+                }
+                out.push({ ch: ch, name: String(cn[ch] == null ? '' : cn[ch]).trim(), secs: secs });
+            }
+            return out;
+        }
+        function pdMarkIds(draft, course, key) {
+            const g = draft && draft[course];
+            const a = g && g[key];
+            return Array.isArray(a) ? a : [];
+        }
+        function pdMarkChips(draft, course, key) {
+            const cur = pdMarkIds(draft, course, key);
+            return '<span class="pm-chips">' + KT_MARKS.map(function (mk) {
+                const on = cur.indexOf(mk.id) >= 0;
+                return '<button type="button" class="pm-chip pm-c-' + mk.id + (on ? ' on' : '') +
+                    '" data-pdc="' + kpEsc(course) + '" data-pdkey="' + kpEsc(key) +
+                    '" data-pdmark="' + mk.id + '" title="' + mk.name + '：点一下' +
+                    (on ? '取消' : '标上') + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+                    mk.ch + '</button>';
+            }).join('') + '</span>';
+        }
+        function pdMarkListHTML(proj, draft, fold) {
+            const cs = (proj && proj.courses) || [];
+            if (!cs.length) {
+                return '<div class="pm-empty">还没有' + kpEsc(L('course')) + ' —— 先在上面「' + kpEsc(L('course')) +
+                    '清单」或「大纲结构」里加一个，回到这里就能按章 / 节配重难疑点了。</div>';
+            }
+            return cs.map(function (course) {
+                const chs = pdOutlineOf(proj, course);
+                const head = '<div class="pm-course">' + kpEsc(course) + '</div>';
+                if (!chs.length) {
+                    return head + '<div class="pm-empty">这个' + kpEsc(L('course')) +
+                        '还没有章 / 节结构 —— 先填上面的「大纲结构」，保存后再回来配。</div>';
+                }
+                return head + chs.map(function (c) {
+                    const isFold = !!fold[c.ch];
+                    const cnm = c.name ? ' ' + kpEsc(c.name) : '';
+                    let r = '<div class="pm-row pm-ch">' +
+                        '<button type="button" class="pm-fold" data-pdfold="' + c.ch + '" title="' +
+                        (isFold ? '展开这一章的节' : '收起这一章的节') + '">' + (isFold ? '▸' : '▾') + '</button>' +
+                        '<span class="pm-name" title="' + kpEsc('第' + c.ch + L('chapter') + cnm) + '">' +
+                        '第' + c.ch + kpEsc(L('chapter')) + cnm + '</span>' +
+                        pdMarkChips(draft, course, c.ch + '|0') + '</div>';
+                    if (isFold) return r;
+                    if (!c.secs.length) {
+                        return r + '<div class="pm-row pm-sec"><span class="pm-fold"></span>' +
+                            '<span class="pm-name" style="color:#BFB4A2;">（本章还没有' + kpEsc(L('section')) + '）</span></div>';
+                    }
+                    return r + c.secs.map(function (s2) {
+                        const snm = s2.name ? ' ' + kpEsc(s2.name) : '';
+                        return '<div class="pm-row pm-sec"><span class="pm-fold"></span>' +
+                            '<span class="pm-name" title="' + kpEsc('第' + s2.sec + L('section') + snm) + '">' +
+                            '第' + s2.sec + kpEsc(L('section')) + snm + '</span>' +
+                            pdMarkChips(draft, course, c.ch + '|' + s2.sec) + '</div>';
+                    }).join('');
+                }).join('');
+            }).join('');
+        }
+        /* 预设的「指纹」：把 draft / proj.marks 规范化成可比较的字符串。
+           用途只有一个 —— 存盘时判断「用户到底改没改」，没改就不要再弹一句提示。 */
+        function pdMarkSig(marks) {
+            const o = {};
+            const m = (marks && typeof marks === 'object') ? marks : {};
+            Object.keys(m).sort().forEach(function (c) {
+                const g = (m[c] && typeof m[c] === 'object') ? m[c] : {};
+                Object.keys(g).sort().forEach(function (k) {
+                    const a = Array.isArray(g[k]) ? g[k].slice().sort() : [];
+                    if (a.length) (o[c] || (o[c] = {}))[k] = a;
+                });
+            });
+            return JSON.stringify(o);
+        }
+        function pdMarkCount(marks) {
+            let n = 0;
+            const m = (marks && typeof marks === 'object') ? marks : {};
+            Object.keys(m).forEach(function (c) {
+                const g = (m[c] && typeof m[c] === 'object') ? m[c] : {};
+                Object.keys(g).forEach(function (k) { if (Array.isArray(g[k]) && g[k].length) n++; });
+            });
+            return n;
+        }
+        function pdMarkSumText(proj, draft) {
+            const n = pdMarkCount(draft);
+            if (!n) return '还没有任何预设 —— 三个符号都空着时，知识树上只会显示「📝 学习记录里勾过的」。';
+            let nCh = 0, nSec = 0;
+            const by = { key: 0, hard: 0, doubt: 0 };
+            const m = draft || {};
+            Object.keys(m).forEach(function (c) {
+                Object.keys(m[c] || {}).forEach(function (k) {
+                    const a = m[c][k];
+                    if (!Array.isArray(a) || !a.length) return;
+                    if (String(k).split('|')[1] === '0') nCh++; else nSec++;
+                    a.forEach(function (id) { if (by[id] !== undefined) by[id]++; });
+                });
+            });
+            return '已预设 <b>' + n + '</b> 处（章 ' + nCh + ' · 节 ' + nSec + '）：★ 重点 ' + by.key +
+                ' · ▲ 难点 ' + by.hard + ' · ？ 疑点 ' + by.doubt +
+                '。保存后到「🌳 知识树」用 ★ ▲ ？ 三个开关查看。';
+        }
+
         // ---------- 项目配置弹窗（新增 / 编辑） ----------
         function openProjectDialog(mode) {
             const editing = (mode === 'edit') ? getCurrentProject() : null;
@@ -7909,7 +8144,7 @@
             }
             box.className = 'proj-mask';
             box.innerHTML =
-                '<div class="proj-dialog">' +
+                '<div class="proj-dialog pd-wide">' +
                 '<h3>' + (isEdit ? '编辑项目配置' : '新增学习项目') + '</h3>' +
                 '<div class="pf"><label>项目名称</label><input id="pdName" type="text" placeholder="如：GESP 四级 Python / 自学 Python"></div>' +
                 '<div class="pf"><label>类型</label><select id="pdType">' +
@@ -7926,6 +8161,22 @@
                 '<div class="pf"><label>大纲结构（只填 科目 / 章 / 节 三层）</label>' +
                 '<textarea id="pdOutline" rows="8" placeholder="财管&#10;  第一章 存货&#10;    第1节 存货的确认&#10;    第2节 存货的计量&#10;  第二章 固定资产&#10;    第1节 初始计量"></textarea>' +
                 '<div class="pf-hint">缩进表示层级：不缩进=科目，缩进1=章，缩进2=节。<b>再深的缩进会被忽略</b>（知识点不属于科目设计，请在「学习记录 → 知识点速记」里写，那里占第 4–7 级）。留空则保留现有结构。</div></div>' +
+                /* ★ 需求1（2026-09-18）：内容模块 —— 章 / 节 重难疑点的**提前配置**。
+                   放在「大纲结构」下面，因为它配的就是大纲里那两层。 */
+                '<div class="pf"><label>内容模块 · 章 / 节 重难疑点预配置</label>' +
+                '<div class="pf-hint" style="margin:0 0 7px;">' +
+                    '这是<b>计划层</b>：学之前就把「哪一章 / 哪一节是重点」定下来。' +
+                    '知识树上的 ★ ▲ ？ 会把这里配的与「📝 学习记录里勾的」<b>合并显示</b> —— ' +
+                    '预设＝虚线轮廓、记录＝实底，两层互不覆盖；哪天不想要了，删掉一边另一边还在。' +
+                    '按<b>章号 / 节号</b>存，大纲里改名不影响已配好的预设。</div>' +
+                '<div class="pm-tools">' +
+                    '<span class="pm-legend"><i class="pm-dot pm-d-key">★</i>重点<i class="pm-dot pm-d-hard">▲</i>难点<i class="pm-dot pm-d-doubt">？</i>疑点</span>' +
+                    '<span class="pm-sp"></span>' +
+                    '<button type="button" class="pm-mini" id="pdMarkFoldAll">全部收起</button>' +
+                    '<button type="button" class="pm-mini" id="pdMarkClear">清空全部</button>' +
+                '</div>' +
+                '<div class="pm-list" id="pdMarkList"></div>' +
+                '<div class="pf-hint" id="pdMarkSum" style="margin-top:5px;"></div></div>' +
                 '<div class="pf-actions">' +
                 (isEdit ? '<button id="pdDel" class="pd-btn danger">删除项目</button>' : '') +
                 '<button id="pdCancel" class="pd-btn">取消</button>' +
@@ -7937,6 +8188,94 @@
             box.querySelector('#pdPlan').value = (src.defaultPlanHours && src.defaultPlanHours > 0) ? src.defaultPlanHours : '';
             box.querySelector('#pdSubjects').value = (src.courses || []).join('\n');
             box.querySelector('#pdIv').value = (src.reviewIntervals && src.reviewIntervals.length) ? src.reviewIntervals.join(',') : DEFAULT_REVIEW_INTERVALS.join(',');
+
+            /* ★ 需求1：内容模块的草稿态。
+               为什么不直接读 DOM：三个符号 × 章 / 节是一两百个 chip，每次点击都去 DOM 里
+               反推「哪些开着」既慢、又和折叠状态纠缠不清。这里用一份纯数据的 draft，
+               DOM 只是它的投影 —— 点击改 draft 再重画，存盘直接 dump draft。 */
+            let pdMarkDraft = {};
+            (function () {
+                const pm = (src.marks && typeof src.marks === 'object') ? src.marks : {};
+                Object.keys(pm).forEach(function (c) {
+                    if (!pm[c] || typeof pm[c] !== 'object') return;
+                    Object.keys(pm[c]).forEach(function (k) {
+                        const a = pm[c][k];
+                        if (!Array.isArray(a) || !a.length) return;
+                        const keep = a.filter(function (id) {
+                            return KT_MARKS.some(function (m) { return m.id === id; });
+                        });
+                        if (keep.length) (pdMarkDraft[c] || (pdMarkDraft[c] = {}))[k] = keep;
+                    });
+                });
+            })();
+            const pdFold = {};   // { 章号: true } = 这一章的节收起来了（缺省 = 展开）
+            const pdChKeys = function () {
+                const out = [];
+                ((src && src.courses) || []).forEach(function (c) {
+                    pdOutlineOf(src, c).forEach(function (x) { out.push(x.ch); });
+                });
+                return out;
+            };
+            const pdPaintSum = function () {
+                const sum = box.querySelector('#pdMarkSum');
+                if (sum) sum.innerHTML = pdMarkSumText(src, pdMarkDraft);
+            };
+            const pdPaintMarks = function () {
+                const list = box.querySelector('#pdMarkList');
+                if (list) list.innerHTML = pdMarkListHTML(src, pdMarkDraft, pdFold);
+                const fa = box.querySelector('#pdMarkFoldAll');
+                if (fa) {
+                    const anyOpen = pdChKeys().some(function (ch) { return !pdFold[ch]; });
+                    fa.textContent = anyOpen ? '全部收起' : '全部展开';
+                }
+                pdPaintSum();
+            };
+            pdPaintMarks();
+            (function () {
+                const list = box.querySelector('#pdMarkList');
+                if (list) list.addEventListener('click', function (ev) {
+                    const t = ev.target;
+                    if (!t || !t.closest) return;
+                    const chip = t.closest('[data-pdmark]');
+                    if (chip) {
+                        const c = chip.getAttribute('data-pdc') || '';
+                        const key = chip.getAttribute('data-pdkey') || '';
+                        const id = chip.getAttribute('data-pdmark') || '';
+                        const cur = pdMarkIds(pdMarkDraft, c, key).slice();
+                        const at = cur.indexOf(id);
+                        if (at >= 0) cur.splice(at, 1); else cur.push(id);
+                        if (!pdMarkDraft[c]) pdMarkDraft[c] = {};
+                        if (cur.length) pdMarkDraft[c][key] = cur; else delete pdMarkDraft[c][key];
+                        chip.classList.toggle('on', at < 0);
+                        chip.setAttribute('aria-pressed', at < 0 ? 'true' : 'false');
+                        pdPaintSum();
+                        return;
+                    }
+                    const fd = t.closest('[data-pdfold]');
+                    if (fd) {
+                        const ch = parseInt(fd.getAttribute('data-pdfold'), 10) || 0;
+                        if (!ch) return;
+                        pdFold[ch] = !pdFold[ch];
+                        pdPaintMarks();
+                    }
+                });
+                const fa = box.querySelector('#pdMarkFoldAll');
+                if (fa) fa.onclick = function () {
+                    const keys = pdChKeys();
+                    const anyOpen = keys.some(function (ch) { return !pdFold[ch]; });
+                    if (anyOpen) keys.forEach(function (ch) { pdFold[ch] = true; });
+                    else Object.keys(pdFold).forEach(function (k) { delete pdFold[k]; });
+                    pdPaintMarks();
+                };
+                const cl = box.querySelector('#pdMarkClear');
+                if (cl) cl.onclick = function () {
+                    if (!pdMarkCount(pdMarkDraft)) { showToast('内容模块本来就是空的'); return; }
+                    if (!confirm('清空这个项目里所有「章 / 节 重难疑点」预设？\n\n' +
+                                 '只清这里的预设；📝 学习记录里勾好的标记不受影响。')) return;
+                    pdMarkDraft = {};
+                    pdPaintMarks();
+                };
+            })();
 
             const close = function () { if (box && box.parentNode) box.parentNode.removeChild(box); };
             box.querySelector('#pdCancel').onclick = close;
@@ -7998,6 +8337,26 @@
                 }
                 // 科目清单 = 权威列表：改名 → 删除 → 新增 → 保序（大纲里出现的科目强制保留）
                 const subjRes = applySubjectList(target, subjectEdits, (outline && outline.courses) ? outline.courses : []);
+                /* ★ 需求1：把「内容模块」的预配置写回项目。
+                   只留 target.courses 里还在的科目 —— 科目都删了，它的预设也该跟着走，
+                   否则下次再加一个同名科目会莫名其妙带着一堆旧预设回来。
+                   全空时把 marks 整个删掉，不留 {} 空壳（空壳落盘后看不出「配过没有」）。 */
+                const presetBefore = pdMarkSig(src.marks);
+                (function () {
+                    const clean = {};
+                    (target.courses || []).forEach(function (c) {
+                        const g = pdMarkDraft[c];
+                        if (!g) return;
+                        Object.keys(g).forEach(function (k) {
+                            const a = g[k];
+                            if (Array.isArray(a) && a.length) (clean[c] || (clean[c] = {}))[k] = a.slice();
+                        });
+                    });
+                    if (Object.keys(clean).length) target.marks = clean;
+                    else delete target.marks;
+                })();
+                const presetTip = (pdMarkSig(target.marks) === presetBefore)
+                    ? '' : ('内容模块 ' + pdMarkCount(target.marks) + ' 处预设');
                 // 被移除科目的学习记录不删（防误删），先把条数统计出来提示用户怎么找回
                 const orphanRecs = [];
                 if (subjRes.removed.length) {
@@ -8020,7 +8379,10 @@
                     let tip = '✅ ' + L('course') + '清单已保存：' + bits.join('，');
                     if (movedRecs) tip += '（已迁移 ' + movedRecs + ' 条学习记录）';
                     if (orphanRecs.length) tip += '；' + orphanRecs.join('、') + ' 的记录已保留，想跟随新名请写「旧名=>新名」';
+                    if (presetTip) tip += '；' + presetTip;
                     showToast(tip);
+                } else if (presetTip) {
+                    showToast('✅ ' + presetTip + ' 已保存，到「🌳 知识树」看 ★ ▲ ？');
                 }
                 // 新项目若还没有科目，直接引导新增，避免「建完项目却无法记录学习」
                 if (!(target.courses && target.courses.length)) {
@@ -9091,24 +9453,38 @@
             if (!d.maxCh || !d.maxSec) return { html: '', st: st };
             st.empty = false;
             const full = (heatLabel === 'full');
-            let h = '<table class="heat-tbl' + (full ? ' heat-full' : '') + '"><thead><tr>';
+            /* ★ 需求 G-2：本张图的宽度预算。三个常量都是「一格」的口径，
+               乘上章数得到整张表的上下限（见 CSS .heat-fit 注释）。
+               章多到连 18px 都放不下时再加 .heat-dense 降一档字号，尽量不出滚动条。 */
+            const W_ROW = full ? 158 : 132;     // 行首列：科目 ＼ 章 + 纵轴节名共用
+            const W_MAX = 58, W_GAP = 5;
+            /* ★ G-2 修：W_MIN 26 → 18。26px 是「格子看着舒服」的宽度，不是
+               「数字能不能看清」的下限 —— 拿它当 min-width，30 章的表格在 1440 宽的
+               桌面（内容区 931px）都放不下，用户还得横向滚，与「宽度自适应」相反。
+               18px 才是数字（11px 字号、2–3 字符）真正会糊的线，上面还有 .heat-dense
+               把字号降到 11px 兜底，所以 18px 一格是能看的。 */
+            const W_MIN = 18;
+            const fitMax = W_ROW + d.maxCh * (W_MAX + W_GAP) + W_GAP;
+            const fitMin = W_ROW + d.maxCh * (W_MIN + W_GAP) + W_GAP;
+            const dense = d.maxCh * (W_MAX + W_GAP) > 900;   // 一格挤不到 ~30px 就换小字号
+            // 上限走 CSS 变量（.heat-fit 用 min(var(--fitmax), 100%) 消费），不要再写
+            // inline max-width —— 那会把 CSS 的 100% 上限盖掉，宽屏下反而溢出。
+            let h = '<div class="heat-fit" style="--fitmax:' + fitMax + 'px; min-width:' + fitMin + 'px;">' +
+                '<table class="heat-tbl' + (full ? ' heat-full' : '') + (dense ? ' heat-dense' : '') +
+                '"><thead><tr>';
             h += '<th class="heat-corner">' + L('section') + ' ＼ ' + L('chapter') + '</th>';
             for (let ch = 1; ch <= d.maxCh; ch++) {
-                // 简略＝只写章号（完整名称留在 tooltip）；详细＝章号 + 章名（竖排，见 CSS）
-                const ctxt = full ? heatChapterTitle(course, ch) : heatChapterLabel(course, ch);
-                let cinner;
-                if (full) {
-                    // 章号与章名分成两段竖排文字，拼接处**不加空格**（见 CSS 注释）
-                    const pt = heatChapterParts(course, ch);
-                    cinner = '<span class="hc-num">' + heatEsc(pt.num) + '</span>' +
-                             (pt.name ? '<span class="hc-nm">' + heatEsc(pt.name) + '</span>' : '');
-                } else {
-                    cinner = String(ch);
-                }
-                h += '<th' + (full ? ' class="heat-colhead"' : '') + ' title="' + heatEsc(ctxt) + '">' +
+                /* 需求 G-1：简略模式写完整的「第N章」（原来只印一个光秃秃的章号，
+                   用户反馈看不懂）；章名只在详细模式往下接。两段之间**不加空格**——
+                   竖排里一个空格就是实打实的一格高度（见 CSS 注释）。 */
+                const pt = heatChapterParts(course, ch);
+                const cinner = '<span class="hc-num">' + heatEsc(pt.num) + '</span>' +
+                    (full && pt.name ? '<span class="hc-nm">' + heatEsc(pt.name) + '</span>' : '');
+                h += '<th class="heat-colhead" title="' + heatEsc(heatChapterTitle(course, ch)) + '">' +
                     cinner + '</th>';
             }
             h += '</tr></thead><tbody>';
+            const chAgg = {};      // ★ 需求 G-3：按章累计，给表尾「均值」行用
             for (let sec = 1; sec <= d.maxSec; sec++) {
                 const rtxt = full ? heatSectionTitle(course, sec, d.maxCh)
                                   : ('第 ' + sec + ' ' + L('section'));
@@ -9126,6 +9502,13 @@
                         st.learnedSec += exists ? 1 : 0;
                         st.sumH += c.h;
                         if (c.uAvg) { st.sumU += c.uAvg; st.nU++; }
+                        /* ★ 需求 G-3：给表尾均值行累计。掌握度用 uSum / uN ——
+                           这是**按记录加权**的口径（记录多的节权重自然大），
+                           比「把每格的两位小数再平均一次」更接近真实水平。 */
+                        const A = chAgg[ch] || (chAgg[ch] = { nSec: 0, uSum: 0, uN: 0, hSum: 0, hN: 0 });
+                        if (c.uN) { A.uSum += c.uSum; A.uN += c.uN; }
+                        if (c.h) { A.hSum += c.h; A.hN++; }
+                        A.nSec += 1;
                     }
                     if (!c && !exists) {
                         h += '<td class="heat-cell hc-off" title="' + heatEsc(where + '：结构里没有这一节') + '">·</td>';
@@ -9146,7 +9529,29 @@
                 }
                 h += '</tr>';
             }
-            h += '</tbody></table>';
+            /* ★ 需求 G-3（2026-09-18）：表尾「均值」行 —— 每章一格。
+               为什么放在最下面一行：用户的原话就是「缺失均值项，放在最下行」。
+               口径跟着当前指标走（🎯 掌握程度 / ⏱ 学习时长），没有记录的章画灰「—」。 */
+            h += '<tr class="heat-avgrow"><th class="heat-rowhead" title="' +
+                heatEsc('每一列的均值：把该' + L('chapter') + '下所有已学' + L('section') + '的数值汇总一次（' +
+                        (heatMetric === 'hours' ? '按节平均时长' : '按记录数加权')) + '">均值</th>';
+            for (let ch = 1; ch <= d.maxCh; ch++) {
+                const A = chAgg[ch] || {};
+                const chNm = heatChapterTitle(course, ch);
+                if (heatMetric === 'hours') {
+                    const v = A.hN ? Math.round((A.hSum / A.hN) * 10) / 10 : 0;
+                    h += '<td class="heat-cell heat-avgcell ' + heatHoursCls(v, d.maxHours) + '" title="' +
+                        heatEsc(chNm + '：' + (A.nSec || 0) + ' ' + L('section') + '有记录 · 平均 ' + v + ' h') + '">' +
+                        (v ? v : '—') + '</td>';
+                } else {
+                    const avg = A.uN ? Math.round((A.uSum / A.uN) * 10) / 10 : 0;
+                    h += '<td class="heat-cell heat-avgcell ' + heatMasteryCls(avg) + '" title="' +
+                        heatEsc(chNm + '：' + (A.nSec || 0) + ' ' + L('section') + '有记录 · 加权均值 ' +
+                                (avg ? avg.toFixed(1) + ' 星' : '未评')) + '">' +
+                        (avg ? avg.toFixed(1) : '—') + '</td>';
+                }
+            }
+            h += '</tr></tbody></table></div>';
             return { html: h, st: st };
         }
         // 一次性扫描：把「章数 / 节数上限 / 每格记录数与星级均值与时长」算出来
@@ -9230,8 +9635,14 @@
                        '横向拼成一张会把不同科目的「第 3 章」挤进同一列 —— 那不是一张能看的图，' +
                        '所以这里纵向排开、各图独立；上面的汇总条是全部科目合计。<br>')
                     : '') +
-                '· <b>标题 简略 / 详细</b>：简略只写章号（完整名称看悬停提示）；' +
-                '详细把「第 N 章 + 章名」竖排写进表头（章号小一号、浅一档）。<br>' +
+                '· <b>标题 简略 / 详细</b>：横轴表头都是<b>竖排</b>的。简略写「第N章」；' +
+                '详细再往下接章名（章号小一号、浅一档）。完整标题都能悬停看到。<br>' +
+                '· <b>宽度自适应</b>：表格铺满当前宽度（不会横向溢出），章多时每格自动变窄' +
+                '（保底 ~18px），章少时每格最宽也只到 58px —— 不会出现「4 章撑成 4 个大方块」。' +
+                '窄到 18px 还放不下（手机上 30 章这种）才会出现横向滚动条，滚动收在这一块内部。<br>' +
+                '· <b>最下面那一行「均值」</b>：每一列的横向汇总 —— ' +
+                '🎯 掌握程度按<b>记录数加权</b>（记录多的节权重更大），⏱ 学习时长取<b>该章已学节的平均时长</b>。' +
+                '一眼就能看出「哪一章整体最弱」，不必逐格去比。<br>' +
                 '· <b>纵轴节名的口径</b>：矩阵的行是<b>节序号</b>，而不同章的「第 N 节」' +
                 '本来就不是同一内容（节名是按章存的）。所以详细模式取该节号在各章里' +
                 '<b>出现最多的名字</b>；名字后面带浅色「⋯」表示<b>各章叫法不同</b>，' +
@@ -12568,13 +12979,26 @@
             }
             /* ★ 追加：重点 / 难点 / 疑点 的显示开关 —— 与符号开关**独立**。
                之前它搭在 sym 上（两者绑死）：想在树上看标记就必须连层级名也换成符号。
-               数据源仍是 📝 学习记录编辑界面勾的 record.marks，知识树只读。 */
-            if (!state.ktCfg.markV) {
-                state.ktCfg.markV = 1;
-                state.ktCfg.mark = true;
-            } else if (state.ktCfg.mark === undefined || state.ktCfg.mark === null) {
-                state.ktCfg.mark = true;
+               数据源：📝 学习记录编辑界面勾的 record.marks（执行层）
+                       + 🎯 编辑项目配置 →「内容模块」预配的章 / 节（计划层）。知识树只读。
+             ★ 需求3（2026-09-18）：由**一个**布尔拆成**三个**（key / hard / doubt）。
+               迁移用 markV2 做闸门，把老存档的 mark 展开成三份同值：
+                 mark === true  → 三个全开（保住老用户的现状）
+                 mark === false → 三个全关（用户主动关过，不能被「默认开」顶回来）
+                 mark 缺失      → 三个全开（默认就是需求描述的行为） */
+            if (!state.ktCfg.markV2) {
+                state.ktCfg.markV2 = 1;
+                var _mOld = state.ktCfg.mark;
+                var _mOn = (_mOld === undefined || _mOld === null) ? true : !!_mOld;
+                state.ktCfg.marks = { key: _mOn, hard: _mOn, doubt: _mOn };
+            } else if (!state.ktCfg.marks || typeof state.ktCfg.marks !== 'object') {
+                var _mOld2 = state.ktCfg.mark;
+                var _mOn2 = (_mOld2 === undefined || _mOld2 === null) ? true : !!_mOld2;
+                state.ktCfg.marks = { key: _mOn2, hard: _mOn2, doubt: _mOn2 };
             }
+            KT_MARKS.forEach(function (mk) {
+                if (typeof state.ktCfg.marks[mk.id] !== 'boolean') state.ktCfg.marks[mk.id] = true;
+            });
             return state.ktCfg;
         }
 
@@ -12696,6 +13120,37 @@
                             .sort(function (a, b) { return a - b; }).forEach(function (sec) { push(course, ch, sec); });
                     });
             });
+            /* ★ 2026-09-18（需求1，第 2 版）：把「内容模块里预设过重难疑点」的章 / 节
+               也拉进结构全集 —— ktSevenTree 只认这一份 combos，别的路都到不了树上。
+
+               ⚠️ 第一版这里补的是「大纲里的**全部**章 / 节」，方向对但铺得太大：
+                  CPA 一个项目 6 科目 × 30 章 ≈ 465 格，全铺出来知识树会多出 180 行
+                  从没学过的空章，统计条也从「科目 1 / 章 1」跳成「科目 6 / 章 180」
+                  —— 那不是「避免标志混乱」，是自己制造混乱。
+               所以只补**被预设过的那几章**，而且补**整章**（该章在 sectionNames 里的
+               全部节）：只补「第 2 节」会让这一章看着只有一节，比不显示更容易误读。
+               预设是计划层的东西，用户没预设过的大纲部分就不该挤进这棵树。 */
+            (function () {
+                const pm = (proj && proj.marks && typeof proj.marks === 'object') ? proj.marks : null;
+                if (!pm) return;
+                Object.keys(pm).forEach(function (course) {
+                    const g = pm[course];
+                    if (!g || typeof g !== 'object') return;
+                    if (courses.indexOf(course) < 0) courses.push(course);
+                    const sn = (proj && proj.sectionNames && proj.sectionNames[course]) || null;
+                    Object.keys(g).forEach(function (kk) {
+                        const ids = g[kk];
+                        if (!Array.isArray(ids) || !ids.length) return;
+                        const ch = parseInt(String(kk).split('|')[0], 10) || 0;
+                        if (!ch) return;
+                        // 大纲里查不到这一章（预设是旧的、大纲后来被改过）→ 不凭空造行：
+                        // 没有节名 / 节数，硬造出来的「第 1 节」是假信息。
+                        const list = (sn && Array.isArray(sn[ch])) ? sn[ch] : [];
+                        if (!list.length) return;
+                        for (let i = 0; i < list.length; i++) push(course, ch, i + 1);
+                    });
+                });
+            })();
             (state.records || []).forEach(function (r) {
                 if (!r || !r.course) return;
                 if (!fcRecOutline(r)) return;                 // 没写大纲的记录不占位
@@ -12724,6 +13179,7 @@
                 // 顶层（第 4 级）的 parent 指向「节」——但节由 ktSevenTree 单独渲染，
                 // 这里留空，ktSevenTree 会把它们挂到对应的节节点下。
                 const sigs = {};
+                let emitted = 0;   // 这一格真正产出了几个可渲染节点（0 = 只有大纲骨架）
                 list.forEach(function (n) { sigs[n.path.join(' > ')] = ktSig(c.course, c.chapter, c.section, [9000].concat(n.path)); });
                 list.forEach(function (n) {
                     // ★ 虚拟「节」节点不进树：它只是 fcWalkAll 用来把 1–3 级拼进祖先链的中间产物，
@@ -12733,6 +13189,7 @@
                     const self = n.path.join(' > ');
                     const parPath = n.path.slice(0, -1).join(' > ');
                     const isTop = n.path.length <= (fcAncestorPath({ course: c.course, chapter: c.chapter, section: c.section }).length + 1);
+                    emitted++;
                     out.push({
                         sig: sigs[self],
                         parent: (!isTop && sigs[parPath]) ? sigs[parPath] : '',
@@ -12743,6 +13200,18 @@
                         virtual: !!n.virtual
                     });
                 });
+                /* ★ 需求1：这一格（科目 / 章 / 节）一条学习记录都没有 —— 上面只产知识点节点，
+                   于是这一格在 ktSevenTree 眼里根本不存在（章 / 节行是从节点**反推**出来的），
+                   「内容模块」里预设的重难疑点就无处可挂。
+                   补一个**骨架占位节点**：只用来占住这一格，tier 取 3（= 节的链路层级），
+                   ktSevenTree 见到 skel 会跳过它、不放进 nest()，屏幕上不会多出任何一行。 */
+                if (!emitted) {
+                    out.push({
+                        sig: 'se|' + c.course + '|' + c.chapter + '|' + c.section, parent: '',
+                        course: c.course, chapter: c.chapter, section: c.section,
+                        tier: 3, order: 0, name: '', kidN: 0, crumb: '', skel: true
+                    });
+                }
             });
             return out;
         }
@@ -12888,7 +13357,9 @@
                 const c = bc[n.course];
                 if (!c[n.chapter]) c[n.chapter] = {};
                 if (!c[n.chapter][n.section]) c[n.chapter][n.section] = [];
-                c[n.chapter][n.section].push(n);
+                // ★ 需求1：骨架占位（大纲里预设过、但还没学过的章 / 节）只负责把这一格
+                //   建出来，不能进 nest() —— 否则节里会多出一行同名空节点。
+                if (!n.skel) c[n.chapter][n.section].push(n);
             });
 
             const mk = function (sig, lv, kind, name, children, raw) {
@@ -12984,8 +13455,15 @@
             { id: 'doubt', ch: '？', name: '疑点' }
         ];
         var ktSymOn = false;      // 层级名 / N 项 是否符号化（ktBranchHTML 读它，避免每行都去 ktState()）
-        var ktMarkOn = false;     // ★ 追加：重点 / 难点 / 疑点 是否显示（与上者独立）
-        var ktMarkIdx = {};       // 记录侧标记的索引，ktRender 每轮重建
+        /* ★ 需求3（2026-09-18）：重点 ★ / 难点 ▲ / 疑点 ？ 三个符号**各自**一个开关。
+           原先三者挤在一个布尔里（ktCfg.mark），只能「全出 / 全不出」；现在拆成对象：
+             ktMarkOn = { key:true, hard:true, doubt:true }
+           三个可以同时亮，也可以只留一两个。
+           ktMarkAny 是渲染热路径上的快判：三个都关时整棵树一行都不去查索引
+           （这页动辄上千行，一行一次函数调用是实打实的开销）。 */
+        var ktMarkOn = {};        // {key:bool, hard:bool, doubt:bool}
+        var ktMarkAny = false;    // 三者中至少一个开
+        var ktMarkIdx = {};       // 记录 + 预设两侧标记的索引，ktRender 每轮重建
         // 每级的符号与「编号体系 → 符号体」同源（hub_cpa_kp_sym_v1），
         // 不在这里写第二份默认表 —— 用户在别处改过每级符号，这里要跟着变。
         function ktSymCh(lv) {
@@ -12997,17 +13475,40 @@
             } catch (e) {}
             return ['●', '■', '◆', '▷', '✓', '✧', '∷'][Math.max(1, Math.min(7, lv)) - 1] || '';
         }
-        // 「科目|章|节」→ 该节下所有带标记的记录。只收 marks 非空的记录，
-        // 没有 marks 字段的老记录顺手跳过（不必先做数据迁移）。
+        /* 「科目|章|节」→ 该节下所有带标记的来源。两个来源，一个索引：
+             ① src:'preset' —— 🎯 编辑项目配置 →「内容模块」里**预先配好**的章 / 节（计划层，
+                proj.marks[科目]['章|节'] = ['key','hard','doubt'] 的子集，节写 0 = 章级）；
+             ② src:'rec'    —— 📝 学习记录编辑界面勾的 record.marks（执行层）。
+           为什么要分两层：原来只有「记录」一个来源，「我打算把第 3 章当重点」这件事无处安放，
+           只能等学完再补 —— 补完又和记录里那份混在一起，就是用户说的「乱」。
+           知识树取**并集**展示，靠图标边框区分来源（预设＝虚线、记录＝实底）。
+           没有 marks 字段的老记录顺手跳过（不必先做数据迁移）。 */
         function ktMarkIndex() {
             var idx = {};
+            try {
+                var _pj = ktProj();
+                var _pm = (_pj && _pj.marks && typeof _pj.marks === 'object') ? _pj.marks : {};
+                Object.keys(_pm).forEach(function (course) {
+                    var g = _pm[course];
+                    if (!g || typeof g !== 'object') return;
+                    Object.keys(g).forEach(function (kk) {
+                        var ids = g[kk];
+                        if (!Array.isArray(ids) || !ids.length) return;
+                        var pr = String(kk).split('|');
+                        var pch = parseInt(pr[0], 10) || 0, psec = parseInt(pr[1], 10) || 0;
+                        if (!pch) return;      // 章必须有；节可以缺（0 = 章级预设）
+                        var key = [course, pch, psec].join('|');
+                        (idx[key] || (idx[key] = [])).push({ marks: ids.slice(), raw: '', src: 'preset' });
+                    });
+                });
+            } catch (e) {}
             var recs = (state.records || []);
             for (var i = 0; i < recs.length; i++) {
                 var r = recs[i];
                 var ms = (r && Array.isArray(r.marks)) ? r.marks : [];
                 if (!ms.length) continue;
                 var k = [r.course || '', parseInt(r.chapter, 10) || 0, parseInt(r.section, 10) || 0].join('|');
-                (idx[k] || (idx[k] = [])).push({ marks: ms, raw: String(r.kpQuickRaw || '') });
+                (idx[k] || (idx[k] = [])).push({ marks: ms, raw: String(r.kpQuickRaw || ''), src: 'rec' });
             }
             return idx;
         }
@@ -13041,19 +13542,36 @@
                     return it.raw && it.raw.indexOf(n.name) >= 0;
                 });
             }
-            if (!hit.length) return [];
+            /* ★ 需求3：每个符号先看**它自己**那一档开没开 —— 三个开关彼此独立，
+               所以「★ 关了、▲ 和 ？ 还开着」是完全正常的组合，不能再像原来那样
+               用一次 some() 把三个一起决定出不出。 */
             var out = [];
             KT_MARKS.forEach(function (mk) {
-                if (hit.some(function (it) { return it.marks.indexOf(mk.id) >= 0; })) out.push(mk);
+                if (!ktMarkOn[mk.id]) return;
+                var fromRec = hit.some(function (it) { return it.src === 'rec' && it.marks.indexOf(mk.id) >= 0; });
+                var fromPre = hit.some(function (it) { return it.src === 'preset' && it.marks.indexOf(mk.id) >= 0; });
+                if (!fromRec && !fromPre) return;
+                out.push({ id: mk.id, ch: mk.ch, name: mk.name, preset: fromPre, rec: fromRec });
             });
             return out;
         }
+        /* 三个符号**可以同时出**：各自开着、且该节点在对应维度上有标记就画。
+           来源不同的标记用边框区分（预设＝虚线轮廓、记录＝实底）——
+           「计划中的重点」和「实际记下来的重点」混在一起看，正是用户说的「乱」。 */
         function ktMarkHTML(n, idx) {
             var ms = ktMarkSyms(n, idx);
             if (!ms.length) return '';
             return ms.map(function (m) {
-                return '<span class="kt-mark kt-mark-' + m.id + '" title="学习记录里标记为「' + m.name +
-                    '」（在 📝 学习记录的编辑界面里改）">' + m.ch + '</span>';
+                var cls = (m.preset && m.rec) ? 'kt-src-both'
+                        : (m.preset ? 'kt-src-preset' : 'kt-src-rec');
+                var srcTxt = (m.preset && m.rec) ? '项目预设 + 学习记录都标了'
+                           : (m.preset ? '「编辑项目配置 → 内容模块」里预设为'
+                                       : '学习记录里标记为');
+                var tail = m.preset
+                    ? '（改预设去 🎯 考试项目 → ✎ 编辑项目配置 → 内容模块；改记录去 📝 学习记录）'
+                    : '（在 📝 学习记录的编辑界面里改）';
+                return '<span class="kt-mark kt-mark-' + m.id + ' ' + cls + '" title="' + srcTxt +
+                    '「' + m.name + '」' + tail + '">' + m.ch + '</span>';
             }).join('');
         }
 
@@ -13085,7 +13603,7 @@
                 (kids.length
                     ? '<span class="kt-kidn">' + (ktSymOn ? ('∷' + kids.length) : (kids.length + ' 项')) + '</span>'
                     : '') +
-                (ktMarkOn ? ktMarkHTML(n, ktMarkIdx) : '') +
+                (ktMarkAny ? ktMarkHTML(n, ktMarkIdx) : '') +
                 '</div>';
             if (kids.length && open) {
                 // ★ 需求 2：先按搜索筛出真正要渲染的子级，再判「这一组是不是全叶子」——
@@ -13174,8 +13692,11 @@
             if (btn) btn.classList.toggle('active', !!cfg.num);
             const sbtn = document.getElementById('ktSymBtn');
             if (sbtn) sbtn.classList.toggle('active', !!cfg.sym);
-            const mbtn = document.getElementById('ktMarkBtn');
-            if (mbtn) mbtn.classList.toggle('active', !!cfg.mark);
+            /* ★ 需求3：三个标记按钮各自点亮（cfg.marks 已由 ktState() 归一化过） */
+            KT_MARKS.forEach(function (mk) {
+                const b = document.getElementById('ktMarkBtn_' + mk.id);
+                if (b) b.classList.toggle('active', !!cfg.marks[mk.id]);
+            });
         }
 
         // ---------- 主渲染 ----------
@@ -13204,8 +13725,10 @@
 
             const cfg = ktState();
             ktSymOn = !!cfg.sym;                 // ★ 需求 C：层级名 / N 项 是否符号化
-            ktMarkOn = !!cfg.mark;               // ★ 追加：标记显示开关（独立）
-            ktMarkIdx = ktMarkOn ? ktMarkIndex() : {};   // 关了就不必算索引
+            /* ★ 需求3：三个标记符号各自一档 */
+            ktMarkOn = (cfg.marks && typeof cfg.marks === 'object') ? cfg.marks : {};
+            ktMarkAny = KT_MARKS.some(function (mk) { return !!ktMarkOn[mk.id]; });
+            ktMarkIdx = ktMarkAny ? ktMarkIndex() : {};  // 三个都关就不必算索引
             const rawTree = ktSevenTree(cfg, all, proj);
             // ★ 一键编号：在**未裁剪**的 rawTree 上算，键是 sig（见上方 ktNoText 的口径说明）
             const NO = {};
@@ -13340,17 +13863,19 @@
                     : '🔣 已恢复文字显示');
             });
 
-            // ★ 2026-09-18（追加）：重点 / 难点 / 疑点 的显示开关 —— 与符号开关独立
-            const markBtn = document.getElementById('ktMarkBtn');
-            if (markBtn) markBtn.addEventListener('click', function () {
-                const cfg = ktState();
-                cfg.mark = !cfg.mark;
-                saveData();
-                ktPaintNoCtl();
-                ktRender();
-                ktToast(cfg.mark
-                    ? '★ 已显示学习记录里的 重点 / 难点 / 疑点'
-                    : '★ 已隐藏 重点 / 难点 / 疑点');
+            // ★ 2026-09-18（追加，需求3 拆开关）：重点 / 难点 / 疑点 **各自**一个开关。
+            //   三者可以同时显示，也可以只留一两个；与左边的「🔣 符号」仍然互相独立。
+            KT_MARKS.forEach(function (mk) {
+                const b = document.getElementById('ktMarkBtn_' + mk.id);
+                if (!b) return;
+                b.addEventListener('click', function () {
+                    const cfg = ktState();
+                    cfg.marks[mk.id] = !cfg.marks[mk.id];
+                    saveData();
+                    ktPaintNoCtl();
+                    ktRender();
+                    ktToast(mk.ch + ' ' + mk.name + (cfg.marks[mk.id] ? ' 已显示' : ' 已隐藏'));
+                });
             });
 
             // ★ 2026-09-18：一键编号（开关 + 模版）
@@ -17107,7 +17632,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918d</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918g</div>
 <!-- build-tag:end -->
 </body>
 </html>
