@@ -1025,8 +1025,16 @@
 
 const MODULES = [
 
+// keys = 「本模块会写哪些 localStorage 键」的登记表。它不只用于显示卡片，
+// 还是 sync-github.js 里 shardOfKey()/modulesOfKeys() 判定「同步后该重载哪个工具页」的依据：
+// 一个键若归不到任何模块，modulesOfKeys 会保守退化成「刷新全部已加载工具页」。
+// ⚠️ 所以**每个工具新写一个 localStorage 键，都要来这儿登记**（可用前缀：登记了 cpa_x，
+//    cpa_x_yyy 也算 cpa）。漏登记的后果不是丢数据，而是「后台同步无谓刷新所有工具」——
+//    会打断用户正在填的表单。tools/cpa学习工具1.html 的 hub_cpa_* 就踩过这个坑（2026-09-18）。
 
-  {id:'cpa',   name:'考证学习进度', file:'tools/cpa学习工具1.html',  icon:'📚', desc:'多考试项目备考：CPA / 法考等进度、章节与目标导入', keys:['cpa_learning_data_v3','cpa_learning_data_v3_cpa','cpa_study_projects_v1']},
+
+
+  {id:'cpa',   name:'考证学习进度', file:'tools/cpa学习工具1.html',  icon:'📚', desc:'多考试项目备考：CPA / 法考等进度、章节与目标导入', keys:['cpa_learning_data_v3','cpa_learning_data_v3_cpa','cpa_study_projects_v1','cpa_study_current_project_v1','cpa_sidebar_folded_v1','cpa_appearance_v1','hub_cpa']},
 
 
   {id:'work',  name:'工作管理系统', file:'tools/工作管理系统.html',  icon:'🗂️', desc:'工作日志、待办、周报与人员管理', keys:['workLogs','workTodos','workWeekly','workStaff']},
@@ -1148,7 +1156,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918c';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918d';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -2458,7 +2466,7 @@ document.addEventListener('pointerdown', e => {
 </script>
 
 
-<script src="sync-github.js?v=65"></script>
+<script src="sync-github.js?v=66"></script>
 
 
 <!-- Gitee 备选后端：复用 sync-github.js 导出的 CloudSyncCore，必须排在其后加载 -->
@@ -2475,7 +2483,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；打开工具时追加该工具自己的版本。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918c';
+  var NAV_VER = 'V20260918d';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -2564,7 +2572,7 @@ document.addEventListener('pointerdown', e => {
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918c</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918d</div>
 </body>
 
 
