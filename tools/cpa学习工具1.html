@@ -3129,26 +3129,70 @@
         .kt-lv1 > .kt-no, .kt-lv2 > .kt-no { color: rgba(255, 253, 248, .92); }
         .kt-lv3 > .kt-no { color: #7E7059; }
 
-        /* ===== ★ 2026-09-18（需求 C）：行尾符号化 + 重点/难点/疑点符号 =====
-           开关（state.ktCfg.sym）打开后：行尾「层级名」→ 该级符号、「N 项」→「∷N」，
-           并在行尾显示学习记录里标好的 重点 ★ / 难点 ▲ / 疑点 ？。
-           这三者是**只读展示**（数据源是学习记录，见 ktMarkSyms），所以没有 hover 手型。 */
+        /* ===== ★ 2026-09-18（需求 C / 需求3）：行尾符号化 + 重点/难点/疑点符号 =====
+           开关（state.ktCfg.sym）打开后：行尾「层级名」→ 该级符号，并在行尾显示
+           项目预设 / 学习记录里标好的 重点 ★ / 难点 ▲ / 疑点 ？。
+           ★ 需求 F（2026-09-18）：符号**不再带底色、不再带框**。
+             旧写法是「浅色胶囊 + 预设虚线轮廓」，深色行上还额外垫了一层白底 ——
+             在行尾看就是三个小方块，用户原话「去掉符号的背景，去掉符号的框」。
+             现在只留一个着了色的字符，间距交给 .kt-row 的 gap。
+             来源（计划层 / 执行层）改用**透明度**区分：预设淡一档、记录实色。
+             这两层必须还能分得清 —— 否则又回到「重点难点疑点标志混乱」那个老问题；
+             但不必再画一个框，所以选透明度而不是边框。 */
         .kt-mark {
-            flex: 0 0 auto; font-size: 11px; line-height: 1.6; min-width: 13px;
-            text-align: center; border-radius: 4px; padding: 0 3px; user-select: none;
+            flex: 0 0 auto; font-size: 12.5px; line-height: 1.5;
+            text-align: center; user-select: none; background: none; border: 0;
         }
-        .kt-mark-key   { color: #B23A28; background: #FBEAE7; font-weight: 700; }
-        .kt-mark-hard  { color: #A96C0B; background: #FCF2E0; font-weight: 700; }
-        .kt-mark-doubt { color: #2E6DA4; background: #E9F1F9; font-weight: 700; }
-        /* ★ 需求3：标记来源用边框区分 —— 预设（计划层，来自项目配置）＝虚线轮廓，
-           记录（执行层，来自学习记录）＝实底。两者都有时按记录走（实底）——
-           「确实标过」比「打算标」更强，没必要再叠一层视觉噪音。 */
-        .kt-mark.kt-src-preset { outline: 1px dashed currentColor; outline-offset: -1px; }
+        .kt-mark-key   { color: #B23A28; font-weight: 700; }
+        .kt-mark-hard  { color: #A96C0B; font-weight: 700; }
+        .kt-mark-doubt { color: #2E6DA4; font-weight: 700; }
+        /* 计划层（🎯 编辑项目配置 → 内容模块 预先配的）淡一档；执行层（📝 学习记录）
+           实色。两者都标时按记录走 —— 「确实标过」比「打算标」更强。 */
+        .kt-mark.kt-src-preset { opacity: .5; }
         /* ★ 需求3：三个标记开关成一组。窄屏由 flex 整组换行，不把按钮压成两行。 */
         .kt-mkctl { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; }
         .kt-mkctl .kt-mkb { padding: 3px 9px; font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
-        /* 深色行（科目 / 章）上换个底，不然红底红字糊成一片 */
-        .kt-lv1 > .kt-mark, .kt-lv2 > .kt-mark { background: rgba(255, 253, 248, .94); }
+        /* ★ 需求 F：深色行（科目 #6E6355 / 章 #9A8C74）上，原来的红 #B23A28 是
+           「暗底暗字」—— 白底一撤就等于把符号藏了。这里把三色都提亮一档。 */
+        .kt-lv1 > .kt-mark-key,   .kt-lv2 > .kt-mark-key   { color: #FF9E8E; }
+        .kt-lv1 > .kt-mark-hard,  .kt-lv2 > .kt-mark-hard  { color: #FFD27A; }
+        .kt-lv1 > .kt-mark-doubt, .kt-lv2 > .kt-mark-doubt { color: #9CCBF0; }
+
+        /* ===== ★ 2026-09-18（需求 E）：右键 / 长按节点直接改「重点 / 难点 / 疑点」 =====
+           入口只有右键（桌面）与长按（手机）—— 用户明确嫌行尾碎屑碍眼，所以既不往行里
+           加常驻按钮，也不抢行的左键（左键仍然是展开 / 收拢）。
+           面板挂在 <body> 上、position:fixed 跟着锚点行走：挂进 #ktBody 会被下一次
+           ktRender 的 innerHTML= 整块冲掉（改完就要重画树，这是必然发生的）。 */
+        .kt-mark-edit {
+            position: fixed; left: 0; top: 0; z-index: 80; min-width: 252px; max-width: 330px;
+            background: #FFFDF8; border: 1px solid var(--border); border-radius: 10px;
+            box-shadow: 0 12px 30px rgba(62, 55, 46, .2); padding: 10px 12px 11px;
+            font-size: 12px; color: var(--text); line-height: 1.6;
+        }
+        .kt-me-head { display: flex; align-items: flex-start; gap: 8px; }
+        .kt-me-title { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 12.5px; overflow-wrap: anywhere; }
+        .kt-me-close {
+            flex: 0 0 auto; border: 0; background: none; padding: 0 2px; cursor: pointer;
+            font-size: 13px; line-height: 1.2; color: #A8997F; font-family: inherit;
+        }
+        .kt-me-close:hover { color: #6E6355; }
+        .kt-me-where {
+            margin: 6px 0 8px; font-size: 11px; color: var(--text-secondary);
+            border-left: 2px solid #DCCFB8; padding-left: 7px;
+        }
+        .kt-me-where b { color: #6E6355; }
+        .kt-me-chips { display: flex; gap: 6px; }
+        .kt-me-chip {
+            flex: 1 1 0; padding: 5px 2px; border: 1px solid var(--border); background: #fff;
+            border-radius: 7px; font-family: inherit; font-size: 12.5px; font-weight: 600;
+            color: var(--text-secondary); cursor: pointer; transition: var(--transition);
+        }
+        .kt-me-chip:hover { border-color: var(--primary-light); background: #FDFBF6; }
+        .kt-me-chip[data-mk="key"].on   { color: #B23A28; border-color: #D9A79E; background: #FBEAE7; }
+        .kt-me-chip[data-mk="hard"].on  { color: #A96C0B; border-color: #E2C68C; background: #FCF2E0; }
+        .kt-me-chip[data-mk="doubt"].on { color: #2E6DA4; border-color: #9FBEDC; background: #E9F1F9; }
+        .kt-me-note { margin-top: 7px; font-size: 11px; color: var(--text-secondary); }
+        @media print { .kt-mark-edit { display: none !important; } }
 
         /* ===== 学习记录列表：展示内容 / 展示方式 控件条 ===== */
         .rec-display-bar {
@@ -3779,7 +3823,11 @@
                 <div class="kt-legend">
                     <span>全项目：节点 <b id="ktTotal">0</b> · 叶子 <b id="ktLeaf">0</b> · 最深 <b id="ktDepth">0</b> / 7 级</span>
                     <span class="kt-tierbar" id="ktTierBar"></span>
-                    <span class="kt-lvhint">七级：科目 › 章 › 节 › 知识点 1–4 级</span>
+                    <span class="kt-lvhint">七级：科目 › 章 › 节 › 知识点 1–4 级 · 右键 / 长按节点可改 ★ ▲ ？</span>
+                    <!-- ★ 需求 F：符号去掉背景与框之后，深浅是区分两层的唯一线索。
+                         这句解释**只在树里真的有计划层标记时**才写进去（见 ktMkHintPaint）——
+                         没预设过就一个字都不占，免得又变成一行常驻噪音。 -->
+                    <span class="kt-lvhint" id="ktMkHint"></span>
                 </div>
                 <div class="kt-body" id="ktBody"></div>
             </div>
@@ -13470,6 +13518,11 @@
             { id: 'hard',  ch: '▲', name: '难点' },
             { id: 'doubt', ch: '？', name: '疑点' }
         ];
+        /* ★ 需求 E（2026-09-18）：右键 / 长按面板的状态。只存「这一行是谁」——
+           其余（要写哪、当前值）都在打开与点击那一刻现算，避免和真源对不上。 */
+        var ktMe = { sig: '', kind: '', course: '', ch: 0, sec: 0, name: '', lv: 0 };
+        var ktMeEl = null;
+        var ktMeLp = 0;   // 长按刚开过面板的时间戳：紧随其后的 contextmenu 不再开一遍
         var ktSymOn = false;      // 层级名 / N 项 是否符号化（ktBranchHTML 读它，避免每行都去 ktState()）
         /* ★ 需求3（2026-09-18）：重点 ★ / 难点 ▲ / 疑点 ？ 三个符号**各自**一个开关。
            原先三者挤在一个布尔里（ktCfg.mark），只能「全出 / 全不出」；现在拆成对象：
@@ -13584,11 +13637,256 @@
                            : (m.preset ? '「编辑项目配置 → 内容模块」里预设为'
                                        : '学习记录里标记为');
                 var tail = m.preset
-                    ? '（改预设去 🎯 考试项目 → ✎ 编辑项目配置 → 内容模块；改记录去 📝 学习记录）'
-                    : '（在 📝 学习记录的编辑界面里改）';
+                    ? '（画得淡 = 计划层预设。改它去 🎯 考试项目 → ✎ 编辑项目配置 → 内容模块，' +
+                      '也可以在知识树上右键这一行直接改）'
+                    : '（画得实 = 执行层记录。改它去 📝 学习记录的编辑界面，' +
+                      '也可以在知识树上右键这一行直接改）';
                 return '<span class="kt-mark kt-mark-' + m.id + ' ' + cls + '" title="' + srcTxt +
                     '「' + m.name + '」' + tail + '">' + m.ch + '</span>';
             }).join('');
+        }
+
+        /* ============ ★ 2026-09-18（需求 E）：在知识树上直接改「重点 / 难点 / 疑点」 ============
+           上一轮这里写的是「标记不在知识树里改」；现在能改了，做法是把那句话**落实**而不是推翻：
+           树上**不新增第二个存储**，改的就是两处真源本身 ——
+             · 章 / 节行 → proj.marks（＝「🎯 考试项目 → ✎ 编辑项目配置 → 内容模块」那份，计划层）
+             · 知识点行 → 该知识点所属的 record.marks（＝「📝 学习记录」编辑界面那份，执行层）
+           所以在这儿勾完，去 📝 学习记录 或 内容模块 看到的是**同一份**，不会「树上一个样、
+           编辑界面另一个样」—— 那才是当初不许在树上改的原因。
+           哪些行能改：
+             章 / 节 → ✅ 计划层。这是「我打算把第 3 章当重点」唯一能落笔的地方。
+             知识点 → ✅ 执行层。必须先唯一定位到一条学习记录，定位不到就明说、不瞎写。
+             科目   → ❌ 汇总行：它下面几十条记录，写谁都不对（提示去章 / 节或记录里改）。 */
+
+        // 从 sig 反解「这一行是谁」。sig 是树上唯一的键，不必再把节点对象存起来：
+        //   co|科目 ／ ch|科目|章 ／ se|科目|章|节 ／ 科目|章|节#序号路径
+        function ktMeTarget(sig, row) {
+            var p = String(sig || '').split('|');
+            var t = { sig: String(sig || ''), kind: '', course: '', ch: 0, sec: 0, name: '', lv: 0 };
+            if (p[0] === 'co') { t.kind = 'course'; t.course = p[1] || ''; }
+            else if (p[0] === 'ch') { t.kind = 'chapter'; t.course = p[1] || ''; t.ch = parseInt(p[2], 10) || 0; }
+            else if (p[0] === 'se') { t.kind = 'section'; t.course = p[1] || ''; t.ch = parseInt(p[2], 10) || 0; t.sec = parseInt(p[3], 10) || 0; }
+            // 知识点行的 sig 是「科目|章|节#序号路径」：parseInt 会在 '#' 处停住，正好
+            else { t.kind = 'kp'; t.course = p[0] || ''; t.ch = parseInt(p[1], 10) || 0; t.sec = parseInt(p[2], 10) || 0; }
+            if (row) {
+                var nm = row.querySelector ? row.querySelector('.kt-name') : null;
+                // 取行名的纯文本：textContent 会把搜索高亮的 <mark> 剥掉，正好 ——
+                // ktMarkIndex 里存的 raw 是记录的「知识点速记」原文，两边都是纯文本才比得上
+                t.name = nm ? String(nm.textContent || '').trim() : '';
+                t.lv = parseInt(row.getAttribute('data-kt-lv'), 10) || 0;
+            }
+            return t;
+        }
+
+        function ktMePresetKey() { return ktMe.ch + '|' + ktMe.sec; }
+        function ktMePresetVal() {
+            var p = ktProj();
+            var g = (p && p.marks && p.marks[ktMe.course]) ? p.marks[ktMe.course] : null;
+            var a = (g && Array.isArray(g[ktMePresetKey()])) ? g[ktMePresetKey()] : [];
+            return a.slice();
+        }
+        function ktMePresetSet(arr) {
+            var p = ktProj();
+            if (!p) return false;
+            if (!p.marks || typeof p.marks !== 'object') p.marks = {};
+            if (!p.marks[ktMe.course] || typeof p.marks[ktMe.course] !== 'object') p.marks[ktMe.course] = {};
+            var g = p.marks[ktMe.course];
+            if (arr && arr.length) g[ktMePresetKey()] = arr.slice();
+            else delete g[ktMePresetKey()];
+            /* 空壳不落盘 —— 与「编辑项目配置」保存时同一口径：留下 {} 之后看不出
+               「到底配过没有」，下次再来看见一个空对象以为是坏了。 */
+            if (!Object.keys(g).length) delete p.marks[ktMe.course];
+            if (!Object.keys(p.marks).length) delete p.marks;
+            saveProjects();
+            return true;
+        }
+        /* 知识点行 → 它所属的那条学习记录。判据与 ktMarkSyms **完全一致**
+           （同 科目/章/节 + 名字出现在该记录的「知识点速记」原文里）——
+           「看到的」和「改到的」必须是同一条，否则会出现最气人的那种 bug：
+           树上明明有符号，点一下却「没反应」（符号来自记录 A，标记写进了记录 B）。 */
+        function ktMeRecPick() {
+            var hit = [], cell = [];
+            var recs = state.records || [];
+            for (var i = 0; i < recs.length; i++) {
+                var r = recs[i];
+                if (!r || r.course !== ktMe.course) continue;
+                if ((parseInt(r.chapter, 10) || 0) !== ktMe.ch) continue;
+                if ((parseInt(r.section, 10) || 0) !== ktMe.sec) continue;
+                cell.push(i);
+                if (ktMe.name && String(r.kpQuickRaw || '').indexOf(ktMe.name) >= 0) hit.push(i);
+            }
+            if (hit.length) return { list: hit, exact: true };
+            // 名字对不上时，只认「这一格只有一条记录」—— 多条就说不清是哪条，硬写等于瞎写
+            if (cell.length === 1) return { list: cell, exact: false };
+            return { list: [], exact: false };
+        }
+        // 章 / 节行上「记录层另有几处」—— 只报数，不在这儿改：那些标记归 📝 学习记录
+        function ktMeRecCount() {
+            var out = [];
+            if (ktMe.kind !== 'chapter' && ktMe.kind !== 'section') return out;
+            var idx = ktMarkIndex();
+            var acc = { key: 0, hard: 0, doubt: 0 };
+            Object.keys(idx).forEach(function (k) {
+                var p = k.split('|');
+                if (p[0] !== ktMe.course) return;
+                if ((parseInt(p[1], 10) || 0) !== ktMe.ch) return;
+                if (ktMe.kind === 'section' && (parseInt(p[2], 10) || 0) !== ktMe.sec) return;
+                idx[k].forEach(function (it) {
+                    if (it.src !== 'rec') return;
+                    it.marks.forEach(function (m) { if (acc[m] !== undefined) acc[m]++; });
+                });
+            });
+            KT_MARKS.forEach(function (m) { if (acc[m.id]) out.push(m.ch + ' ' + acc[m.id] + ' 处'); });
+            return out;
+        }
+        function ktMeRowEl(sig) {
+            var body = document.getElementById('ktBody');
+            if (!body) return null;
+            // 不拼 CSS 选择器：sig 里有 '|' 和 '#'，转义规则各家不一致；直接按属性比更稳
+            var rows = body.querySelectorAll('.kt-row[data-kt-sig]');
+            for (var i = 0; i < rows.length; i++) {
+                if (rows[i].getAttribute('data-kt-sig') === sig) return rows[i];
+            }
+            return null;
+        }
+        function ktMePaint() {
+            if (!ktMe.sig) return;
+            if (!ktMeEl) {
+                ktMeEl = document.createElement('div');
+                ktMeEl.className = 'kt-mark-edit';
+                ktMeEl.id = 'ktMePop';
+                document.body.appendChild(ktMeEl);   // 必须是 body：挂 #ktBody 里会被重画冲掉
+            }
+            var cur = [], where = '', note = '', editable = false;
+            var what = L(ktMe.kind === 'section' ? 'section' : 'chapter');
+            if (ktMe.kind === 'chapter' || ktMe.kind === 'section') {
+                editable = true;
+                cur = ktMePresetVal();
+                where = '写入 <b>🎯 考试项目 → ✎ 编辑项目配置 → 内容模块</b>（计划层）';
+                var n = ktMeRecCount();
+                note = n.length
+                    ? ('这一' + what + '的学习记录里另有 ' + n.join('、') + '（执行层，改要去 📝 学习记录）')
+                    : ('这一' + what + '的学习记录里还没有同类标记。');
+            } else if (ktMe.kind === 'kp') {
+                var pick = ktMeRecPick();
+                if (!pick.list.length) {
+                    where = '这一行<b>没找到</b>对应的学习记录 —— 标记请在 <b>📝 学习记录</b> 里加。';
+                } else {
+                    editable = true;
+                    var rec = (state.records || [])[pick.list[0]] || {};
+                    cur = Array.isArray(rec.marks) ? rec.marks.slice() : [];
+                    where = '写入 <b>📝 学习记录</b>（执行层）：' + kpEsc(rec.date || '（无日期）') +
+                        (pick.list.length > 1
+                            ? '　⚠️ 这一节有 ' + pick.list.length + ' 条记录的速记里含这个名字，写在第 1 条'
+                            : '') +
+                        (pick.exact ? '' : '　⚠️ 该记录的速记里没直接出现这个名字，按位置匹配');
+                }
+            } else {
+                where = '科目行是<b>汇总行</b> —— 它下面几十条记录，写谁都不对。<br>' +
+                    '请在<b>章 / 节</b>行上右键改计划层，或去 <b>📝 学习记录</b> 改执行层。';
+            }
+            var h = '<div class="kt-me-head"><span class="kt-me-title">' + kpEsc(ktMe.name || '（未命名）') +
+                '</span><button type="button" class="kt-me-close" data-ktme-close="1" title="关闭（Esc）">✕</button></div>' +
+                '<div class="kt-me-where">' + where + '</div>';
+            if (editable) {
+                h += '<div class="kt-me-chips">' + KT_MARKS.map(function (m) {
+                    var on = cur.indexOf(m.id) >= 0;
+                    return '<button type="button" class="kt-me-chip' + (on ? ' on' : '') +
+                        '" data-mk="' + m.id + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+                        m.ch + ' ' + m.name + '</button>';
+                }).join('') + '</div>';
+            }
+            if (note) h += '<div class="kt-me-note">' + note + '</div>';
+            ktMeEl.innerHTML = h;
+        }
+        function ktMePlace() {
+            if (!ktMeEl || !ktMe.sig) return;
+            var row = ktMeRowEl(ktMe.sig);
+            // 这一行被筛掉了 / 页签切走了 —— 面板没有锚点就收起来，不留一个飘着的框
+            if (!row) { ktMeClose(); return; }
+            var r = row.getBoundingClientRect();
+            var w = ktMeEl.offsetWidth || 252, h = ktMeEl.offsetHeight || 110;
+            var vw = window.innerWidth || 1024, vh = window.innerHeight || 768;
+            var left = Math.min(Math.max(8, r.left), Math.max(8, vw - w - 8));
+            var top = r.bottom + 6;
+            if (top + h > vh - 8) top = Math.max(8, r.top - h - 6);   // 贴底就翻到行的上面
+            ktMeEl.style.left = left + 'px';
+            ktMeEl.style.top = top + 'px';
+        }
+        function ktMeClose() {
+            if (ktMeEl && ktMeEl.parentNode) ktMeEl.parentNode.removeChild(ktMeEl);
+            ktMeEl = null;
+            ktMe.sig = '';
+        }
+        function ktMeOpen(row) {
+            if (!row || !row.getAttribute) return;
+            var t = ktMeTarget(row.getAttribute('data-kt-sig'), row);
+            ktMe.sig = t.sig; ktMe.kind = t.kind; ktMe.course = t.course;
+            ktMe.ch = t.ch; ktMe.sec = t.sec; ktMe.name = t.name; ktMe.lv = t.lv;
+            ktMePaint();
+            ktMePlace();
+        }
+        function ktMeToggle(mkId) {
+            if (!ktMe.sig) return;
+            var mk = null;
+            KT_MARKS.forEach(function (m) { if (m.id === mkId) mk = m; });
+            if (!mk) return;
+            var on = false, whereTxt = '';
+            if (ktMe.kind === 'chapter' || ktMe.kind === 'section') {
+                var cur = ktMePresetVal();
+                var at = cur.indexOf(mkId);
+                on = at < 0;
+                if (on) cur.push(mkId); else cur.splice(at, 1);
+                ktMePresetSet(cur);
+                whereTxt = '写入项目预设';
+            } else if (ktMe.kind === 'kp') {
+                var pick = ktMeRecPick();
+                if (!pick.list.length) {
+                    ktToast('这一行没找到对应的学习记录 —— 标记要在 📝 学习记录 里加');
+                    return;
+                }
+                var rec = (state.records || [])[pick.list[0]];
+                if (!rec) return;
+                if (!Array.isArray(rec.marks)) rec.marks = [];
+                var at2 = rec.marks.indexOf(mkId);
+                on = at2 < 0;
+                if (on) rec.marks.push(mkId); else rec.marks.splice(at2, 1);
+                saveData();
+                whereTxt = '写入学习记录';
+            } else {
+                return;
+            }
+            /* 显示的开关跟着亮 —— 否则刚标完却在树上找不到那个符号，看着像没生效。
+               （上一轮「★ ▲ ？ 不显示」那次排查，根因就是这个开关被关着。） */
+            var bumped = false;
+            if (on) {
+                var cfg = ktState();
+                if (cfg.marks && !cfg.marks[mkId]) {
+                    cfg.marks[mkId] = true;
+                    saveData();
+                    ktPaintNoCtl();
+                    bumped = true;
+                }
+            }
+            ktRender();
+            ktMePaint();
+            ktMePlace();
+            ktToast(mk.ch + ' ' + mk.name + (on ? ' 已标记' : ' 已取消') + '（' + whereTxt + '）' +
+                (bumped ? '，并打开了「' + mk.ch + ' ' + mk.name + '」的显示开关' : ''));
+        }
+        /* ★ 需求 F：符号去掉背景与框之后，深浅是区分两层来源的唯一线索 —— 但解释只在
+           树里**真的有**计划层标记时才写出来，没预设过就一个字都不占。 */
+        function ktMkHintPaint() {
+            var he = document.getElementById('ktMkHint');
+            if (!he) return;
+            var pre = 0;
+            var idx = ktMarkIdx || {};
+            Object.keys(idx).forEach(function (k) {
+                idx[k].forEach(function (it) { if (it.src === 'preset') pre++; });
+            });
+            he.textContent = pre
+                ? '★ 淡色 = 内容模块里预设的（计划层），实色 = 学习记录里标的（执行层）'
+                : '';
         }
 
         // 一棵「分支」= 节点本身 + （展开时）它的子级容器。
@@ -13754,6 +14052,7 @@
             ktMarkOn = (cfg.marks && typeof cfg.marks === 'object') ? cfg.marks : {};
             ktMarkAny = KT_MARKS.some(function (mk) { return !!ktMarkOn[mk.id]; });
             ktMarkIdx = ktMarkAny ? ktMarkIndex() : {};  // 三个都关就不必算索引
+            ktMkHintPaint();                     // ★ 需求 F：图例里那句深浅说明按需出现
             const rawTree = ktSevenTree(cfg, all, proj);
             // ★ 一键编号：在**未裁剪**的 rawTree 上算，键是 sig（见上方 ktNoText 的口径说明）
             const NO = {};
@@ -13874,6 +14173,58 @@
                     ktRender();
                 });
             }
+
+            /* ★ 2026-09-18（需求 E）：右键 / 长按节点 → 改「重点 / 难点 / 疑点」。
+               只有这两个入口：不加常驻按钮（用户嫌行尾碎屑碍眼），也不抢行的左键
+               —— 左键仍然是「点 caret 展开 / 收拢」那条链路的事。 */
+            if (body) {
+                body.addEventListener('contextmenu', function (e) {
+                    const row = (e.target && e.target.closest) ? e.target.closest('.kt-row[data-kt-sig]') : null;
+                    if (!row) return;
+                    // 右键在知识树里没有别的用途，直接吃掉浏览器菜单 —— 这是唯一的改标记入口
+                    e.preventDefault();
+                    if (Date.now() - ktMeLp < 700) return;   // 长按刚开过（部分浏览器会补发 contextmenu）
+                    ktMeOpen(row);
+                });
+                let lpTimer = 0, lpRow = null, lpMoved = false;
+                body.addEventListener('touchstart', function (e) {
+                    const row = (e.target && e.target.closest) ? e.target.closest('.kt-row[data-kt-sig]') : null;
+                    if (!row) return;
+                    lpRow = row; lpMoved = false;
+                    clearTimeout(lpTimer);
+                    lpTimer = setTimeout(function () {
+                        if (lpMoved || !lpRow) return;
+                        ktMeLp = Date.now();      // 记下来：紧随其后的 click / contextmenu 不再开一遍
+                        ktMeOpen(lpRow);
+                        try { if (navigator.vibrate) navigator.vibrate(12); } catch (er) {}
+                    }, 480);
+                }, { passive: true });
+                body.addEventListener('touchmove', function () { lpMoved = true; clearTimeout(lpTimer); }, { passive: true });
+                body.addEventListener('touchend', function () { clearTimeout(lpTimer); }, { passive: true });
+                body.addEventListener('touchcancel', function () { lpMoved = true; clearTimeout(lpTimer); }, { passive: true });
+            }
+            // 面板挂在 <body> 上，所以这几条委托绑在 document（在 initKpTreeModule 里绑一次）
+            document.addEventListener('click', function (e) {
+                const t = e.target;
+                if (t && t.closest && t.closest('#ktMePop .kt-me-close')) { ktMeClose(); return; }
+                const chip = (t && t.closest) ? t.closest('#ktMePop .kt-me-chip') : null;
+                if (chip) { ktMeToggle(chip.getAttribute('data-mk')); return; }
+                // 别的点击（展开 / 收拢、切筛选、切页签）都可能把这一行挪走或整棵树重画
+                // —— 面板跟着锚点重新定位；锚点没了 ktMePlace 会自己收起来
+                if (ktMeEl) ktMePlace();
+            });
+            document.addEventListener('mousedown', function (e) {
+                if (!ktMeEl) return;
+                const t = e.target;
+                // 点面板内部、或点另一行（那一下会走 contextmenu 重新开），都不算「点外面」
+                if (t && t.closest && (t.closest('#ktMePop') || t.closest('.kt-row[data-kt-sig]'))) return;
+                ktMeClose();
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && ktMeEl) ktMeClose();
+            });
+            window.addEventListener('scroll', function () { if (ktMeEl) ktMePlace(); }, true);
+            window.addEventListener('resize', function () { if (ktMeEl) ktMePlace(); });
 
             // ★ 2026-09-18（需求 C）：符号显示开关
             const symBtn = document.getElementById('ktSymBtn');
@@ -17657,7 +18008,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918j</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918k</div>
 <!-- build-tag:end -->
 </body>
 </html>
