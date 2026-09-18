@@ -1785,21 +1785,33 @@
     return null;
   }
 
+  // 采集结果分三种，必须分开 —— 「有选区但读数不可信」和「根本没有可用选区」
+  // 的处理完全相反：前者只差一拍布局，收起就再也等不到第二次 selectionchange；
+  // 后者是真没有，早收早干净（用户把非可编辑的正文选中时，浮层不该赖着不走）。
+  //   返回 {doc,win,range,rect,text} → 可以显示
+  //   返回 {pending:true}            → 选区落在可编辑区，但读数不可信 → 值得重试
+  //   返回 null                      → 与浮层无关 → 立即收起
   function pickIn(doc, win) {
     if (!doc || !win) return null;
     var sel = null;
     try { sel = win.getSelection(); } catch (e) { return null; }
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
-    var txt = '';
-    try { txt = String(sel.toString() || ''); } catch (e) { txt = ''; }
-    if (!txt.replace(/\s/g, '')) return null;                 // 全空白不算选中
-    var rng = sel.getRangeAt(0);
+    var rng;
+    try { rng = sel.getRangeAt(0); } catch (e) { return null; }
     var node = rng.startContainer;
     if (node && node.nodeType === 3) node = node.parentNode;
+    // 可编辑判据是纯 DOM 的，不依赖布局（实测隐藏态下仍为真），所以先判它。
     if (!editableOf(node)) return null;                       // 不在可编辑区 → 不管
-    var r;
-    try { r = rng.getBoundingClientRect(); } catch (e) { return null; }
-    if (!r || (!r.width && !r.height)) return null;
+    var r = null;
+    try { r = rng.getBoundingClientRect(); } catch (e) { r = null; }
+    var zero = (!r || (!r.width && !r.height));
+    // ★ 几何为 0 时 Chrome 连 sel.toString() 都会返回空串（实测：元素 display:none
+    //   时 rangeCount=1、collapsed=false，但 toString()==''）。所以只要还没布局，
+    //   两种读数都不可信 —— 不能按「没字」判成无效，必须先标 pending 等布局落定。
+    if (zero) return { pending: true };
+    var txt = '';
+    try { txt = String(sel.toString() || ''); } catch (e) { txt = ''; }
+    if (!txt.replace(/\s/g, '')) return null;                 // 有布局、字是真空白 → 无效
     return { doc: doc, win: win, range: rng, rect: r, text: txt };
   }
 
@@ -1814,20 +1826,23 @@
 
   function pick() {
     var hit = pickIn(document, window);
-    if (hit) return hit;
+    if (hit && hit.doc) return hit;
+    var pend = !!(hit && hit.pending);
     // 导航页里「有选区但不在可编辑区」时，说明用户此刻动的是导航页 ——
     // 就不要再退回去捡子页里那个视觉上还高亮、其实已经失焦的选区了。
-    if (hasSel(document, window)) return null;
+    // （但「可编辑区里几何还没定型」不在此列，那种要继续等。）
+    if (hasSel(document, window)) return pend ? { pending: true } : null;
     var box = $('toolContainer');
-    if (!box) return null;
+    if (!box) return pend ? { pending: true } : null;
     var fs = box.querySelectorAll('iframe'), i, d, w;
     for (i = 0; i < fs.length; i++) {
       d = null; w = null;
       try { d = fs[i].contentDocument; w = fs[i].contentWindow; } catch (e) { continue; }
       hit = pickIn(d, w);
-      if (hit) return hit;
+      if (hit && hit.doc) return hit;
+      if (hit && hit.pending) pend = true;
     }
-    return null;
+    return pend ? { pending: true } : null;
   }
 
   // 子页坐标 → 导航页坐标
@@ -1876,7 +1891,12 @@
   }
 
   /* ---------- 5) 显示 / 隐藏 ---------- */
-  var settleT = null;
+  var settleTs = [];
+  function clearSettle() {
+    for (var i = 0; i < settleTs.length; i++) clearTimeout(settleTs[i]);
+    settleTs = [];
+  }
+
   function show(hit) {
     build();
     if (!bar) return;
@@ -1887,26 +1907,30 @@
     var host = toHost(hit);
     if (!host) return;
     place(host);
-    // 摆完再校两次，原因有两个：
+    // 摆完再校几次，原因有两个：
     //  ① 首帧里 offsetHeight 有时拿到的是「还没算上 padding/border」的高度
     //     （实测差 14px = padding 12 + border 2），浮层会往下多留一截；
-    //  ② 选区的几何本身也可能还在动 —— 比如弹窗刚打开、字体度量没定、图片撑开。
-    // 每次都重新读一遍选区（而不是复用旧 rect），所以布局漂移也能跟上。
+    //  ② 选区的几何本身也可能还在动 —— 弹窗刚打开、字体度量没定、内容被重建。
+    // 每次都重新读一遍选区（而不是复用旧 rect）。放两拍是因为线上（Pages + 网络）
+    // 比本地慢，只校一拍时实测还差 20 多像素。
     var settle = function () {
       if (!shown || !savedDoc || !savedWin) return;
       var h2 = pickIn(savedDoc, savedWin);
-      if (!h2) return;
+      if (!h2 || !h2.doc) return;      // pending / 已无选区 → 保持当前摆放，别把 savedRange 冲掉
       savedRange = h2.range;
       var hh = toHost(h2);
       if (hh) place(hh);
     };
+    clearSettle();
     try { requestAnimationFrame(settle); } catch (e) {}
-    clearTimeout(settleT);
-    settleT = setTimeout(settle, 240);
+    settleTs.push(setTimeout(settle, 240));
+    settleTs.push(setTimeout(settle, 700));
   }
 
   function hide() {
-    clearTimeout(settleT);
+    clearSettle();
+    clearTimeout(retryT);
+    retryN = 0;
     if (!bar || !shown) { savedRange = null; savedDoc = null; savedWin = null; return; }
     shown = false;
     bar.classList.remove('show');
@@ -1961,17 +1985,37 @@
     // 命令会改动 DOM，Range 跟着变 —— 重新读一次，用户连点第二下还认得出选区
     setTimeout(function () {
       var hit = pickIn(savedDoc, savedWin);
-      if (hit) { savedRange = hit.range; refreshStates(); var h = toHost(hit); if (h) place(h); }
-      else { hide(); }
+      if (hit && hit.doc) { savedRange = hit.range; refreshStates(); var h = toHost(hit); if (h) place(h); }
+      else if (!hit) { hide(); }        // pending：保留原 savedRange，等下一拍
     }, 0);
   }
 
   /* ---------- 7) 触发 ---------- */
+  var retryT = null, retryN = 0;
+  // 几何未定型时的补看节奏：逐步拉长，累计约 1.5s。慢手机上「弹窗展开 + 字体度量
+  // 落定 + 一轮渲染」实测能拖到 1s 以上，而浮层只由 selectionchange 驱动、
+  // 不会自己再回来，所以这几拍是它唯一的补救机会。多等几拍没有副作用 ——
+  // 期间浮层本来就不显示，用户看不到任何东西。
+  var RETRY_MS = [140, 160, 200, 260, 340, 440];
   function scan() {
     var hit = pick();
-    if (!hit) { hide(); return; }
-    savedDoc = hit.doc; savedWin = hit.win; savedRange = hit.range;
-    show(hit);
+    if (hit && hit.doc) {
+      retryN = 0;
+      savedDoc = hit.doc; savedWin = hit.win; savedRange = hit.range;
+      show(hit);
+      return;
+    }
+    // hit.pending：「选区在可编辑区、但读数还不可信」几乎总是暂时的 —— 编辑弹窗刚
+    // 展开、字体度量还没定、内容刚被重建、工具页刚渲染完一轮。
+    // 反之 pick() 返回 null 是真没有可用选区，立即收起。
+    if (hit && hit.pending && retryN < RETRY_MS.length) {
+      clearTimeout(retryT);
+      retryT = setTimeout(scan, RETRY_MS[retryN]);
+      retryN++;
+      return;
+    }
+    retryN = 0;
+    hide();
   }
 
   function schedule() {
@@ -1983,6 +2027,7 @@
     if (!shown || !savedDoc || !savedWin) return;
     var hit = pickIn(savedDoc, savedWin);
     if (!hit) { hide(); return; }
+    if (hit.pending) return;            // 几何暂时读不出来 → 保持原位，别乱跳
     savedRange = hit.range;
     var host = toHost(hit);
     if (host) place(host);
@@ -2203,7 +2248,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918q';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918r';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -3532,7 +3577,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918q';
+  var NAV_VER = 'V20260918r';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -3632,7 +3677,7 @@ document.addEventListener('pointerdown', e => {
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918q</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918r</div>
 </body>
 
 
