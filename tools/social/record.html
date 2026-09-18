@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>复盘台账 · 人际交往与沟通</title>
-    <link rel="stylesheet" href="social.css?v=V20260918f">
+    <link rel="stylesheet" href="social.css?v=V20260918h">
 </head>
 <body data-page="record">
 
@@ -25,18 +25,18 @@
             <nav class="sidebar-nav">
                 <ul>
                     <li class="section-label">🗂️ 总览</li>
-                    <li><a href="../人积极交往.html?v=V20260918f" data-nav="home"><span class="icon">🏠</span> 回首总览</a></li>
+                    <li><a href="../人积极交往.html?v=V20260918h" data-nav="home"><span class="icon">🏠</span> 回首总览</a></li>
                     <li class="section-label">📋 台账</li>
-                    <li><a href="record.html?v=V20260918f" data-nav="record"><span class="icon">📝</span> 复盘台账 <span class="badge" id="dailyCountBadge">0</span></a></li>
+                    <li><a href="record.html?v=V20260918h" data-nav="record"><span class="icon">📝</span> 复盘台账 <span class="badge" id="dailyCountBadge">0</span></a></li>
                     <li class="section-label">📚 体系</li>
-                    <li><a href="model.html?v=V20260918f" data-nav="model"><span class="icon">📊</span> 5维能力模型</a></li>
-                    <li><a href="loop.html?v=V20260918f" data-nav="loop"><span class="icon">🔄</span> 三层复盘闭环</a></li>
-                    <li><a href="learn.html?v=V20260918f" data-nav="learn"><span class="icon">📖</span> 学习体系</a></li>
-                    <li><a href="toolkit.html?v=V20260918f" data-nav="toolkit"><span class="icon">🧰</span> 工具与模板</a></li>
-                    <li><a href="path.html?v=V20260918f" data-nav="path"><span class="icon">🚀</span> 进阶路径</a></li>
-                    <li><a href="action.html?v=V20260918f" data-nav="action"><span class="icon">✅</span> 落地行动</a></li>
+                    <li><a href="model.html?v=V20260918h" data-nav="model"><span class="icon">📊</span> 5维能力模型</a></li>
+                    <li><a href="loop.html?v=V20260918h" data-nav="loop"><span class="icon">🔄</span> 三层复盘闭环</a></li>
+                    <li><a href="learn.html?v=V20260918h" data-nav="learn"><span class="icon">📖</span> 学习体系</a></li>
+                    <li><a href="toolkit.html?v=V20260918h" data-nav="toolkit"><span class="icon">🧰</span> 工具与模板</a></li>
+                    <li><a href="path.html?v=V20260918h" data-nav="path"><span class="icon">🚀</span> 进阶路径</a></li>
+                    <li><a href="action.html?v=V20260918h" data-nav="action"><span class="icon">✅</span> 落地行动</a></li>
                     <li class="section-label">💎 储备</li>
-                    <li><a href="wisdom.html?v=V20260918f" data-nav="wisdom"><span class="icon">💎</span> 他山之玉</a></li>
+                    <li><a href="wisdom.html?v=V20260918h" data-nav="wisdom"><span class="icon">💎</span> 他山之玉</a></li>
                 </ul>
             </nav>
             <div class="sidebar-footer">v3.0 · 分页版 · 本地存储 · <span data-build-ver>—</span></div>
@@ -45,11 +45,11 @@
         <!-- ===== 主内容 ===== -->
         <main class="main">
 
-            <nav class="crumb"><a href="../人积极交往.html?v=V20260918f">← 总览</a><span class="sep">/</span><span class="cur">复盘台账</span></nav>
+            <nav class="crumb"><a href="../人积极交往.html?v=V20260918h">← 总览</a><span class="sep">/</span><span class="cur">复盘台账</span></nav>
 
 <section class="content-section" id="record">
                 <h2><span class="emoji">📝</span> 复盘台账 &amp; 执行记录</h2>
-                <div class="tip tip-success">功能说明：新增日复盘事件卡、周练习任务、月度打分；支持标记是否执行完成、填写执行反馈。日复盘里的「如果就」方案，把反复出现的场景沉淀成一句话的自动应对；数据保存在浏览器本地。</div>
+                <div class="tip tip-success">功能说明：四个标签页 ——「日复盘」记关键事件卡，「如果就」把反复出现的场景沉淀成一句话的自动应对，「周练习」定刻意练习任务，「月度评分」做五维打分；数据保存在浏览器本地。</div>
 
                 <!-- 统计 -->
                 <div class="stats-grid" id="statsGrid">
@@ -62,6 +62,7 @@
                 <!-- Tabs -->
                 <div class="tabs" id="recordTabs">
                     <button class="tab-btn active" data-tab="tabDaily">📅 日复盘</button>
+                    <button class="tab-btn" data-tab="tabIfThen">🎯 如果就</button>
                     <button class="tab-btn" data-tab="tabWeek">📆 周练习</button>
                     <button class="tab-btn" data-tab="tabMonth">📈 月度评分</button>
                 </div>
@@ -130,25 +131,14 @@
                     <!-- 记录列表 -->
                     <div id="dailyListWrap" class="record-list"></div>
 
-                    <!-- ===== 如果就 · 场景应对方案库 ===== -->
-                    <div class="it-block" id="ifThenBlock">
-                        <div class="it-head">
-                            <div class="it-title">
-                                <span class="it-emoji">🎯</span>
-                                <div>
-                                    <h3>如果就 · 场景应对方案</h3>
-                                    <p>把日复盘、周复盘里反复出现的场景，沉淀成「如果…就…」的自动应对：先写清当时的场景和双方言行，再定一句下次一定做得出来的动作。用来复习，也用来临场调用。</p>
-                                </div>
-                            </div>
-                            <div class="btn-group">
-                                <button class="btn btn-primary btn-sm" onclick="openIfModal()">➕ 新增方案</button>
-                                <button class="btn btn-outline btn-sm" id="ifReviewBtn" onclick="toggleIfReview()">🎯 复习模式</button>
-                                <button class="btn btn-outline btn-sm" onclick="openIfCatManager()">⚙️ 场景分类</button>
-                            </div>
+                    <!-- 引导到「如果就」独立标签页（模块本体已提升为第 2 个 tab） -->
+                    <div class="if-entry">
+                        <span class="if-entry-ico">🎯</span>
+                        <div class="if-entry-txt">
+                            <strong>如果就 · 场景应对方案</strong>
+                            <span>把反复出现的场景，沉淀成「如果…就…」的一句话自动应对；复习时扫一遍，临场直接调用。</span>
                         </div>
-                        <div class="it-meta" id="ifMeta"></div>
-                        <div class="it-chips" id="ifChips"></div>
-                        <div class="it-list" id="ifThenList"></div>
+                        <button class="btn btn-primary btn-sm" onclick="gotoIfThenTab()">打开 →</button>
                     </div>
                 </div>
 
@@ -217,6 +207,29 @@
                     </div>
 
                     <div id="monthListWrap" class="record-list"></div>
+                </div>
+
+                <!-- ===== Tab: 如果就（独立标签页，模块本体在这里） ===== -->
+                <div class="tab-panel" id="tabIfThen">
+                    <div class="it-block" id="ifThenBlock">
+                        <div class="it-head">
+                            <div class="it-title">
+                                <span class="it-emoji">🎯</span>
+                                <div>
+                                    <h3>如果就 · 场景应对方案</h3>
+                                    <p>把日复盘、周复盘里反复出现的场景，沉淀成「如果…就…」的自动应对：先写清当时的场景和双方言行，再定一句下次一定做得出来的动作。用来复习，也用来临场调用。</p>
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-primary btn-sm" onclick="openIfModal()">➕ 新增方案</button>
+                                <button class="btn btn-outline btn-sm" id="ifReviewBtn" onclick="toggleIfReview()">🎯 复习模式</button>
+                                <button class="btn btn-outline btn-sm" onclick="openIfCatManager()">⚙️ 场景分类</button>
+                            </div>
+                        </div>
+                        <div class="it-meta" id="ifMeta"></div>
+                        <div class="it-chips" id="ifChips"></div>
+                        <div class="it-list" id="ifThenList"></div>
+                    </div>
                 </div>
 
                 <!-- ===== 如果就：新增 / 编辑（故意放在 .tab-panel 之外，避免「清空表单」误清） ===== -->
@@ -294,7 +307,7 @@
 
     <div class="it-toast" id="ifToast"></div>
 
-    <script src="social-core.js?v=V20260918f"></script>
+    <script src="social-core.js?v=V20260918h"></script>
 <!-- build-tag:begin（技能 §21/§22：由推送脚本维护，勿手改） -->
 <style>
 html.embedded #buildTag{display:none}
@@ -314,7 +327,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918f</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918h</div>
 <!-- build-tag:end -->
 </body>
 </html>
