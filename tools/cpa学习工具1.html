@@ -69,6 +69,49 @@
         }
         input[type="time"] { padding: 8px 12px; }
         textarea { resize: vertical; min-height: 56px; }
+
+        /*##CPARICH_CSS_BEGIN##*/
+        /* ===== CpaRich：把 textarea 的外观搬到 contenteditable 上（2026-09-18 新增） =====
+           为什么必须显式复制这些值：外观原本来自全局 `input, select, textarea {...}`
+           与 `.rec-pane textarea {...}` 两条规则，换成 <div> 后一条都不生效。
+           取值与上面两条**逐项对齐**（padding 10px 14px / border 1px var(--border) /
+           radius var(--radius-sm) / background #FAF7F1 / font-size 14px /
+           line-height 1.75 / min-height var(--rec-ta-min)），否则字段会「跳一下」。 */
+        .cpa-rt {
+            width: 100%;
+            box-sizing: border-box;
+            min-height: var(--rec-ta-min, 96px);
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: #FAF7F1;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.75;
+            outline: none;
+            cursor: text;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+        .cpa-rt:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(138, 115, 88, 0.15);
+        }
+        /* textarea 的 placeholder="…" 在 div 上无效 —— 用 :empty 伪元素顶替。
+           空值归一（CpaRich.initRT）会把 Chrome 塞的 <br> 清掉，所以 :empty 判得住。 */
+        .cpa-rt:empty::before {
+            content: attr(data-ph);
+            color: #B4A792;
+            pointer-events: none;
+        }
+        .cpa-rt b, .cpa-rt strong, .kp-cell-in b, .kp-cell-in strong { font-weight: 700; }
+        .cpa-rt i, .cpa-rt em { font-style: italic; }
+        .cpa-rt u, .kp-cell-in u { text-decoration: underline; }
+        .cpa-rt s, .cpa-rt strike, .cpa-rt del { text-decoration: line-through; }
+        /*##CPARICH_CSS_END##*/
         label {
             font-size: 13px;
             font-weight: 600;
@@ -3651,19 +3694,19 @@
                             <div class="rec-pane rec-pane-out" id="recPaneOther" role="tabpanel" hidden>
                                 <div class="field">
                                     <label>🧠 解题思路 <span style="font-weight:400;color:var(--text-secondary);">(重点)</span></label>
-                                    <textarea id="fProblemSolving" rows="3" spellcheck="false" placeholder="记录你的解题思路、关键步骤、易错点…"></textarea>
+                                    <div class="cpa-rt" id="fProblemSolving" data-rt="1" contenteditable="true" spellcheck="false" data-ph="记录你的解题思路、关键步骤、易错点…"></div>
                                 </div>
                                 <div class="field">
                                     <label>🔗 记忆网络 <span style="font-weight:400;color:var(--text-secondary);">(知识点关联)</span></label>
-                                    <textarea id="fMemoryNetwork" rows="3" spellcheck="false" placeholder="记录知识点之间的关联、对比、框架…"></textarea>
+                                    <div class="cpa-rt" id="fMemoryNetwork" data-rt="1" contenteditable="true" spellcheck="false" data-ph="记录知识点之间的关联、对比、框架…"></div>
                                 </div>
                                 <div class="field">
                                     <label>🤖 AI 问答 <span style="font-weight:400;color:var(--text-secondary);">(学习中的疑问与AI对话)</span></label>
-                                    <textarea id="fAiQA" rows="3" spellcheck="false" placeholder="记录你向AI提出的问题及回答要点…"></textarea>
+                                    <div class="cpa-rt" id="fAiQA" data-rt="1" contenteditable="true" spellcheck="false" data-ph="记录你向AI提出的问题及回答要点…"></div>
                                 </div>
                                 <div class="field">
                                     <label>📌 备注</label>
-                                    <textarea id="fNotes" rows="3" spellcheck="false" placeholder="其他补充信息…"></textarea>
+                                    <div class="cpa-rt" id="fNotes" data-rt="1" contenteditable="true" spellcheck="false" data-ph="其他补充信息…"></div>
                                 </div>
                             </div>
                             <div class="rec-pane" id="recPaneTmpl" role="tabpanel" hidden>
@@ -7050,6 +7093,20 @@
             const el = document.getElementById(id);
             if (!el || el.dataset.autoNum === '1') return;
             el.dataset.autoNum = '1';
+            // ★ 2026-09-18 富文本：textarea 专有的 selectionStart / setRangeText 在
+            //   contenteditable 上不存在，回车续号必须另走一条路 —— 用 Range 量出
+            //   「光标所在行」，再插 <br> + 该行的下一级前缀。
+            if (el.isContentEditable) {
+                el.addEventListener('keydown', function (e) {
+                    if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
+                    var R = window.CpaRich;
+                    if (!R) return;
+                    var info = numPrefixInfo(R.caretLine(el));
+                    e.preventDefault();
+                    R.insertBreak(el, info ? info.next : '');
+                });
+                return;
+            }
             el.addEventListener('keydown', function (e) {
                 if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
                 e.preventDefault();
@@ -7102,10 +7159,15 @@
             const marks = getRecMarks();               // ★ 需求 D：重点 / 难点 / 疑点
             const selfAssessment = document.getElementById('fSelfAssessment').value;
             const assessmentReason = document.getElementById('fAssessmentReason').value.trim();
-            const problemSolving = document.getElementById('fProblemSolving').value.trim();
-            const memoryNetwork = document.getElementById('fMemoryNetwork').value.trim();
-            const aiQA = document.getElementById('fAiQA').value.trim();
-            const notes = document.getElementById('fNotes').value.trim();
+            // ★ 2026-09-18 富文本：纯文本仍进原字段（导出/打印/统计零改动），格式另存 *H
+            const problemSolving = (window.CpaRich ? window.CpaRich.textOf('fProblemSolving') : document.getElementById('fProblemSolving').value).trim();
+            const memoryNetwork = (window.CpaRich ? window.CpaRich.textOf('fMemoryNetwork') : document.getElementById('fMemoryNetwork').value).trim();
+            const aiQA = (window.CpaRich ? window.CpaRich.textOf('fAiQA') : document.getElementById('fAiQA').value).trim();
+            const notes = (window.CpaRich ? window.CpaRich.textOf('fNotes') : document.getElementById('fNotes').value).trim();
+            const problemSolvingH = window.CpaRich ? window.CpaRich.fmtOf('fProblemSolving') : null;
+            const memoryNetworkH = window.CpaRich ? window.CpaRich.fmtOf('fMemoryNetwork') : null;
+            const aiQAH = window.CpaRich ? window.CpaRich.fmtOf('fAiQA') : null;
+            const notesH = window.CpaRich ? window.CpaRich.fmtOf('fNotes') : null;
             // 知识点只有一个来源：getKnowledgePoints() 从「📝 知识点速记」解析。
             // ⚠️ 这里曾经在 getKnowledgePoints() 之外**又**遍历了一遍 fKpQuick 并 push ——
             //    旧双模式下 getKnowledgePoints() 走的是另一条路（下拉 / 自由输入行），
@@ -7196,8 +7258,16 @@
                 memoryNetwork: memoryNetwork || '',
                 aiQA: aiQA || '',
                 notes: notes || '',
+                // ★ 2026-09-18 富文本旁挂：只在真的带格式时才写，纯文本记录一个字节都不多
+                problemSolvingH: problemSolvingH || undefined,
+                memoryNetworkH: memoryNetworkH || undefined,
+                aiQAH: aiQAH || undefined,
+                notesH: notesH || undefined,
                 knowledgePoints: knowledgePoints,
                 kpQuickRaw: kpQuickRaw,
+                // ★ 2026-09-18 富文本旁挂：知识树单元格的格式（没有格式时为 null）
+                kpRich: (window.CpaKpEditor && typeof window.CpaKpEditor.getRichMap === 'function')
+                    ? window.CpaKpEditor.getRichMap() : null,
                 // ★ 记录这份大纲是几列写的 —— 这是层级契约，必须落盘。
                 //   「知识点速记」的列数直接决定大纲占哪几级：
                 //       3 列 = 总标题/子标题/细节   → 链路第 4–6 级（知识点 1/2/3 级）
@@ -7360,16 +7430,16 @@
                                 ? window.CpaKpEditor.kpBlockHtml(r, kpView) : null;
                             const showPs = on('ps'), showMem = on('mem');
                             let h = '<div class="bottom">';
-                            if (showPs) h += `<div class="item${showMem ? '' : ' full'}"><span class="lbl">🧠 解题思路</span><span class="val ${r.problemSolving ? '' : 'empty'}">${r.problemSolving || '未记录'}</span></div>`;
-                            if (showMem) h += `<div class="item${showPs ? '' : ' full'}"><span class="lbl">🔗 记忆网络</span><span class="val ${r.memoryNetwork ? '' : 'empty'}">${r.memoryNetwork || '未记录'}</span></div>`;
+                            if (showPs) h += `<div class="item${showMem ? '' : ' full'}"><span class="lbl">🧠 解题思路</span><span class="val ${r.problemSolving ? '' : 'empty'}">${rtHtml(r.problemSolvingH, r.problemSolving) || '未记录'}</span></div>`;
+                            if (showMem) h += `<div class="item${showPs ? '' : ' full'}"><span class="lbl">🔗 记忆网络</span><span class="val ${r.memoryNetwork ? '' : 'empty'}">${rtHtml(r.memoryNetworkH, r.memoryNetwork) || '未记录'}</span></div>`;
                             if (on('kp') && r.knowledgePoints && r.knowledgePoints.length) {
                                 const inner = kpBlock || ('<span class="kp-chips" style="display:inline-flex;">' + kpChipsHTML(r.knowledgePoints) + '</span>');
                                 const cap = (kpView === 'default' || !rv) ? '' : '（' + rv.name(kpView) + '）';
                                 h += `<div class="item full"><span class="lbl">📌 知识点${cap}</span><div class="val">${inner}</div></div>`;
                             }
-                            if (on('other') && r.aiQA) h += `<div class="item full"><span class="lbl">🤖 AI 问答</span><span class="val">${r.aiQA}</span></div>`;
+                            if (on('other') && r.aiQA) h += `<div class="item full"><span class="lbl">🤖 AI 问答</span><span class="val">${rtHtml(r.aiQAH, r.aiQA)}</span></div>`;
                             if (on('other') && r.assessmentReason) h += `<div class="item full"><span class="lbl">📝 自评原因</span><span class="val">${r.assessmentReason}</span></div>`;
-                            if (on('other') && r.notes) h += `<div class="item full"><span class="lbl">📌 备注</span><span class="val">${r.notes}</span></div>`;
+                            if (on('other') && r.notes) h += `<div class="item full"><span class="lbl">📌 备注</span><span class="val">${rtHtml(r.notesH, r.notes)}</span></div>`;
                             if (h === '<div class="bottom">') h += '<div class="item full"><span class="val empty">（展示内容已全部隐藏，可在列表上方「展示内容」里勾选回来）</span></div>';
                             return h + '</div>';
                         })()}
@@ -7443,10 +7513,10 @@
             applyRecMarks(record.marks);               // ★ 需求 D
             document.getElementById('fSelfAssessment').value = record.selfAssessment || '';
             document.getElementById('fAssessmentReason').value = record.assessmentReason || '';
-            document.getElementById('fProblemSolving').value = record.problemSolving || '';
-            document.getElementById('fMemoryNetwork').value = record.memoryNetwork || '';
-            document.getElementById('fAiQA').value = record.aiQA || '';
-            document.getElementById('fNotes').value = record.notes || '';
+            window.CpaRich ? window.CpaRich.set('fProblemSolving', record.problemSolvingH, record.problemSolving) : (document.getElementById('fProblemSolving').value = record.problemSolving || '');
+            window.CpaRich ? window.CpaRich.set('fMemoryNetwork', record.memoryNetworkH, record.memoryNetwork) : (document.getElementById('fMemoryNetwork').value = record.memoryNetwork || '');
+            window.CpaRich ? window.CpaRich.set('fAiQA', record.aiQAH, record.aiQA) : (document.getElementById('fAiQA').value = record.aiQA || '');
+            window.CpaRich ? window.CpaRich.set('fNotes', record.notesH, record.notes) : (document.getElementById('fNotes').value = record.notes || '');
             { const kpq = document.getElementById('fKpQuick'); if (kpq) kpq.value = record.kpQuickRaw || ''; }
             if (window.CpaKpEditor) window.CpaKpEditor.onRecordLoad(record);
             const memCb = document.getElementById('fAddToMemory');
@@ -16719,6 +16789,12 @@
             });
             return out.join('\n').replace(/[ \t]+$/gm, '');
         }
+        // ★ 2026-09-18 富文本旁挂：树的纯文本形态是唯一数据源，格式走 nd.h；
+        //   落盘汇总成 rec.kpRich = {'1.2': {t, h}}，重开时按「路径 + 纯文本」双校验套回 ——
+        //   节点被增删/改写过的位置自动跳过，不会把格式套到别的格子上。
+        function richMapOf(list) { return window.CpaRich ? window.CpaRich.richMapOf(list) : null; }
+        function applyRichMap(list, map) { return window.CpaRich ? window.CpaRich.applyRichMap(list, map) : list; }
+        function carryRich(a, b) { return window.CpaRich ? window.CpaRich.carryRich(a, b) : b; }
         function leafCount(n) {
             return (n.c && n.c.length) ? n.c.reduce(function (s, x) { return s + leafCount(x); }, 0) : 1;
         }
@@ -16765,7 +16841,9 @@
             if (mode === 'mind' || mode === 'symbol') return;
             if (!viewDirty[mode]) return;         // 文本没被人动过，树就是最新的
             var e = el(IN_ID[mode]);
-            if (e) tree = parse(e.value);
+            // ★ 纯文本视角被改过 → tree 会被 parse 重建，新树里没有 h；
+            //   把「纯文本对得上」的节点的格式搬回去，避免切视角白丢一次格式。
+            if (e) { var _oldTree = tree; tree = parse(e.value); carryRich(_oldTree, tree); }
             viewDirty[mode] = false;
         }
         function writeViews() {
@@ -16844,7 +16922,7 @@
                 ' style="grid-column:' + depth + ';grid-row:' + r0 + ' / span ' + span + '">' +
                 '<span class="kp-cell-no">' + esc(show) + '</span>' +
                 '<div class="kp-cell-in" contenteditable="true" spellcheck="false"' +
-                ' data-path="' + esc(no) + '" data-ph="' + esc(ph) + '">' + esc(node.t) + '</div>' +
+                ' data-path="' + esc(no) + '" data-ph="' + esc(ph) + '">' + CpaRich.render(node.h, node.t) + '</div>' +
                 '<span class="kp-cell-ops">' +
                 '<button type="button" data-op="sib" data-path="' + esc(no) + '" title="在下方加一个同级单元格">＋</button>' +
                 '<button type="button" data-op="child" data-path="' + esc(no) + '" title="加一个下级单元格"' +
@@ -16965,7 +17043,12 @@
                 if (!t || !t.classList || !t.classList.contains('kp-cell-in')) return;
                 var nd = nodeAt(String(t.getAttribute('data-path')).split('.').map(Number));
                 if (!nd) return;
-                nd.t = String(t.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+$/, '');
+                // ★ 2026-09-18 富文本：纯文本仍写 nd.t（toFlat / toOutline / toMD /
+                //   parse 全部零改动），格式旁挂到 nd.h，落盘汇总成 rec.kpRich。
+                var _rich = window.CpaRich ? window.CpaRich.cell(t) : null;
+                if (_rich) { nd.t = _rich.t; if (_rich.h) nd.h = _rich.h; else delete nd.h; }
+                else { nd.t = String(t.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+$/, ''); }
+                if (window.CpaRich && !window.CpaRich.norm(t.innerHTML)) t.innerHTML = '';   // 保住 :empty 占位提示
                 syncFlatOnly(); updateStat();
             });
             g.addEventListener('keydown', function (ev) {
@@ -17107,7 +17190,9 @@
             statTimer = setTimeout(function () {
                 if (mode !== m) { viewDirty[m] = false; return; }   // 已切走：syncFromView 刚回读过
                 var e = el(IN_ID[m]);
-                if (e) tree = parse(e.value);
+                // ★ 纯文本视角被改过 → tree 会被 parse 重建，新树里没有 h；
+            //   把「纯文本对得上」的节点的格式搬回去，避免切视角白丢一次格式。
+            if (e) { var _oldTree = tree; tree = parse(e.value); carryRich(_oldTree, tree); }
                 viewDirty[m] = false;
                 updateStat();
             }, 400);
@@ -17501,6 +17586,7 @@
                 raw = kps.map(function (k, i) { return (i + 1) + '. ' + ((k && (k.text || k)) || ''); }).join('\n');
             }
             var roots = raw ? parse(raw) : [];
+            applyRichMap(roots, rec && rec.kpRich);
             if (!roots.length) return '<span class="rec-kp-empty">未记录</span>';
             // ★ 不裁层级：recMaxLv 只用来标记「哪一层是答案层」，不用来删/并节点。
             if (v === 'md') return '<pre class="rec-pre rec-pre-md">' + esc(toMD(roots)) + '</pre>';
@@ -17531,7 +17617,7 @@
                     out.push('<div class="kp-hrow kp-hlv' + Math.min(d, 4) + (deep ? ' kp-hdeep' : '') + '"' +
                         (deep ? ' title="这一层进卡片反面（答案层），不单独出卡"' : '') + '>' +
                         '<span class="kp-hno">' + esc(noStr(p)) + '</span>' +
-                        '<span class="kp-htext">' + esc(n.t) + '</span></div>');
+                        '<span class="kp-htext">' + CpaRich.render(n.h, n.t) + '</span></div>');
                     walk(n.c || [], d + 1, p);
                 });
             })(roots, 1, []);
@@ -17554,7 +17640,7 @@
                         (last ? ' kp-mlast' : '') + (deep ? ' kp-mdeep' : '') + '"' +
                         ' style="margin-left:' + ((d - 1) * 18) + 'px"' +
                         (deep ? ' title="这一层进卡片反面（答案层），不单独出卡"' : '') + '>' +
-                        '<span class="kp-mtext">' + esc(n.t) + '</span></div>');
+                        '<span class="kp-mtext">' + CpaRich.render(n.h, n.t) + '</span></div>');
                     walk(n.c || [], d + 1);
                 });
             })(roots, 1);
@@ -17575,7 +17661,7 @@
                     out.push('<div class="kp-hrow kp-hlv' + Math.min(d, 4) + (deep ? ' kp-hdeep' : '') + '"' +
                         (deep ? ' title="这一层进卡片反面（答案层），不单独出卡"' : '') + '>' +
                         '<span class="kp-hno kp-symno">' + esc(symCh(d + SYSOFF)) + '</span>' +
-                        '<span class="kp-htext">' + esc(n.t) + '</span></div>');
+                        '<span class="kp-htext">' + CpaRich.render(n.h, n.t) + '</span></div>');
                     walk(n.c || [], d + 1);
                 });
             })(roots, 1);
@@ -17645,7 +17731,7 @@
                 out.push('<div class="kp-cell kp-lv' + d + (span > 1 ? ' kp-merged' : '') + '"' +
                     ' style="grid-column:' + d + ';grid-row:' + r0 + ' / span ' + span + '">' +
                     '<span class="kp-cell-no">' + esc(noStr(path)) + '</span>' +
-                    '<div class="kp-cell-in rvp-ro">' + esc(nd.t) + '</div></div>');
+                    '<div class="kp-cell-in rvp-ro">' + CpaRich.render(nd.h, nd.t) + '</div></div>');
                 var cur = r0;
                 if (d < n) {
                     (nd.c || []).forEach(function (ch, i) { cur = emit(out, ch, d + 1, path.concat(i + 1), cur); });
@@ -17668,6 +17754,7 @@
                 raw = kps.map(function (k, i) { return (i + 1) + '. ' + ((k && (k.text || k)) || ''); }).join('\n');
             }
             var roots = raw ? parse(raw) : [];
+            applyRichMap(roots, rec && rec.kpRich);
             if (!roots.length) return '';
             return kpGridROHtml(roots, (rec && rec.kpCols) || 3);
         }
@@ -17768,6 +17855,7 @@
                 var q = el('fKpQuick');
                 if (q) q.value = (rec && rec.kpQuickRaw) || '';
                 tree = parse(q ? q.value : '');
+                applyRichMap(tree, rec && rec.kpRich);
                 // ★ 恢复这条记录写入时的列数：列数是层级契约
                 //   （3 列 = 链路第 4–6 级 / 4 列 = 第 4–7 级），
                 //   不还原的话重新编辑再保存会把层级契约改掉。
@@ -17791,6 +17879,7 @@
             setTmpl: setTmpl,
             getTmpl: function () { return tmpl; },
             parseText: parse,
+            getRichMap: function () { return richMapOf(tree); },
             toOutlineText: toOutline,
             toMdText: toMD,
             kpBlockHtml: kpBlockHtml,
@@ -18021,7 +18110,287 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918l</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918t</div>
 <!-- build-tag:end -->
+
+<script>
+/*##CPARICH_JS_BEGIN##*/
+/* ============================================================================
+   CpaRich —— CPA 工具的「富文本」辅助层（2026-09-18 新增）
+   ----------------------------------------------------------------------------
+   背景：Tom 要求「长按选中文字 → 浮出格式条（颜色/加粗/下划线）」在 CPA 工具的
+   长文本编辑与知识树文本编辑里也能用。浮层（HubSelBar）本身对任何
+   contenteditable 都能工作，缺的是两件事：
+     ① 这些编辑点原本是 <textarea>（存纯字符串、不渲染格式）→ 必须换成
+        可编辑容器；
+     ② 格式必须**存得下来**（知识树单元格原来只写 textContent，格式会被静默丢掉）。
+   ----------------------------------------------------------------------------
+   ★ 核心设计：旁挂（side-car），绝不改原字段的语义
+     · 长文本四字段：记录里 **仍然存纯文本** problemSolving / memoryNetwork /
+       aiQA / notes（导出 Excel、打印表格、字数统计、检索全部零改动），
+       格式另存 problemSolvingH / memoryNetworkH / aiQAH / notesH，
+       且**只在真的带格式时才写**（纯文本记录一个字节都不多）。
+     · 知识树单元格：节点上 **仍然存纯文本** nd.t（toFlat / toOutline / toMD /
+       parse / 扁平视角全部零改动），格式另存 nd.h；落盘时汇总成 rec.kpRich
+       = { '路径': {t: 当时的纯文本, h: html} }，重开记录时**路径 + 纯文本双校验**
+       才套用 —— 节点增删/改写过的位置不会被套错。
+     ⇒ 最坏情况是「格式丢失」，永远不会损坏纯文本数据。
+   ----------------------------------------------------------------------------
+   注：sanitize 白名单只留行内格式标签与 color/background-color/
+       font-weight/text-decoration* 这几条安全样式，杜绝 <script>/on* 注入。
+   ============================================================================ */
+(function () {
+    'use strict';
+
+    var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ESC[c]; }); }
+
+    var TAG_OK = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, MARK: 1, SPAN: 1, BR: 1, DIV: 1, P: 1 };
+    // 样式白名单：只放「格式条会产出」的那几条，且不允许 url()/expression
+    var STYLE_OK = { 'color': 1, 'background-color': 1, 'font-weight': 1, 'font-style': 1, 'text-decoration': 1, 'text-decoration-line': 1 };
+    var RE_MARKUP = /<\/?(b|strong|i|em|u|s|strike|del|mark|span|br|div|p)\b/i;
+
+    function looksMarkup(h) { return RE_MARKUP.test(String(h == null ? '' : h)); }
+
+    // 白名单净化：不认识的标签拆掉、只留子节点；属性除 style 全丢；style 逐条过滤
+    function sanitize(h) {
+        var d = document.createElement('div');
+        d.innerHTML = String(h == null ? '' : h);
+        (function walk(node) {
+            var kids = [].slice.call(node.childNodes);
+            for (var i = 0; i < kids.length; i++) {
+                var c = kids[i];
+                if (c.nodeType === 3) continue;
+                if (c.nodeType !== 1) { node.removeChild(c); continue; }
+                if (!TAG_OK[c.tagName]) {
+                    while (c.firstChild) node.insertBefore(c.firstChild, c);
+                    node.removeChild(c);
+                    continue;
+                }
+                var attrs = [].slice.call(c.attributes);
+                for (var j = 0; j < attrs.length; j++) {
+                    var nm = String(attrs[j].name || '').toLowerCase();
+                    if (nm === 'style') continue;
+                    c.removeAttribute(attrs[j].name);
+                }
+                var raw = c.getAttribute('style');
+                if (raw) {
+                    var keep = [];
+                    String(raw).split(';').forEach(function (decl) {
+                        var k = decl.indexOf(':');
+                        if (k < 0) return;
+                        var prop = decl.slice(0, k).trim().toLowerCase();
+                        var val = decl.slice(k + 1).trim();
+                        if (!STYLE_OK[prop]) return;
+                        if (/url\s*\(|expression|javascript:|@import/i.test(val)) return;
+                        keep.push(prop + ':' + val);
+                    });
+                    if (keep.length) c.setAttribute('style', keep.join(';'));
+                    else c.removeAttribute('style');
+                }
+                walk(c);
+            }
+        })(d);
+        return d.innerHTML;
+    }
+
+    // HTML → 纯文本。br / 块级边界折成换行，与 textarea 的观感对齐
+    function toText(h) {
+        var s = String(h == null ? '' : h);
+        if (!looksMarkup(s)) return s;
+        s = s.replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/(div|p|li|tr|h[1-6])\s*>/gi, '\n')
+            .replace(/<[^>]*>/g, '');
+        var d = document.createElement('div');
+        d.innerHTML = s;
+        s = d.textContent || '';
+        // 块级边界会多出一个行尾换行（'<div>x</div><div>y</div>' → 'x\ny\n'），抹掉它 ——
+        // toText 的调用方是「导出 / 打印 / 纯文本字段」，不需要行尾空行。
+        return s.replace(/\u00a0/g, ' ').replace(/\n+$/, '');
+    }
+
+    // 「空」归一：只剩 <br> / 空 div / &nbsp; 一律当空串 ——
+    // 否则 Chrome 给空 contenteditable 塞的 <br> 会被 .value.trim() 当成有内容、存进记录
+    function norm(h) {
+        var s = String(h == null ? '' : h);
+        if (!s) return '';
+        var probe = s.replace(/<br\s*\/?>/gi, '')
+            .replace(/<[^>]*>/g, '')
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/\u00a0/g, ' ').trim();
+        if (!probe) return '';
+        return s.replace(/(<br\s*\/?>\s*)+$/i, '').replace(/\s+$/, '');
+    }
+
+    // 渲染：有旁挂格式用格式，否则退回转义后的纯文本（等价于旧行为）
+    function render(h, t) {
+        var hh = String(h == null ? '' : h);
+        if (hh && looksMarkup(hh)) return sanitize(hh);
+        return esc(t);
+    }
+
+    function elOf(id) {
+        return id && id.nodeType === 1 ? id : document.getElementById(id);
+    }
+    // 取原始串：textarea 取 .value，可编辑容器取 .innerHTML
+    function rawOf(id) {
+        var e = elOf(id); if (!e) return '';
+        return (e.tagName === 'TEXTAREA' || e.tagName === 'INPUT') ? String(e.value || '') : String(e.innerHTML || '');
+    }
+    function textOf(id) { return toText(rawOf(id)); }
+    // 旁挂用：只有真的带格式才返回 html，否则 null（纯文本记录不多存一个字节）
+    function fmtOf(id) {
+        var s = rawOf(id);
+        if (!looksMarkup(s)) return null;
+        var clean = sanitize(s);
+        return clean && looksMarkup(clean) ? clean : null;
+    }
+    // 回填：有格式用格式，没有就写转义纯文本
+    function set(id, h, t) {
+        var e = elOf(id); if (!e) return;
+        var hh = String(h == null ? '' : h);
+        var val = (hh && looksMarkup(hh)) ? sanitize(hh) : esc(t);
+        if (e.tagName === 'TEXTAREA' || e.tagName === 'INPUT') e.value = (hh && looksMarkup(hh)) ? toText(hh) : String(t == null ? '' : t);
+        else e.innerHTML = val;
+    }
+
+    // 把 .value 接到 HTML 上 —— 让既有的 e.value 读写在 contenteditable 上照旧可用
+    function shim(e) {
+        if (!e || e.__rtShim) return;
+        try {
+            Object.defineProperty(e, 'value', {
+                configurable: true,
+                get: function () { return norm(this.innerHTML); },
+                set: function (v) {
+                    var s = String(v == null ? '' : v);
+                    this.innerHTML = looksMarkup(s) ? sanitize(s) : esc(s);
+                }
+            });
+            e.__rtShim = 1;
+        } catch (err) { }
+    }
+
+    // 光标所在行的文本（contenteditable 版）。行模型：<br> 或块级元素边界
+    function caretLine(root) {
+        try {
+            var sel = window.getSelection();
+            if (!sel || !sel.rangeCount) return '';
+            var r = sel.getRangeAt(0);
+            var pre = r.cloneRange();
+            pre.setStart(root, 0);
+            var frag = pre.cloneContents();
+            var brs = frag.querySelectorAll('br').length;
+            var blk = frag.querySelectorAll('div,p,li').length;
+            var full = String(root.innerText == null ? root.textContent : root.innerText).replace(/\u00a0/g, ' ');
+            var lines = full.split('\n');
+            var idx = brs + (blk > 0 ? blk - 1 : 0);
+            return lines[idx] || '';
+        } catch (e) { return ''; }
+    }
+
+    // 回车续号：插 <br> 再插下一级前缀
+    function insertBreak(e, prefix) {
+        try {
+            e.focus();
+            if (!document.execCommand('insertLineBreak')) {
+                document.execCommand('insertText', false, '\n');
+            }
+            if (prefix) document.execCommand('insertText', false, prefix);
+        } catch (err) {
+            try { document.execCommand('insertText', false, '\n' + (prefix || '')); } catch (e2) { }
+        }
+        try { e.dispatchEvent(new Event('input', { bubbles: true })); } catch (e3) { }
+    }
+
+    // 知识树单元格读：t 保持原语义（textContent + nbsp 归空格 + 去尾空白），h 只在带格式时给
+    function cell(node) {
+        if (!node || node.nodeType !== 1) return { t: '', h: null };
+        var html = String(node.innerHTML || '');
+        return {
+            t: String(node.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+$/, ''),
+            h: looksMarkup(html) ? sanitize(html) : null
+        };
+    }
+
+    // 知识树：收集旁挂 → { '1.2': {t, h} }；没有任何格式时返回 null
+    function richMapOf(list) {
+        var m = {}, has = false;
+        (function walk(nodes, path) {
+            (nodes || []).forEach(function (n, i) {
+                if (!n) return;
+                var p = path.concat([i + 1]);
+                if (n.h) { m[p.join('.')] = { t: String(n.t || ''), h: String(n.h) }; has = true; }
+                walk(n.c || [], p);
+            });
+        })(list, []);
+        return has ? m : null;
+    }
+
+    // 知识树：按「路径 + 纯文本双校验」套用旁挂（节点被增删/改写过的位置自动跳过）
+    function applyRichMap(list, map) {
+        if (!map || !list) return list;
+        (function walk(nodes, path) {
+            (nodes || []).forEach(function (n, i) {
+                if (!n) return;
+                var p = path.concat([i + 1]);
+                var r = map[p.join('.')];
+                if (r && String(n.t || '') === String(r.t || '')) { n.h = r.h; }
+                walk(n.c || [], p);
+            });
+        })(list, []);
+        return list;
+    }
+
+    // 纯文本视图被编辑后 tree 会被 parse 重建 → 把还认得出来的格式搬回新树
+    function carryRich(oldT, newT) {
+        if (!oldT || !newT) return newT;
+        (function walk(a, b) {
+            if (!a || !b) return;
+            for (var i = 0; i < b.length; i++) {
+                var na = a[i], nb = b[i];
+                if (!na || !nb) continue;
+                if (na.h && String(na.t || '') === String(nb.t || '')) nb.h = na.h;
+                walk(na.c || [], nb.c || []);
+            }
+        })(oldT, newT);
+        return newT;
+    }
+
+    // 挂到 window：rtHtml 供记录详情模板串行内调用
+    window.CpaRich = {
+        esc: esc, sanitize: sanitize, toText: toText, norm: norm, render: render,
+        rawOf: rawOf, textOf: textOf, fmtOf: fmtOf, set: set, shim: shim,
+        caretLine: caretLine, insertBreak: insertBreak, cell: cell,
+        richMapOf: richMapOf, applyRichMap: applyRichMap, carryRich: carryRich,
+        looksMarkup: looksMarkup
+    };
+    window.rtHtml = function (h, t) { return render(h, t); };
+
+    // 给 [data-rt] 的可编辑容器装 .value 兼容层 + 空值归一（保住 :empty 占位提示）
+    function initRT() {
+        var list = document.querySelectorAll('[data-rt]');
+        for (var i = 0; i < list.length; i++) {
+            var e = list[i];
+            if (e.__rtReady) continue;
+            e.__rtReady = 1;
+            shim(e);
+            if (!norm(e.innerHTML)) e.innerHTML = '';
+            e.addEventListener('input', function () {
+                if (!norm(this.innerHTML)) this.innerHTML = '';
+            });
+            e.addEventListener('blur', function () {
+                if (!norm(this.innerHTML)) this.innerHTML = '';
+            });
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initRT);
+    } else {
+        initRT();
+    }
+    window.CpaRich.initRT = initRT;
+})();
+/*##CPARICH_JS_END##*/
+</script>
 </body>
 </html>
