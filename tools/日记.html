@@ -2071,6 +2071,71 @@
 
 
 <!-- 统一数据备份中心：入口已集中到侧边栏「数据备份」 -->
+<!-- 全站设置（⚙️ 设置 → 输入文本 / 标注）接入点 —— 由导航页的 HubPrefs 写入 hub_text_v1 -->
+<script>
+/* 这里只做「控件自己的状态」：取色器/字体下拉/字号档位的默认值。
+   字体、颜色本身由导航页注入的 #hub-gs 样式负责（它直接命中 [contenteditable] 与
+   input/textarea），本文件不另写一份 CSS —— 两份 CSS 抢同一个属性只会互相盖。 */
+(function () {
+  'use strict';
+  var PREF_KEY = 'hub_text_v1';
+
+  function readPrefs() {
+    try { return JSON.parse(localStorage.getItem(PREF_KEY) || 'null') || {}; } catch (e) { return {}; }
+  }
+
+  function apply() {
+    var p = readPrefs(), i, o;
+    // ① 标注配色：把全局的「标注底色 / 文字颜色」预置进取色器，
+    //    这样在日记里点高亮 / 改字色用的是全站同一套标注色，不必每次重调。
+    var hc = document.getElementById('hiliteColor');
+    if (hc && p.mkBg) hc.value = p.mkBg;
+    var fc = document.getElementById('foreColor');
+    if (fc && p.color) fc.value = p.color;
+
+    // ② 字体下拉：全局字体在第一项字号族里出现过就选中它。
+    //    选不中也没关系 —— 父页注入的 CSS 依旧生效，下拉只影响「新输入的 execCommand 字体」。
+    var ff = document.getElementById('fontFamily');
+    if (ff && p.font) {
+      for (i = 0; i < ff.options.length; i++) {
+        o = ff.options[i];
+        if (!o.value) continue;
+        var head = o.value.split(',')[0].replace(/["']/g, '').trim();
+        if (head && p.font.indexOf(head) >= 0) { ff.selectedIndex = i; break; }
+      }
+    }
+
+    // ③ 字号：只在**本工具没自己存过**时按全局字号选最接近的一档。
+    //    日记自己有 diary_editor_font，用户在日记里选过就永远以日记为准（本工具优先）。
+    var own = null;
+    try { own = localStorage.getItem('diary_editor_font'); } catch (e) {}
+    var fsEl = document.getElementById('fontSize');
+    var ed = document.getElementById('editor');
+    if (fsEl && ed && !own && p.size) {
+      var px = parseFloat(p.size) || 0;
+      if (px > 0) {
+        var cls = px >= 19 ? 'font-xl' : (px >= 17 ? 'font-lg' : (px >= 15 ? 'font-md' : 'font-sm'));
+        ed.classList.remove('font-sm', 'font-md', 'font-lg', 'font-xl');
+        ed.classList.add(cls);
+        fsEl.value = cls;
+      }
+    }
+  }
+
+  apply();
+  // 在导航页「⚙️ 设置」里改一次，子页当场跟上：同源 localStorage 的 storage 事件
+  // 只在**其它**文档里触发 —— 父页写、子页收，正好是我们要的方向。
+  try {
+    window.addEventListener('storage', function (e) {
+      if (!e || e.key === null || e.key === PREF_KEY || e.key === 'hub_theme') apply();
+    });
+  } catch (e) {}
+  try {
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) apply(); });
+  } catch (e) {}
+})();
+</script>
+
 <!-- build-tag:begin（技能 §21/§22：由推送脚本维护，勿手改） -->
 <style>
 html.embedded #buildTag{display:none}
