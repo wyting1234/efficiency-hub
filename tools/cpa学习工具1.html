@@ -1143,6 +1143,7 @@
             padding: 2px 12px;
             border-radius: 12px;
         }
+        .record-card .top .right .kttree-btn,
         .record-card .top .right .delete-btn,
         .record-card .top .right .edit-btn {
             background: transparent;
@@ -1157,6 +1158,22 @@
             background: #F6E3DD;
             color: #94452F;
         }
+        .record-card .top .right .kttree-btn:hover {
+            background: #E4EFE2;
+            color: #3E6B43;
+        }
+        /* ★ 2026-09-18（需求 K）：从记录卡片跳到知识树后，把落点闪一下。
+           纯视觉 —— 不写任何数据，刷新即无。 */
+        @keyframes ktHitPulse {
+            0%   { background: rgba(214, 178, 94, .55); }
+            100% { background: rgba(214, 178, 94, 0); }
+        }
+        .kt-row.kt-hit { animation: ktHitPulse 2.4s ease-out 1; border-radius: 6px; }
+        @keyframes ktBoxPulse {
+            0%   { box-shadow: 0 0 0 3px rgba(214, 178, 94, .8); }
+            100% { box-shadow: 0 0 0 3px rgba(214, 178, 94, 0); }
+        }
+        #formContainer.kt-hit-box { animation: ktBoxPulse 1.6s ease-out 1; border-radius: var(--radius-sm); }
         .record-card .time-row {
             display: flex;
             gap: 16px;
@@ -3267,6 +3284,18 @@
         .kt-me-chip[data-mk="hard"].on  { color: #A96C0B; border-color: #E2C68C; background: #FCF2E0; }
         .kt-me-chip[data-mk="doubt"].on { color: #2E6DA4; border-color: #9FBEDC; background: #E9F1F9; }
         .kt-me-note { margin-top: 7px; font-size: 11px; color: var(--text-secondary); }
+        /* ★ 2026-09-18（需求 K）：树 → 记录的回跳入口（同一个右键 / 长按面板） */
+        .kt-me-openbox { margin-top: 8px; border-top: 1px dashed #E3D9C6; padding-top: 7px; }
+        .kt-me-openh { font-size: 11px; color: var(--text-secondary); margin-bottom: 5px; }
+        .kt-me-open {
+            display: block; width: 100%; text-align: left; margin-bottom: 3px;
+            padding: 5px 7px; border: 1px solid var(--border); background: #fff;
+            border-radius: 6px; font-family: inherit; font-size: 11.5px; color: var(--text);
+            cursor: pointer; transition: var(--transition);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .kt-me-open:hover { border-color: var(--primary-light); background: #FDFBF6; }
+        .kt-me-openmore { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
         @media print { .kt-mark-edit { display: none !important; } }
 
         /* ===== 学习记录列表：展示内容 / 展示方式 控件条 ===== */
@@ -7508,6 +7537,7 @@
                             </div>
                             <div class="right">
                                 <span class="duration">${durationDisplay}</span>
+                                <button class="kttree-btn" data-id="${r.id}" title="在知识树中定位这条记录：切到知识树、筛好科目/章/节、展开并高亮对应的知识点行">🌳</button>
                                 <button class="edit-btn" data-id="${r.id}" title="编辑">✎</button>
                                 <button class="delete-btn" data-id="${r.id}" title="删除">✕</button>
                             </div>
@@ -7560,6 +7590,16 @@
                         saveData();
                         renderAll();
                     }
+                    return;
+                }
+                /* ★ 2026-09-18（需求 K）：🌳 = 去知识树里定位这条记录。
+                   ktRecLocate 住在后面的脚本块（知识树模块）里 —— 函数声明是全局的，
+                   运行时一定拿得到；这里仍用 typeof 兜一下，免得脚本损坏时静默失效。 */
+                const ktGo = e.target.closest ? e.target.closest('.kttree-btn') : null;
+                if (ktGo) {
+                    e.stopPropagation();
+                    if (typeof ktRecLocate === 'function') ktRecLocate(ktGo.dataset.id);
+                    else if (typeof showToast === 'function') showToast('知识树模块未就绪，请刷新页面再试');
                     return;
                 }
                 const ed = e.target.closest ? e.target.closest('.edit-btn') : null;
@@ -10021,7 +10061,9 @@
                     if (mc) mc.classList.toggle('fillpage', view === 'kptree');
                     if (view === 'memory') renderMemoryView();
                     if (view === 'flash') { try { fcRender(); } catch (e) {} }
-                    if (view === 'kptree') { try { ktRender(); } catch (e) {} }
+                    /* ★ 2026-09-18（需求 K）：进知识树前先把 📝 学习记录 那边的
+                       科目 / 章 / 节同步过来（只在记录侧真的变过时才动，见 ktSyncScopeFromRecord）。 */
+                    if (view === 'kptree') { try { ktSyncScopeFromRecord(); ktRender(); } catch (e) {} }
                     if (view === 'goal') { renderGoalSummary(); renderGoalStatsPanel(); }
                     if (view === 'scheat') { try { heatRender(); } catch (e) {} }
                 });
@@ -13843,6 +13885,202 @@
                 return true;
             } catch (e) { return false; }
         }
+        /* ============ ★ 2026-09-18（需求 K）：知识树 ↔ 学习记录 双向联动 ============
+           Tom 的原话：「知识树和记录学习的联动怎么没了？建立双向的联动」。
+           先说清前提（拿改动前的线上原版逐项比对过）：数据层的联动一直在 ——
+             · 知识点行（第 4–7 级）**只来自学习记录**（ktAllNodes → fcWalkAll，与闪卡同一份）；
+             · 树上右键改 ★▲？ 会写回那条记录 / 项目的计划层。
+           缺的是**视图层**的两条跳转，以及筛选的一体感。本块只补这三件，不新增任何存储：
+             A. 筛选同步：📝 学习记录 里换科目/章/节 → 知识树跟着切
+             B. 记录 → 树：记录卡片上的 🌳 → 切到知识树、筛好范围、展开到那个知识点并高亮
+             C. 树 → 记录：知识点/章/节行右键（手机长按）→ 面板里「📝 打开…」→ 载入编辑表单
+
+           为什么 A 要带指纹：用户在树上自己调过「显示范围 / 科目」，切一下页签回来就被
+           记录侧的身位盖掉会很气人。所以只在**记录侧真的变过**时才同步一次；
+           指纹存进 state.ktCfg._recScope，刷新页面也记得住。 */
+        function ktRecScope() {
+            var o = { course: '', ch: 0, sec: 0 };
+            try { o.course = String(state.currentCourse || ''); } catch (e) {}
+            try {
+                var ce = document.getElementById('fChapter');
+                var se = document.getElementById('fSection');
+                if (ce && ce.value) o.ch = parseInt(ce.value, 10) || 0;
+                if (se && se.value) o.sec = parseInt(se.value, 10) || 0;
+            } catch (e2) {}
+            if (!o.ch) o.sec = 0;          // 章都没选，节不可能是有效筛选
+            return o;
+        }
+        function ktScopeKey(o) { return [o.course, o.ch, o.sec].join('|'); }
+
+        /* 返回 true = 这次真的同步了（记录侧变过）。挂在页签切换上调用。 */
+        function ktSyncScopeFromRecord() {
+            var cfg = ktState();
+            var o = ktRecScope();
+            var key = ktScopeKey(o);
+            if (cfg._recScope === key) return false;
+            cfg._recScope = key;
+            cfg.course = o.course;
+            cfg.chapter = o.ch;
+            cfg.section = o.sec;
+            ktOpen = {};                   // 换了范围 → 回到「按范围展开」，别留着上一支的展开状态
+            saveData();
+            return true;
+        }
+        /* 强制把树筛到指定范围（🌳 定位用）—— 用户明确要求跳过去，所以不看指纹 */
+        function ktForceScope(course, ch, sec) {
+            var cfg = ktState();
+            cfg.course = course || '';
+            cfg.chapter = +ch || 0;
+            cfg.section = +sec || 0;
+            cfg._recScope = [cfg.course, cfg.chapter, cfg.section].join('|');
+            ktOpen = {};
+            saveData();
+        }
+        function ktSwitchView(view) {
+            var tab = document.querySelector('#viewTabs .vtab[data-view="' + view + '"]');
+            if (!tab) return false;
+            if (!tab.classList.contains('active')) tab.click();
+            return true;
+        }
+        /* 记录的知识点速记 → 第一个有用的行名（剥行首序号的口径与 ktNorm 一致） */
+        function ktRecFirstName(rec) {
+            var lines = String((rec && rec.kpQuickRaw) || '').split(/\r?\n/);
+            for (var i = 0; i < lines.length; i++) {
+                var t = String(lines[i] || '')
+                    .replace(/^[\s\u3000]*[0-9]{1,3}\s*[.、．)）:：]\s*/, '').trim();
+                if (t) return t;
+            }
+            return '';
+        }
+        /* 在（已按 cfg 筛过的）七级树里找节点：
+           ① 先找 (科目, 章, 节) 对得上、名字**完全相等**的知识点行；
+           ② 找不到再退回「名字被记录速记包含」，取**最长**的那个 —— 短名字更容易误命中。 */
+        function ktFindRecNode(tree, course, ch, sec, name) {
+            var nrm = ktNorm(name);
+            if (!nrm) return null;
+            var exact = null, loose = null;
+            (function walk(list, path) {
+                (list || []).forEach(function (n) {
+                    var p = path.concat([n]);
+                    if (n.kind === 'kp') {
+                        var cs = ktNodeCS(n);
+                        if (cs.course === course && +cs.ch === +ch && +cs.sec === +sec) {
+                            var nn = ktNorm(n.name);
+                            if (!exact && nn && nn === nrm) exact = { node: n, path: p };
+                            if (nn && nrm.indexOf(nn) >= 0 &&
+                                (!loose || String(n.name).length > String(loose.node.name).length)) {
+                                loose = { node: n, path: p };
+                            }
+                        }
+                    }
+                    if (n.children && n.children.length) walk(n.children, p);
+                });
+            })(tree, []);
+            return exact || loose;
+        }
+        var ktHitT = null;
+        function ktFlashRow(sig) {
+            try {
+                var body = document.getElementById('ktBody');
+                if (!body || !sig) return false;
+                var old = body.querySelectorAll('.kt-row.kt-hit');
+                for (var j = 0; j < old.length; j++) old[j].classList.remove('kt-hit');
+                var row = ktMeRowEl(sig);
+                if (!row) return false;
+                row.classList.add('kt-hit');
+                try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { row.scrollIntoView(); }
+                clearTimeout(ktHitT);
+                ktHitT = setTimeout(function () {
+                    var rs = body.querySelectorAll('.kt-row.kt-hit');
+                    for (var k = 0; k < rs.length; k++) rs[k].classList.remove('kt-hit');
+                }, 2600);
+                return true;
+            } catch (e2) { return false; }
+        }
+        /* 展开到目标节点的**全部祖先**，并把「显示范围」撑到够得着它 ——
+           否则会出现「找到了、也高亮了，可是那一行根本没渲染出来」。 */
+        function ktOpenPathTo(path, node) {
+            (path || []).forEach(function (n) {
+                if (n.children && n.children.length) ktOpen[n.sig] = true;
+            });
+            if (node && node.lv > 0) {
+                var cfg = ktState();
+                var cur = (cfg.to === KT_TO_AUTO) ? KT_DEF_TO : cfg.to;
+                if (cur < node.lv) cfg.to = node.lv;
+                if (cfg.from > node.lv) cfg.from = 1;
+            }
+        }
+        /* B. 记录卡片上的 🌳 */
+        function ktRecLocate(rid) {
+            var rec = null, list = (state && state.records) || [];
+            for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === rid) { rec = list[i]; break; }
+            if (!rec) { ktToast('找不到这条学习记录（可能已被删除）'); return; }
+            var course = rec.course || '', ch = +rec.chapter || 0, sec = +rec.section || 0;
+            if (!ktSwitchView('kptree')) { ktToast('找不到知识树页签'); return; }
+            ktForceScope(course, ch, sec);
+            var hit = ktFindRecNode(ktSevenTree(ktState(), ktAllNodes(), ktProj()),
+                course, ch, sec, ktRecFirstName(rec));
+            if (hit) ktOpenPathTo(hit.path, hit.node);
+            ktRender();
+            var lit = hit ? ktFlashRow(hit.node.sig) : false;
+            var where = course + ' 第 ' + ch + L('chapter') + ' 第 ' + sec + L('section');
+            ktToast(lit
+                ? ('🌳 已定位到「' + where + '」，并高亮「' + hit.node.name + '」')
+                : (hit
+                    ? ('🌳 已切到「' + where + '」，但那一行被当前「显示范围」挡住了 —— 把范围调大就能看到')
+                    : ('🌳 已切到「' + where + '」，但没找到对应的知识点行（这条记录的速记可能是空的）')));
+        }
+        /* C. 树 → 记录：载入编辑表单 */
+        function ktOpenRecord(rid) {
+            var rec = null, list = (state && state.records) || [];
+            for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === rid) { rec = list[i]; break; }
+            if (!rec) { ktToast('这条学习记录已经不在了'); return; }
+            ktMeClose();
+            if (!ktSwitchView('study')) { ktToast('找不到「学习进度」页签'); return; }
+            try {
+                if (typeof editRecord !== 'function') throw new Error('editRecord 不可用');
+                editRecord(rec);
+            } catch (e) {
+                ktToast('打开记录失败：' + ((e && e.message) ? e.message : e));
+                return;
+            }
+            /* editRecord 已经把整页滚到顶部（表单在你眼前），再把表单框闪一下 ——
+               「填的是哪一条」必须一眼看得出来，不然容易顺手改错记录。 */
+            try {
+                var fc = document.getElementById('formContainer');
+                if (fc) {
+                    fc.classList.remove('kt-hit-box');
+                    void fc.offsetWidth;                       // 重启动画
+                    fc.classList.add('kt-hit-box');
+                    setTimeout(function () { fc.classList.remove('kt-hit-box'); }, 1800);
+                }
+            } catch (e2) {}
+            ktToast('📝 已载入 ' + (rec.date || '（无日期）') + ' 的记录：' +
+                (ktMe.name || '') + '（改完记得点「更新记录」）');
+        }
+        /* 面板里要列出的「这一行对应哪些记录」。
+           知识点行**复用 ktMeRecPick**：标记写入与「打开哪一条」必须是同一套判据。 */
+        function ktRecCands() {
+            var out = [];
+            if (ktMe.kind === 'kp') {
+                var pick = ktMeRecPick();
+                var recs0 = (state && state.records) || [];
+                (pick.list || []).forEach(function (i) { if (recs0[i]) out.push(recs0[i]); });
+                return out;
+            }
+            if (ktMe.kind !== 'chapter' && ktMe.kind !== 'section') return out;
+            var recs = (state && state.records) || [];
+            for (var i = 0; i < recs.length; i++) {
+                var r = recs[i];
+                if (!r || r.course !== ktMe.course) continue;
+                if ((parseInt(r.chapter, 10) || 0) !== ktMe.ch) continue;
+                if (ktMe.kind === 'section' && (parseInt(r.section, 10) || 0) !== ktMe.sec) continue;
+                out.push(r);
+            }
+            out.sort(function (a, b) { return String(b.date || '').localeCompare(String(a.date || '')); });
+            return out;
+        }
+
         /* 这个节点该亮哪几个符号。
            科目 / 章 / 节三个祖先行按 (科目, 章, 节) **逐级汇总** —— 收起时也要能一眼
            看出「这一章里有重点」；知识点行则额外要求**名字出现在那条记录的速记文本里**，
@@ -14050,6 +14288,33 @@
                         m.ch + ' ' + m.name + '</button>';
                 }).join('') + '</div>';
             }
+            /* ★ 2026-09-18（需求 K）：树 → 记录的回跳入口。
+               知识点行用 ktMeRecPick（与标记**写入**同一套判据）——
+               否则会出现「标记写进记录 A、按钮打开的是记录 B」这种最气人的错位。 */
+            var cands = ktRecCands();
+            if (cands.length) {
+                var many = cands.length > 1;
+                h += '<div class="kt-me-openbox">' +
+                    '<div class="kt-me-openh">📝 ' +
+                    (many ? ('这一行对应 ' + cands.length + ' 条学习记录' +
+                             (ktMe.kind === 'kp' ? '（标记写在最新那条）' : '') + '：')
+                          : '打开对应的学习记录：') +
+                    '</div>' +
+                    cands.slice(0, 6).map(function (r) {
+                        var first = String(r.kpQuickRaw || '').split(/\r?\n/)[0] || '';
+                        var tip = first ? (' · ' + first.slice(0, 16)) : '';
+                        return '<button type="button" class="kt-me-open" data-ktme-open="' + kpEsc(r.id) +
+                            '" title="切到 📝 学习记录 并载入这条记录的编辑表单">' +
+                            kpEsc(String(r.date || '（无日期）') + tip) + '</button>';
+                    }).join('') +
+                    (cands.length > 6
+                        ? '<div class="kt-me-openmore">还有 ' + (cands.length - 6) + ' 条，去 📝 学习记录 里看全部</div>'
+                        : '') +
+                    '</div>';
+            } else if (ktMe.kind === 'kp' || ktMe.kind === 'chapter' || ktMe.kind === 'section') {
+                h += '<div class="kt-me-openbox"><div class="kt-me-openh">' +
+                    '📝 这一行还没有对应的学习记录 —— 去 📝 学习记录 里记一条就会挂上来。</div></div>';
+            }
             if (note) h += '<div class="kt-me-note">' + note + '</div>';
             ktMeEl.innerHTML = h;
         }
@@ -14171,7 +14436,9 @@
                 (ktMarkAny ? ' · 悬停『★ 重点 / ▲ 难点 / ？ 疑点』可切换标记显示' : '') +
                 /* ★ 2026-09-18（需求 G）：行名可直接选中上色 —— 能改名的只有知识点行 */
                 ((n.kind === 'chapter' || n.kind === 'section' || n.kind === 'kp')
-                    ? ' · 行名可选中上色' + (n.kind === 'kp' ? ' / 直接改名' : '')
+                    ? ' · 行名可选中上色' + (n.kind === 'kp' ? ' / 直接改名' : '') +
+                      /* ★ 2026-09-18（需求 K）：右键 / 长按面板里多了「打开对应学习记录」 */
+                      ' · 右键/长按可打开对应学习记录'
                     : '');
             let h = '<div class="kt-branch">';
             h += '<div class="kt-row kt-lv' + n.lv +
@@ -14612,6 +14879,9 @@
                 if (t && t.closest && t.closest('#ktMePop .kt-me-close')) { ktMeClose(); return; }
                 const chip = (t && t.closest) ? t.closest('#ktMePop .kt-me-chip') : null;
                 if (chip) { ktMeToggle(chip.getAttribute('data-mk')); return; }
+                /* ★ 2026-09-18（需求 K）：同一面板里的「📝 打开…」→ 回 📝 学习记录 */
+                const openBtn = (t && t.closest) ? t.closest('#ktMePop .kt-me-open') : null;
+                if (openBtn) { ktOpenRecord(openBtn.getAttribute('data-ktme-open')); return; }
                 // 别的点击（展开 / 收拢、切筛选、切页签）都可能把这一行挪走或整棵树重画
                 // —— 面板跟着锚点重新定位；锚点没了 ktMePlace 会自己收起来
                 if (ktMeEl) ktMePlace();
@@ -18655,7 +18925,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918w</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918x</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
