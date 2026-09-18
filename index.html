@@ -1079,7 +1079,7 @@ const MODULES = [
   {id:'health',  name:'健康管理',       file:'tools/健康管理.html',        icon:'💪', desc:'睡眠·运动·体重·血压·饮水·饮食记录', keys:['mySleepData','mySportData','myWeightData','myBpData','myWaterData','myDietData','healthFoodDB']},
 
 
-  {id:'social',     name:'人际交往与沟通',   file:'tools/人积极交往.html',      icon:'🤝', desc:'人际沟通管理 · 日/周/月复盘与统计', keys:['comm_daily','comm_week','comm_month','tool_dialog','tool_relation','tool_script','action_plan_data','action_categories','wisdom_data']},
+  {id:'social',     name:'人际交往与沟通',   file:'tools/人积极交往.html',      icon:'🤝', desc:'人际沟通管理 · 日/周/月复盘与统计', keys:['comm_daily','comm_week','comm_month','tool_dialog','tool_relation','tool_script','action_plan_data','action_categories','wisdom_data','if_then_plans','if_then_categories']},
   {id:'learning',   name:'学习目标管理',   file:'tools/学习目标管理台.html',  icon:'🎯', desc:'WorkBuddy 学习目标管理台', keys:[]},
   {id:'previewer',  name:'代码预览器',     file:'tools/code-previewer.html',  icon:'💻', desc:'在线编辑 HTML/CSS/JS 并实时预览', keys:[]},
   {id:'travel',     name:'旅行助手',       file:'tools/旅行助手.html',        icon:'🧭', desc:'旅游规划：城市·天气·衣/食/住/行/玩·预算·日记', keys:['roam_assistant_trips','roam_assistant_active_trip']},
@@ -1156,7 +1156,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918d';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918e';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -2483,7 +2483,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；打开工具时追加该工具自己的版本。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918d';
+  var NAV_VER = 'V20260918e';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -2572,7 +2572,7 @@ document.addEventListener('pointerdown', e => {
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918d</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918e</div>
 </body>
 
 
