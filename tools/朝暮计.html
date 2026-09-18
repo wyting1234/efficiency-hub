@@ -5079,7 +5079,14 @@
         }
         function revoke(key) {
             const u = URLS[key];
-            if (u) { try { URL.revokeObjectURL(u); } catch (e) {} delete URLS[key]; }
+            if (!u) return;
+            delete URLS[key];
+            /* v51：真撤销推迟 2 秒。立刻 revoke 会打断「正在使用这个 URL」的元素 ——
+               典型是 closeBgPicker() 里未完成的异步保存与紧跟着重新打开编辑器的竞争：
+               put() 一 revoke，编辑器里刚设上的预览图 src 就当场失效（图变空白）。
+               推迟期间新 URL 已经接管渲染，旧引用也来得及用完。 */
+            try { setTimeout(function () { try { URL.revokeObjectURL(u); } catch (e) {} }, 2000); }
+            catch (e) { try { URL.revokeObjectURL(u); } catch (x) {} }
         }
 
         const api = {
@@ -16814,6 +16821,8 @@
     /* ===== v48：IndexedDB 还原 / 迁移 ===== */
     const bgIdbKey = function (scope) { return ZMIMG.key(scope); };
     const bgPartIdbKey = function (scope, k) { return ZMIMG.partKey(scope, k); };
+    /* v51：渲染副图的 IndexedDB key（与 master 分开存，互不覆盖） */
+    const bgRenderKey = function (scope) { return 'bgr:' + scope; };
 
     /* 遍历所有 (scope, rec) 对 —— 口径与 bgGet 保持一致 */
     function bgEachRec(fn) {
@@ -16881,15 +16890,22 @@
                 const fin = function () { if (!done) { done = true; res(); } };
                 try {
                     const im = new Image();
-                    im.onload = fin;
                     im.onerror = fin;          /* 坏图不能卡住启动 */
                     im.src = u;
+                    /* v51：必须等 decode()，不能等 onload()。
+                       Chromium 的 img.onload 在「拿到图像数据、尺寸可用」时就触发，
+                       并不代表像素已经解好 —— 旧代码先挂 onload，fin 会被提前调用，
+                       Promise.all 早早 resolve，applyBg() 在解码完成前就写了 style，
+                       用户看到的仍是先空白、过一会儿图才闪出来。
+                       实测 8000×6000 原图 onload ≈ 70ms、decode 完成 ≈ 208ms，
+                       这 130ms 正是那段空白期。 */
                     if (im.decode) im.decode().then(fin, fin);
-                    /* 兜底必须短：预热是「解码完成才铺背景」，若某张图解码失败或
-                       极大，长兜底会把背景整体推迟到超时之后才出现，反而比不预热更糟。
-                       600ms 之后一律放行 —— 元素先挂上 URL，未解完的像素由浏览器补，
-                       与不预热的最终行为一致，不会更差。 */
-                    setTimeout(fin, 600);
+                    else im.onload = fin;
+                    /* 兜底超时：只在 decode 迟迟不回来时生效（坏图 / 超大图）。
+                       8000×6000 解码就要 208ms，弱 CPU 上更久，v50 的 600ms 会误判成
+                       超时并退回「不预热」的行为；放到 1500ms。真超时也只是回到
+                       不预热的老行为，不会比原来更差。 */
+                    setTimeout(fin, 1500);
                 } catch (e) { fin(); }
             });
         }));
@@ -16908,14 +16924,24 @@
                     const blob = dataURLtoBlob(d);
                     if (blob) {
                         touched++;
+                        /* v51：从 dataURL 迁移/导入进来的记录没有副图，标记清掉，
+                           让渲染直接走原图（后台的 bgBackfillVariants 会择机补） */
+                        if (rec.bgr) rec.bgr = 0;
                         jobs.push(ZMIMG.put(bgIdbKey(scope), blob).then(function (u) {
                             if (u) { rec.d = u; rec.img = 1; } else { rec.img = 0; }
                         }));
                     }
                 } else if (rec.img) {
-                    jobs.push(ZMIMG.hydrate(bgIdbKey(scope)).then(function (u) {
-                        if (u) rec.d = u; else { rec.img = 0; delete rec.d; }
-                    }));
+                    /* v51：有副图就优先铺副图（解码量小得多）；副图读不到就回落原图 ——
+                       副图只是渲染优化，坏了/被清了绝不能让背景整体消失。 */
+                    jobs.push((rec.bgr ? ZMIMG.hydrate(bgRenderKey(scope)) : Promise.resolve(''))
+                        .then(function (ru) {
+                            if (ru) { rec.d = ru; return; }
+                            if (rec.bgr) { rec.bgr = 0; touched++; }   /* 标记已失效，顺手回写一次 */
+                            return ZMIMG.hydrate(bgIdbKey(scope)).then(function (u) {
+                                if (u) rec.d = u; else { rec.img = 0; delete rec.d; }
+                            });
+                        }));
                 }
                 if (rec.parts && typeof rec.parts === 'object') {
                     Object.keys(rec.parts).forEach(function (k) {
@@ -17522,9 +17548,11 @@
                 }) : [];
             return Promise.all([
                 ZMIMG.size(bgIdbKey(sc)),
+                ZMIMG.size(bgRenderKey(sc)),            /* v51：渲染副图一并计入占用 */
                 Promise.all(parts.map(function (k) { return ZMIMG.size(bgPartIdbKey(sc, k)); }))
             ]).then(function (r) {
-                return (r[0] || 0) + (r[1] || []).reduce(function (a, b) { return a + (b || 0); }, 0);
+                return (r[0] || 0) + (r[1] || 0)
+                    + (r[2] || []).reduce(function (a, b) { return a + (b || 0); }, 0);
             }).catch(function () { return 0; });
         };
         Promise.all([
@@ -18485,6 +18513,9 @@
         }
     }
 
+    /* v51：重新编辑时把 master 的字节留在内存 —— 用户没改构图就直接原样存回，
+       否则会被重新烘焙成无损 PNG（5MB JPEG → 15MB PNG）。 */
+    let __bgMasterBlob = null;
     function showBgPreview(rec) {
         const img = document.getElementById('bgImg');
         img.onload = () => {
@@ -18509,16 +18540,39 @@
                 scope: window._bgScope,
                 dataURL: rec.d, baseW: img.naturalWidth, baseH: img.naturalHeight,
                 x: rec.x || 0, y: rec.y || 0, userScale: rec.s || 1,
-                fit: rec.fit || 'area', alpha, touched: false
+                fit: rec.fit || 'area', alpha, touched: false,
+                /* v51：原始字节。bgOriginalBlob() 在「未改构图」时会直接返回它，
+                   避免把整张图重新烘焙成无损 PNG —— 那个字段 v49 就写好了，
+                   但一直没人赋值，所以这条捷径从未生效过。 */
+                originBlob: __bgMasterBlob || undefined
             };
             const slider = document.getElementById('bgAlpha');
             if (slider) slider.value = alpha;
             onBgAlpha(alpha);
+            syncBgInfoTxt();      /* v51：同理，bgEdit 刚建立，补一次 */
             applyBgPreviewLayout();
             syncBgPrevRow();
         };
         img.onerror = () => notify('图片加载失败，请重新选择');
-        img.src = rec.d;
+        /* v51：编辑源必须是 master（原图），不能是渲染副图 ——
+           否则用户每次打开选择器都会把上一次的副图当成新源再压一遍，
+           反复编辑层层降质（2560 → 更小 → 更小）。
+           取不到 master 时仍回落 rec.d，行为与旧版一致。 */
+        (function () {
+            const scope = window._bgScope;
+            __bgMasterBlob = null;
+            if (!(rec && rec.img) || !ZMIMG.ok()) { img.src = rec.d; return; }
+            ZMIMG.hydrate(bgIdbKey(scope))
+                .then(function (u) {
+                    if (!u) { img.src = rec.d; return; }
+                    /* 顺序很重要：先把字节抓到内存再设 img.src —— onload 是同步链路，
+                       它建 bgEdit 时要用到 __bgMasterBlob */
+                    return fetch(u).then(function (r) { return r.blob(); })
+                        .then(function (bl) { __bgMasterBlob = bl; img.src = u; })
+                        .catch(function () { img.src = u; });
+                })
+                .catch(function () { img.src = rec.d; });
+        })();
     }
 
     function onBgFile(inp) {
@@ -18604,6 +18658,9 @@
                    所以不能用「x/y 是否为 0」来判断 —— v48 正是这么判的，
                    结果「不改构图就原图直存」这条路从未生效。 */
                 bgEdit = { scope, dataURL, file: f, baseW: w, baseH: h, x: 0, y: 0, userScale: 1, fit: 'area', alpha, raw: true, touched: false };
+                /* v51：上面那次 syncBgQualUI() 跑在 bgEdit 赋值之前，信息行会被清空；
+                   这里补一次，让「保存后会怎样」立刻如实显示出来 */
+                syncBgInfoTxt();
                 const slider = document.getElementById('bgAlpha');
                 if (slider) slider.value = alpha;
                 onBgAlpha(alpha);
@@ -18636,6 +18693,7 @@
     }
     function releaseBgPreviewURL() {
         if (__bgPreviewURL) { try { URL.revokeObjectURL(__bgPreviewURL); } catch (e) {} __bgPreviewURL = ''; }
+        __bgMasterBlob = null;      /* v51：编辑态结束后不再留着这份字节 */
     }
     /* v23：把 File 读成 dataURL（不压缩）+ 顺手拿原始宽高 —— 仅剩旧调用路径在用 */
     function readFileAsDataURL(file) {
@@ -19084,6 +19142,123 @@
         return cropBgBlob(be, null, 4096, 'image/png');
     }
 
+    /* ===== v51：渲染副图（长边 2560）=====
+       问题：原图档为了「导出不丢画质 / 再次构图不降质」必须原样存档，但「铺背景」
+       这件事并不需要 4000×3000 / 4.97MB —— 每次冷启动都要把整张图解到内存，
+       手机 4800 万像素原图解码会到秒级。于是拆成两轨：
+
+         master（原图，bg:<scope>）   ← 导出、重新编辑、重新烘焙，像素一个不少
+         render（副图，bgr:<scope>）  ← 只用来铺背景，长边 2560 / JPEG q0.86
+
+       解码量降到约 1/5~1/10，2K 屏以内看不出差别。三条保护：
+         ① 原图长边本来就不超过 2560 → 不生成副图，直接用原图（不把好情况搞坏）
+         ② 副图若不比原图小 → 不存，免得白占空间
+         ③ 副图缺失 / 读取失败 → 渲染自动回落原图，背景绝不会因此消失 */
+    const BGR_MAX = 2560;
+    const BGR_Q = 0.86;
+    /* 只等「解码出尺寸」即可，不必等像素全解完；坏图/超大图超时放行 */
+    function bgLoadMeta(src) {
+        return new Promise(function (res) {
+            if (typeof Image !== 'function') { res(null); return; }
+            const im = new Image();
+            let done = false;
+            const fin = function (v) { if (!done) { done = true; res(v); } };
+            try {
+                im.onload = function () { fin(im); };
+                im.onerror = function () { fin(null); };
+                im.src = src;
+            } catch (e) { fin(null); }
+            setTimeout(function () { fin(null); }, 5000);
+        });
+    }
+    /* 由 master 生成渲染副图；返回 Blob 或 null（null = 不必生成 / 生成失败，都不是错误） */
+    async function bgMakeRenderVariant(master) {
+        if (!master || typeof master.size !== 'number') return null;
+        let u = '';
+        try { u = URL.createObjectURL(master); } catch (e) { return null; }
+        try {
+            const im = await bgLoadMeta(u);
+            const w = im ? (im.naturalWidth || 0) : 0;
+            const h = im ? (im.naturalHeight || 0) : 0;
+            if (!w || !h) return null;
+            const long = Math.max(w, h);
+            if (long <= BGR_MAX) return null;            /* ① 尺寸已够小，副图没有收益 */
+            const k = BGR_MAX / long;
+            const tw = Math.max(1, Math.round(w * k));
+            const th = Math.max(1, Math.round(h * k));
+            const c = document.createElement('canvas');
+            c.width = tw; c.height = th;
+            const g = c.getContext('2d');
+            if (!g) return null;
+            try { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; } catch (e) {}
+            /* JPEG 没有 alpha，透明像素会变成黑块 —— 先铺白底 */
+            try { g.fillStyle = '#ffffff'; g.fillRect(0, 0, tw, th); } catch (e) {}
+            /* 先按目标尺寸建 canvas 再 drawImage —— 浏览器按目标尺寸做缩放采样，
+               不会在内存里摊开整张原图 */
+            g.drawImage(im, 0, 0, tw, th);
+            /* 必须用 JPEG，不能用 WebP。实测同一张 4000×3000 原图（解码 73.2ms）：
+                 2560 webp q0.86 → 解码 88.6ms（比原图还慢）  编码 608ms
+                 2560 jpeg q0.86 → 解码 25.3ms（原图的 0.35×）编码 129ms
+               有损 WebP 的 VP8 解码成本远高于 JPEG；原图越大差距越悬殊
+               （6000×4500：161→17ms，8000×6000：267→21ms）。 */
+            const out = await canvasToBlobAsync(c, BGR_Q, 'image/jpeg');
+            if (!out || !out.size) return null;
+            if (out.size >= master.size * 1.5) return null;   /* ② 副图反而更大 → 不存 */
+            return out;
+        } catch (e) { return null; }
+        finally { try { URL.revokeObjectURL(u); } catch (e) {} }
+    }
+    /* v51：老记录惰性补副图 —— 用户不重新上传也能受益。
+       只在浏览器空闲时做，每次启动最多 limit 个（不长时间占 CPU）；
+       失败静默，下次启动再试。整件事是可选的优化，没有它功能也完整。 */
+    let _bgBackfilling = false;
+    function bgBackfillVariants(limit) {
+        if (_bgBackfilling || !ZMIMG.ok()) return;
+        const todo = [];
+        try {
+            bgEachRec(function (scope, rec) {
+                if (todo.length >= limit) return;
+                if (!rec || typeof rec !== 'object') return;
+                if (!rec.img || rec.bgr) return;                      /* 无图 / 已有副图 */
+                if (typeof rec.d !== 'string' || rec.d.indexOf('blob:') !== 0) return;  /* 尚未 hydrate */
+                if (rec.parts && !rec.d) return;
+                todo.push(scope);
+            });
+        } catch (e) { return; }
+        if (!todo.length) return;
+        _bgBackfilling = true;
+        const run = function () {
+            let i = 0, made = 0;
+            const step = function () {
+                if (i >= todo.length) {
+                    _bgBackfilling = false;
+                    if (made) {
+                        try { saveBg(); saveCardBg(); saveHabitBg(); } catch (e) {}
+                        try { applyBg(); } catch (e) {}
+                        try { refreshBgUsage(); } catch (e) {}
+                    }
+                    return;
+                }
+                const scope = todo[i++];
+                ZMIMG.hydrate(bgIdbKey(scope))
+                    .then(function (mu) { return mu ? fetch(mu).then(function (r) { return r.blob(); }) : null; })
+                    .then(function (b) { return b ? bgMakeRenderVariant(b) : null; })
+                    .then(function (rv) { return rv ? ZMIMG.put(bgRenderKey(scope), rv) : ''; })
+                    .then(function (ru) {
+                        if (ru) {
+                            const rec = bgGet(scope);
+                            if (rec && rec.img) { rec.d = ru; rec.bgr = 1; made++; }
+                        }
+                        step();
+                    })
+                    .catch(function () { step(); });
+            };
+            step();
+        };
+        if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 4000 });
+        else setTimeout(run, 2500);
+    }
+
     /* ===== v22：背景自动保存 =====
        旧版只有「确认」按钮会落库，用户调完可见度直接点 ✕ / 返回 → 改动全丢，
        看起来就像"没有保存功能"。现在任何调整都即时落库，确认键只是"完成"。 */
@@ -19131,8 +19306,16 @@
         const head = bgEdit.baseW + '×' + bgEdit.baseH + ' · ' + Math.round(px / 1e6) + 'M 像素';
         let tail;
         if (bgQualMode() === 'cmp') tail = '保存时压缩到长边 1080';
-        else if (bgIsUntouched(bgEdit)) tail = '不动构图 → 原图字节原样入库，不压缩';
-        else tail = '构图已调整 → 无损烘焙（长边上限 4096）';
+        else {
+            /* v51：原图档其实是两份 —— 原图存档 + 渲染副图，如实告诉用户 */
+            const _src = Math.max(bgEdit.baseW || 0, bgEdit.baseH || 0);
+            const _side = (_src && _src <= BGR_MAX)
+                ? '（原图尺寸已够小，直接用它铺背景）'
+                : '，同时另存一张长边 ' + BGR_MAX + ' 的副图专门用来铺背景（原图完整保留）';
+            tail = (bgIsUntouched(bgEdit)
+                ? '不动构图 → 原图字节原样存档，不压缩'
+                : '构图已调整 → 原图无损烘焙（长边上限 4096）') + _side;
+        }
         info.textContent = head + ' · ' + tail;
     }
     function syncBgQualUI() {
@@ -19160,8 +19343,9 @@
            因此这里既不需要压缩、也不需要下面那套逐级降质的兜底阶梯。 */
         if (ZMIMG.ok()) {
             let blob = null;
+            const compress = (bgQualMode() === 'cmp');   /* v51：副图只在原图档生成 */
             try {
-                blob = (bgQualMode() === 'cmp')
+                blob = compress
                     ? await cropBgBlob(be, 0.85, 1080, 'image/jpeg')   /* 用户主动选了压缩 */
                     : await bgOriginalBlob(be);                        /* 原图：不动或无损 PNG */
             } catch (e) { blob = null; }
@@ -19178,7 +19362,19 @@
                 notify('背景图保存失败：' + (ZMIMG.err() || '未知原因') + '\n\n原背景保留，未做任何改动。');
                 return false;
             }
-            put({ img: 1, d: url, fit: be.fit, alpha: (be.alpha == null ? 55 : be.alpha), crop: 1 });
+            /* v51：先清掉上一次留下的副图，避免换图后残留占空间 */
+            try { ZMIMG.del(bgRenderKey(scope)); } catch (e) {}
+            /* 原图档再补一张长边 2560 的渲染副图。压缩档本身就是长边 1080，不需要。
+               副图生成失败不影响保存 —— 渲染侧会自动回落原图。 */
+            let renderUrl = '';
+            if (!compress) {
+                try {
+                    const rv = await bgMakeRenderVariant(blob);
+                    if (rv) renderUrl = await ZMIMG.put(bgRenderKey(scope), rv);
+                } catch (e) { renderUrl = ''; }
+            }
+            put({ img: 1, d: renderUrl || url, bgr: renderUrl ? 1 : 0,
+                  fit: be.fit, alpha: (be.alpha == null ? 55 : be.alpha), crop: 1 });   /* v51 */
             if (bgBakeNote) { const _bn = bgBakeNote; bgBakeNote = ''; notify(_bn); }
             if (bgPersist(scope)) return true;
             /* 元数据都写不下（几乎不可能）→ 回滚 */
@@ -20048,6 +20244,9 @@
         }).then(function () {
             try { applyBg(); } catch (e) {}
             try { refreshBgUsage(); } catch (e) {}
+            /* v51：首屏稳定后，空闲时给「已存好原图但还没有副图」的老记录补一张。
+               放在最后、只做 2 个 —— 保证绝不拖慢启动，也不与首屏抢主线程。 */
+            try { bgBackfillVariants(2); } catch (e) {}
         }).catch(function () {});
     } catch (e) {}
     render();
@@ -20087,7 +20286,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918i</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918m</div>
 <!-- build-tag:end -->
 </body>
 </html>
