@@ -2910,9 +2910,14 @@
            高度按标题长度自然增长。纵轴在左侧，保持横排但允许换行。 */
         .heat-tbl.heat-full th.heat-colhead {
             writing-mode: vertical-rl; text-orientation: upright;
-            letter-spacing: .5px; line-height: 1.15; padding: 4px 0 6px;
-            font-size: 10.5px; white-space: nowrap; vertical-align: bottom;
+            letter-spacing: 0; line-height: 1.05; padding: 2px 0 5px;
+            font-size: 11px; white-space: nowrap; vertical-align: bottom;
         }
+        /* 章号与章名拆成两段：章号小一号、浅一档，不再和章名抢视觉重心。
+           关键是两者**之间不留空格** —— 竖排里一个空格就是实打实的一格高度，
+           「第 1 章 C++语言入门」曾因此被撑到 12 格（去掉空格后是 10 格）。 */
+        .heat-tbl.heat-full th.heat-colhead .hc-num { font-size: 9.5px; color: #A99A83; }
+        .heat-tbl.heat-full th.heat-colhead .hc-nm { font-size: 11px; }
         .heat-tbl.heat-full th.heat-rowhead {
             white-space: normal; max-width: 158px; line-height: 1.35; font-size: 11px;
         }
@@ -3521,6 +3526,7 @@
                                     <label>🔢 编号模版 <span style="font-weight:400;color:var(--text-secondary);">(「一键编号」与四个视角的行首编号都按此模版生成；只改编号写法，不动内容与层级)</span></label>
                                         <div class="kp-tmpl-list" id="kpTmplList">
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="chap" /> <span class="kp-tmpl-name">第1章 / 第1节 / 一、 / （一） / 1. / （1） / ①</span><span class="kp-tmpl-desc">章节体（七级）：第N章 → 第N节 → 一、 → （一） → 1. → （1） → ①。档位 = 知识树的链路层级（1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级），所以同一个知识点在速记与知识树里编号一致</span></label>
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="chapv" /> <span class="kp-tmpl-name">科目 / 第1章 / 第1节 / 一、 / （一） / 1. / （1）</span><span class="kp-tmpl-desc">章节体·变体（七级）：科目级<b>不编号</b>，从章开始 第N章 → 第N节 → 一、 → （一） → 1. → （1）。与上一套的区别只在起算位置 —— 科目名本身就是标识，不该被编成「第1章」，所以这套把「第N章」下移到第 2 级，章 / 节 / 知识点逐级对位</span></label>
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="gongwen" /> <span class="kp-tmpl-name">一、 / （一） / 1. / （1） / ① / a. / i.</span><span class="kp-tmpl-desc">中文公文体（七级）：一、 → （一） → 1. → （1） → ① → a. → i.</span></label>
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="roman" /> <span class="kp-tmpl-name">I. / A. / 1. / a. / (1) / (i) / a)</span><span class="kp-tmpl-desc">罗马体系（七级，出厂默认）：I. → A. → 1. → a. → (1) → (i) → a)</span></label>
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="symbol" /> <span class="kp-tmpl-name">● / ■ / ◆ / ▷ / ✓ / ✧ / ∷</span><span class="kp-tmpl-desc">符号体（七级）：每级一个符号，符号取自下面的「🔣 每级符号」；这里显示的名字会跟着你改的符号一起变</span></label>
@@ -3648,8 +3654,12 @@
                         <button type="button" class="fc-btn" id="ktNumberBtn" title="按编号模版给每一行加上行首编号（只影响本页显示，不改动科目/章/节与学习记录）">🔢 一键编号</button>
                         <select id="ktNoTmpl" title="编号模版（与「📝 学习记录 → 🧩 模版设置」共用同一份偏好）。四套体系各七档，档位 = 链路层级：1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级"></select>
                     </span>
-                    <!-- ★ 2026-09-18（需求 C）：把行尾的「层级名 / N 项」换成符号，并显示记录里标的 重点/难点/疑点 -->
-                    <button type="button" class="fc-btn" id="ktSymBtn" title="符号显示：把每行行尾的「层级名」与「N 项」换成符号，并显示该节点的「重点 ★ / 难点 ▲ / 疑点 ？ 」（来自 📝 学习记录里的标记）">🔣 符号</button>
+                    <!-- ★ 2026-09-18（需求 C）：把行尾的「层级名 / N 项」换成符号 -->
+                    <button type="button" class="fc-btn" id="ktSymBtn" title="符号显示：把每行行尾的「层级名」（科目/章/节/知识点N级）与「N 项」换成符号。层级符号取自「模版设置 → 🔣 每级符号」，与编号体系的符号体同源">🔣 符号</button>
+                    <!-- ★ 2026-09-18（追加）：重点 / 难点 / 疑点 的显示开关 —— 独立于符号按钮。
+                         数据只来自 📝 学习记录编辑界面里勾的三个标记（record.marks），
+                         知识树这边只读、不回写。 -->
+                    <button type="button" class="fc-btn" id="ktMarkBtn" title="显示 📝 学习记录里标好的「重点 ★ / 难点 ▲ / 疑点 ？」。数据源就是学习记录的编辑界面（理解程度与学习状态自评中间那三个 chip）；科目 / 章 / 节逐级汇总，知识点行还要求名字出现在那条记录的速记文本里。本页只读，不回写">★ 标记</button>
                     <span class="fc-spacer"></span>
                     <!-- 2026-09-17（按 Tom 红框所指删除）：去掉「显示 第」前缀标签 ——
                          两个下拉自带的「第X级 · 知识点Y级」已说明含义，前缀只是白占横向宽度。 -->
@@ -9024,20 +9034,50 @@
             const base = '第 ' + ch + ' ' + L('chapter');
             return n ? (base + ' ' + n) : base;
         }
+        /* 竖排表头要分段渲染（章号一段、章名一段，中间不能有空格），
+           所以单拆一个返回 {num, name} 的版本 —— heatChapterTitle 仍给 tooltip 用。 */
+        function heatChapterParts(course, ch) {
+            const m = (ACTIVE_CHAPTER_NAMES && ACTIVE_CHAPTER_NAMES[course]) || {};
+            const n = (m[ch] && String(m[ch]).trim()) ? String(m[ch]).trim() : '';
+            return { num: '第' + ch + L('chapter'), name: n };
+        }
         /* 纵轴写节名的前提：该节在**所有**章里叫法一致。
            矩阵的纵轴是「节序号」，同一行的「第 2 节」在不同章里可以是完全不同的东西
            （GUIDE_DATA[科目].chapters[章].sections[节].name 是按章存的）。
            只要出现两种叫法，就不敢挑一个写上去 —— 那等于给别的章贴错标签。 */
-        function heatSectionTitle(course, sec, maxCh) {
-            const base = '第 ' + sec + ' ' + L('section');
+        /* ★ 2026-09-18 修订：原来「不一致就一个字都不写」，用户看到的是整列空着。
+           现在改成：取该节号在各章里**出现次数最多**的名字，末尾缀浅色「⋯」表示
+           各章叫法不同；全一致时保持原样（不加 ⋯）。完整叫法清单见 heatSectionTip。 */
+        function heatSectionPick(course, sec, maxCh) {
             const g = GUIDE_DATA[course];
-            const names = [];
+            const cnt = {}, order = [];
             for (let ch = 1; ch <= maxCh; ch++) {
                 const sc = g && g.chapters[ch] && g.chapters[ch].sections[sec];
                 const nm = (sc && sc.name) ? String(sc.name).trim() : '';
-                if (nm && names.indexOf(nm) < 0) names.push(nm);
+                if (!nm) continue;
+                if (cnt[nm] === undefined) { cnt[nm] = 0; order.push(nm); }
+                cnt[nm]++;
             }
-            return (names.length === 1) ? (base + ' ' + names[0]) : base;
+            if (!order.length) return { name: '', multi: false, all: [] };
+            let best = order[0], bv = cnt[order[0]];
+            for (let i = 1; i < order.length; i++) {
+                if (cnt[order[i]] > bv) { bv = cnt[order[i]]; best = order[i]; }
+            }
+            return { name: best, multi: order.length > 1, all: order };
+        }
+        function heatSectionTitle(course, sec, maxCh) {
+            const base = '第 ' + sec + ' ' + L('section');
+            const p = heatSectionPick(course, sec, maxCh);
+            if (!p.name) return base;
+            return base + ' ' + p.name + (p.multi ? ' ⋯' : '');
+        }
+        function heatSectionTip(course, sec, maxCh) {
+            const base = '第 ' + sec + ' ' + L('section');
+            const p = heatSectionPick(course, sec, maxCh);
+            if (!p.name) return base;
+            return p.multi
+                ? (base + '：各章叫法不同（' + p.all.join(' / ') + '），此处取出现最多的「' + p.name + '」')
+                : (base + ' ' + p.name);
         }
         /* ★ 2026-09-18（需求 F-1）：把「一个科目的矩阵」抽成独立函数。
            「全部科目」模式要按科目循环渲染 N 张图，原来这段内联在 heatRender 里
@@ -9056,15 +9096,26 @@
             for (let ch = 1; ch <= d.maxCh; ch++) {
                 // 简略＝只写章号（完整名称留在 tooltip）；详细＝章号 + 章名（竖排，见 CSS）
                 const ctxt = full ? heatChapterTitle(course, ch) : heatChapterLabel(course, ch);
+                let cinner;
+                if (full) {
+                    // 章号与章名分成两段竖排文字，拼接处**不加空格**（见 CSS 注释）
+                    const pt = heatChapterParts(course, ch);
+                    cinner = '<span class="hc-num">' + heatEsc(pt.num) + '</span>' +
+                             (pt.name ? '<span class="hc-nm">' + heatEsc(pt.name) + '</span>' : '');
+                } else {
+                    cinner = String(ch);
+                }
                 h += '<th' + (full ? ' class="heat-colhead"' : '') + ' title="' + heatEsc(ctxt) + '">' +
-                    (full ? heatEsc(ctxt) : ch) + '</th>';
+                    cinner + '</th>';
             }
             h += '</tr></thead><tbody>';
             for (let sec = 1; sec <= d.maxSec; sec++) {
                 const rtxt = full ? heatSectionTitle(course, sec, d.maxCh)
                                   : ('第 ' + sec + ' ' + L('section'));
-                h += '<tr><th class="heat-rowhead" title="' +
-                    heatEsc('第 ' + sec + ' ' + L('section')) + '">' + heatEsc(rtxt) + '</th>';
+                const rtip = full ? heatSectionTip(course, sec, d.maxCh)
+                                  : ('第 ' + sec + ' ' + L('section'));
+                h += '<tr><th class="heat-rowhead" title="' + heatEsc(rtip) + '">' +
+                    heatEsc(rtxt) + '</th>';
                 for (let ch = 1; ch <= d.maxCh; ch++) {
                     const c = d.cell[ch + '|' + sec];
                     const exists = heatHasSection(course, ch, sec);
@@ -9180,8 +9231,11 @@
                        '所以这里纵向排开、各图独立；上面的汇总条是全部科目合计。<br>')
                     : '') +
                 '· <b>标题 简略 / 详细</b>：简略只写章号（完整名称看悬停提示）；' +
-                '详细把「第 N 章 + 章名」竖排写进表头。纵轴的节名随章而变，' +
-                '只有当该节<b>在所有章里叫法一致</b>时才会写出来，否则只写「第 N 节」。<br>' +
+                '详细把「第 N 章 + 章名」竖排写进表头（章号小一号、浅一档）。<br>' +
+                '· <b>纵轴节名的口径</b>：矩阵的行是<b>节序号</b>，而不同章的「第 N 节」' +
+                '本来就不是同一内容（节名是按章存的）。所以详细模式取该节号在各章里' +
+                '<b>出现最多的名字</b>；名字后面带浅色「⋯」表示<b>各章叫法不同</b>，' +
+                '悬停可以看到全部叫法。<br>' +
                 '· <b>横轴 = 章</b>（表头数字，鼠标悬停看章名）；<b>纵轴 = 节</b>（第 N 节，悬停看节名）。一个格子 = 一个「' +
                 L('chapter') + ' · ' + L('section') + '」。<br>' +
                 '· <b>🎯 掌握程度</b>：格子里的数字 = 该节<b>全部学习记录「理解」星级的平均值</b>（1.0 ~ 5.0，越接近 5 越熟练）。' +
@@ -10362,8 +10416,65 @@
         //   同名同层的节点**按路径合并**（后写的并入先写的，下级取并集）。
         // opts.keepDeep = true → 展示口径（知识树）：逐层全收，链路完整。
         //   不传 = 出题口径（闪卡 / 出卡判断）：只到「倒数第二格」，行为与改造前一致。
+        /* ================= ★ 性能：闪卡树的缓存 + 索引 =================
+           为什么必须加：fcWalkAll 是「从**全部**记录重建整棵树」（每条记录都要 parse
+           一遍速记），而 fcNodeOfCard / fcCardsForRecord / fcMaxTier 这些包装函数会在
+           「遍历每张卡 / 每条记录」的循环里各调它一次 ⇒ 整体是 O(n²)。
+           实测 400 条记录时 DOMContentLoaded 要 43.8 秒（0 条时只要 0.17 秒），
+           CPU profile 里 70% 的时间都花在反复重建牵出来的 fcUid / stripKpNo /
+           fcNormText / pathKey / parse 上。 */
+        var fcWalkCache = { fp: '', slots: [null, null], idx: null, idxFor: null };
+
+        // 指纹只取 fcWalkAll 真正读到的字段；O(n) 的字符串拼接，比重建便宜两个数量级
+        function fcWalkFp() {
+            var rs = state.records || [];
+            var a = [String(rs.length)];
+            for (var i = 0; i < rs.length; i++) {
+                var r = rs[i];
+                a.push(r ? [(r.id || ''), r.course || '', r.chapter || 0, r.section || 0,
+                            r.kpCols || 0, (r.kpQuickRaw || '').length].join(':') : '');
+            }
+            return a.join('\u0001');
+        }
+        /* 清缓存。指纹已能自动感知记录变化，这个函数是给「改了 records 但字段没变」
+           这类极端情形备的（目前没有这种调用点）。 */
+        function fcWalkInvalidate() {
+            fcWalkCache.fp = ''; fcWalkCache.slots = [null, null];
+            fcWalkCache.idx = null; fcWalkCache.idxFor = null;
+        }
+
+        /* ⚠️ 缓存返回的 rows / 索引里的节点都是**共享对象**：调用方一律只读，
+           不要再往上挂可变字段（要挂就先 slice() 一份）。现有调用点全部只读。 */
+        function fcWalkIndex() {
+            var out = fcWalkAll();
+            if (fcWalkCache.idx && fcWalkCache.idxFor === out) return fcWalkCache.idx;
+            var byUid = Object.create(null), bySig = Object.create(null), bySec = Object.create(null);
+            for (var i = 0; i < out.length; i++) {
+                var x = out[i];
+                var u = fcUid(x);
+                if (byUid[u] === undefined) byUid[u] = x;      // 与旧逻辑一致：取第一个
+                if (bySig[x.sig] === undefined) bySig[x.sig] = x;
+                var sk = [x.course, +x.chapter || 0, +x.section || 0].join('|');
+                (bySec[sk] || (bySec[sk] = [])).push(x);
+            }
+            fcWalkCache.idx = { byUid: byUid, bySig: bySig, bySec: bySec };
+            fcWalkCache.idxFor = out;
+            return fcWalkCache.idx;
+        }
+        // 某一节下的全部节点（原来是 fcCardsForRecord 里的 filter，改成查表）
+        function fcNodesOfSec(course, ch, sec) {
+            return fcWalkIndex().bySec[[course, +ch || 0, +sec || 0].join('|')] || [];
+        }
+
         function fcWalkAll(opts) {
             const keepDeep = !!(opts && opts.keepDeep);
+            const _slot = keepDeep ? 1 : 0;
+            const _fp = fcWalkFp();
+            if (fcWalkCache.fp === _fp && fcWalkCache.slots[_slot]) return fcWalkCache.slots[_slot];
+            if (fcWalkCache.fp !== _fp) {
+                fcWalkCache.fp = _fp; fcWalkCache.slots = [null, null];
+                fcWalkCache.idx = null; fcWalkCache.idxFor = null;
+            }
             const rows = [];
             const groups = {};      // key = course|ch|sec → { base, list: [] }
             const order = [];       // 保持节的出现顺序（按记录时间先后）
@@ -10476,6 +10587,7 @@
                     });
                 });
             });
+            fcWalkCache.slots[_slot] = rows;
             return rows;
         }
 
@@ -10504,14 +10616,17 @@
         function fcNodeOfCard(card) {
             if (!card || !card.src) return null;
             const s = card.src;
-            const all = fcWalkTree();
+            /* ★ 性能：原来这里是两次 all.filter(...) 全表扫描，而本函数会被
+               「每张卡各调一次」⇒ O(n²)。索引里的语义与旧逻辑逐字对应：
+                 · byUid 只存**第一个**命中（旧代码 hit[0]）
+                 · bySig 同理（旧代码 ...filter(...)[0]） */
+            const idx = fcWalkIndex();
             if (Array.isArray(s.path) && s.path.length) {
                 const want = [s.course, s.chapter, s.section, s.path.join(' > ')].join('||');
-                const hit = all.filter(function (x) { return fcUid(x) === want; });
-                if (hit.length) return hit[0];
+                if (idx.byUid[want] !== undefined) return idx.byUid[want];
             }
             const sig = fcSig(s.course, s.chapter, s.section, s.tier, s.order);
-            return all.filter(function (x) { return x.sig === sig; })[0] || null;
+            return idx.bySig[sig] || null;
         }
 
         // ---------- ★ 层级契约：学习记录写的是第 4–7 级 ----------
@@ -11010,9 +11125,9 @@
         function fcCardsForRecord(r) {
             fcState();
             if (!r) return [];
-            const nodes = fcWalkTree().filter(function (n) {
-                return n.course === r.course && (+n.chapter === +r.chapter) && (+n.section === +r.section);
-            });
+            // ★ 性能：原来每次调用都全表 filter（本函数在 11875 行被循环调用 ⇒ O(n²)），
+            //   改成查「(科目,章,节) → 节点数组」的索引表。
+            const nodes = fcNodesOfSec(r.course, r.chapter, r.section);
             if (!nodes.length) return [];
             let set = fcLearnedSetForRecord(r);
             if (!Object.keys(set).length) {
@@ -12439,7 +12554,27 @@
             if (state.ktCfg.num === undefined || state.ktCfg.num === null) state.ktCfg.num = false;
             // ★ 2026-09-18（需求 C）：符号显示开关 —— 行尾「层级名 / N 项」符号化，
             //   并显示学习记录里标好的 重点/难点/疑点。
-            if (state.ktCfg.sym === undefined || state.ktCfg.sym === null) state.ktCfg.sym = false;
+            /* ★ 2026-09-18 修订：符号显示**默认开启**。
+               需求原文「把后面的『章 一项』改成符号」描述的是默认行为，末尾那句
+               「添加一个按钮，以确定是否展示」只是让用户能关掉 —— 默认关会让
+               用户打开知识树只看到中文，等同这个需求没做。
+               symV 做**一次性迁移**：早期版本已把 sym=false 落过盘，这里升为 true；
+               迁移只跑一次，用户之后主动关掉不会再被重置。 */
+            if (!state.ktCfg.symV) {
+                state.ktCfg.symV = 1;
+                state.ktCfg.sym = true;
+            } else if (state.ktCfg.sym === undefined || state.ktCfg.sym === null) {
+                state.ktCfg.sym = true;
+            }
+            /* ★ 追加：重点 / 难点 / 疑点 的显示开关 —— 与符号开关**独立**。
+               之前它搭在 sym 上（两者绑死）：想在树上看标记就必须连层级名也换成符号。
+               数据源仍是 📝 学习记录编辑界面勾的 record.marks，知识树只读。 */
+            if (!state.ktCfg.markV) {
+                state.ktCfg.markV = 1;
+                state.ktCfg.mark = true;
+            } else if (state.ktCfg.mark === undefined || state.ktCfg.mark === null) {
+                state.ktCfg.mark = true;
+            }
             return state.ktCfg;
         }
 
@@ -12848,7 +12983,8 @@
             { id: 'hard',  ch: '▲', name: '难点' },
             { id: 'doubt', ch: '？', name: '疑点' }
         ];
-        var ktSymOn = false;      // 本轮开关（ktBranchHTML 读它，避免每行都去 ktState()）
+        var ktSymOn = false;      // 层级名 / N 项 是否符号化（ktBranchHTML 读它，避免每行都去 ktState()）
+        var ktMarkOn = false;     // ★ 追加：重点 / 难点 / 疑点 是否显示（与上者独立）
         var ktMarkIdx = {};       // 记录侧标记的索引，ktRender 每轮重建
         // 每级的符号与「编号体系 → 符号体」同源（hub_cpa_kp_sym_v1），
         // 不在这里写第二份默认表 —— 用户在别处改过每级符号，这里要跟着变。
@@ -12949,7 +13085,7 @@
                 (kids.length
                     ? '<span class="kt-kidn">' + (ktSymOn ? ('∷' + kids.length) : (kids.length + ' 项')) + '</span>'
                     : '') +
-                (ktSymOn ? ktMarkHTML(n, ktMarkIdx) : '') +
+                (ktMarkOn ? ktMarkHTML(n, ktMarkIdx) : '') +
                 '</div>';
             if (kids.length && open) {
                 // ★ 需求 2：先按搜索筛出真正要渲染的子级，再判「这一组是不是全叶子」——
@@ -13038,6 +13174,8 @@
             if (btn) btn.classList.toggle('active', !!cfg.num);
             const sbtn = document.getElementById('ktSymBtn');
             if (sbtn) sbtn.classList.toggle('active', !!cfg.sym);
+            const mbtn = document.getElementById('ktMarkBtn');
+            if (mbtn) mbtn.classList.toggle('active', !!cfg.mark);
         }
 
         // ---------- 主渲染 ----------
@@ -13065,8 +13203,9 @@
             }
 
             const cfg = ktState();
-            ktSymOn = !!cfg.sym;                 // ★ 需求 C：本轮符号开关（ktBranchHTML 读它）
-            ktMarkIdx = ktSymOn ? ktMarkIndex() : {};   // 关了就不必算索引
+            ktSymOn = !!cfg.sym;                 // ★ 需求 C：层级名 / N 项 是否符号化
+            ktMarkOn = !!cfg.mark;               // ★ 追加：标记显示开关（独立）
+            ktMarkIdx = ktMarkOn ? ktMarkIndex() : {};   // 关了就不必算索引
             const rawTree = ktSevenTree(cfg, all, proj);
             // ★ 一键编号：在**未裁剪**的 rawTree 上算，键是 sig（见上方 ktNoText 的口径说明）
             const NO = {};
@@ -13197,8 +13336,21 @@
                 ktPaintNoCtl();
                 ktRender();
                 ktToast(cfg.sym
-                    ? '🔣 已用符号显示层级与「N 项」（重点/难点/疑点来自学习记录里的标记）'
+                    ? '🔣 已用符号显示「层级名」与「N 项」'
                     : '🔣 已恢复文字显示');
+            });
+
+            // ★ 2026-09-18（追加）：重点 / 难点 / 疑点 的显示开关 —— 与符号开关独立
+            const markBtn = document.getElementById('ktMarkBtn');
+            if (markBtn) markBtn.addEventListener('click', function () {
+                const cfg = ktState();
+                cfg.mark = !cfg.mark;
+                saveData();
+                ktPaintNoCtl();
+                ktRender();
+                ktToast(cfg.mark
+                    ? '★ 已显示学习记录里的 重点 / 难点 / 疑点'
+                    : '★ 已隐藏 重点 / 难点 / 疑点');
             });
 
             // ★ 2026-09-18：一键编号（开关 + 模版）
@@ -15300,7 +15452,7 @@
             } catch (e) {}
             return 3;
         })();
-        /* 链路第 d 级第 n 项的编号形态 —— 四套体系的**唯一**形态定义处。
+        /* 链路第 d 级第 n 项的编号形态 —— 五套体系的**唯一**形态定义处。
            noStr（写出去）、cutSysNo（解析回来）、sysLevelOf（判层级）都从这里取，
            三处天然一致：只改这一处，不会出现「写出去的编号解析不回来」。 */
         function sysTok(id, d, n) {
@@ -15315,6 +15467,19 @@
                 if (d === 5) return n + '.';
                 if (d === 6) return '（' + n + '）';
                 return circledNo(n);
+            }
+            if (id === 'chapv') {                   // 章节体·变体：科目 / 第1章 / 第1节 / 一、 / （一） / 1. / （1）
+                /* 与 chap 的唯一差别：把「第N章」从第 1 级下移到第 2 级。
+                   链路第 1 级是**科目**，科目名本身就是标识，不该有「第1章」这种序号 ——
+                   chap 摆在 d1 会让知识树把科目行编成「第1章 会计」、章行编成「第1节」，
+                   整体错位一档。这里 d1 返回空串（= 该级不编号），从章开始逐级对位。 */
+                if (d === 1) return '';
+                if (d === 2) return '第' + n + '章';
+                if (d === 3) return '第' + n + '节';
+                if (d === 4) return cnNum(n) + '、';
+                if (d === 5) return '（' + cnNum(n) + '）';
+                if (d === 6) return n + '.';
+                return '（' + n + '）';
             }
             if (id === 'gongwen') {                 // 中文公文体：一、/（一）/1./（1）/①/a./i.
                 if (d === 1) return cnNum(n) + '、';
@@ -15607,7 +15772,7 @@
             if (!a.length) return '';
             // abs=true → path 已是链路绝对层级（知识树 ktNoText 用）；否则是速记内部层级，要 +SYSOFF
             var d = a.length + (abs ? 0 : SYSOFF);
-            // 四套体系都只定义到链路第 7 级；更深退回十进制路径（形如 1.2.3），不编造新形态
+            // 五套体系都只定义到链路第 7 级；更深退回十进制路径（形如 1.2.3），不编造新形态
             if (d > 7) return a.join('.');
             return sysTok(tmpl, d, a[a.length - 1]);
         }
@@ -15617,14 +15782,18 @@
         function toFlat(roots) {
             var out = [];
             walk(roots, function (n, p) {
-                out.push(new Array(p.length).join('  ') + noStr(p) + ' ' + n.t);
+                /* 编号可能为空串（chapv 的科目级）—— 空编号后不能再补那个分隔空格，
+                   否则科目行会多出一个前导空格。对另四套完全等价（它们第 1 级非空）。 */
+                const _no = noStr(p);
+                out.push(new Array(p.length).join('  ') + (_no ? (_no + ' ') : '') + n.t);
             });
             return out.join('\n').replace(/[ \t]+$/gm, '');
         }
         function toOutline(roots, withNo) {
             var out = [];
             walk(roots, function (n, p, d) {
-                out.push(new Array(d).join('  ') + (withNo ? (noStr(p) + ' ') : '') + n.t);
+                const _nn = withNo ? noStr(p) : '';
+                out.push(new Array(d).join('  ') + (_nn ? (_nn + ' ') : '') + n.t);
             });
             return out.join('\n').replace(/[ \t]+$/gm, '');
         }
@@ -16269,6 +16438,7 @@
            本轮推广到全部体系，消灭「只有罗马体偏移、别的体不偏移」的分裂。 */
         var TMPLS = [
             { id: 'chap',    name: '第1章/第1节/一、/（一）/1./（1）/①' },
+            { id: 'chapv',   name: '科目/第1章/第1节/一、/（一）/1./（1）' },
             { id: 'gongwen', name: '一、/（一）/1./（1）/①/a./i.' },
             { id: 'roman',   name: 'I./A./1./a./(1)/(i)/a)' },
             { id: 'symbol',  name: '●/■/◆/▷/✓/✧/∷' }
@@ -16937,7 +17107,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918b</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918d</div>
 <!-- build-tag:end -->
 </body>
 </html>
