@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>复盘台账 · 人际交往与沟通</title>
-    <link rel="stylesheet" href="social.css?v=V20260918c">
+    <link rel="stylesheet" href="social.css?v=V20260918e">
 </head>
 <body data-page="record">
 
@@ -49,7 +49,7 @@
 
 <section class="content-section" id="record">
                 <h2><span class="emoji">📝</span> 复盘台账 &amp; 执行记录</h2>
-                <div class="tip tip-success">功能说明：新增日复盘事件卡、周练习任务、月度打分；支持标记是否执行完成、填写执行反馈；数据保存在浏览器本地。</div>
+                <div class="tip tip-success">功能说明：新增日复盘事件卡、周练习任务、月度打分；支持标记是否执行完成、填写执行反馈。日复盘里的「如果就」方案，把反复出现的场景沉淀成一句话的自动应对；数据保存在浏览器本地。</div>
 
                 <!-- 统计 -->
                 <div class="stats-grid" id="statsGrid">
@@ -129,6 +129,27 @@
 
                     <!-- 记录列表 -->
                     <div id="dailyListWrap" class="record-list"></div>
+
+                    <!-- ===== 如果就 · 场景应对方案库 ===== -->
+                    <div class="it-block" id="ifThenBlock">
+                        <div class="it-head">
+                            <div class="it-title">
+                                <span class="it-emoji">🎯</span>
+                                <div>
+                                    <h3>如果就 · 场景应对方案</h3>
+                                    <p>把日复盘、周复盘里反复出现的场景，沉淀成「如果…就…」的自动应对：先写清当时的场景和双方言行，再定一句下次一定做得出来的动作。用来复习，也用来临场调用。</p>
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-primary btn-sm" onclick="openIfModal()">➕ 新增方案</button>
+                                <button class="btn btn-outline btn-sm" id="ifReviewBtn" onclick="toggleIfReview()">🎯 复习模式</button>
+                                <button class="btn btn-outline btn-sm" onclick="openIfCatManager()">⚙️ 场景分类</button>
+                            </div>
+                        </div>
+                        <div class="it-meta" id="ifMeta"></div>
+                        <div class="it-chips" id="ifChips"></div>
+                        <div class="it-list" id="ifThenList"></div>
+                    </div>
                 </div>
 
                 <!-- ===== Tab: 周练习 ===== -->
@@ -197,6 +218,70 @@
 
                     <div id="monthListWrap" class="record-list"></div>
                 </div>
+
+                <!-- ===== 如果就：新增 / 编辑（故意放在 .tab-panel 之外，避免「清空表单」误清） ===== -->
+                <div class="modal-overlay" id="ifThenModal">
+                    <div class="modal modal-lg">
+                        <h3 id="ifModalTitle">🎯 新增「如果…就…」方案</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>时间 <span class="hint">发生或适用的时间</span></label>
+                                <input id="it_date" type="date">
+                            </div>
+                            <div class="form-group">
+                                <label>地点 <span class="hint">发生或适用的场合</span></label>
+                                <input id="it_place" placeholder="例：办公室 / 微信 / 门店">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>场景分类 <span class="hint">可自行增删改</span></label>
+                                <div style="display:flex;gap:8px;">
+                                    <select id="it_cat" style="flex:1;"></select>
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="openIfCatManager()">⚙️</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>对方是谁 <span class="hint">会出现在句子的主语里</span></label>
+                                <input id="it_who" placeholder="例：客户 / 领导 / 爱人 / 陌生人">
+                            </div>
+                        </div>
+
+                        <div class="it-rounds-head">
+                            <span>对话还原 <span class="hint">可以重复添加，每一轮单起一行</span></span>
+                            <button type="button" class="btn btn-outline btn-sm" onclick="addIfRound()">➕ 再加一轮</button>
+                        </div>
+                        <div id="ifRounds"></div>
+
+                        <div class="form-group" style="margin-top:12px;">
+                            <label>我就… <span class="hint">一句下次真能做出来的动作</span></label>
+                            <textarea id="it_then" rows="2" placeholder="例：先复述他的顾虑，再给两个可选方案，不急着解释价格"></textarea>
+                        </div>
+
+                        <div class="it-preview" id="itPreview"></div>
+                        <input type="hidden" id="it_editId">
+                        <div class="btn-group">
+                            <button class="btn btn-outline" onclick="closeIfModal()">取消</button>
+                            <button class="btn btn-primary" onclick="saveIfPlan()">💾 保存方案</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-overlay" id="ifCatModal">
+                    <div class="modal">
+                        <h3>⚙️ 管理场景分类</h3>
+                        <p style="font-size:14px;color:var(--text-muted);margin-bottom:14px;">改名直接改输入框、点到别处即生效；删除分类不会删掉已保存的方案，那些方案会显示为「未分类」。</p>
+                        <div id="ifCatList"></div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+                            <input id="ifNewCat" placeholder="新分类名称，例：职场会议" style="flex:1;min-width:150px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:var(--font);">
+                            <button class="btn btn-primary btn-sm" onclick="addIfCat()">➕ 添加</button>
+                            <button class="btn btn-danger btn-sm" onclick="resetIfCats()">🔄 重置默认</button>
+                        </div>
+                        <div class="btn-group" style="margin-top:16px;">
+                            <button class="btn btn-outline" onclick="closeIfCatManager()">关闭</button>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- 页脚 -->
@@ -207,7 +292,9 @@
         </main>
     </div>
 
-    <script src="social-core.js?v=V20260918c"></script>
+    <div class="it-toast" id="ifToast"></div>
+
+    <script src="social-core.js?v=V20260918e"></script>
 <!-- build-tag:begin（技能 §21/§22：由推送脚本维护，勿手改） -->
 <style>
 html.embedded #buildTag{display:none}
@@ -227,7 +314,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918c</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918e</div>
 <!-- build-tag:end -->
 </body>
 </html>
