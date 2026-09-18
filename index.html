@@ -1708,7 +1708,10 @@
   var BAR_ID = 'hub-selbar';
   var COLOR_KEY = 'hub_text_v1';      // 默认色点跟着「⚙️ 设置」里的标注色走
 
-  var SWATCHES = ['#1E2533', '#C0392B', '#1F6FB2', '#1E8449', '#6B46C1'];
+  /* ★ 2026-09-18（需求 D）：内置色改为**红 黄 蓝 绿 紫**（Tom 原话）。
+     顺序即「恢复内置 5 色」后浮条上的排列顺序。
+     黄取的是本工具自己的金色强调色 #E8B84B —— 与 cream 底、「编辑中」的描边同源，换别的黄会显得是外来色。 */
+  var SWATCHES = ['#C0392B', '#E8B84B', '#1F6FB2', '#1E8449', '#6B46C1'];
 
   var bar = null;
   var savedDoc = null, savedWin = null, savedRange = null;

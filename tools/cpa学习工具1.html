@@ -7722,12 +7722,28 @@
                （Tom：『省去我下拉找到编辑界面』）。
                现在按 #formContainer 的**实际位置**滚；拿不到位置才退回原来的行为。
                · .collapsed 刚被摘掉，.form-body 的 display 已恢复 —— 读
-                 getBoundingClientRect 会强制回流，所以量到的是展开后的真实位置，无需延后。 */
+                 getBoundingClientRect 会强制回流，所以量到的是展开后的真实位置，无需延后。
+
+               ★★ 2026-09-19 再收一档（Tom 追加）：
+                 「点击编辑回到记录学习页面，知识点记录的[位置]，不要回到初始位置」
+               停到表单顶部还不够 —— 表单本身就是好几屏（基本信息 / 时间 / 番茄 /
+               自评 / 知识点记录 / 其他 / 模版设置），用户要改的就是**知识点速记**。
+               所以：① 先切到「📌 知识点记录」页签（走 CpaKpEditor.setTab，
+                         与用户自己点页签完全同一条路，不另开一套显隐逻辑）；
+                     ② 再滚到 #recPaneKp，即「知识点速记」那一块。
+               · setTab 内部会 growAll()（重算思维导图视角的行高），
+                 必须在**量位置之前**调用，否则量到的高度还没长开。 */
             try {
-                var _box = document.getElementById('formContainer');
+                if (window.CpaKpEditor && typeof window.CpaKpEditor.setTab === 'function') {
+                    window.CpaKpEditor.setTab('kp');
+                }
+            } catch (e0) {}
+            const ktRecAnchor = document.getElementById('recPaneKp');
+            try {
+                const _box = ktRecAnchor || document.getElementById('formContainer');
                 if (_box && _box.getBoundingClientRect) {
-                    var _y = _box.getBoundingClientRect().top +
-                             (window.pageYOffset || document.documentElement.scrollTop || 0) - 8;
+                    const _y = _box.getBoundingClientRect().top +
+                             (window.pageYOffset || document.documentElement.scrollTop || 0) - 12;
                     if (isFinite(_y) && _y > 0) window.scrollTo({ top: _y, behavior: 'smooth' });
                     else window.scrollTo({ top: 0, behavior: 'smooth' });
                 } else {
@@ -11350,6 +11366,18 @@
                         answers: node.answers,
                         childUids: node.childUids,
                         path: node.path.slice(),
+                        /* ★ 2026-09-18（F1 根因修复）：h / ip 必须跟着**行对象**一起走。
+                           节点对象在上面就带了这两个字段（h: c.h || null, ip: c.ip || ''），
+                           但这一句是**新构造**的行对象 —— 没列到就没有。于是：
+                             · ktAllNodes 的 n.h 恒为 undefined ⇒ 知识点行只剩
+                               「闪卡兜底」（kpRichIdx[card.qH]）一条路；
+                             · 而 fcBuild 在记录内容变化时会 delete card.qH ⇒ 兜底也断
+                           ⇒ 用户看到的就是「学习记录上了色、知识树不变色」（F1）。
+                             · 连带：ktLnHeal 的 `if (row.h) continue` 也因同一原因
+                               恒不成立，回填会把闪卡里的旧色**盖回**记录（反向污染）。
+                           补这两个字段，整条「记录 → 知识树」的颜色链才通。 */
+                        h: node.h || null,
+                        ip: node.ip || '',
                         virtual: !!node.virtual,
                         // ★ 「有内容可做反面」就算有下级：结构里最后一格已被砍掉，
                         //   但它的文本还在 answers 里 —— 只看 kids 的话，倒数第二格会被
@@ -11549,21 +11577,39 @@
             return out.length ? out : null;
         }
 
-        // 单条学习记录点亮了哪些节点（uid 集合，只含可以出卡的非叶节点）。
-        // ★ 数据源换成学习记录后，这个函数**大幅简化**：
-        //   旧版要在 kpTree 里靠「名字包含」猜哪些节点被这条记录碰过（还不时猜错，
-        //   需要三级判据层层回退）。现在闪卡的节点本来就是从记录大纲长出来的，
-        //   直接按 (科目, 章, 节) 圈出这条记录对应的那一组即可 —— 不再需要猜测。
+        /* ★ 2026-09-18（F3 根因修复）：**只认这条记录自己写出来的节点**。
+           原实现是「按 (科目, 章, 节) 把这一节**全部**有下级的节点都圈进来」，
+           注释还写着「宁可多给，不要漏掉」。同一条学习路径只录一条记录时看不出问题；
+           同一节录过两条（很常见：同一章分两次学）就串了 ——
+             记录 A = 平级四项（一个下级都没有） + 记录 B = 父 + 两子
+             ⇒ A 的「本次闪卡」面板里出现的是 **B 的卡**，而 A 自己根本没有下一级。
+           这正是 Tom 报的「闪卡答案提取错误 …… 没有下一级就不提取闪卡」。
+           现在改成：先算出**这条记录**的大纲路径集合，再拿它去 fcWalkAll 里对齐。
+           路径口径与 fcWalkAll 的 pathKey 完全一致（祖先链 + 自己），
+           所以「不同节里的同名知识点」不会互相串。 */
+        function fcOwnPathSet(r) {
+            const out = {};
+            const outline = fcRecOutline(r);
+            if (!outline || !outline.length) return out;
+            outline.forEach(function (c) {
+                if (!c || !c.name) return;
+                out[(c.ancestors || []).concat(c.parents || []).concat([c.name]).join(' > ')] = 1;
+            });
+            return out;
+        }
+
+        // 单条学习记录点亮了哪些节点（uid 集合，只含**这条记录自己**写出来的、可出卡的非叶节点）。
         function fcLearnedSetForRecord(r) {
             const out = {};
             if (!r || !r.course) return out;
-            const outline = fcRecOutline(r);
-            if (!outline || !outline.length) return out;
+            const own = fcOwnPathSet(r);
+            if (!Object.keys(own).length) return out;
             const ch = +(r.chapter || 0), sec = +(r.section || 0);
             fcWalkAll().forEach(function (n) {
                 if (n.course !== r.course) return;
                 if (+n.chapter !== ch || +n.section !== sec) return;
-                if (!n.hasKids) return;                  // 叶子不出卡
+                if (!n.hasKids) return;                          // 没有下一级 ⇒ 不出卡
+                if (!own[(n.path || []).join(' > ')]) return;    // ★ 不是这条记录的节点 ⇒ 不归它
                 out[fcUid(n)] = 1;
             });
             return out;
@@ -11738,13 +11784,37 @@
         }
 
         // ---------- 读取 ----------
+        /* ★ 2026-09-18（F3）：这张卡现在**还背得出来吗**？
+           判据只有一个 —— 它在树上的节点存在、且**有下一级**（hasKids）。
+              · 节点不在了（orphan）      → 返回 true：历史保留，不动（设计如此）
+              · 节点还在、但已无下一级     → 返回 false：答案原本就是它的下一级，
+                                            现被改成同级 / 删掉，反面已空 ⇒ 不再拿出来复习
+              · 用户自己写的 / 锁定的卡    → 返回 true：卡面是用户的内容，不由树裁定
+           走 fcWalkIndex()（memoized）查表，每张卡 O(1)；
+           是**实时**判据，不是落盘标记 —— 记录里把下一级补回来，卡片自动回到列表。 */
+        function fcCardHasQA(c) {
+            try {
+                if (!c) return false;
+                if (c.manual || c.pinMine) return true;
+                const s = c.src || {};
+                if (!Array.isArray(s.path) || !s.path.length) return true;   // 拿不到身份 ⇒ 不判死
+                const uid = fcUid({ course: s.course, chapter: s.chapter, section: s.section, path: s.path });
+                const n = fcWalkIndex().byUid[uid];
+                if (!n) return true;
+                return !!n.hasKids;
+            } catch (e) { return true; }
+        }
+
         function fcVisibleCards() {
             fcState();
             const out = [];
             Object.keys(state.cards).forEach(function (id) {
                 const c = state.cards[id];
                 // ★ 需求 1：已删除的卡不进任何列表（连带月历 / 清单 / 统计）。
-                if (c && !c.hidden && !c.deleted) out.push(c);
+                /* ★ 2026-09-18（F3）：再加上「还背得出来」这一条 ——
+                   「没有下一级就不提取闪卡」。不删数据、不碰复习历史，
+                   只是不再列出来 / 不再进入复习轮转（见 fcCardHasQA）。 */
+                if (c && !c.hidden && !c.deleted && fcCardHasQA(c)) out.push(c);
             });
             out.sort(function (a, b) {
                 const sa = a.src || {}, sb = b.src || {};
@@ -11926,11 +11996,12 @@
             //   改成查「(科目,章,节) → 节点数组」的索引表。
             const nodes = fcNodesOfSec(r.course, r.chapter, r.section);
             if (!nodes.length) return [];
-            let set = fcLearnedSetForRecord(r);
-            if (!Object.keys(set).length) {
-                set = {};
-                nodes.forEach(function (n) { set[fcUid(n)] = 1; });
-            }
+            /* ★ 2026-09-18（F3）：这里原来有一条「命中不了就退化为该节已有的卡片」兜底。
+               它的本意是「手工写的自由文本也要给点卡」，代价是**把别的记录的内容端上来**：
+               记录 A 平级四项、一个下级都没有，面板里却出现记录 B 的卡（已复现，1 张）。
+               Tom 的口径是「没有下一级就不提取闪卡」—— 兜底直接去掉：
+               这条记录自己没有下一级，就诚实地给 0 张。 */
+            const set = fcLearnedSetForRecord(r);
             const out = [];
             // 与 fcBuild 用同一套撞号消歧，否则撞号的节点会取到别人的卡
             const sigFix = fcSigFixMap(nodes);
@@ -13347,8 +13418,15 @@
         //   ★ 为什么默认是 5 而不是 4：知识点来源已收敛为学习记录，屏上默认就该
         //     看得到「某一级 + 它的下一级」这一对 —— 那正是闪卡的配对方式。
         //     只到 4 级的话，看到的全是第 4 级顶层，一个父子配对都显示不出来。
+        //   ★ 2026-09-18 再改（F2）：5 → 7，默认给**整条链路**。
+        //     停在 5 的代价是「用户写进速记的第 3 层根本不显示」——4 列速记占第 4–7 级，
+        //     默认档只给到第 5 级，屏上凭空少两层；用默认视角（3 列）写三层速记也一样，
+        //     第 6 级被砍掉。Tom 的原话是「知识树还是没有联动生成内容」——
+        //     对用户来说「写了但看不见」和「没生成」是同一件事。
+        //     默认显示全部层级；想收窄仍可用「终点层级」下拉，
+        //     每个节点的展开 / 收拢状态照旧（ktOpen 不受影响）。
         const KT_TO_AUTO = 0;
-        const KT_DEF_TO = 5;                  // 默认展开到第 5 级：科目›章›节›知识点1级›知识点2级
+        const KT_DEF_TO = 7;                  // 默认展开到第 7 级：科目›章›节›知识点1–4级
 
         function ktProj() {
             try { return (typeof getCurrentProject === 'function') ? getCurrentProject() : null; } catch (e) { return null; }
@@ -13413,7 +13491,7 @@
         function ktResolveTo(mxVal) {
             const cfg = ktState();
             const top = Math.max(1, mxVal || 1);
-            // ★ 需求 1：默认档 = KT_DEF_TO(4) → 科目 › 章 › 节 + 知识点首层。
+            // ★ 需求 1：默认档 = KT_DEF_TO(7) → 科目 › 章 › 节 + 知识点 1–4 级（整条链路）。
             //   为什么不是「top - 2」：七级链路最深那三层固定是 科目/章/节，top-2 会把
             //   知识点 3–4 级一起铺开；而写成 3 又只到「节」，屏上一个知识点都没有，
             //   比改造前（看得到知识点 1–2 级）还少 —— 那是功能回退，不是保守设计。
@@ -13727,7 +13805,7 @@
             if (st) {
                 st.innerHTML =
                     '<option value="' + KT_TO_AUTO + '"' + (cfg.to === KT_TO_AUTO ? ' selected' : '') +
-                        '>默认（科目 › 章 › 节 + 知识点 1–2 级）</option>' +
+                        '>默认（显示全部 7 级：科目 › 章 › 节 + 知识点 1–4 级）</option>' +
                     opts(cfg.to === KT_TO_AUTO ? -1 : Math.min(cfg.to, KT_MAX_LV));
             }
         }
@@ -14871,8 +14949,22 @@
                 for (var i = 0; i < rows.length; i++) {
                     var row = rows[i];
                     if (!row || row.virtual || !row.sig || !qH[row.sig]) continue;
-                    if (row.h) continue;                       // 记录里已经带格式 → 不动
                     var cands = ktLnCands(row);
+                    /* ★ 2026-09-18（F1 连带修复）：判据从「只看 row.h」改成
+                       「行上有格式 **或** 记录里那一格已经有格式」。
+                       row.h 走的是 fcWalkAll 的行对象 —— 那一层曾经漏传 h（F1 根因），
+                       于是这条「已有格式就跳过」的闸门**恒不成立**：
+                       回填会把闪卡里的旧色反过来盖掉用户刚在记录里改的颜色。
+                       （Tom 的「知识树颜色没跟着变」里也含这一份反向污染。）
+                       原则不变：只补不覆盖 —— 记录里已有色就一律不动。 */
+                    var _has = !!row.h;
+                    if (!_has) {
+                        for (var j0 = 0; j0 < cands.length; j0++) {
+                            var _r0 = cands[j0];
+                            if (_r0 && _r0.kpRich && row.ip && _r0.kpRich[row.ip]) { _has = true; break; }
+                        }
+                    }
+                    if (_has) continue;
                     for (var j = 0; j < cands.length; j++) {
                         var m = ktLnLocate(cands[j], row);
                         if (!m || !m.ip) continue;
@@ -19410,7 +19502,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ac</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ad</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -19542,7 +19634,10 @@ html.embedded #buildTag{display:none}
   var BAR_ID = 'hub-selbar';
   var COLOR_KEY = 'hub_text_v1';      // 默认色点跟着「⚙️ 设置」里的标注色走
 
-  var SWATCHES = ['#1E2533', '#C0392B', '#1F6FB2', '#1E8449', '#6B46C1'];
+  /* ★ 2026-09-18（需求 D）：内置色改为**红 黄 蓝 绿 紫**（Tom 原话）。
+     顺序即「恢复内置 5 色」后浮条上的排列顺序。
+     黄取的是本工具自己的金色强调色 #E8B84B —— 与 cream 底、「编辑中」的描边同源，换别的黄会显得是外来色。 */
+  var SWATCHES = ['#C0392B', '#E8B84B', '#1F6FB2', '#1E8449', '#6B46C1'];
 
   var bar = null;
   var savedDoc = null, savedWin = null, savedRange = null;
