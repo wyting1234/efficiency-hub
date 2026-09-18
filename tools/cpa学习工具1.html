@@ -2572,7 +2572,7 @@
 .main.fillpage #view-kptree { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 .main.fillpage #ktWrap { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 .main.fillpage .kt-body { flex: 1 1 auto; max-height: none; }
-/* ⚠️ .kt-row / .kt-caret / .kt-name / .kt-kidn 的样式**只在下面
+/* ⚠️ .kt-row / .kt-caret / .kt-name 的样式**只在下面
    「🌳 知识树 · 思维导图样式」那一段里定义一份**。上一版在这里还留着一份旧副本，
    同一个选择器写两遍 —— 改一处忘一处是这类大文件最难查的坑，已清掉。
    同时删掉了 .kt-tier：模板换成 kt-lv{n} + .kt-lvb 之后它已没有任何元素使用。 */
@@ -2636,12 +2636,10 @@
 .kt-lv1 { background: #6E6355; color: #FFFDF8; padding: 5px 14px; border-radius: 9px; }
 .kt-lv1 > .kt-name { color: #FFFDF8; }
 .kt-lv1 > .kt-lvb { background: rgba(255, 253, 248, .22); color: #FFFDF8; }
-.kt-lv1 > .kt-kidn { color: rgba(255, 253, 248, .75); }
 .kt-lv1:hover { background: #5C5245; }
 .kt-lv2 { background: #9A8C74; color: #FFFDF8; padding: 4px 12px; border-radius: 9px; }
 .kt-lv2 > .kt-name { color: #FFFDF8; font-weight: 600; }
 .kt-lv2 > .kt-lvb { background: rgba(255, 253, 248, .22); color: #FFFDF8; }
-.kt-lv2 > .kt-kidn { color: rgba(255, 253, 248, .75); }
 .kt-lv2:hover { background: #8A7C65; }
 .kt-lv3 { background: #FAF6EF; border: 1px solid #E6DCCB; padding: 4px 12px; border-radius: 9px; }
 .kt-lv3 > .kt-name { font-weight: 600; color: #4A4238; }
@@ -2664,7 +2662,9 @@
 /* 深底色块（lv1/lv2）上的搜索高亮：mark 的黄底会把继承来的白字吞掉，压回深字 */
 .kt-lv1 .kt-name mark, .kt-lv2 .kt-name mark { color: #5A4A2E; }
 .kt-lvhint { color: #A8997F; }
-.kt-kidn { flex: 0 0 auto; font-size: 11px; color: #A8997F; }
+/* 2026-09-18（需求 D）：.kt-kidn（行尾「N 项 / ∷N」）已从渲染端移除 ——
+   连同上面两条 .kt-lv1/.kt-lv2 的配色一起删掉，不留「看着像在用、其实永不生效」的规则。
+   子节点数改挂在行的 title 上（见 ktBranchHTML 的 ktRowTip）。 */
 
 /* 七级链路在窄屏上的间距收紧（每级 30px 会撑到 210px+，手机上只剩半屏） */
 @media (max-width: 700px) {
@@ -2952,13 +2952,19 @@
               30 章的表格在 1440 宽的桌面（内容区 931px）都放不下，反而逼出横向滚动。
            行首列必须在 .heat-corner 上写死宽度：fixed 布局下图省宽度只认第一行，
            「科目 ＼ 章」和纵轴节名共用同一列，不写死就会被平分掉一大半。 */
-        /* ★ 需求 G-2 修（2026-09-18 v2）：上限用 CSS 变量喂进来，**不要**再用
-           inline style="max-width:…px" —— inline max-width 会盖掉这条 100% 上限，
-           于是 30 章那份 2027px 的预算把宽屏下的表格撑到 1067px（容器只有 931px），
-           「宽度自适应」等于没做。改成 min(--fitmax, 100%)：
-             · 章少（fitmax < 容器）→ 表格只到 fitmax，不会把 4 格撑成 4 个大方块；
-             · 章多（fitmax > 容器）→ 100% 生效，铺满容器、不再溢出。 */
-        .heat-fit { max-width: min(var(--fitmax, 100%), 100%); }
+        /* ★ 需求 G-2 修（v3，2026-09-18）：**恒宽 100%，铺满容器**。
+           前两版都只做对了「不溢出」这一半：
+             v1 inline max-width:2027px + min-width:1067px → 宽屏下 1067 > 容器 931，溢出；
+             v2 改成 min(--fitmax, 100%) → 不溢出了，但上限还在 ⇒ **表格窄于容器，右半页空白**
+                （C++语言 7 章 × 每格 58px ≈ 578px，容器约 1000px）。
+           「宽度自适应」的完整含义是「铺满可用宽度」，不是「不超过它」。所以：
+             · 去掉上限，恒宽 100%，列宽交给 table-layout:fixed 平分；
+             · 章多 → 每格变窄，.heat-dense 降一档字号兜底；
+             · 章少 → 每格变宽，格子高度跟着上一档（.heat-roomy / .heat-mid），
+               否则宽格子会变成细长条。
+           只保留 min-width 下限：章极多时（如手机上 30 章）低于每格 18px 数字就糊了，
+           此时才允许横向滚动 —— 且滚动收在本面板内部，不撑破页面。 */
+        .heat-fit { width: 100%; }
         table.heat-tbl { border-collapse: separate; border-spacing: 5px; table-layout: fixed; width: 100%; }
         .heat-tbl th { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); padding: 0 2px 4px; text-align: center; white-space: nowrap; }
         .heat-tbl th.heat-corner { width: 132px; text-align: right; padding-right: 10px; font-size: 11px; color: #A99A83; }
@@ -3001,6 +3007,14 @@
             font-size: 12.5px; font-weight: 700; border: 1px solid transparent; cursor: default;
             overflow: hidden;
         }
+        /* ★ G-2 v3：表格恒定铺满宽度 ⇒ 章少时每格很宽，42px 高会成细长条。
+           按章数分两档抬高（纯 CSS，不用 JS 量布局 —— 渲染时拿不到容器宽度，
+           量出来也是假的自适应）。 */
+        .heat-tbl.heat-mid td.heat-cell { height: 52px; }
+        .heat-tbl.heat-roomy td.heat-cell { height: 66px; }
+        .heat-tbl.heat-roomy td.heat-cell, .heat-tbl.heat-mid td.heat-cell { font-size: 13.5px; }
+        .heat-tbl.heat-mid td.heat-avgcell { height: 42px; }
+        .heat-tbl.heat-roomy td.heat-avgcell { height: 50px; }
         .heat-tbl.heat-dense td.heat-cell { font-size: 11px; }
         /* ★ 需求 G-3（2026-09-18）：表尾「均值」行 —— 每章一格的横向汇总。
            放最下面一行而不是最右边一列：这页的读法就是「自上而下看一列」，
@@ -3742,7 +3756,7 @@
                         <select id="ktNoTmpl" title="编号模版（与「📝 学习记录 → 🧩 模版设置」共用同一份偏好）。四套体系各七档，档位 = 链路层级：1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级"></select>
                     </span>
                     <!-- ★ 2026-09-18（需求 C）：把行尾的「层级名 / N 项」换成符号 -->
-                    <button type="button" class="fc-btn" id="ktSymBtn" title="符号显示：把每行行尾的「层级名」（科目/章/节/知识点N级）与「N 项」换成符号。层级符号取自「模版设置 → 🔣 每级符号」，与编号体系的符号体同源">🔣 符号</button>
+                    <button type="button" class="fc-btn" id="ktSymBtn" title="层级角标：打开后在每行行尾显示一个层级符号（科目/章/节/知识点1-4级各一个）。默认关闭 —— 层级另有颜色、缩进、一键编号三条线索。符号取自「模版设置 → 🔣 每级符号」，与编号体系的符号体同源">🔣 层级角标</button>
                     <!-- ★ 2026-09-18（追加，需求3）：重点 / 难点 / 疑点 的显示开关。
                          三个符号**可以同时出**，各有一个开关、各自点亮，互相独立
                          （也独立于左边的「🔣 符号」）。
@@ -9457,20 +9471,21 @@
                乘上章数得到整张表的上下限（见 CSS .heat-fit 注释）。
                章多到连 18px 都放不下时再加 .heat-dense 降一档字号，尽量不出滚动条。 */
             const W_ROW = full ? 158 : 132;     // 行首列：科目 ＼ 章 + 纵轴节名共用
-            const W_MAX = 58, W_GAP = 5;
-            /* ★ G-2 修：W_MIN 26 → 18。26px 是「格子看着舒服」的宽度，不是
-               「数字能不能看清」的下限 —— 拿它当 min-width，30 章的表格在 1440 宽的
-               桌面（内容区 931px）都放不下，用户还得横向滚，与「宽度自适应」相反。
-               18px 才是数字（11px 字号、2–3 字符）真正会糊的线，上面还有 .heat-dense
-               把字号降到 11px 兜底，所以 18px 一格是能看的。 */
+            const W_GAP = 5;
+            /* ★ G-2 修（v3）：这里**只算下限**，不再算上限。
+               上限正是「右半页空白」的来源：它按每格固定宽度估总宽，章少时估出来的
+               宽度远小于容器，表格就缩在左边。表格宽度已交给 CSS 的 width:100% 铺满。
+               W_MIN = 18：数字（11px 字号、2–3 字符）真正会糊的线。低于它才允许滚动。 */
             const W_MIN = 18;
-            const fitMax = W_ROW + d.maxCh * (W_MAX + W_GAP) + W_GAP;
             const fitMin = W_ROW + d.maxCh * (W_MIN + W_GAP) + W_GAP;
-            const dense = d.maxCh * (W_MAX + W_GAP) > 900;   // 一格挤不到 ~30px 就换小字号
-            // 上限走 CSS 变量（.heat-fit 用 min(var(--fitmax), 100%) 消费），不要再写
-            // inline max-width —— 那会把 CSS 的 100% 上限盖掉，宽屏下反而溢出。
-            let h = '<div class="heat-fit" style="--fitmax:' + fitMax + 'px; min-width:' + fitMin + 'px;">' +
+            /* dense：章多到每格挤不下 ~30px 时降一档字号。
+               roomy / mid：章少时每格会很宽（表格恒铺满），抬高格子免得成细长条。 */
+            const dense = d.maxCh * (58 + W_GAP) > 900;
+            const roomy = !dense && d.maxCh <= 5;
+            const mid = !dense && d.maxCh > 5 && d.maxCh <= 10;
+            let h = '<div class="heat-fit" style="min-width:' + fitMin + 'px;">' +
                 '<table class="heat-tbl' + (full ? ' heat-full' : '') + (dense ? ' heat-dense' : '') +
+                (roomy ? ' heat-roomy' : (mid ? ' heat-mid' : '')) +
                 '"><thead><tr>';
             h += '<th class="heat-corner">' + L('section') + ' ＼ ' + L('chapter') + '</th>';
             for (let ch = 1; ch <= d.maxCh; ch++) {
@@ -9637,8 +9652,8 @@
                     : '') +
                 '· <b>标题 简略 / 详细</b>：横轴表头都是<b>竖排</b>的。简略写「第N章」；' +
                 '详细再往下接章名（章号小一号、浅一档）。完整标题都能悬停看到。<br>' +
-                '· <b>宽度自适应</b>：表格铺满当前宽度（不会横向溢出），章多时每格自动变窄' +
-                '（保底 ~18px），章少时每格最宽也只到 58px —— 不会出现「4 章撑成 4 个大方块」。' +
+                '· <b>宽度自适应</b>：表格<b>恒定铺满整个宽度</b>，右边不留空白 —— ' +
+                '章多时每格自动变窄（保底 ~18px，同时降一档字号），章少时每格变宽（并抬高格子高度）。' +
                 '窄到 18px 还放不下（手机上 30 章这种）才会出现横向滚动条，滚动收在这一块内部。<br>' +
                 '· <b>最下面那一行「均值」</b>：每一列的横向汇总 —— ' +
                 '🎯 掌握程度按<b>记录数加权</b>（记录多的节权重更大），⏱ 学习时长取<b>该章已学节的平均时长</b>。' +
@@ -12965,17 +12980,18 @@
             if (state.ktCfg.num === undefined || state.ktCfg.num === null) state.ktCfg.num = false;
             // ★ 2026-09-18（需求 C）：符号显示开关 —— 行尾「层级名 / N 项」符号化，
             //   并显示学习记录里标好的 重点/难点/疑点。
-            /* ★ 2026-09-18 修订：符号显示**默认开启**。
-               需求原文「把后面的『章 一项』改成符号」描述的是默认行为，末尾那句
-               「添加一个按钮，以确定是否展示」只是让用户能关掉 —— 默认关会让
-               用户打开知识树只看到中文，等同这个需求没做。
-               symV 做**一次性迁移**：早期版本已把 sym=false 落过盘，这里升为 true；
-               迁移只跑一次，用户之后主动关掉不会再被重置。 */
-            if (!state.ktCfg.symV) {
-                state.ktCfg.symV = 1;
-                state.ktCfg.sym = true;
+            /* ★ 2026-09-18（需求 D）修订：这个开关的语义从「层级名 / N 项 符号化」
+               改成「要不要显示行尾的层级角标」，并且**默认关闭**。
+               原因：用户看知识树时指出「重点难点疑点的图标前面小红框里面的东西，碍眼」，
+               红框圈住的正是行尾的 [层级符号] 与 ∷N 两个浅灰胶囊 —— 项数直接删掉，
+               角标收到这个开关后面、默认关，打开知识树就是干净的一行名字 + ★▲？。
+               symV2 做**一次性迁移**：早期版本（symV=1）把 sym 默认落成 true，
+               这里统一压回 false 一次；迁移只跑一次，用户之后主动打开不会再被重置。 */
+            if (!state.ktCfg.symV2) {
+                state.ktCfg.symV2 = 1;
+                state.ktCfg.sym = false;
             } else if (state.ktCfg.sym === undefined || state.ktCfg.sym === null) {
-                state.ktCfg.sym = true;
+                state.ktCfg.sym = false;
             }
             /* ★ 追加：重点 / 难点 / 疑点 的显示开关 —— 与符号开关**独立**。
                之前它搭在 sym 上（两者绑死）：想在树上看标记就必须连层级名也换成符号。
@@ -13590,18 +13606,27 @@
             //   一眼扫过去「全是一伙的」（用户反复反馈的「不是平级 / 怎么又放在一起了」，
             //   观感上有很大一部分来自它）。
             //   层级改由两样东西表达：颜色与缩进（父子关系）+ 行尾层级角标（第几级）。
+            /* ★ 需求 D：行尾角标 / 项数撤掉后，这两条信息改挂行的 title —— 悬停即可见。
+               老写法只在有 crumb 时才输出 title，现在恒定输出，保证信息一定查得到。 */
+            const ktRowTip = ((n.raw && n.raw.crumb) ? n.raw.crumb + ' · ' : '') +
+                '第 ' + n.lv + ' 级 · ' + ktLvName(n.lv) +
+                (kids.length ? ' · ' + kids.length + ' 个子节点' : '') +
+                (ktMarkAny ? ' · 悬停『★ 重点 / ▲ 难点 / ？ 疑点』可切换标记显示' : '');
             let h = '<div class="kt-branch">';
             h += '<div class="kt-row kt-lv' + n.lv +
                  '" data-kt-sig="' + kpEsc(n.sig) + '" data-kt-lv="' + n.lv + '"' +
-                 (n.raw && n.raw.crumb ? ' title="' + kpEsc(n.raw.crumb) + '"' : '') + '>' +
+                 ' title="' + kpEsc(ktRowTip) + '">' +
                 caret +
                 ((NO && NO[n.sig]) ? '<span class="kt-no">' + kpEsc(NO[n.sig]) + '</span>' : '') +
                 '<span class="kt-name">' + ktLabelText(n, q) + '</span>' +
-                // ★ 需求 C：开关打开时「层级名 / N 项」都换成符号（∷ 后面保留数字，不丢信息）
-                '<span class="kt-lvb" title="第 ' + n.lv + ' 级 · ' + kpEsc(ktLvName(n.lv)) + '">' +
-                    (ktSymOn ? kpEsc(ktSymCh(n.lv)) : kpEsc(ktLvName(n.lv))) + '</span>' +
-                (kids.length
-                    ? '<span class="kt-kidn">' + (ktSymOn ? ('∷' + kids.length) : (kids.length + ' 项')) + '</span>'
+                /* ★ 2026-09-18（需求 D）：行尾的「层级角标」与「项数」两个小胶囊不再渲染。
+                   用户原话：「去掉知识树里面重点难点疑点的图标前面小红框里面的东西，碍眼」——
+                   在深色胶囊上，浅灰的 [层级符号] 与 ∷N 紧挨着 ★▲？，读起来像两粒碎屑。
+                   两条信息都没丢：改成挂在行的 title（悬停可见）；层级另有颜色、缩进、
+                   一键编号三条线索。层级角标想叫回来，用工具栏的「🔣 层级角标」（cfg.sym）。 */
+                (ktSymOn
+                    ? ('<span class="kt-lvb" title="第 ' + n.lv + ' 级 · ' + kpEsc(ktLvName(n.lv)) + '">' +
+                        kpEsc(ktSymCh(n.lv)) + '</span>')
                     : '') +
                 (ktMarkAny ? ktMarkHTML(n, ktMarkIdx) : '') +
                 '</div>';
@@ -13859,8 +13884,8 @@
                 ktPaintNoCtl();
                 ktRender();
                 ktToast(cfg.sym
-                    ? '🔣 已用符号显示「层级名」与「N 项」'
-                    : '🔣 已恢复文字显示');
+                    ? '🔣 已显示行尾层级角标'
+                    : '🔣 已隐藏行尾层级角标');
             });
 
             // ★ 2026-09-18（追加，需求3 拆开关）：重点 / 难点 / 疑点 **各自**一个开关。
@@ -17632,7 +17657,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918g</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918j</div>
 <!-- build-tag:end -->
 </body>
 </html>
