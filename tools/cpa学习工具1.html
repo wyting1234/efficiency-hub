@@ -2186,15 +2186,24 @@
         .ap-mini.primary{border-color:var(--primary);color:var(--primary);background:rgba(138,115,88,.10)}
         .ap-note.tight{margin-top:-4px;margin-bottom:14px}
         .ap-dirty{color:#A6503C}
-        /* 5 个色位：每格 = 一个取色板 + 序号 + 「清空」 */
+        /* 5 个色位：每格 = 一个色块（点它才弹取色板）+ 序号 + 「清空」 */
         .ap-slots{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
         .ap-slot{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:52px}
-        .ap-slot input[type=color]{width:46px;height:34px}
+        /* ★ 2026-09-19（Tom）：色位/默认色都画成**色块**，取色器隐身铺满它 ——
+           一排原生取色器同时铺开太吵，点哪格改哪格才符合「先选色位再选色」。 */
+        .ap-dot{position:relative;display:block;width:46px;height:34px;border-radius:8px;
+            border:1px solid var(--border);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);
+            cursor:pointer;overflow:hidden}
+        .ap-dot:hover{box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 0 0 2px var(--primary)}
+        .ap-dot input[type=color]{position:absolute;top:0;left:0;width:100%;height:100%;
+            opacity:0;border:0;padding:0;cursor:pointer}
         .ap-slot .ap-no{font-size:11px;color:var(--text-secondary);line-height:1.2;white-space:nowrap}
         .ap-slot .ap-clr{border:0;background:none;padding:0;font-size:11px;line-height:1.2;
             color:var(--text-secondary);cursor:pointer;text-decoration:underline}
         .ap-slot .ap-clr:hover{color:var(--primary)}
-        .ap-slot.is-white input[type=color]{opacity:.7}
+        /* 白色＝这一位还没选：给一层斜纹，免得跟「选了白色」分不清。
+           只写 background-image，色块底色仍由内联的 background-color 决定。 */
+        .ap-slot.is-white .ap-dot{background-image:repeating-linear-gradient(45deg,rgba(70,58,46,.12) 0 2px,transparent 2px 6px)}
         .ap-prev{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
         .ap-prev i{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);display:block}
         .ap-prev i.def{box-shadow:0 0 0 2px var(--card-bg),0 0 0 4px var(--primary)}
@@ -4120,7 +4129,7 @@
                         <input type="color" id="apBgCustom" value="#F2EDE4" title="自定义背景色">
                     </div>
                     <div class="ap-row"><div class="ap-lab w2">默认标注色</div>
-                        <input type="color" id="apMarkDefCustom" value="#FFFFFF" title="默认标注色：在浮条上排第一并带高亮环，也是取色器的起始色">
+                        <span class="ap-dot" id="apMarkDefDot" style="background-color:#FFFFFF"><input type="color" id="apMarkDefCustom" value="#FFFFFF" title="默认标注色：在浮条上排第一并带高亮环，也是取色板的起始色"></span>
                         <div class="ap-prev" id="apMarkPrev"></div>
                     </div>
                     <div class="ap-row"><div class="ap-lab w2">浮条色板</div>
@@ -17178,7 +17187,7 @@
           浮条自己那块在后面 —— apInit() 跑的时候 HubPal 还不存在。
           用户真正点控件是在交互时刻，那时它早已就位。
     ============================================================ */
-    var MK_HINT = '下面 5 个色位就是浮条上那排文字变色按钮，顺序一致；「默认标注色」排第一并带高亮环。颜色一律用取色板选，改完点「💾 保存」才写盘 —— <b>5 个色位全部选定（都不是白色）后才能保存</b>。';
+    var MK_HINT = '下面 5 个色位就是浮条上那排文字变色按钮，顺序一致；「默认标注色」排第一并带高亮环。<b>点色块即可用取色板挑色</b>，改完点「💾 保存」才写盘 —— <b>5 个色位全部选定（都不是白色）后才能保存</b>。浮条上只有这 5 个色点，取色与保存都在本页。';
     function mkH() { try { return window.HubPal || null; } catch (e) { return null; } }
     function mkHexOK(c) { return /^#[0-9a-fA-F]{3,8}$/.test(String(c == null ? '' : c)); }
     function mkIsWhite(c) { return /^#(?:fff|ffffff)$/i.test(String(c)); }
@@ -17216,8 +17225,17 @@
       var i, h = '';
       for (i = 0; i < v.sw.length; i++) {
         var c = v.sw[i], wt = mkIsWhite(c);
+        /* ★ 2026-09-19（Tom）：**先选色位再选色**。原来这里是一排原生取色器
+           （<input type="color">）直接铺开；现在改成「色块」—— 点哪一格才弹哪一格的
+           取色板，与刚从浮条上搬走的那套交互一致。
+           实现仍是 input[type=color]（原生取色板只能由它唤起），只是**透明铺满色块**：
+           ① 选择器 `input[data-slot]` 不变 ⇒ 设置页的读写逻辑与回归测试全都不用改；
+           ② 底色画在 span 上（input 是透明的），所以用 background-color 不用 background，
+              免得内联简写把 .is-white 的斜纹底纹一起清掉。 */
         h += '<div class="ap-slot' + (wt ? ' is-white' : '') + '">' +
-             '<input type="color" data-slot="' + i + '" value="' + c + '" title="第 ' + (i + 1) + ' 个色位（取色板）">' +
+             '<span class="ap-dot" style="background-color:' + c + '">' +
+             '<input type="color" data-slot="' + i + '" value="' + c + '" title="第 ' + (i + 1) + ' 个色位：点一下用取色板挑色">' +
+             '</span>' +
              '<span class="ap-no">第 ' + (i + 1) + ' 位' + (wt ? '（白）' : '') + '</span>' +
              (wt ? '<span class="ap-clr" style="visibility:hidden">清空</span>'
                  : '<button type="button" class="ap-clr" data-clr="' + i + '" title="把这一位清成白色">清空</button>') +
@@ -17236,6 +17254,9 @@
       }
       var dc = document.getElementById('apMarkDefCustom');
       if (dc && mkHexOK(v.def) && String(dc.value).toLowerCase() !== String(v.def).toLowerCase()) dc.value = v.def;
+      /* 默认色那格也是色块了：输入框透明，用户看到的底色必须跟着一起走 */
+      var ddot = document.getElementById('apMarkDefDot');
+      if (ddot && mkHexOK(v.def)) ddot.style.backgroundColor = v.def;
       var sv = document.getElementById('apMarkSave'), ud = document.getElementById('apMarkUndo');
       /* ★ 5 位**全部选定**才能保存 —— 与浮条上那颗 💾 同一个闸门（HubPal.full）。
          白色在这一版里的语义是「这一位还没定」，定完 5 个才让写盘，
@@ -19502,7 +19523,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ad</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918af</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -19549,9 +19570,13 @@ html.embedded #buildTag{display:none}
    在 flex-wrap 容器里会缩成很窄并把工具条折成两行 —— 显式拿 max-content 才是一整条。 */
 .hub-selbar.dock{flex-wrap:nowrap;width:max-content}
 
-/* ★ 2026-09-18（Tom 需求 M）：色板自主可控 ——
-   固定 5 个色位 + 取色器 + 默认色环 + 右键菜单 + 保存/撤销。
-   .sb-sws 是色位 / ＋ / 保存撤销按钮的容器：色板一变就由
+/* ★ 2026-09-18（Tom 需求 M）→ 2026-09-19（需求 N）改版：色板自主可控 ——
+   固定 5 个色位 + 默认色环。
+   ★ 需求 N（2026-09-19）：「编辑界面标记变色，设置功能还是放到设置 tab 中，
+   浮调本身去掉设置颜色的功能。」⇒ **浮条只负责「点一下上色」**：
+   ＋ 取色器（加色）、保存 / 撤销、右键「设为默认 / 清空 / 设置颜色 / 恢复内置」
+   四族 UI 已整体搬进「设置 → 浮条色板」，其 CSS 也随 DOM 一并删除。
+   .sb-sws 现在只装这 5 个色点：色板一变就由
    renderSwatches() 就地重画，不必重建整条浮条
    （重建会把 hover / 焦点状态一起丢掉）。
    下面这六个占位符由调用方按各自主色替换
@@ -19566,32 +19591,8 @@ html.embedded #buildTag{display:none}
 /* 未保存标记：只要色位上带这个小点，就说明「眼前这套色还没写盘」 */
 .hub-selbar .sb-sw.sb-dirty::after{content:'';position:absolute;left:-1px;top:-1px;width:5px;height:5px;
   border-radius:50%;background:var(--primary,#8A7358);box-shadow:0 0 0 1.5px var(--card-bg,#FAF7F1)}
-.hub-selbar .sb-add{position:relative;width:22px;height:22px;border-radius:50%;padding:0;flex:none;
-  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
-  border:1px dashed var(--text-secondary,#6E6355);background:transparent;color:var(--text-secondary,#6E6355);font:700 13px/1 inherit}
-.hub-selbar .sb-add:hover{background:rgba(138,115,88,.16)}
-.hub-selbar .sb-add input{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;
-  opacity:0;border:0;padding:0;cursor:pointer}
-/* 保存 / 撤销：只在有未保存改动时出现（由 renderSwatches 决定加不加） */
-.hub-selbar .sb-mini{height:22px;padding:0 7px;flex:none;white-space:nowrap;cursor:pointer;
-  border:1px solid var(--border,#E5DCCD);border-radius:6px;background:transparent;color:var(--text-secondary,#6E6355);
-  font:600 11px/1 inherit}
-.hub-selbar .sb-mini:hover{border-color:var(--primary,#8A7358);color:var(--primary,#8A7358)}
-.hub-selbar .sb-mini.sb-save{border-color:var(--primary,#8A7358);color:var(--primary,#8A7358);background:rgba(138,115,88,.10)}
-/* 「5 个色位没定完不能保存」—— 置灰要让人一眼看出是**置灰**，不是没画出来 */
-.hub-selbar .sb-mini[disabled]{opacity:.42;cursor:not-allowed;border-color:var(--border,#E5DCCD);
-  color:var(--text-secondary,#6E6355);background:transparent}
-.hub-selbar .sb-mini[disabled]:hover{border-color:var(--border,#E5DCCD);color:var(--text-secondary,#6E6355)}
-.hub-selbar .sb-ctx{position:absolute;top:calc(100% + 6px);z-index:2;display:flex;flex-direction:column;
-  gap:2px;padding:4px;border-radius:9px;background:var(--card-bg,#FAF7F1);color:var(--text,#33291F);border:1px solid var(--border,#E5DCCD);
-  box-shadow:0 8px 22px rgba(70,58,46,.22);min-width:124px}
-.hub-selbar .sb-ctx button{border:0;background:transparent;color:inherit;font:500 12px/1 inherit;
-  text-align:left;padding:7px 9px;border-radius:6px;cursor:pointer;white-space:nowrap;
-  position:relative;overflow:hidden}
-.hub-selbar .sb-ctx button:hover{background:rgba(138,115,88,.16)}
-/* 「🎨 设置颜色」里那个取色器铺满整条 —— 与 ＋ 同一个套路：点这一条的哪儿都能弹出取色板 */
-.hub-selbar .sb-ctx .sb-ctx-pick input{position:absolute;top:0;left:0;right:0;bottom:0;
-  width:100%;height:100%;opacity:0;border:0;padding:0;cursor:pointer}
+/* ★ 2026-09-19：加色按钮、保存/撤销按钮、右键设置菜单的样式随各自的 DOM 一起删除 ——
+   浮条上已无这三族元素，留着就是会骗人的死 CSS。设置页那份色板编辑仍在本文件里。 */
 /*##CPASELBAR_CSS_END##*/
 </style>
 
@@ -19681,18 +19682,24 @@ html.embedded #buildTag{display:none}
      —— 导航页与 CPA 工具页**共用这一段**（由生成脚本同时注入两份文件，
      根绝「改了这份忘了那份」）。
 
-     Tom 的原话（两轮，需求 L / M）：
+     Tom 的原话（三轮，需求 L / M / N）：
        L「为何只有在思维导图视角下才有文字变色的功能……
          还是不能自主选中文字编辑中的默认颜色」
        M「颜色浮条增加保存和撤销功能，默认颜色保留五个，
          颜色使用取色板选取，默认颜色初始都设置成白色，
          依次确定颜色，最终的颜色排列应用到作为颜色设置浮条中」
+       N（2026-09-19）「编辑界面标记变色，设置功能还是放到设置 tab 中，
+         浮调本身去掉设置颜色的功能」。两处口径已对好：
+         浮条只留 5 个色点；设置 tab 的色板改成「先选色位再选色」
+         （点哪一格才弹哪一格的取色板）。
+         本节 API 一个没删 —— 搬走的是 UI，不是能力。
 
      口径（四条，改之前先读）：
        ① **真源只有两个 key**：hub_swatches_v1（色位数组）/ hub_swatch_def_v1（默认色）。
           设置模块不另存一份 —— 两处显示不可能对不上（同需求 E）。
        ② **色位固定 SW_MAX = 5 个**，顺序就是浮条上的顺序。
-       ③ 颜色编辑是**草稿**：取色器 / 右键 / 设置页 改的都是内存里的
+       ③ 颜色编辑是**草稿**：设置页（色块取色 / 清空某位 / 设为默认 /
+          恢复内置）改的都是内存里的
           swDraft，点「💾 保存」才写盘，点「↩ 撤销」丢掉。
        ④ 用户**自己配过**色板就听用户的；没配过才去跟随导航页「⚙️ 设置」
           的标注色（保持老行为，老用户升级后观感不变）。「↩ 恢复内置」= 回到这条路。
@@ -19956,86 +19963,18 @@ html.embedded #buildTag{display:none}
       var em = swIsWhite(sw[i]);
       h += '<button type="button" class="sb-sw' + (on ? ' sb-def' : '') + (em ? ' sb-empty' : '') +
         (dirty ? ' sb-dirty' : '') +
-        '" data-color="' + sw[i] + '" title="文字颜色 ' + sw[i] +
-        '（右键：设置颜色 / 设为默认 / 清空这个色位 / 恢复内置）"></button>';
+        '" data-color="' + sw[i] + '" title="把选中的文字标成 ' + sw[i] +
+        (dirty ? '（这套色还没保存 —— 到「设置 → 浮条色板」里按 💾 保存）' : '') + '"></button>';
     }
-    h += '<button type="button" class="sb-add" title="取色板选一个色：立即用在选中的文字上，并占用一个色位（改动要按「保存」才生效）">＋' +
-      '<input type="color" value="' + (hexOK(d) ? d : (sw[0] || '#C0392B')) + '" aria-label="自定义文字颜色"></button>';
-    /* ★ 需求 M：保存 / 撤销只在**有未保存改动**时出现 —— 平时不占地方，
-       出现了就说明「现在浮条上这套色还没写盘」，本身就是最直白的提示。 */
-    if (dirty) {
-      h += '<span class="sb-sep"></span>';
-      h += '<button type="button" class="sb-mini sb-save" data-sbmini="save"' + (full ? '' : ' disabled') +
-        ' title="' + (full
-          ? '保存这套颜色（未保存的改动刷新后会丢）'
-          : '还有 ' + left + ' 个色位没定（白色＝未选定）—— 5 个都选定后才能保存') +
-        '">💾 保存</button>';
-      h += '<button type="button" class="sb-mini" data-sbmini="undo" title="放弃这次改动，回到上次保存的颜色">↩ 撤销</button>';
-    }
+    /* ★ 2026-09-19（Tom）：**浮条只负责「点一下上色」**。
+       ＋ 取色器（往色板里加色）与 💾 保存 / ↩ 撤销（把草稿写盘）都是**设置**动作，
+       已全部搬进「设置 → 浮条色板」那一栏 —— 浮条上只留这 5 个色点。
+       「有未保存改动」的提示没丢：每个色点仍带 sb-dirty（CSS 里那颗小圆点）；
+       而「保存」就在设置页同一栏里，也就是刚才改色的地方。 */
     host.innerHTML = h;
     var dots = host.querySelectorAll('.sb-sw');
     for (var j = 0; j < dots.length; j++) dots[j].style.background = dots[j].getAttribute('data-color');
   }
-  /* 右键菜单：全部落在**草稿**上（保存才写盘），不碰任何业务数据 */
-  var ctxEl = null;
-  function closeCtx() { if (ctxEl && ctxEl.parentNode) ctxEl.parentNode.removeChild(ctxEl); ctxEl = null; }
-  function swIdxOf(a, c) {
-    var low = String(c || '').toLowerCase(), i;
-    for (i = 0; i < (a || []).length; i++) if (String(a[i]).toLowerCase() === low) return i;
-    return -1;
-  }
-  function openCtx(dot) {
-    if (!bar || !dot) return;
-    closeCtx();
-    var c = dot.getAttribute('data-color');
-    ctxEl = document.createElement('div');
-    ctxEl.className = 'sb-ctx';
-    /* ★ 2026-09-18 追加「🎨 设置颜色」：以前想改**某一个**色位只能用 ＋（那是「加一个色、
-       挤掉最旧的那个」），没有「就改这一位」的入口。取色器沿用 ＋ 那个套路 ——
-       input[type=color] 铺满整条盖在按钮上，点这一条哪儿都能弹出取色板。 */
-    ctxEl.innerHTML =
-      '<button type="button" class="sb-ctx-pick" data-sbctx="pick" title="用取色板给这一位挑一个颜色">🎨 设置颜色' +
-      '<input type="color" value="' + (hexOK(c) ? c : '#C0392B') + '" aria-label="设置这个色位的颜色"></button>' +
-      '<button type="button" data-sbctx="def">⭐ 设为默认色</button>' +
-      '<button type="button" data-sbctx="clear">⬜ 清空这个色位</button>' +
-      '<button type="button" data-sbctx="reset">↩ 恢复内置 5 色</button>';
-    /* ⚠️ 挡 mousedown 是为了不让选区在点击时丢掉；但取色器**必须**放行 ——
-       否则 Chromium 不弹取色板，看着像「点了没反应」。 */
-    ctxEl.addEventListener('mousedown', function (e) {
-      var t = e.target;
-      if (t && t.tagName === 'INPUT') return;
-      e.preventDefault();
-    });
-    ctxEl.addEventListener('click', function (e) {
-      var b = e.target;
-      while (b && b !== ctxEl && !(b.getAttribute && b.getAttribute('data-sbctx'))) b = b.parentNode;
-      if (!b || b === ctxEl) return;
-      var k = b.getAttribute('data-sbctx');
-      if (k === 'pick') return;                 // 交给 input 的 change，别把菜单收掉
-      closeCtx();
-      if (k === 'def') { var _dd = swEdit(); _dd.def = c; _dd.touched = true; renderSwatches(); }
-      else if (k === 'clear') removeSwatch(c);
-      else resetSwatch();
-    });
-    /* 取色板选定 → 把**那一位**改成新色（不是追加一个、也不是挤掉谁） */
-    ctxEl.addEventListener('change', function (e) {
-      var t = e.target;
-      if (!t || t.tagName !== 'INPUT' || String(t.type) !== 'color') return;
-      var v = String(t.value || '');
-      closeCtx();
-      if (!hexOK(v)) return;
-      var d = swEdit(), idx = swIdxOf(d.sw, c);
-      swSetSlot(d, idx < 0 ? 0 : idx, v);
-      d.touched = true;
-      renderSwatches();
-    });
-    bar.appendChild(ctxEl);
-    try {
-      var br = bar.getBoundingClientRect(), dr = dot.getBoundingClientRect();
-      ctxEl.style.left = Math.max(4, Math.round(dr.left - br.left - 22)) + 'px';
-    } catch (e) {}
-  }
-
   /* 对外只暴露「读色板 + 草稿三件套」：设置模块与回归测试都靠它，
      不另写第二份实现 */
   window.HubPal = {
@@ -20089,7 +20028,7 @@ html.embedded #buildTag{display:none}
     html += '<button type="button" class="sb-btn" data-cmd="underline" title="下划线"><u>U</u></button>';
     html += '<button type="button" class="sb-btn sb-hl" data-hl="1" title="高亮底色">高亮</button>';
     html += '<span class="sb-sep"></span>';
-    html += '<span class="sb-sws"></span>';   // ★ 色位 + 取色器 + 保存/撤销：由 renderSwatches() 现画（便于就地重画）
+    html += '<span class="sb-sws"></span>';   // ★ 5 个色点：由 renderSwatches() 现画（便于就地重画）
     html += '<span class="sb-sep"></span>';
     html += '<button type="button" class="sb-btn sb-clear" data-cmd="removeFormat" title="清除格式">清除</button>';
     bar.innerHTML = html;
@@ -20101,35 +20040,14 @@ html.embedded #buildTag{display:none}
       if (ev.target && ev.target.tagName === 'INPUT') return;
       if (!isCoarse()) ev.preventDefault();
     });
-    bar.addEventListener('input', function (ev) {
-      var el = ev.target;
-      if (!el || el.tagName !== 'INPUT' || el.type !== 'color') return;
-      addSwatch(el.value, true);
-    });
-    bar.addEventListener('change', function (ev) {
-      var el = ev.target;
-      if (!el || el.tagName !== 'INPUT' || el.type !== 'color') return;
-      addSwatch(el.value, true);   // input / change 都会来，addSwatch 对自己幂等
-    });
-    bar.addEventListener('contextmenu', function (ev) {
-      var t = ev.target;
-      while (t && t !== bar && !(t.classList && t.classList.contains('sb-sw'))) t = t.parentNode;
-      if (!t || t === bar) return;
-      ev.preventDefault();
-      openCtx(t);
-    });
+    /* ★ 2026-09-19：浮条上已无 input[type=color]（＋ 取色器搬去设置页），
+       也没有右键设置菜单 —— 这两个监听器随之删掉，留着只会误导后来人。 */
     bar.addEventListener('click', function (ev) {
       var t = ev.target;
       while (t && t !== bar && !t.getAttribute) t = t.parentNode;
       if (!t || t === bar) return;
-      /* ★ 需求 M：保存 / 撤销。这两个按钮只在草稿态才画得出来。*/
-      if (t.getAttribute('data-sbmini')) {
-        var mk = t.getAttribute('data-sbmini');
-        if (mk === 'save') { swCommit(); swMsg('💾 已保存 5 个色位（刷新后仍是这套）'); }
-        else if (mk === 'undo') { swUndo(); swMsg('↩ 已撤销，回到上次保存的颜色'); }
-        ev.preventDefault();
-        return;
-      }
+      /* ★ 2026-09-19：💾 保存 / ↩ 撤销 已从浮条搬进设置页，这里不再有这两个分支。
+         浮条上剩下的每一条都是「作用在选中文字上」的动作。 */
       if (t.getAttribute('data-cmd')) { run(t.getAttribute('data-cmd'), null); return; }
       if (t.getAttribute('data-hl')) { run('hiliteColor', prefs().mkBg || '#FFE9A8'); return; }
       if (t.getAttribute('data-color')) { run('foreColor', t.getAttribute('data-color')); return; }
@@ -20312,7 +20230,6 @@ html.embedded #buildTag{display:none}
   }
 
   function hide() {
-    closeCtx();
     clearSettle();
     clearTimeout(retryT);
     retryN = 0;
