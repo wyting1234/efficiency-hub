@@ -1441,3 +1441,51 @@
     .it-toast { white-space: normal; text-align: center; }
     .it-block { margin-top: 22px; padding-top: 18px; }
 }
+
+/* ==========================================================================
+   「如果就」提升为独立标签页（V20260918h）
+   ① 模块本体移到 #tabIfThen 后不再需要日复盘内的虚线上分隔
+   ② 日复盘页底部保留一条引导条，点了直接切到「如果就」标签页
+   ========================================================================== */
+#tabIfThen .it-block {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+.if-entry {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 26px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(26, 58, 92, 0.05) 0%, rgba(42, 90, 140, 0.07) 100%);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary);
+    border-radius: var(--radius);
+}
+.if-entry-ico {
+    font-size: 24px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.if-entry-txt {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+.if-entry-txt strong {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary);
+}
+.if-entry-txt span {
+    font-size: 13px;
+    color: var(--text-soft);
+    line-height: 1.6;
+}
+@media (max-width: 768px) {
+    .if-entry { flex-wrap: wrap; padding: 14px 16px; }
+    .if-entry .btn { width: 100%; }
+}
