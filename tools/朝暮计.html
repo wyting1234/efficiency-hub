@@ -16853,6 +16853,47 @@
        ② 已有 img:1 标记的 → 取回 Blob 建成 objectURL 填回内存（渲染侧无感）
        完成后重写一次 localStorage —— 这一步才真正把空间腾出来还给业务数据。 */
     let _bgHydrateP = null;
+    /* v50：还原之后、重绘之前，先把要用到的图解码预热一遍。
+       为什么需要：applyBg() 只是把 url(...) 写进 style，浏览器要到下一帧才异步解码，
+       这中间元素处于「有 background-image 但没有像素」的状态 —— 用户看到的是先空白、
+       过一会儿图才闪出来。等解码完成再统一铺上，画面一次成型。
+       全程后台进行，单图失败或超时都放行，绝不阻塞启动。 */
+    function bgWarmDecodeAll() {
+        if (typeof Image !== 'function') return Promise.resolve();
+        const urls = [];
+        try {
+            bgEachRec(function (scope, rec) {
+                if (!rec || typeof rec !== 'object') return;
+                if (typeof rec.d === 'string' && rec.d) urls.push(rec.d);
+                if (rec.parts && typeof rec.parts === 'object') {
+                    Object.keys(rec.parts).forEach(function (k) {
+                        const v = rec.parts[k];
+                        if (v && typeof v === 'object' && typeof v.img === 'string' && v.img) urls.push(v.img);
+                    });
+                }
+            });
+        } catch (e) { return Promise.resolve(); }
+        const uniq = urls.filter(function (u, i) { return u && urls.indexOf(u) === i; });
+        if (!uniq.length) return Promise.resolve();
+        return Promise.all(uniq.map(function (u) {
+            return new Promise(function (res) {
+                let done = false;
+                const fin = function () { if (!done) { done = true; res(); } };
+                try {
+                    const im = new Image();
+                    im.onload = fin;
+                    im.onerror = fin;          /* 坏图不能卡住启动 */
+                    im.src = u;
+                    if (im.decode) im.decode().then(fin, fin);
+                    /* 兜底必须短：预热是「解码完成才铺背景」，若某张图解码失败或
+                       极大，长兜底会把背景整体推迟到超时之后才出现，反而比不预热更糟。
+                       600ms 之后一律放行 —— 元素先挂上 URL，未解完的像素由浏览器补，
+                       与不预热的最终行为一致，不会更差。 */
+                    setTimeout(fin, 600);
+                } catch (e) { fin(); }
+            });
+        }));
+    }
     /* 导入备份后需要重跑一次迁移 —— hydrate 带记忆化，这里显式清掉 */
     function bgRedoHydrate() { _bgHydrateP = null; return bgHydrateAll(); }
     function bgHydrateAll() {
@@ -16895,6 +16936,8 @@
             });
             Promise.all(jobs).then(function () {
                 if (touched) { try { saveBg(); saveCardBg(); saveHabitBg(); } catch (e) {} }
+                /* v50：这里的返回值只上报「本次迁移了几条」，调用方已不再拿它决定要不要
+                   重绘（旧的 `if (n)` 判据正是「背景加载慢」的根源，见启动链处的注释）。 */
                 res(touched);
             }).catch(function () { res(touched); });
         });
@@ -19986,13 +20029,24 @@
              → 还原/迁移（把旧 dataURL 搬进 IDB 并腾空 localStorage）→ 重绘。 */
     try {
         ZMIMG.init().then(function (ok) {
-            if (!ok) return null;
-            return ZMIMG.persist();
-        }).then(function () {
-            if (!ZMIMG.ok()) return 0;
+            if (!ok) return 0;
+            /* v50：持久化申请不再挡在还原前面。它只决定「将来磁盘紧张时浏览器会不会
+               回收这份数据」，与「本次能不能把背景画出来」毫无关系；而
+               navigator.storage.persist() 在部分浏览器会弹权限提示、可阻塞数百毫秒。
+               放后台自己跑，还原路径立刻开始。 */
+            try { ZMIMG.persist(); } catch (e) {}
             return bgHydrateAll();
-        }).then(function (n) {
-            if (n) { try { applyBg(); } catch (e) {} }
+        }).then(function () {
+            /* v50：这一步原先写的是 `if (n)`，n 是 bgHydrateAll 里「本次迁移了几条」
+               的计数 —— 图片早就迁进 IndexedDB 的稳态下它恒为 0，于是**还原完成后
+               从不重绘**：背景要等用户切页 / 拖窗口 / 动一下外观才突然冒出来。
+               真机实测（4.97MB / 4000×3000）：IndexedDB 读取 + 建 objectURL 只花
+               3~12ms，而背景静止 3 秒始终不出现，向 window 派发一次 resize 才立刻
+               落地 —— 瓶颈从头到尾都不在 IO，就在这一步漏掉的重绘。
+               还原完成是「必须重画」的充分条件，不该带任何条件。 */
+            return bgWarmDecodeAll();
+        }).then(function () {
+            try { applyBg(); } catch (e) {}
             try { refreshBgUsage(); } catch (e) {}
         }).catch(function () {});
     } catch (e) {}
@@ -20033,7 +20087,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917g</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918i</div>
 <!-- build-tag:end -->
 </body>
 </html>
