@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具与模板 · 人际交往与沟通</title>
+    <link rel="stylesheet" href="social.css?v=V20260918c">
+</head>
+<body data-page="toolkit">
+
+    <!-- 移动端遮罩 -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <button class="menu-toggle" id="menuToggle">☰ <span>菜单</span></button>
+
+    <div class="app">
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="logo">🧠</div>
+                <div>
+                    <h2>沟通复盘体系</h2>
+                    <small>人际交往 · 能力跃迁</small>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="section-label">🗂️ 总览</li>
+                    <li><a href="../人积极交往.html" data-nav="home"><span class="icon">🏠</span> 回首总览</a></li>
+                    <li class="section-label">📋 台账</li>
+                    <li><a href="record.html" data-nav="record"><span class="icon">📝</span> 复盘台账 <span class="badge" id="dailyCountBadge">0</span></a></li>
+                    <li class="section-label">📚 体系</li>
+                    <li><a href="model.html" data-nav="model"><span class="icon">📊</span> 5维能力模型</a></li>
+                    <li><a href="loop.html" data-nav="loop"><span class="icon">🔄</span> 三层复盘闭环</a></li>
+                    <li><a href="learn.html" data-nav="learn"><span class="icon">📖</span> 学习体系</a></li>
+                    <li><a href="toolkit.html" data-nav="toolkit"><span class="icon">🧰</span> 工具与模板</a></li>
+                    <li><a href="path.html" data-nav="path"><span class="icon">🚀</span> 进阶路径</a></li>
+                    <li><a href="action.html" data-nav="action"><span class="icon">✅</span> 落地行动</a></li>
+                    <li class="section-label">💎 储备</li>
+                    <li><a href="wisdom.html" data-nav="wisdom"><span class="icon">💎</span> 他山之玉</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">v3.0 · 分页版 · 本地存储</div>
+        </aside>
+
+        <!-- ===== 主内容 ===== -->
+        <main class="main">
+
+            <nav class="crumb"><a href="../人积极交往.html">← 总览</a><span class="sep">/</span><span class="cur">工具与模板</span></nav>
+
+<section class="content-section" id="part4">
+                <h2><span class="emoji">🧰</span> 四、工具与模板库 <span style="font-size:14px;font-weight:400;color:var(--text-muted);">（可增删改）</span></h2>
+
+                <!-- ===== 4.1 关键对话准备表 ===== -->
+                <h3 id="part4-1">4.1 关键对话准备表 <span class="sub" style="font-weight:400;color:var(--text-muted);font-size:15px;">（高 stakes 沟通前）</span></h3>
+                <div class="tip">记录每次重要对话的准备，帮助您系统化思考。</div>
+                <div class="flex-between mb-16">
+                    <span style="font-weight:500;color:var(--text-soft);">📋 共 <span id="dialogCount">0</span> 条记录</span>
+                    <button class="btn btn-primary btn-sm" onclick="openDialogModal()">➕ 新增准备</button>
+                </div>
+                <div id="dialogListWrap" class="tool-table-wrap">
+                    <div class="tool-table-empty">暂无记录，点击“新增准备”添加第一条</div>
+                </div>
+
+                <!-- 对话准备模态框 -->
+                <div class="modal-overlay" id="dialogModal">
+                    <div class="modal">
+                        <h3 id="dialogModalTitle">✏️ 新增关键对话准备</h3>
+                        <div class="form-group">
+                            <label>对话目标 <span class="hint">我希望达成的具体结果是？</span></label>
+                            <textarea id="dialog_target" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>对方目标 <span class="hint">对方可能想要什么？顾虑是什么？</span></label>
+                            <textarea id="dialog_other" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>共同利益 <span class="hint">我们的交集在哪里？</span></label>
+                            <textarea id="dialog_common" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>风险点 <span class="hint">哪个话题可能触发情绪？我的预案是？</span></label>
+                            <textarea id="dialog_risk" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>开场设计 <span class="hint">第一句话怎么说能建立安全氛围？</span></label>
+                            <textarea id="dialog_open" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>底线与备选 <span class="hint">我的底线是什么？Plan B是什么？</span></label>
+                            <textarea id="dialog_backup" rows="2"></textarea>
+                        </div>
+                        <input type="hidden" id="dialogEditId">
+                        <div class="btn-group">
+                            <button class="btn btn-outline" onclick="closeDialogModal()">取消</button>
+                            <button class="btn btn-primary" onclick="saveDialog()">保存</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 4.2 关系账户管理表 ===== -->
+                <h3 id="part4-2" style="margin-top:48px;">4.2 关系账户管理表</h3>
+                <div class="tip">关系层级建议分4级：核心维护(月更) / 重要维护(季更) / 普通维护(半年) / 弱连接(随缘)。</div>
+                <div class="flex-between mb-16">
+                    <span style="font-weight:500;color:var(--text-soft);">👥 共 <span id="relationCount">0</span> 条记录</span>
+                    <button class="btn btn-primary btn-sm" onclick="openRelationModal()">➕ 新增关系</button>
+                </div>
+                <div id="relationListWrap" class="tool-table-wrap">
+                    <div class="tool-table-empty">暂无记录，点击“新增关系”添加第一条</div>
+                </div>
+
+                <!-- 关系账户模态框 -->
+                <div class="modal-overlay" id="relationModal">
+                    <div class="modal">
+                        <h3 id="relationModalTitle">✏️ 新增关系账户</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>关系人 <span class="hint">姓名/称呼</span></label>
+                                <input id="relation_name" placeholder="例：张总">
+                            </div>
+                            <div class="form-group">
+                                <label>关系层级</label>
+                                <select id="relation_level">
+                                    <option value="核心维护">核心维护 (月更)</option>
+                                    <option value="重要维护">重要维护 (季更)</option>
+                                    <option value="普通维护">普通维护 (半年)</option>
+                                    <option value="弱连接">弱连接 (随缘)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>上次互动 <span class="hint">日期</span></label>
+                                <input id="relation_last" placeholder="例：8/15">
+                            </div>
+                            <div class="form-group">
+                                <label>互动质量 <span class="hint">1-5分</span></label>
+                                <input id="relation_quality" type="number" min="1" max="5" value="3">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>对方关心的事</label>
+                            <textarea id="relation_concern" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>下次跟进动作</label>
+                            <textarea id="relation_action" rows="2"></textarea>
+                        </div>
+                        <input type="hidden" id="relationEditId">
+                        <div class="btn-group">
+                            <button class="btn btn-outline" onclick="closeRelationModal()">取消</button>
+                            <button class="btn btn-primary" onclick="saveRelation()">保存</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== 4.3 个人话术武器库 ===== -->
+                <h3 id="part4-3" style="margin-top:48px;">4.3 个人话术武器库</h3>
+                <p>按场景分类沉淀经过验证的表达，随时调用。</p>
+                <div class="flex-between mb-16">
+                    <span style="font-weight:500;color:var(--text-soft);">🗣️ 共 <span id="scriptCount">0</span> 条记录</span>
+                    <button class="btn btn-primary btn-sm" onclick="openScriptModal()">➕ 新增话术</button>
+                </div>
+                <div id="scriptListWrap" class="tool-table-wrap">
+                    <div class="tool-table-empty">暂无记录，点击“新增话术”添加第一条</div>
+                </div>
+
+                <!-- 话术武器库模态框 -->
+                <div class="modal-overlay" id="scriptModal">
+                    <div class="modal">
+                        <h3 id="scriptModalTitle">✏️ 新增话术</h3>
+                        <div class="form-group">
+                            <label>场景 <span class="hint">在什么情况下使用？</span></label>
+                            <input id="script_scene" placeholder="例：客户质疑产品">
+                        </div>
+                        <div class="form-group">
+                            <label>话术/策略 <span class="hint">具体怎么说？</span></label>
+                            <textarea id="script_content" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>来源 <span class="hint">从哪学到的？</span></label>
+                            <input id="script_source" placeholder="例：某次成功沟通 / 书中学习 / 复盘提炼">
+                        </div>
+                        <div class="form-group">
+                            <label>效果验证 <span class="hint">实际使用效果如何？</span></label>
+                            <input id="script_effect" placeholder="例：客户转信任">
+                        </div>
+                        <input type="hidden" id="scriptEditId">
+                        <div class="btn-group">
+                            <button class="btn btn-outline" onclick="closeScriptModal()">取消</button>
+                            <button class="btn btn-primary" onclick="saveScript()">保存</button>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- 页脚 -->
+            <div style="border-top:1px solid var(--border);padding-top:24px;margin-top:40px;text-align:center;color:var(--text-muted);font-size:13px;">
+                🧠 人际交往与沟通管理 · 复盘学习体系 &mdash; 数据本地存储
+            </div>
+
+        </main>
+    </div>
+
+    <script src="social-core.js?v=V20260918c"></script>
+<!-- build-tag:begin（技能 §21/§22：由推送脚本维护，勿手改） -->
+<style>
+html.embedded #buildTag{display:none}
+#buildTag{position:fixed;left:8px;bottom:8px;z-index:30;font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.4px;padding:4px 7px;border-radius:6px;background:rgba(15,23,42,.5);color:#fff;opacity:.62;pointer-events:none;user-select:none;white-space:nowrap}
+@media print{#buildTag{display:none}}
+</style>
+<script>/* ① 嵌在 iframe 里时隐藏自己的徽标（否则与导航徽标同位置叠字）② 把页面内
+   标了 data-build-ver 的位置同步成同一个版本串 —— 版本只有一个字面量，就是下面那个 div */
+(function(){
+  try{ if(window.self!==window.top) document.documentElement.className += ' embedded'; }catch(e){}
+  function sync(){
+    var el=document.getElementById('buildTag'); if(!el) return;
+    var v=el.textContent.trim();
+    var n=document.querySelectorAll('[data-build-ver]');
+    for(var i=0;i<n.length;i++) if(n[i].textContent.trim()!==v) n[i].textContent=v;
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+})();
+</script>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918c</div>
+<!-- build-tag:end -->
+</body>
+</html>
