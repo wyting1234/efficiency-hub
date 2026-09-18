@@ -2175,20 +2175,30 @@
         .ap-seg button.active{background:var(--primary);color:#FAF7F1;font-weight:600}
         .ap-note{font-size:12px;color:var(--text-secondary);line-height:1.6}
         input[type=color]{width:36px;height:30px;padding:2px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);cursor:pointer}
-        /* ===== ✏️ 标记字体颜色（2026-09-18 新增）===== */
-        /* 「默认标注色」「可选颜色」两个标签是 4~5 字，默认 64px 会折行 */
+        /* ===== ✏️ 色板设置（5 个色位 + 保存/撤销，2026-09-18 第二版）===== */
+        /* 「默认标注色」「浮条色板」是 4~5 字，默认 64px 会折行 */
         .ap-lab.w2{min-width:88px;white-space:nowrap}
         .ap-mini{padding:7px 12px;font-size:12.5px;line-height:1;border:1px solid var(--border);
             border-radius:8px;background:var(--card-bg);color:var(--text-secondary);cursor:pointer;white-space:nowrap}
         .ap-mini:hover{border-color:var(--primary);color:var(--primary)}
+        .ap-mini[disabled]{opacity:.42;cursor:default}
+        .ap-mini[disabled]:hover{border-color:var(--border);color:var(--text-secondary)}
+        .ap-mini.primary{border-color:var(--primary);color:var(--primary);background:rgba(138,115,88,.10)}
         .ap-note.tight{margin-top:-4px;margin-bottom:14px}
-        /* ✕ 删除角标：只在悬停那一颗时出现，平时不干扰（色点本体点击＝设为默认） */
-        #apMarkSw .ap-swatch{position:relative}
-        #apMarkSw .ap-x{position:absolute;right:-5px;top:-5px;width:15px;height:15px;
-            border-radius:50%;background:#fff;color:#A6503C;font-size:10px;line-height:15px;
-            text-align:center;font-weight:700;box-shadow:0 1px 3px rgba(70,58,46,.35);
-            opacity:0;transition:opacity .12s ease}
-        #apMarkSw .ap-swatch:hover .ap-x{opacity:1}
+        .ap-dirty{color:#A6503C}
+        /* 5 个色位：每格 = 一个取色板 + 序号 + 「清空」 */
+        .ap-slots{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+        .ap-slot{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:52px}
+        .ap-slot input[type=color]{width:46px;height:34px}
+        .ap-slot .ap-no{font-size:11px;color:var(--text-secondary);line-height:1.2;white-space:nowrap}
+        .ap-slot .ap-clr{border:0;background:none;padding:0;font-size:11px;line-height:1.2;
+            color:var(--text-secondary);cursor:pointer;text-decoration:underline}
+        .ap-slot .ap-clr:hover{color:var(--primary)}
+        .ap-slot.is-white input[type=color]{opacity:.7}
+        .ap-prev{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+        .ap-prev i{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);display:block}
+        .ap-prev i.def{box-shadow:0 0 0 2px var(--card-bg),0 0 0 4px var(--primary)}
+        .ap-prev em{font-size:11.5px;color:var(--text-secondary);font-style:normal;white-space:nowrap}
     
         /* ===== 增补：现在按钮 / 记录导出 / 打印 ===== */
         .now-btn{margin-left:6px;padding:3px 9px;font-size:12px;line-height:1.5;border:1px solid var(--border,#E2D9C8);border-radius:7px;background:#FAF6EE;cursor:pointer;color:var(--text-secondary,#777);vertical-align:middle;}
@@ -4110,15 +4120,20 @@
                         <input type="color" id="apBgCustom" value="#F2EDE4" title="自定义背景色">
                     </div>
                     <div class="ap-row"><div class="ap-lab w2">默认标注色</div>
-                        <div class="ap-swatches" id="apMarkDefSw"></div>
-                        <input type="color" id="apMarkDefCustom" value="#1E2533" title="自定义默认标注色">
+                        <input type="color" id="apMarkDefCustom" value="#FFFFFF" title="默认标注色：在浮条上排第一并带高亮环，也是取色器的起始色">
+                        <div class="ap-prev" id="apMarkPrev"></div>
                     </div>
-                    <div class="ap-row"><div class="ap-lab w2">可选颜色</div>
-                        <div class="ap-swatches" id="apMarkSw"></div>
-                        <input type="color" id="apMarkAdd" value="#1E2533" title="选一个颜色 → 加进「可选颜色」">
-                        <button type="button" class="ap-mini" id="apMarkReset" title="清掉自定义色板，回到内置 5 色（并重新跟随 ⚙️ 设置里的标注字色）">↩ 恢复默认</button>
+                    <div class="ap-row"><div class="ap-lab w2">浮条色板</div>
+                        <div class="ap-slots" id="apMarkSlots"></div>
                     </div>
-                    <div class="ap-note tight">「可选颜色」＝ 选中文字后浮条上那排变色按钮；「默认标注色」排在最前并带高亮环，也是取色器的起始色。点色点即设为默认，悬停出现的 ✕ 把它从可选色里去掉；浮条上右键（手机长按）色点也能改。设置只存本设备。</div>
+                    <div class="ap-row"><div class="ap-lab w2"></div>
+                        <div class="ap-swatches">
+                            <button type="button" class="ap-mini primary" id="apMarkSave" title="把下面这套色位写盘 —— 浮条上从此就是这 5 个颜色">💾 保存</button>
+                            <button type="button" class="ap-mini" id="apMarkUndo" title="放弃这次改动，回到上次保存的颜色">↩ 撤销</button>
+                            <button type="button" class="ap-mini" id="apMarkReset" title="清掉自定义色板，回到内置 5 色（并重新跟随本页的标注字色）">↩ 恢复内置 5 色</button>
+                        </div>
+                    </div>
+                    <div class="ap-note tight" id="apMarkHint"></div>
                     <div class="ap-note">设置即时生效并自动保存在本设备；主题色同步作用于按钮、标签、进度条等主色元素。</div>
                 </div>
             </div>
@@ -7701,7 +7716,24 @@
             if (_fc) _fc.classList.add('in-edit');
             document.getElementById('cancelEditBtn').classList.add('visible');
             document.getElementById('formContainer').classList.remove('collapsed');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            /* ★ 2026-09-18（需求3）：直接停在**编辑窗口**，不再回页面顶部。
+               原来这里是 window.scrollTo({top:0}) —— 而表单排在「番茄钟 + 页签」之后、
+               记录列表之前，滚到顶部看到的是番茄钟，得自己往下拉才找得到编辑区
+               （Tom：『省去我下拉找到编辑界面』）。
+               现在按 #formContainer 的**实际位置**滚；拿不到位置才退回原来的行为。
+               · .collapsed 刚被摘掉，.form-body 的 display 已恢复 —— 读
+                 getBoundingClientRect 会强制回流，所以量到的是展开后的真实位置，无需延后。 */
+            try {
+                var _box = document.getElementById('formContainer');
+                if (_box && _box.getBoundingClientRect) {
+                    var _y = _box.getBoundingClientRect().top +
+                             (window.pageYOffset || document.documentElement.scrollTop || 0) - 8;
+                    if (isFinite(_y) && _y > 0) window.scrollTo({ top: _y, behavior: 'smooth' });
+                    else window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            } catch (e) { window.scrollTo({ top: 0, behavior: 'smooth' }); }
         }
 
         // ---------- 筛选器 ----------
@@ -11128,13 +11160,47 @@
         var fcWalkCache = { fp: '', slots: [null, null], idx: null, idxFor: null };
 
         // 指纹只取 fcWalkAll 真正读到的字段；O(n) 的字符串拼接，比重建便宜两个数量级
+        /* ★ 2026-09-18（需求1）：不能再用「速记原文的**长度**」做指纹。
+           同长度改名（如「金融资产」→「交易资产」）长度不变 ⇒ 指纹也不变
+           ⇒ 改了名字树还画旧名，用户看上去就是「点了没反应」。
+           改成 djb2 内容哈希：一遍整数运算、不产生中间字符串；rec.kpRich 也一并纳入
+           —— 记录侧改色同样必须让缓存失效。
+           为了不让每次跳指纹都扫一遍全部原文，结果按**记录对象**缓在 WeakMap 里
+           （对象没换、原文没变 ⇒ O(1)；记录被换成新对象就重算一次）。 */
+        var fcHashMemo = (typeof WeakMap === 'function') ? new WeakMap() : null;
+        function fcWalkHash(s) {
+            var h = 5381, i = 0, n = s.length;
+            for (; i < n; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+            return h;
+        }
+        function fcRichDigest(m) {
+            if (!m || typeof m !== 'object') return '';
+            var ks = Object.keys(m).sort(), out = [];
+            for (var i = 0; i < ks.length; i++) {
+                var v = m[ks[i]] || {};
+                out.push(ks[i] + '=' + String(v.t || '') + '#' + String(v.h || ''));
+            }
+            return out.join('\u0002');
+        }
+        function fcMemoHash(r, kind, s) {
+            if (!fcHashMemo || !r || typeof r !== 'object') return fcWalkHash(s);
+            var m = fcHashMemo.get(r);
+            if (!m) { m = {}; fcHashMemo.set(r, m); }
+            var slot = kind ? m.rich : m.raw;
+            if (slot && slot.s === s) return slot.h;
+            var h = fcWalkHash(s);
+            if (kind) m.rich = { s: s, h: h }; else m.raw = { s: s, h: h };
+            return h;
+        }
         function fcWalkFp() {
             var rs = state.records || [];
             var a = [String(rs.length)];
             for (var i = 0; i < rs.length; i++) {
                 var r = rs[i];
                 a.push(r ? [(r.id || ''), r.course || '', r.chapter || 0, r.section || 0,
-                            r.kpCols || 0, (r.kpQuickRaw || '').length].join(':') : '');
+                            r.kpCols || 0,
+                            fcMemoHash(r, false, String(r.kpQuickRaw || '')),
+                            fcMemoHash(r, true, fcRichDigest(r.kpRich))].join(':') : '');
             }
             return a.join('\u0001');
         }
@@ -11220,6 +11286,9 @@
                                 course: base.course, chapter: base.chapter, section: base.section,
                                 tier: lvAbs, name: c.name,
                                 path: anc.concat(c.parents).concat([c.name]),
+                                /* ★ 需求1：这一格的格式来自**记录**（rec.kpRich，
+                                   fcRecOutline 解析时已套进 c.h），ip 是它在速记树里的序号路径。 */
+                                h: c.h || null, ip: c.ip || '',
                                 kids: [], childUids: [],
                                 // ★ 卡片反面 = 直接下级。拆解上限之外的那一格（最后一格）
                                 //   已不作为独立节点，但它的文本由 fcRecOutline 的 direct 带出，
@@ -11440,22 +11509,43 @@
                     .map(function (x) { return fcNormText(x && x.t); })
                     .filter(Boolean);
             };
-            const walk = function (list, lv, parents) {
-                (list || []).forEach(function (node) {
+            /* ★ 2026-09-18（需求1）：把 rec.kpRich 的「格式旁挂」当场套回树上 ——
+               记录侧的速记编辑器本来就是这么显示的（applyRichMap，路径 + 纯文本双校验），
+               这里再套一遍，知识树的那一行才与学习记录的那一行**同一个颜色**。
+               套不上（节点被增删改过）的位置自动跳过，不会把颜色错挂到别的格子上。
+               ⚠️ 必须用 window.CpaRich.*：CpaRich 住在本文件最后一个 <script> 的
+                  闭包里，fcRecOutline 在另一个块，直接写 applyRichMap 会 ReferenceError。 */
+            try {
+                if (r.kpRich && window.CpaRich && typeof window.CpaRich.applyRichMap === 'function') {
+                    window.CpaRich.applyRichMap(roots, r.kpRich);
+                }
+            } catch (e) {}
+            const walk = function (list, lv, parents, idx) {
+                (list || []).forEach(function (node, k) {
                     const nm = fcNormText(node && node.t);
+                    const ip = idx.concat([k + 1]).join('.');
                     // ★ 展示口径（keepDeep）逐层全收 —— 少一个节点，知识树里那一层
                     //   就会整支消失（上一版正是这么把「武汉大学」连同它的子树一起
                     //   弄没的，用户看到的 6 个并列全是第 3 级）。
                     if (nm && (keepDeep || lv <= maxLv)) {
                         out.push({
                             name: nm, lv: lv, parents: parents, ancestors: anc,
-                            direct: directOf(node), deep: lv > maxLv
+                            direct: directOf(node), deep: lv > maxLv,
+                            /* ★ 需求1 新增两个字段（都是只读的，老消费者不受影响）：
+                               h  = 这一格的格式，来自 rec.kpRich（上面已套好）
+                               ip = 这一格在速记树里的序号路径，正是 rec.kpRich 的键
+                               t  = parse 之后的原文 —— 写回 kpRich 时要用**这个**，
+                                    不能存归一化名，否则「路径 + 纯文本」双校验永远对不上 */
+                            h: (node && node.h) ? String(node.h) : null,
+                            ip: ip,
+                            t: String((node && node.t) || '')
                         });
                     }
-                    walk((node && node.c) || [], lv + 1, nm ? parents.concat([nm]) : parents);
+                    walk((node && node.c) || [], lv + 1, nm ? parents.concat([nm]) : parents,
+                         idx.concat([k + 1]));
                 });
             };
-            walk(roots, 1, []);
+            walk(roots, 1, [], []);
             return out.length ? out : null;
         }
 
@@ -13488,6 +13578,9 @@
                 (byKey[k] = byKey[k] || []).push(n);
             });
 
+            /* ★ 需求1：老数据一次性回填（只有 card.qH、没有 rec.kpRich 的那几格）。
+               必须在建表**之前**跑：回填完了 h 才有值。内部有会话级开关，只真正跑一次。 */
+            try { ktLnHeal(); } catch (e) {}
             const kpRichIdx = ktCardRichIndex();
             combos.forEach(function (c) {
                 const key = c.course + '|' + c.chapter + '|' + c.section;
@@ -13516,9 +13609,12 @@
                         order: n.order, name: n.name, kidN: n.hasKids ? n.answers.length : 0,
                         crumb: n.path.join(' › '),
                         virtual: !!n.virtual,
-                        /* ★ 2026-09-18（需求 G）：知识点行的格式旁挂住在闪卡里 —— 见 ktCardRichIndex */
+                        /* ★ 2026-09-18（需求1）：知识点行的格式优先取**记录侧**（rec.kpRich
+                           → n.h，在 fcRecOutline 里套好），闪卡那份（card.qH）只做兜底 ——
+                           老数据里可能只有卡、没有 kpRich（见 ktLnHeal，开头会自动回填）。
+                           这一行之前是只读 card.qH 的，两处同一字却不同色，根因就在这里。 */
                         rawSig: n.sig,
-                        h: kpRichIdx[n.sig] || null
+                        h: (n.h || kpRichIdx[n.sig] || null)
                     });
                 });
                 /* ★ 需求1：这一格（科目 / 章 / 节）一条学习记录都没有 —— 上面只产知识点节点，
@@ -13872,7 +13968,7 @@
         }
         /* 写回闪卡。卡不存在就按 fcSync 的同一形态补一张 ——
            否则「树上第一次上色」会静默丢掉（用户以为点了没反应）。 */
-        function ktCardWrite(sigRaw, text, fmt) {
+        function ktCardWrite(sigRaw, text, fmt, rowIn) {
             try {
                 if (!sigRaw) return false;
                 if (typeof fcState === 'function') fcState();
@@ -13881,13 +13977,11 @@
                 if (!id) return false;
                 var cards = state.cards || (state.cards = {});
                 var card = cards[id];
+                /* ★ 需求1：本次要用到的「那一行」提前取好 —— 下面写 rec.kpRich 也用它，
+                   避免每次都重建整张 fcWalk 表（重解析全部记录的大纲）。
+                   rowIn 由 ktEditCommit 传入；没传就自己取一次。 */
+                var row = rowIn || ktLnRowOf(sigRaw);
                 if (!card) {
-                    var row = null;
-                    try {
-                        (fcWalkAll({ keepDeep: true }) || []).forEach(function (x) {
-                            if (!row && x && x.sig === sigRaw && !x.virtual) row = x;
-                        });
-                    } catch (e) {}
                     if (!row) return false;
                     card = {
                         id: id, q: text, a: (row.answers || []).join('\n'), tags: [],
@@ -13905,6 +13999,9 @@
                 if (fmt) card.qH = fmt; else delete card.qH;
                 card.edited = true;
                 card.editedAt = dateToStr(new Date());
+                /* ★ 需求1：同一格色的**另一处存储**（学习记录侧 rec.kpRich）必须一起改
+                   —— 否则「知识树是一种颜色、学习记录里是另一种」（修前就是这毛病）。 */
+                try { ktLnWriteRich(row, text, fmt); } catch (e2) {}
                 if (typeof saveData === 'function') saveData();
                 return true;
             } catch (e) { return false; }
@@ -14068,8 +14165,9 @@
                 ktToast('打开记录失败：' + ((e && e.message) ? e.message : e));
                 return;
             }
-            /* editRecord 已经把整页滚到顶部（表单在你眼前），再把表单框闪一下 ——
-               「填的是哪一条」必须一眼看得出来，不然容易顺手改错记录。 */
+            /* ★ 需求3 之后 editRecord 会把**编辑表单**滚到视口顶端（不再回页面顶部），
+               这里只要把表单框闪一下 —— 「填的是哪一条」必须一眼看得出来，
+               不然容易顺手改错记录。两次滚动都是 behavior:'smooth'，会自然衔接。 */
             try {
                 var fc = document.getElementById('formContainer');
                 if (fc) {
@@ -14559,7 +14657,17 @@
             var html = R.sanitize(ktMkStrip(el.innerHTML));
             var fmt = (html && R.looksMarkup(html)) ? html : null;
             if (kind === 'kp') {
-                ktCardWrite(el.getAttribute('data-kt-sigraw') || '', text, fmt);
+                var _rsig = el.getAttribute('data-kt-sigraw') || '';
+                var _kbase = el.getAttribute('data-kt-base') || '';
+                /* ★ 2026-09-18（需求1）：树上改**名字**必须写回学习记录的速记原文 ——
+                   知识点行的名字本来就是从 rec.kpQuickRaw 解析出来的
+                   （ktAllNodes → fcWalkAll → fcRecOutline），只改闪卡不改原文，
+                   下次重画就变回旧名，等于白改（Tom 拍板『要写回』）。
+                   ⚠️ 一行只建一次表：两次回写复用同一个 row 对象 ——
+                     每建一次表都要重解析全部记录的大纲，别重复花。 */
+                var _krow = ktLnRowOf(_rsig);
+                ktCardWrite(_rsig, text, fmt, _krow);
+                if (_kbase && text !== _kbase) ktLnWriteName(_krow, _kbase, text);
                 return;
             }
             /* 章 / 节：只取格式，名字**不可改** —— 行名里还带着「第 N 章」前缀，
@@ -14588,6 +14696,190 @@
             if (fmt) ktKpH[sig] = { t: text, h: fmt }; else delete ktKpH[sig];
             saveProjects();
         }
+        /* ============ ★ 2026-09-18（需求1）：知识树 ↔ 学习记录 内容 / 样式双向联动 ============
+           真源盘点（本块落地前）：
+             · 学习记录 · 知识点速记 → 纯文本 rec.kpQuickRaw；格式 rec.kpRich = {'1.2': {t,h}}
+             · 闪卡               → state.cards[id].q / .qH
+             · 知识树 知识点行     → **名字**从 kpQuickRaw 解析；**格式**却读闪卡那份 card.qH
+           于是同一行字在两处显示成不同颜色（缺陷A）；树上改名只写闪卡、
+           下次重画又变回旧名（缺陷B）。本块把这两条链补齐，原则不变：
+           **不新增第二个存储** —— 格式仍只住 rec.kpRich 与 card.qH 两处，只是让它们保持一致。
+             读：树 → 记录优先（fcRecOutline 里 applyRichMap），闪卡兜底（ktAllNodes）
+             写：树改名 → 回写 rec.kpQuickRaw（ktLnWriteName）
+                 树上色 → 同时写 card.qH 与 rec.kpRich（ktCardWrite → ktLnWriteRich）
+             补：老数据里只有 card.qH、没有 rec.kpRich → 一次性回填（ktLnHeal）
+           为什么不需要在写完之后手工清 fcWalk 缓存：见 fcWalkFp ——
+           指纹已经改成对 kpQuickRaw / kpRich **内容**取哈希，写完下次自己就失效了。
+           ⚠️ 命名一律走 ktLn* 前缀（ln = link）：本文件的知识树模块里**本来就有**
+              ktRecLocate(rid)（记录→树的跳转）与 ktRecCands()（这一行对应哪些记录），
+              同处一个全局作用域 —— 起同名函数会把它们静默覆盖，脚本连错都不报。 */
+
+        var ktLnHealed = false;
+
+        // 归一化口径：忽略全部空白 + 忽略大小写
+        // （**不**剥行首序号 —— parse 早把序号剥进 node.t 了，这里再剥一层会误伤正文）
+        function ktLnNorm(s) {
+            return String(s || '').replace(/\s+/g, '').toLowerCase();
+        }
+
+        /* 按 sig 找回 fcWalkAll 里那一行（与 ktCardWrite 原来的判据同一套）。 */
+        function ktLnRowOf(sigRaw) {
+            if (!sigRaw) return null;
+            var rows = [];
+            try { rows = fcWalkAll({ keepDeep: true }) || []; } catch (e) { return null; }
+            for (var i = 0; i < rows.length; i++) {
+                if (rows[i] && rows[i].sig === sigRaw && !rows[i].virtual) return rows[i];
+            }
+            return null;
+        }
+
+        /* 这一格可能对应多条记录（同一科目/章/节录过好几次）—— 全部都要改。
+           只改一条的话，没改到的那条会在下次树重建时把旧名字 / 旧颜色又长出来，
+           同一格变成两行。 */
+        function ktLnCands(row) {
+            var out = [], recs = (state && state.records) || [];
+            if (!row) return out;
+            var ch = parseInt(row.chapter, 10) || 0, sec = parseInt(row.section, 10) || 0;
+            for (var i = 0; i < recs.length; i++) {
+                var r = recs[i];
+                if (!r || !r.kpQuickRaw) continue;
+                if (r.course !== row.course) continue;
+                if ((parseInt(r.chapter, 10) || 0) !== ch) continue;
+                if ((parseInt(r.section, 10) || 0) !== sec) continue;
+                out.push(r);
+            }
+            return out;
+        }
+
+        /* 在某条记录里定位这一格。
+           判据 = 速记内部祖先链 + 归一化名字，与 fcWalkAll 建节点的 pathKey 同一口径。
+           返回 { rec, i, line, ip, t }：
+             i  = 这一格在速记原文里的**行号**（= fcRecOutline 的下标 —— toFlat 一节点一行、
+                  parse 一行一节点，两边天然一一对应）
+             ip = 这一格在速记树里的**序号路径**（'1.2'）—— 正是 rec.kpRich 的键
+             t  = parse 之后的**原文**（不是归一化名）。rec.kpRich 的 t 必须用它：
+                  applyRichMap 是「路径 + 纯文本」双校验，存归一化名会永远套不上。
+           ⚠️ 防呆：行数必须与大纲节点数一致。不一致说明有行被 parse 丢掉了
+              （空行 / 纯标点行），行号就对不上号 —— 此时**宁可不改**，绝不猜。 */
+        function ktLnLocate(r, row) {
+            if (!r || !row) return null;
+            var outl = null;
+            try { outl = fcRecOutline(r, true); } catch (e) { return null; }
+            if (!outl || !outl.length) return null;
+            var lines = String(r.kpQuickRaw || '').split('\n');
+            if (lines.length !== outl.length) return null;
+            var anc = [];
+            try { anc = fcAncestorPath(r) || []; } catch (e) { return null; }
+            var want = (row.path || []).slice(anc.length);      // 速记内部的祖先链 + 自己
+            if (!want.length) return null;
+            var nm = want[want.length - 1];
+            var par = want.slice(0, -1).join('\u0001');
+            for (var i = 0; i < outl.length; i++) {
+                if (outl[i].name !== nm) continue;
+                if ((outl[i].parents || []).join('\u0001') !== par) continue;
+                return { rec: r, i: i, line: lines[i], ip: outl[i].ip || '', t: outl[i].t || '' };
+            }
+            return null;
+        }
+
+        /* 把行名原地换掉 —— **缩进与行首编号一字不动**。
+           做法是「后缀替换」：在该行里找与旧名等价的**最长后缀**（忽略空白、忽略大小写），
+           把它换成新名。于是手写的「一、」与自产的「1.1」都不会被改写，
+           名字长度也可以随便变（不受「等长」限制）。找不到就返回 null —— 不猜。 */
+        function ktLnRename(line, oldName, newName) {
+            var tgt = ktLnNorm(oldName);
+            if (!tgt || !line) return null;
+            for (var k = 0; k <= line.length; k++) {
+                if (ktLnNorm(line.slice(k)) === tgt) return line.slice(0, k) + newName;
+            }
+            return null;
+        }
+
+        /* 写：树 → 记录（内容）。改写 rec.kpQuickRaw 那一行。返回改了几条记录。 */
+        function ktLnWriteName(row, oldName, newName) {
+            if (!row) return 0;
+            var cands = ktLnCands(row), hit = 0;
+            for (var i = 0; i < cands.length; i++) {
+                var m = ktLnLocate(cands[i], row);
+                if (!m) continue;
+                var nl = ktLnRename(m.line, oldName, newName);
+                if (nl === null || nl === m.line) continue;
+                var arr = String(m.rec.kpQuickRaw || '').split('\n');
+                arr[m.i] = nl;
+                m.rec.kpQuickRaw = arr.join('\n');
+                hit++;
+            }
+            if (!hit) {
+                ktToast('⚠️ 名字在知识树上已改，但学习记录里的速记原文没能对上号（行数或层级被改过）—— 请到那条记录里核对一下');
+                return 0;
+            }
+            try { if (typeof saveData === 'function') saveData(); } catch (e) {}
+            try { if (typeof renderRecords === 'function') renderRecords(); } catch (e) {}
+            ktToast('✏️ 已改名，并同步写回 ' + hit + ' 条学习记录的速记原文');
+            return hit;
+        }
+
+        /* 写：树 → 记录（样式）。把这一格的格式写进 rec.kpRich。
+           fmt 为 null 表示「恢复无格式」→ 删掉那一格。返回改了几条记录。 */
+        function ktLnWriteRich(row, name, fmt) {
+            if (!row) return 0;
+            var cands = ktLnCands(row), hit = 0;
+            for (var i = 0; i < cands.length; i++) {
+                var m = ktLnLocate(cands[i], row);
+                if (!m || !m.ip) continue;
+                var r = m.rec;
+                if (!fmt && (!r.kpRich || typeof r.kpRich !== 'object')) continue;
+                if (!r.kpRich || typeof r.kpRich !== 'object') r.kpRich = {};
+                if (fmt) r.kpRich[m.ip] = { t: m.t || String(name || ''), h: fmt };
+                else delete r.kpRich[m.ip];
+                if (!Object.keys(r.kpRich).length) delete r.kpRich;
+                hit++;
+            }
+            if (hit) { try { if (typeof saveData === 'function') saveData(); } catch (e) {} }
+            return hit;
+        }
+
+        /* 老数据一次性回填：改动前「树上上色」只写了闪卡（card.qH），rec.kpRich 是空的
+           —— 于是同一行字两处颜色不同（缺陷A）。这里把「卡里有色、记录里还没色」的格
+           补进 rec.kpRich，一次会话只跑一遍。
+           ⚠️ 只补不覆盖：记录里已有色的格一律不动（用户手改过的以记录为准）。
+           ⚠️ 这里**故意不调 ktLnWriteRich**：那个函数每次都经 ktLnRowOf → fcWalkAll，
+              而回填会改记录 ⇒ 指纹变 ⇒ 每补一格就整表重建一次，退化成 O(n²)。
+              本函数用一开始那份快照内联写完，最后一次 saveData 收尾。 */
+        function ktLnHeal() {
+            if (ktLnHealed) return;
+            ktLnHealed = true;
+            try {
+                if (!window.CpaRich) return;
+                var idx = state.cardIndex || {}, cards = state.cards || {}, qH = {}, sig;
+                for (sig in idx) {
+                    var c = cards[idx[sig]];
+                    if (c && c.qH && !c.hidden && !c.deleted) qH[sig] = String(c.qH);
+                }
+                if (!Object.keys(qH).length) return;
+                var rows = [];
+                try { rows = fcWalkAll({ keepDeep: true }) || []; } catch (e) { return; }
+                var n = 0;
+                for (var i = 0; i < rows.length; i++) {
+                    var row = rows[i];
+                    if (!row || row.virtual || !row.sig || !qH[row.sig]) continue;
+                    if (row.h) continue;                       // 记录里已经带格式 → 不动
+                    var cands = ktLnCands(row);
+                    for (var j = 0; j < cands.length; j++) {
+                        var m = ktLnLocate(cands[j], row);
+                        if (!m || !m.ip) continue;
+                        if (!m.rec.kpRich || typeof m.rec.kpRich !== 'object') m.rec.kpRich = {};
+                        m.rec.kpRich[m.ip] = { t: m.t || String(row.name || ''), h: qH[row.sig] };
+                        n++;
+                    }
+                }
+                if (n) {
+                    try { if (typeof saveData === 'function') saveData(); } catch (e) {}
+                    ktToast('🎨 已把 ' + n + ' 处旧颜色同步进学习记录（两边现在一致了）');
+                }
+            } catch (e) {}
+        }
+
         function ktEditBind() {
             if (ktEditBound) return;
             var body = document.getElementById('ktBody');
@@ -16766,153 +17058,151 @@
     }
     function apSave(){ try{ localStorage.setItem(AP_KEY,JSON.stringify(apPrefs)); }catch(e){} }
     /* ============================================================
-       ✏️ 标记字体颜色（Tom 2026-09-18 需求）
+       ✏️ 色板设置（Tom 2026-09-18 需求 M，当天第二版重做）
        ------------------------------------------------------------
-       浮条上那排「变色」色点，此前只能现场用 ＋ 取色器一个个加、靠右键设默认；
-       换设备 / 清缓存就白干。这里把「可选颜色」和「默认标注色」提前放进设置模块。
+       这一版**不自己实现一份色板模型**，全部走 window.HubPal（浮条那块导出的
+       唯一入口：N / WHITE / view / editSlot / editDef / editClear / markReset /
+       commit / rollback）。于是：
+         · 真源仍然只有 hub_swatches_v1 + hub_swatch_def_v1 两个 key；
+         · 设置页与浮条**看到的、改的、保存的**是同一样东西（同一份草稿）；
+         · 这里的 💾/↩ 与浮条上那对是同一对函数，不存在两套语义（同需求 E）。
 
-       ★ 真源只有一个：还是浮条那两个 key，设置页不另存一份，避免两处打架。
-         · hub_swatches_v1   → 可选色板（数组，最多 MK_MAX 个）
-         · hub_swatch_def_v1 → 默认标注色（单个 hex）
-         两个都删掉 = 回到「内置 5 色 + 跟随导航页 ⚙️ 设置里的标注字色」的老行为。
+       起点：没保存过 → 5 个色位全是白（Tom「默认颜色初始都设置成白色，
+       依次确定颜色」）；保存过 → 就是已保存的那 5 个。这份判断在
+       HubPal.view(true) 里，这里不重复一遍。
 
-       ★ 为什么调 window.HubSelBar：设置模块在主 script 块（先执行），浮条自己那块
-         在后面。apInit() 跑的时候 HubSelBar 还不存在 → mkRefresh 静默跳过（有 try）。
-         用户真正点色点是在交互时刻，那时浮条早已就位，能立刻重画。
+       ⚠️ 「打开设置页看一眼」不会改掉浮条的颜色：HubPal 里没被改过的草稿带
+          touched=false，不参与 palette()（见 SW_JS 的 swLive）。
+
+       ⚠️ 为什么全部 try 包住 HubPal：设置模块在主 script 块（先执行），
+          浮条自己那块在后面 —— apInit() 跑的时候 HubPal 还不存在。
+          用户真正点控件是在交互时刻，那时它早已就位。
     ============================================================ */
-    const MK_SW_KEY="hub_swatches_v1", MK_DEF_KEY="hub_swatch_def_v1";
-    const MK_MAX=8;
-    const MK_BUILTIN=["#1E2533","#C0392B","#1F6FB2","#1E8449","#6B46C1"];
-    function mkHex(c){ return /^#[0-9a-fA-F]{3,8}$/.test(String(c==null?"":c)); }
-    function mkCustom(){
-      try{
-        const a=JSON.parse(localStorage.getItem(MK_SW_KEY)||"null");
-        if(!Array.isArray(a)) return null;
-        const out=[]; for(let i=0;i<a.length&&out.length<MK_MAX;i++) if(mkHex(a[i])) out.push(String(a[i]));
-        return out.length?out:null;
-      }catch(e){ return null; }
-    }
-    function mkWrite(a){ try{ localStorage.setItem(MK_SW_KEY,JSON.stringify(a)); }catch(e){} }
-    function mkDef(){ try{ const d=localStorage.getItem(MK_DEF_KEY); return mkHex(d)?d:""; }catch(e){ return ""; } }
-    function mkSetDef(c){ try{ localStorage.setItem(MK_DEF_KEY,String(c)); }catch(e){} }
-    /* 与浮条 palette() 同一套口径：用户配过色板就听用户的；没配过才去跟随
-       「⚙️ 设置」里的标注字色（保持老用户升级后观感不变）；默认色永远排第一。 */
-    function mkPalette(){
-      let base=mkCustom();
-      if(!base){
-        base=MK_BUILTIN.slice();
-        let p={}; try{ p=JSON.parse(localStorage.getItem("hub_text_v1"))||{}; }catch(e){ p={}; }
-        const seen={}; base.forEach(function(c){ seen[String(c).toLowerCase()]=1; });
-        const head=[];
-        if(p.mkFg&&!seen[String(p.mkFg).toLowerCase()]) head.push(p.mkFg);
-        base=head.concat(base).slice(0,MK_MAX);
-      }
-      const out=base.slice(0,MK_MAX), d=mkDef();
-      if(!mkHex(d)) return out;
-      let i=-1;
-      for(let k=0;k<out.length;k++) if(String(out[k]).toLowerCase()===d.toLowerCase()){ i=k; break; }
-      if(i>0) out.unshift(out.splice(i,1)[0]);
-      else if(i<0){ out.unshift(d); out.length=Math.min(out.length,MK_MAX); }
-      return out;
+    var MK_HINT = '下面 5 个色位就是浮条上那排文字变色按钮，顺序一致；「默认标注色」排第一并带高亮环。颜色一律用取色板选，改完点「💾 保存」才写盘。';
+    function mkH() { try { return window.HubPal || null; } catch (e) { return null; } }
+    function mkHexOK(c) { return /^#[0-9a-fA-F]{3,8}$/.test(String(c == null ? '' : c)); }
+    function mkIsWhite(c) { return /^#(?:fff|ffffff)$/i.test(String(c)); }
+    /* 预览要画成「浮条上的样子」—— 默认色排第一（与浮条的 byDef 同一口径）。
+       这只是**画**，不碰数据；存储里那 5 个色位仍按格位序。 */
+    function mkBarOrder(sw, def) {
+      var list = (sw || []).slice(), dl = String(def || '').toLowerCase(), hit = -1, i;
+      for (i = 0; i < list.length; i++) if (String(list[i]).toLowerCase() === dl) { hit = i; break; }
+      if (hit > 0) { var one = list.splice(hit, 1)[0]; list.unshift(one); }
+      return list;
     }
     /* 让本页浮条立刻按新色板重画。嵌在导航页 iframe 里时本页浮条没启动（门卫不 boot），
        那条浮条读的是同一份 localStorage，每次浮出都会重读 → 无需跨帧通知。 */
-    function mkRefresh(){
-      try{ if(window.HubSelBar&&typeof HubSelBar.renderSwatches==="function") HubSelBar.renderSwatches(); }catch(e){}
+    function mkRefresh() {
+      try { if (window.HubSelBar && typeof HubSelBar.renderSwatches === 'function') HubSelBar.renderSwatches(); } catch (e) {}
     }
-    function mkRender(){
-      const swEl=document.getElementById("apMarkSw"), defEl=document.getElementById("apMarkDefSw");
-      if(!swEl||!defEl) return;
-      const sw=mkPalette(), d=mkDef();
-      /* 没显式设过默认色时，把第一颗当作"当前默认"显示 —— 用户要的是「一眼看到默认是哪个」，
-         但**不写回** storage，这样「跟随 ⚙️ 设置」的老行为不受影响。 */
-      const cur=mkHex(d)?d:(sw[0]||"");
-      swEl.innerHTML=sw.map(function(c){
-        return '<button type="button" class="ap-swatch" data-c="'+c+'" style="background:'+c+
-               '" title="点＝设为默认标注色 · 点右上角 ✕＝从可选颜色里去掉（'+c+'）">'+
-               '<span class="ap-x" data-x="'+c+'" title="从可选颜色里去掉">✕</span></button>';
-      }).join("");
-      defEl.innerHTML=sw.map(function(c){
-        const on=cur&&String(c).toLowerCase()===String(cur).toLowerCase();
-        return '<button type="button" class="ap-swatch'+(on?" active":"")+'" data-c="'+c+'" style="background:'+c+
-               '" title="'+(on?"当前默认标注色 ":"设为默认标注色 ")+c+'"></button>';
-      }).join("");
-      const dc=document.getElementById("apMarkDefCustom");
-      if(dc&&mkHex(cur)&&String(dc.value).toLowerCase()!==String(cur).toLowerCase()) dc.value=cur;
-      /* 元素每次都是新造的 → 事件在这里重绑（不要在 apMarkInit 里绑一次） */
-      swEl.querySelectorAll(".ap-swatch").forEach(function(s){
-        s.addEventListener("click",function(e){
-          const t=e.target, x=t&&t.getAttribute?t.getAttribute("data-x"):null;
-          if(x) mkRemove(x); else { mkSetDef(s.dataset.c); mkRender(); mkRefresh(); }
+    /* ★ 首屏自愈：设置模块在主 script 块里先跑，HubPal 属于后面那一块（晚 ~120KB），
+       apInit() 调 mkRender() 时它还不存在。用户正常是「点 vtab 才看设置页」→ 那时
+       有委托点击会补渲染；但**上次停在设置页、刷新后直接还原到设置页**时首屏一个点击
+       都没有 → 浮条色板那一行会是空的。所以这里自己重试，HubPal 一就位立刻归零停手。
+       上限 60 × 50ms ≈ 3s（正常第一跳就命中）。 */
+    var mkTries = 0;
+    function mkRender() {
+      var slots = document.getElementById('apMarkSlots');
+      if (!slots) return;
+      var H = mkH();
+      if (!H || typeof H.view !== 'function') {
+        if (mkTries++ < 60) { try { setTimeout(mkRender, 50); } catch (e) {} }
+        return;
+      }
+      mkTries = 0;
+      var v = null;
+      try { v = H.view(true); } catch (e) { v = null; }
+      if (!v || !v.sw || !v.sw.length) return;
+      var i, h = '';
+      for (i = 0; i < v.sw.length; i++) {
+        var c = v.sw[i], wt = mkIsWhite(c);
+        h += '<div class="ap-slot' + (wt ? ' is-white' : '') + '">' +
+             '<input type="color" data-slot="' + i + '" value="' + c + '" title="第 ' + (i + 1) + ' 个色位（取色板）">' +
+             '<span class="ap-no">第 ' + (i + 1) + ' 位' + (wt ? '（白）' : '') + '</span>' +
+             (wt ? '<span class="ap-clr" style="visibility:hidden">清空</span>'
+                 : '<button type="button" class="ap-clr" data-clr="' + i + '" title="把这一位清成白色">清空</button>') +
+             '</div>';
+      }
+      slots.innerHTML = h;
+      var prev = document.getElementById('apMarkPrev');
+      if (prev) {
+        var ord = mkBarOrder(v.sw, v.def), ph = '';
+        for (i = 0; i < ord.length; i++) {
+          var on = String(ord[i]).toLowerCase() === String(v.def || '').toLowerCase();
+          ph += '<i class="' + (on ? 'def' : '') + '" style="background:' + ord[i] + '" title="' + ord[i] + '"></i>';
+        }
+        ph += '<em>＝ 浮条上的顺序</em>';
+        prev.innerHTML = ph;
+      }
+      var dc = document.getElementById('apMarkDefCustom');
+      if (dc && mkHexOK(v.def) && String(dc.value).toLowerCase() !== String(v.def).toLowerCase()) dc.value = v.def;
+      var sv = document.getElementById('apMarkSave'), ud = document.getElementById('apMarkUndo');
+      if (sv) sv.disabled = !v.dirty;
+      if (ud) ud.disabled = !v.dirty;
+      var hint = document.getElementById('apMarkHint');
+      if (hint) hint.innerHTML = MK_HINT + (v.dirty
+        ? ' <span class="ap-dirty">● 有未保存的改动</span>'
+        : ' <span style="opacity:.7">当前没有未保存的改动</span>');
+      /* ★ 色位与「清空」每次都是新造的元素 → 事件在这里重绑（不要在 apMarkInit 里绑一次） */
+      slots.querySelectorAll('input[data-slot]').forEach(function(inp) {
+        inp.addEventListener('change', function() {
+          var HH = mkH(); if (!HH) return;
+          try { HH.editSlot(parseInt(inp.getAttribute('data-slot'), 10) || 0, inp.value); } catch (e) {}
+          mkRender(); mkRefresh();
         });
       });
-      defEl.querySelectorAll(".ap-swatch").forEach(function(s){
-        s.addEventListener("click",function(){ mkSetDef(s.dataset.c); mkRender(); mkRefresh(); });
+      slots.querySelectorAll('.ap-clr[data-clr]').forEach(function(b) {
+        b.addEventListener('click', function() {
+          var HH = mkH(); if (!HH) return;
+          try { HH.editClear(parseInt(b.getAttribute('data-clr'), 10) || 0); } catch (e) {}
+          mkRender(); mkRefresh();
+        });
       });
-      /* ★ dc 是**静态** HTML 元素（不在上面两个 innerHTML 重建的范围里），mkRender 会被
-         反复调用 → 必须只绑一次。否则每渲染一次就多挂一个监听器，而这些监听器又会各自
-         触发 mkRender，监听器数量指数级膨胀。 */
-      if(dc&&!dc.__mkBound){ dc.__mkBound=1;
-        dc.addEventListener("input",function(e){ mkSetDef(e.target.value); mkRender(); mkRefresh(); }); }
-    }
-    function mkAdd(c){
-      if(!mkHex(c)) return;
-      const cur=mkCustom()||mkPalette().slice();
-      const d=mkDef();
-      /* ★ 默认色若只是"渲染时插进来的"（用户只设了默认色、没动过色板），mkPalette 会把它
-         unshift 到首位；色板满时那一位就把**刚加进去的新色**顶掉 —— 用户看到的是
-         「点了＋添加，色板里没出现」。所以开始自定义色板时先把它固化进来。 */
-      if(mkHex(d)){
-        let has=false;
-        for(let i=0;i<cur.length;i++) if(String(cur[i]).toLowerCase()===d.toLowerCase()){ has=true; break; }
-        if(!has) cur.unshift(d);
+      /* ★ dc 是**静态** HTML 元素（不在 slots 的重建范围里）→ 只能绑一次。
+         否则每渲染一次就多挂一个监听器，而这些监听器又各自触发 mkRender，
+         数量指数级膨胀（第一版就踩过这个坑）。 */
+      if (dc && !dc.__mkBound) {
+        dc.__mkBound = 1;
+        dc.addEventListener('input', function(e) {
+          var HH = mkH(); if (!HH) return;
+          try { HH.editDef(e.target.value); } catch (er) {}
+          mkRender(); mkRefresh();
+        });
       }
-      const low=String(c).toLowerCase();
-      let has2=false;
-      for(let i=0;i<cur.length;i++) if(String(cur[i]).toLowerCase()===low){ has2=true; break; }
-      if(!has2){ cur.push(String(c)); mkTrimKeepDef(cur,d); }
-      mkWrite(cur);                     // 第一次自定义 = 把当前色板固化，之后不再跟随设置
+    }
+    function mkToast(m) {
+      try { if (typeof showToast === 'function') { showToast(m); return; } } catch (e) {}
+      try { if (typeof toast === 'function') { toast(m); return; } } catch (e) {}
+    }
+    function mkDo(what) {
+      var H = mkH(); if (!H) return;
+      try {
+        if (what === 'save') { H.commit(); mkToast('💾 已保存 —— 浮条上现在是这套颜色'); }
+        else if (what === 'undo') { H.rollback(); mkToast('↩ 已撤销，回到上次保存的颜色'); }
+        else if (what === 'reset') { H.markReset(); mkToast('↩ 已恢复内置 5 色（还没保存）—— 点「💾 保存」生效'); }
+      } catch (e) {}
       mkRender(); mkRefresh();
     }
-    /* 超出上限时挤掉**最旧的非默认色**：默认色排首位，如果直接 shift 会先把它挤掉，
-       而渲染时 mkPalette 又把它插回来 → 结果是刚加的新色被裁掉（点了像没反应）。 */
-    function mkTrimKeepDef(arr,d){
-      const dl=String(d||"").toLowerCase();
-      while(arr.length>MK_MAX){
-        let v=-1;
-        for(let i=0;i<arr.length;i++) if(String(arr[i]).toLowerCase()!==dl){ v=i; break; }
-        if(v<0) break;                  // 兜底：整条都是默认色（不可能），别再转
-        arr.splice(v,1);
-      }
-      return arr;
-    }
-    function mkRemove(c){
-      const cur=mkCustom()||mkPalette().slice();
-      const low=String(c).toLowerCase();
-      const out=cur.filter(function(x){ return String(x).toLowerCase()!==low; });
-      if(!out.length) return;           // 至少留一颗：一颗不剩时连"设为默认"都点不到
-      mkWrite(out);
-      if(String(mkDef()).toLowerCase()===low) mkSetDef(out[0]);
-      mkRender(); mkRefresh();
-    }
-    function mkReset(){
-      try{ localStorage.removeItem(MK_SW_KEY); localStorage.removeItem(MK_DEF_KEY); }catch(e){}
-      mkRender(); mkRefresh();
-    }
-    function apMarkInit(){
+    function apMarkInit() {
       mkRender();
-      const rst=document.getElementById("apMarkReset");
-      if(rst) rst.addEventListener("click",mkReset);
-      const add=document.getElementById("apMarkAdd");
-      /* 用 change 不用 input：拖动取色器过程中 input 会连发，会把一堆中间色塞进色板 */
-      if(add) add.addEventListener("change",function(e){ mkAdd(e.target.value); });
-      /* 设置页是「每次都重新渲染」的视图 —— 若用户在浮条上右键改过默认色，
-         再切回设置页要能反映出来。用 document 级委托，不依赖 initViewTabs 的作用域。 */
-      document.addEventListener("click",function(e){
-        let t=e.target;
-        while(t&&t!==document&&!(t.getAttribute&&t.getAttribute("data-view"))) t=t.parentNode;
-        if(t&&t!==document&&t.getAttribute("data-view")==="goal") mkRender();
+      var map = { apMarkSave: 'save', apMarkUndo: 'undo', apMarkReset: 'reset' };
+      Object.keys(map).forEach(function(id) {
+        var b = document.getElementById(id);
+        if (b && !b.__mkBound) {
+          b.__mkBound = 1;
+          b.addEventListener('click', function() { mkDo(map[id]); });
+        }
       });
+      /* 设置页是「每次都重新渲染」的视图 —— 若用户刚在浮条上改过，
+         再切回设置页要能反映出来。用 document 级委托，不依赖 initViewTabs 的作用域。 */
+      if (!document.__mkTabBound) {
+        document.__mkTabBound = 1;
+        document.addEventListener('click', function(e) {
+          var t = e.target;
+          while (t && t !== document && !(t.getAttribute && t.getAttribute('data-view'))) t = t.parentNode;
+          if (t && t !== document && t.getAttribute('data-view') === 'goal') mkRender();
+        });
+      }
     }
 
     function apInit(){
@@ -19100,7 +19390,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918y</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918z</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -19147,18 +19437,35 @@ html.embedded #buildTag{display:none}
    在 flex-wrap 容器里会缩成很窄并把工具条折成两行 —— 显式拿 max-content 才是一整条。 */
 .hub-selbar.dock{flex-wrap:nowrap;width:max-content}
 
-/* ★ 2026-09-18：色板自主可控 —— 取色器 / 默认色环 / 右键菜单。
-   .sb-sws 是色点 + ＋ 的容器：palette 变了由 renderSwatches() 就地重画，
-   不必重建整条浮条（重建会把 hover / 焦点状态一起丢掉）。 */
+/* ★ 2026-09-18（Tom 需求 M）：色板自主可控 ——
+   固定 5 个色位 + 取色器 + 默认色环 + 右键菜单 + 保存/撤销。
+   .sb-sws 是色位 / ＋ / 保存撤销按钮的容器：色板一变就由
+   renderSwatches() 就地重画，不必重建整条浮条
+   （重建会把 hover / 焦点状态一起丢掉）。
+   下面这六个占位符由调用方按各自主色替换
+   （导航页与 CPA 工具页两套配色）。 */
 .hub-selbar .sb-sws{display:flex;align-items:center;gap:5px;flex:none}
 .hub-selbar .sb-sw{position:relative}
 .hub-selbar .sb-sw.sb-def{box-shadow:inset 0 0 0 1px rgba(70,58,46,.35),0 0 0 2px var(--primary,#8A7358)}
+/* 空色位（白）：白点在浅底上看不见，加一圈虚线才能读出「这一格还没配色」。
+   用 outline 而不用 box-shadow：它要和 .sb-def 的默认色环**同时在场**
+   （白色也可以是默认色），box-shadow 会被后写的规则整体盖掉。 */
+.hub-selbar .sb-sw.sb-empty{outline:1px dashed var(--text-secondary,#6E6355);outline-offset:-1px}
+/* 未保存标记：只要色位上带这个小点，就说明「眼前这套色还没写盘」 */
+.hub-selbar .sb-sw.sb-dirty::after{content:'';position:absolute;left:-1px;top:-1px;width:5px;height:5px;
+  border-radius:50%;background:var(--primary,#8A7358);box-shadow:0 0 0 1.5px var(--card-bg,#FAF7F1)}
 .hub-selbar .sb-add{position:relative;width:22px;height:22px;border-radius:50%;padding:0;flex:none;
   cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
   border:1px dashed var(--text-secondary,#6E6355);background:transparent;color:var(--text-secondary,#6E6355);font:700 13px/1 inherit}
 .hub-selbar .sb-add:hover{background:rgba(138,115,88,.16)}
 .hub-selbar .sb-add input{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;
   opacity:0;border:0;padding:0;cursor:pointer}
+/* 保存 / 撤销：只在有未保存改动时出现（由 renderSwatches 决定加不加） */
+.hub-selbar .sb-mini{height:22px;padding:0 7px;flex:none;white-space:nowrap;cursor:pointer;
+  border:1px solid var(--border,#E5DCCD);border-radius:6px;background:transparent;color:var(--text-secondary,#6E6355);
+  font:600 11px/1 inherit}
+.hub-selbar .sb-mini:hover{border-color:var(--primary,#8A7358);color:var(--primary,#8A7358)}
+.hub-selbar .sb-mini.sb-save{border-color:var(--primary,#8A7358);color:var(--primary,#8A7358);background:rgba(138,115,88,.10)}
 .hub-selbar .sb-ctx{position:absolute;top:calc(100% + 6px);z-index:2;display:flex;flex-direction:column;
   gap:2px;padding:4px;border-radius:9px;background:var(--card-bg,#FAF7F1);color:var(--text,#33291F);border:1px solid var(--border,#E5DCCD);
   box-shadow:0 8px 22px rgba(70,58,46,.22);min-width:124px}
@@ -19247,76 +19554,234 @@ html.embedded #buildTag{display:none}
     try { if (window.HubPrefs && window.HubPrefs.get) return window.HubPrefs.get() || {}; } catch (e) {}
     try { return JSON.parse(localStorage.getItem(COLOR_KEY) || '{}') || {}; } catch (e) { return {}; }
   }
-  /* ★ 2026-09-18：色板自主可控 —————————————————————————
-     Tom 的原话：「还是不能自主选中文字编辑中的默认颜色」。
-     旧实现的色点只有两种来源：写死的 5 个 SWATCHES，或导航页 HubPrefs
-     注入的标注色 —— 在子页直链打开时一个都改不了。现在补三层：
-       ① ＋ 取色器：任选一个颜色，立即用在当前选区上，并进色板；
-       ② 右键色点：设为默认（挪到首位）/ 从色板移除 / 恢复跟随⚙️设置；
-       ③ 自定义色板存 localStorage['hub_swatches_v1']，默认色存 'hub_swatch_def_v1'。
-     谁的优先级高：用户**自己配过**色板就听用户的；没配过才去跟随导航页「⚙️ 设置」的
-     标注色（保持原行为，老用户升级后观感不变）。 */
+  /* ★ 2026-09-18：色板自主可控 + 固定 5 个色位 + 保存/撤销
+     —— 导航页与 CPA 工具页**共用这一段**（由生成脚本同时注入两份文件，
+     根绝「改了这份忘了那份」）。
+
+     Tom 的原话（两轮，需求 L / M）：
+       L「为何只有在思维导图视角下才有文字变色的功能……
+         还是不能自主选中文字编辑中的默认颜色」
+       M「颜色浮条增加保存和撤销功能，默认颜色保留五个，
+         颜色使用取色板选取，默认颜色初始都设置成白色，
+         依次确定颜色，最终的颜色排列应用到作为颜色设置浮条中」
+
+     口径（四条，改之前先读）：
+       ① **真源只有两个 key**：hub_swatches_v1（色位数组）/ hub_swatch_def_v1（默认色）。
+          设置模块不另存一份 —— 两处显示不可能对不上（同需求 E）。
+       ② **色位固定 SW_MAX = 5 个**，顺序就是浮条上的顺序。
+       ③ 颜色编辑是**草稿**：取色器 / 右键 / 设置页 改的都是内存里的
+          swDraft，点「💾 保存」才写盘，点「↩ 撤销」丢掉。
+       ④ 用户**自己配过**色板就听用户的；没配过才去跟随导航页「⚙️ 设置」
+          的标注色（保持老行为，老用户升级后观感不变）。「↩ 恢复内置」= 回到这条路。
+
+     为什么以前改不动：旧实现的色点只有两种来源 —— 写死的 5 个 SWATCHES，
+     或导航页 HubPrefs 注入的标注色，在子页直链打开时一个都改不了。
+     现在它们只是「第一次打开时的起点」，之后一切听草稿 + 保存。 */
   var SW_KEY = 'hub_swatches_v1';
   var SW_DEF_KEY = 'hub_swatch_def_v1';
-  var SW_MAX = 8;
+  var SW_MAX = 5;
+  var SW_WHITE = '#FFFFFF';
 
   function hexOK(c) { return /^#[0-9a-fA-F]{3,8}$/.test(String(c == null ? '' : c)); }
-  function readCustom() {
+  function writeCustom(a) { try { localStorage.setItem(SW_KEY, JSON.stringify(a)); } catch (e) {} }
+  function setDefSwatch(c) { try { localStorage.setItem(SW_DEF_KEY, String(c)); } catch (e) {} }
+  function defSwatch() { try { var d = localStorage.getItem(SW_DEF_KEY); return hexOK(d) ? d : ''; } catch (e) { return ''; } }
+
+  /* 不足 5 位补白：色位是固定的，不能「少一个就少排一个」——那样浮条会一直抖 */
+  function swPad(a) {
+    var out = [], i;
+    for (i = 0; i < (a || []).length && out.length < SW_MAX; i++) if (hexOK(a[i])) out.push(String(a[i]));
+    while (out.length < SW_MAX) out.push(SW_WHITE);
+    return out;
+  }
+  /* 已保存的色板 → { sw:[5], def }；从未保存过 → null */
+  function swSaved() {
     try {
       var a = JSON.parse(localStorage.getItem(SW_KEY) || 'null');
       if (!Array.isArray(a)) return null;
-      var out = [];
-      for (var i = 0; i < a.length && out.length < SW_MAX; i++) if (hexOK(a[i])) out.push(String(a[i]));
-      return out.length ? out : null;
+      var out = swPad(a);
+      if (!out.length) return null;
+      var raw = localStorage.getItem(SW_DEF_KEY);
+      var d = hexOK(raw) ? String(raw) : out[0];
+      /* 老数据兜底：默认色若不在色板里（旧版允许这样），塞回首位、
+         挤掉末尾那一位。新 UI 只能从 5 个色位里挑默认色 ——
+         「默认色不在色板里」这一整类缺陷从此不存在。 */
+      var has = false, i;
+      for (i = 0; i < out.length; i++) if (out[i].toLowerCase() === d.toLowerCase()) { has = true; break; }
+      if (!has) { out.pop(); out.unshift(d); }
+      return { sw: out, def: d };
     } catch (e) { return null; }
   }
-  function writeCustom(a) { try { localStorage.setItem(SW_KEY, JSON.stringify(a)); } catch (e) {} }
-  function defSwatch() { try { var d = localStorage.getItem(SW_DEF_KEY); return hexOK(d) ? d : ''; } catch (e) { return ''; } }
-  function setDefSwatch(c) { try { localStorage.setItem(SW_DEF_KEY, String(c)); } catch (e) {} }
-  // 默认色永远显示在第一位 ——「默认颜色」这件事必须一眼可见，不能靠用户记
-  function byDef(a) {
-    var d = defSwatch(), out = (a || []).slice(0, SW_MAX);
+  function readCustom() { var s = swSaved(); return s ? s.sw.slice() : null; }
+
+  /* ---------- 草稿（内存，不落盘） ---------- */
+  var swDraft = null;        // null = 无未保存改动；{ sw:[5], def:'', reset:false }
+  function swBuiltin() { var o = SWATCHES.slice(); while (o.length < SW_MAX) o.push(SW_WHITE); return o.slice(0, SW_MAX); }
+  /* 当前**生效**的色板：有草稿就看草稿；草稿带 reset = 回「跟随设置」那条老路。
+     ★ touched：**没被用户改过**的草稿不参与 —— 设置页一打开就会取一份草稿来
+       显示那 5 个色位（起点可能是全白），若它立刻接管 palette()，
+       用户「只是打开设置页看了一眼」，浮条上的颜色就变了。 */
+  function swLive() {
+    /* ★ reset 也读草稿（2026-09-18 修）：原来 reset 一律 return null → palette() 落到
+       「跟随 ⚙️ 设置」那条老路，用的是**存储里的** defSwatch()；而「恢复内置」的契约是
+       「保存时才清 key」，于是未保存的预览窗口里会是「白 + 前 4 个内置色」——
+       设置页列着 5 个内置色、浮条却少一个还多一个白点。
+       改成读草稿：resetSwatch() 已经把草稿设成「保存后应有的样子」，预览即结果。 */
+    if (swDraft && (swDraft.touched || swDraft.reset)) {
+      return { sw: swDraft.sw.slice(), def: swDraft.def };
+    }
+    return swSaved();
+  }
+  function swLiveDef() { var l = swLive(); return (l && l.def) || defSwatch() || ''; }
+  /* 取草稿。两个入口的起点刻意不同，这是 Tom 口径与旧行为的交点：
+       · 设置页（whiteStart = true）：**没保存过就从全白起步** ——
+         Tom「默认颜色初始都设置成白色，依次确定颜色」。
+       · 浮条（不传）：从**当前看到的**色板起步 —— 否则「点一下 ＋ 加个色」
+         会把已有的四个颜色悄悄换成白色，而用户只是想多一个颜色。
+     已保存过就一律从**已保存值**起步 —— 编辑总是建在上次保存的基础上。 */
+  function swEdit(whiteStart) {
+    var want = whiteStart ? 'white' : 'live';
+    /* 一份**没被改过**的草稿只在同类起点之间复用：
+       设置页的起点是「已保存 / 全白」，浮条 ＋ 与右键的起点是「当前看到的颜色」。
+       若让两者混用，用户点一下 ＋ 就会把其余色位换成设置页那个起点（多半是全白）
+       —— 而他只是想多一个颜色。已被改过（touched）或带 reset 的草稿一律复用，
+       绝不把用户改到一半的东西丢掉。 */
+    if (swDraft && (swDraft.reset || swDraft.touched || swDraft.from === want)) return swDraft;
+    var s = swSaved();
+    var base = s ? s.sw : (whiteStart ? null : palette());
+    var sw = base ? swPad(base) : [SW_WHITE, SW_WHITE, SW_WHITE, SW_WHITE, SW_WHITE];
+    swDraft = {
+      sw: sw,
+      def: (s && s.def) || (whiteStart ? SW_WHITE : swLiveDef()) || sw[0] || SW_WHITE,
+      reset: false,
+      touched: false,          // 还没被用户改过 → 不接管显示（见 swLive）
+      from: want               // 'white' = 设置页起点 / 'live' = 浮条起点
+    };
+    return swDraft;
+  }
+  /* 超 5 位时挤掉**最旧的非默认色**：直接 shift 会先顶掉默认色，而渲染时
+     byDef 又把它插回来 —— 结果是刚加的新色被裁掉，用户看到的是「点了 ＋ 却没出现」。 */
+  function swTrim(arr, def) {
+    var dl = String(def || '').toLowerCase();
+    while (arr.length > SW_MAX) {
+      var v = -1;
+      for (var i = 0; i < arr.length; i++) if (arr[i].toLowerCase() !== dl) { v = i; break; }
+      if (v < 0) break;                                  // 整条都是默认色（不可能），别再转
+      arr.splice(v, 1);
+    }
+    return arr;
+  }
+  function swCommit() {
+    if (!swDraft) return false;
+    if (swDraft.reset) {
+      try { localStorage.removeItem(SW_KEY); localStorage.removeItem(SW_DEF_KEY); } catch (e) {}
+    } else {
+      writeCustom(swDraft.sw.slice(0, SW_MAX));
+      setDefSwatch(swDraft.def || swDraft.sw[0] || SW_WHITE);
+    }
+    swDraft = null;
+    renderSwatches();
+    return true;
+  }
+  function swUndo() { if (!swDraft) return false; swDraft = null; renderSwatches(); return true; }
+  /* 子页叫 showToast、导航页叫 toast —— 两边都试一下，都没有就安静 */
+  function swMsg(m) {
+    try { if (typeof showToast === 'function') { showToast(m); return; } } catch (e) {}
+    try { if (typeof toast === 'function') { toast(m); return; } } catch (e) {}
+  }
+
+  /* ============================================================================
+     ★ 不变量：**默认色必须同时是 5 个色位之一**（2026-09-18 修）
+     ----------------------------------------------------------------------------
+     byDef() 的规则是「默认色永远显示在第一位」；默认色**不在**色板里时它会
+     unshift 到首位再 slice(0, SW_MAX) —— 也就是**悄悄挤掉末尾那一位**。
+
+     设置页的起点是「5 位全白 + 默认色也是白」（Tom：「默认颜色初始都设置成白色」）。
+     用户逐一把这 5 个色位填成自己的颜色后，默认色（白）就不在色板里了
+     ⇒ byDef 把白插到首位、把**用户第 5 个颜色裁掉**：浮条显示「白 + 前 4 个」，
+     而设置页明明列着 5 个 —— 直接违反 Tom 的「最终的颜色排列应用到浮条中」。
+
+    所以三条写入口都维持这条不变量。规则只有两条，且都是「色环跟着走」：
+      · 改 / 清某个色位时，若那一位**正是默认色**，默认色跟着变成该位的新值；
+        （＝用户换掉的就是被色环标着的那颗，语义自洽）
+      · 改默认色时，若选的颜色不在色板里，就落在**原来那个默认位**上。
+    这样 byDef 永远走 i>=0 那条分支（只挪位、不裁剪），色板恒为 5 个。
+    ============================================================================ */
+  function swSetSlot(d, i, c) {
+    if (!d || !(i >= 0 && i < SW_MAX) || !hexOK(c)) return;
+    var nc = String(c);
+    if (String(d.sw[i]).toLowerCase() === String(d.def).toLowerCase()) d.def = nc;  // 先判再覆盖
+    d.sw[i] = nc;
+  }
+  function swClearSlot(d, i) {
+    if (!d || !(i >= 0 && i < SW_MAX)) return;
+    if (String(d.sw[i]).toLowerCase() === String(d.def).toLowerCase()) d.def = SW_WHITE;
+    d.sw[i] = SW_WHITE;
+  }
+  function swSetDef(d, c) {
+    if (!d || !hexOK(c)) return;
+    var nc = String(c), low = nc.toLowerCase(), hit = -1, at = -1, i;
+    for (i = 0; i < SW_MAX; i++) if (String(d.sw[i]).toLowerCase() === low) { hit = i; break; }
+    if (hit < 0) {
+      for (i = 0; i < SW_MAX; i++) if (String(d.sw[i]).toLowerCase() === String(d.def).toLowerCase()) { at = i; break; }
+      d.sw[at < 0 ? 0 : at] = nc;
+    }
+    d.def = nc;
+  }
+  /* 默认色永远显示在第一位 ——「默认颜色」这件事必须一眼可见，不能靠用户记 */
+  function byDef(a, d) {
+    if (d === undefined) d = defSwatch();
+    var out = (a || []).slice(0, SW_MAX);
     if (!d) return out;
     var i = -1;
-    for (var k = 0; k < out.length; k++) if (String(out[k]).toLowerCase() === d.toLowerCase()) { i = k; break; }
+    for (var k = 0; k < out.length; k++) if (String(out[k]).toLowerCase() === String(d).toLowerCase()) { i = k; break; }
     if (i > 0) out.splice(0, 0, out.splice(i, 1)[0]);
     else if (i < 0) { out.unshift(d); out = out.slice(0, SW_MAX); }
     return out;
   }
   function palette() {
-    var c = readCustom();
-    if (c) return byDef(c);
+    var l = swLive();
+    if (l) return byDef(l.sw, l.def);
     var p = prefs(), out = SWATCHES.slice(), seen = {};
     for (var i = 0; i < out.length; i++) seen[out[i].toLowerCase()] = 1;
     // 用户在设置里配过的标注字色 / 高亮底排在最前，算「常用色」
     var head = [];
     if (p.mkFg && !seen[String(p.mkFg).toLowerCase()]) head.push(p.mkFg);
     if (p.color && !seen[String(p.color).toLowerCase()]) head.push(p.color);
-    return byDef(head.concat(out).slice(0, SW_MAX));
+    return byDef(head.concat(out).slice(0, SW_MAX), defSwatch());
   }
-  // 加一个色：进色板 + 立刻用在本段上（取色器那条路浮条多半已经因为失焦收起，
-  // 只加色点不给用户上色 = 「点了没反应」）
+  /* 加一个色：进草稿 + 立刻用在本段上（取色器那条路浮条多半已经因为失焦收起，
+     只加色位不给用户上色 = 「点了没反应」） */
   function addSwatch(c, apply) {
     if (!hexOK(c)) return;
-    var cur = readCustom() || palette().slice();
-    var low = String(c).toLowerCase(), has = false;
-    for (var i = 0; i < cur.length; i++) if (String(cur[i]).toLowerCase() === low) { has = true; break; }
-    if (!has) { cur.push(String(c)); while (cur.length > SW_MAX) cur.shift(); }
-    writeCustom(cur);          // 第一次自定义 = 把当前色板固化下来，之后不再跟随设置
+    var d = swEdit();
+    d.touched = true;                      // ★ 从这一刻起「有未保存的改动」
+    var low = String(c).toLowerCase(), has = false, i;
+    for (i = 0; i < d.sw.length; i++) if (d.sw[i].toLowerCase() === low) { has = true; break; }
+    if (!has) { d.sw.push(String(c)); swTrim(d.sw, d.def); }
+    if (!d.def) d.def = String(c);
     renderSwatches();
     if (apply) run('foreColor', String(c));
   }
+  /* 清空这个色位：**原地变白**，不删槽位 —— 色位是固定的 5 个，删一个会变成 4 个 */
   function removeSwatch(c) {
-    var cur = readCustom() || palette().slice();
-    var low = String(c).toLowerCase(), out = [];
-    for (var i = 0; i < cur.length; i++) if (String(cur[i]).toLowerCase() !== low) out.push(cur[i]);
-    if (!out.length) return;   // 至少留一个：一个都不剩时连「恢复跟随设置」也点不到色点
-    writeCustom(out);
-    if (String(defSwatch()).toLowerCase() === low) setDefSwatch(out[0]);
+    var d = swEdit();
+    d.touched = true;
+    var low = String(c).toLowerCase(), hit = -1, i;
+    for (i = 0; i < d.sw.length; i++) if (d.sw[i].toLowerCase() === low) { hit = i; break; }
+    if (hit < 0) return;
+    d.sw[hit] = SW_WHITE;
+    if (String(d.def).toLowerCase() === low) d.def = SW_WHITE;
     renderSwatches();
   }
+  /* 恢复内置 / 跟随设置：草稿里打个 reset 标记，保存时才真的清 key */
   function resetSwatch() {
-    try { localStorage.removeItem(SW_KEY); localStorage.removeItem(SW_DEF_KEY); } catch (e) {}
+    /* 保存后会清掉两个 key，浮条回到「跟随 ⚙️ 设置」那一套 = 内置 5 色。
+       预览就把草稿设成那份结果 —— def 必须是色板里的一员，否则 byDef 会把它插到
+       首位并挤掉末尾那一位（同 swSetSlot 段那条不变量）。 */
+    var sb = swBuiltin(), df = defSwatch(), has = false, i;
+    for (i = 0; i < sb.length; i++) if (String(sb[i]).toLowerCase() === String(df).toLowerCase()) { has = true; break; }
+    swDraft = { sw: sb, def: has ? df : (sb[0] || SW_WHITE), reset: true, touched: true, from: 'live' };
     renderSwatches();
   }
   var lastPal = '';
@@ -19324,22 +19789,34 @@ html.embedded #buildTag{display:none}
     if (!bar) return;
     var host = bar.querySelector('.sb-sws');
     if (!host) return;
-    var sw = palette(), d = defSwatch(), sig = sw.join(',') + '|' + d;
+    /* dirty = 「有未保存的改动」。光有一份没动过的草稿不算 —— 设置页一打开就会有。 */
+    var sw = palette(), d = swLiveDef(), dirty = !!(swDraft && (swDraft.touched || swDraft.reset));
+    var sig = sw.join(',') + '|' + d + '|' + (dirty ? '1' : '0') + ((swDraft && swDraft.reset) ? 'R' : '');
     if (sig === lastPal && host.childNodes.length) return;
     lastPal = sig;
     var h = '';
     for (var i = 0; i < sw.length; i++) {
       var on = d && String(sw[i]).toLowerCase() === String(d).toLowerCase();
-      h += '<button type="button" class="sb-sw' + (on ? ' sb-def' : '') + '" data-color="' + sw[i] +
-        '" title="文字颜色 ' + sw[i] + '（右键：设为默认 / 从色板移除）"></button>';
+      var em = /^#(?:fff|ffffff)$/i.test(String(sw[i]));
+      h += '<button type="button" class="sb-sw' + (on ? ' sb-def' : '') + (em ? ' sb-empty' : '') +
+        (dirty ? ' sb-dirty' : '') +
+        '" data-color="' + sw[i] + '" title="文字颜色 ' + sw[i] +
+        '（右键：设为默认 / 清空这个色位 / 恢复内置）"></button>';
     }
-    h += '<button type="button" class="sb-add" title="自定义颜色：选一个色，立即用在选中的文字上，并加进色板">＋' +
-      '<input type="color" value="' + (d || sw[0] || '#C0392B') + '" aria-label="自定义文字颜色"></button>';
+    h += '<button type="button" class="sb-add" title="取色板选一个色：立即用在选中的文字上，并占用一个色位（改动要按「保存」才生效）">＋' +
+      '<input type="color" value="' + (hexOK(d) ? d : (sw[0] || '#C0392B')) + '" aria-label="自定义文字颜色"></button>';
+    /* ★ 需求 M：保存 / 撤销只在**有未保存改动**时出现 —— 平时不占地方，
+       出现了就说明「现在浮条上这套色还没写盘」，本身就是最直白的提示。 */
+    if (dirty) {
+      h += '<span class="sb-sep"></span>';
+      h += '<button type="button" class="sb-mini sb-save" data-sbmini="save" title="保存这套颜色（未保存的改动刷新后会丢）">💾 保存</button>';
+      h += '<button type="button" class="sb-mini" data-sbmini="undo" title="放弃这次改动，回到上次保存的颜色">↩ 撤销</button>';
+    }
     host.innerHTML = h;
     var dots = host.querySelectorAll('.sb-sw');
     for (var j = 0; j < dots.length; j++) dots[j].style.background = dots[j].getAttribute('data-color');
   }
-  /* 右键菜单：只做三件事，全部落在本地偏好上，不碰任何业务数据 */
+  /* 右键菜单：只做三件事，全部落在**草稿**上（保存才写盘），不碰任何业务数据 */
   var ctxEl = null;
   function closeCtx() { if (ctxEl && ctxEl.parentNode) ctxEl.parentNode.removeChild(ctxEl); ctxEl = null; }
   function openCtx(dot) {
@@ -19350,8 +19827,8 @@ html.embedded #buildTag{display:none}
     ctxEl.className = 'sb-ctx';
     ctxEl.innerHTML =
       '<button type="button" data-sbctx="def">⭐ 设为默认色</button>' +
-      '<button type="button" data-sbctx="del">✕ 从色板移除</button>' +
-      '<button type="button" data-sbctx="reset">↩ 跟随⚙️设置</button>';
+      '<button type="button" data-sbctx="clear">⬜ 清空这个色位</button>' +
+      '<button type="button" data-sbctx="reset">↩ 恢复内置 5 色</button>';
     ctxEl.addEventListener('mousedown', function (e) { e.preventDefault(); });
     ctxEl.addEventListener('click', function (e) {
       var b = e.target;
@@ -19359,8 +19836,8 @@ html.embedded #buildTag{display:none}
       if (!b || b === ctxEl) return;
       var k = b.getAttribute('data-sbctx');
       closeCtx();
-      if (k === 'def') { setDefSwatch(c); renderSwatches(); }
-      else if (k === 'del') removeSwatch(c);
+      if (k === 'def') { var _dd = swEdit(); _dd.def = c; _dd.touched = true; renderSwatches(); }
+      else if (k === 'clear') removeSwatch(c);
       else resetSwatch();
     });
     bar.appendChild(ctxEl);
@@ -19370,6 +19847,42 @@ html.embedded #buildTag{display:none}
     } catch (e) {}
   }
 
+  /* 对外只暴露「读色板 + 草稿三件套」：设置模块与回归测试都靠它，
+     不另写第二份实现 */
+  window.HubPal = {
+    N: SW_MAX, WHITE: SW_WHITE, palette: palette,
+    saved: function () { var s = swSaved(); return s ? { sw: s.sw.slice(), def: s.def } : null; },
+    draft: function () {
+      if (!swDraft) return null;
+      if (swDraft.reset) return { reset: true, touched: true, dirty: true };
+      return { sw: swDraft.sw.slice(), def: swDraft.def,
+               touched: !!swDraft.touched, dirty: !!(swDraft.touched || swDraft.reset) };
+    },
+    /* ★ 设置页的**只读视图**：必要时按 whiteStart 规则备一份草稿，然后把整份端出去。
+       设置页只读它来画 5 个色位 —— 不自己存一份、也不自己算起点（同需求 E）。
+       为什么允许「顺带建草稿」：没保存过的用户要看到「初始全白」，
+       而全白这件事只有草稿里才有；同时那份草稿 touched=false，
+       不接管 palette() ⇒ 打开设置页看一眼不会把浮条的颜色变掉。 */
+    view: function (whiteStart) {
+      var d = swEdit(!!whiteStart);
+      if (d.reset) return { sw: d.sw.slice(), def: d.def, reset: true, touched: true, dirty: true };
+      return { sw: d.sw.slice(), def: d.def, reset: false,
+               touched: !!d.touched, dirty: !!(d.touched || d.reset) };
+    },
+    dirty: function () { return !!(swDraft && (swDraft.touched || swDraft.reset)); },
+    /* 编辑入口分两套，差别只有草稿的**起点**：
+         edit*（设置页）     起点 = 已保存的色板；没保存过则全白（Tom 口径）
+         set* / clearSlot    起点 = 当前看到的色板（浮条 ＋ / 右键 / 回归测试）
+       两套都写进同一份草稿、都置 touched ⇒ 浮条上的 💾/↩ 与设置页是同一对函数。 */
+    editSlot: function (i, c) { var d = swEdit(true); swSetSlot(d, i, c); d.touched = true; renderSwatches(); },
+    editDef: function (c) { var d = swEdit(true); swSetDef(d, c); d.touched = true; renderSwatches(); },
+    editClear: function (i) { var d = swEdit(true); swClearSlot(d, i); d.touched = true; renderSwatches(); },
+    setSlot: function (i, c) { var d = swEdit(); swSetSlot(d, i, c); d.touched = true; renderSwatches(); },
+    setDef: function (c) { var d = swEdit(); swSetDef(d, c); d.touched = true; renderSwatches(); },
+    clearSlot: function (i) { var d = swEdit(); swClearSlot(d, i); d.touched = true; renderSwatches(); },
+    markReset: resetSwatch,
+    commit: swCommit, rollback: swUndo
+  };
 
   /* ---------- 2) 建浮层 ---------- */
   function build() {
@@ -19384,7 +19897,7 @@ html.embedded #buildTag{display:none}
     html += '<button type="button" class="sb-btn" data-cmd="underline" title="下划线"><u>U</u></button>';
     html += '<button type="button" class="sb-btn sb-hl" data-hl="1" title="高亮底色">高亮</button>';
     html += '<span class="sb-sep"></span>';
-    html += '<span class="sb-sws"></span>';   // ★ 色点 + 取色器：由 renderSwatches() 现画（便于就地重画）
+    html += '<span class="sb-sws"></span>';   // ★ 色位 + 取色器 + 保存/撤销：由 renderSwatches() 现画（便于就地重画）
     html += '<span class="sb-sep"></span>';
     html += '<button type="button" class="sb-btn sb-clear" data-cmd="removeFormat" title="清除格式">清除</button>';
     bar.innerHTML = html;
@@ -19417,6 +19930,14 @@ html.embedded #buildTag{display:none}
       var t = ev.target;
       while (t && t !== bar && !t.getAttribute) t = t.parentNode;
       if (!t || t === bar) return;
+      /* ★ 需求 M：保存 / 撤销。这两个按钮只在草稿态才画得出来。*/
+      if (t.getAttribute('data-sbmini')) {
+        var mk = t.getAttribute('data-sbmini');
+        if (mk === 'save') { swCommit(); swMsg('💾 已保存 5 个色位（刷新后仍是这套）'); }
+        else if (mk === 'undo') { swUndo(); swMsg('↩ 已撤销，回到上次保存的颜色'); }
+        ev.preventDefault();
+        return;
+      }
       if (t.getAttribute('data-cmd')) { run(t.getAttribute('data-cmd'), null); return; }
       if (t.getAttribute('data-hl')) { run('hiliteColor', prefs().mkBg || '#FFE9A8'); return; }
       if (t.getAttribute('data-color')) { run('foreColor', t.getAttribute('data-color')); return; }
@@ -19788,11 +20309,12 @@ html.embedded #buildTag{display:none}
   window.HubSelBar = {
     init: boot, hide: hide, show: function () { scan(); },
     docked: docked, palette: palette, boundCount: function () { return bound; },
-    /* ★ 2026-09-18（需求 L）：设置模块改完色板要能就地重画本页浮条。
-       原来没导出它，设置页只能"等浮条下次浮出自己重读"（也能生效，但不即时）。 */
-    renderSwatches: renderSwatches,
     swatches: palette, addSwatch: addSwatch, removeSwatch: removeSwatch,
     setDefaultSwatch: setDefSwatch, resetSwatches: resetSwatch,
+    /* ★ 2026-09-18（需求 M）：设置模块改完色板要能就地重画本页浮条。
+       原来没导出它，设置页只能「等浮条下次浮出自己重读」（也能生效，但不即时）。
+       （内容与 _w8_mark.py 原来的后置修正一致，现在归位到这里，少一处后置。） */
+    renderSwatches: renderSwatches,
     barId: BAR_ID
   };
 
