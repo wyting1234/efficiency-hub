@@ -2175,6 +2175,20 @@
         .ap-seg button.active{background:var(--primary);color:#FAF7F1;font-weight:600}
         .ap-note{font-size:12px;color:var(--text-secondary);line-height:1.6}
         input[type=color]{width:36px;height:30px;padding:2px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);cursor:pointer}
+        /* ===== ✏️ 标记字体颜色（2026-09-18 新增）===== */
+        /* 「默认标注色」「可选颜色」两个标签是 4~5 字，默认 64px 会折行 */
+        .ap-lab.w2{min-width:88px;white-space:nowrap}
+        .ap-mini{padding:7px 12px;font-size:12.5px;line-height:1;border:1px solid var(--border);
+            border-radius:8px;background:var(--card-bg);color:var(--text-secondary);cursor:pointer;white-space:nowrap}
+        .ap-mini:hover{border-color:var(--primary);color:var(--primary)}
+        .ap-note.tight{margin-top:-4px;margin-bottom:14px}
+        /* ✕ 删除角标：只在悬停那一颗时出现，平时不干扰（色点本体点击＝设为默认） */
+        #apMarkSw .ap-swatch{position:relative}
+        #apMarkSw .ap-x{position:absolute;right:-5px;top:-5px;width:15px;height:15px;
+            border-radius:50%;background:#fff;color:#A6503C;font-size:10px;line-height:15px;
+            text-align:center;font-weight:700;box-shadow:0 1px 3px rgba(70,58,46,.35);
+            opacity:0;transition:opacity .12s ease}
+        #apMarkSw .ap-swatch:hover .ap-x{opacity:1}
     
         /* ===== 增补：现在按钮 / 记录导出 / 打印 ===== */
         .now-btn{margin-left:6px;padding:3px 9px;font-size:12px;line-height:1.5;border:1px solid var(--border,#E2D9C8);border-radius:7px;background:#FAF6EE;cursor:pointer;color:var(--text-secondary,#777);vertical-align:middle;}
@@ -4095,6 +4109,16 @@
                         <div class="ap-swatches" id="apBgSw"></div>
                         <input type="color" id="apBgCustom" value="#F2EDE4" title="自定义背景色">
                     </div>
+                    <div class="ap-row"><div class="ap-lab w2">默认标注色</div>
+                        <div class="ap-swatches" id="apMarkDefSw"></div>
+                        <input type="color" id="apMarkDefCustom" value="#1E2533" title="自定义默认标注色">
+                    </div>
+                    <div class="ap-row"><div class="ap-lab w2">可选颜色</div>
+                        <div class="ap-swatches" id="apMarkSw"></div>
+                        <input type="color" id="apMarkAdd" value="#1E2533" title="选一个颜色 → 加进「可选颜色」">
+                        <button type="button" class="ap-mini" id="apMarkReset" title="清掉自定义色板，回到内置 5 色（并重新跟随 ⚙️ 设置里的标注字色）">↩ 恢复默认</button>
+                    </div>
+                    <div class="ap-note tight">「可选颜色」＝ 选中文字后浮条上那排变色按钮；「默认标注色」排在最前并带高亮环，也是取色器的起始色。点色点即设为默认，悬停出现的 ✕ 把它从可选色里去掉；浮条上右键（手机长按）色点也能改。设置只存本设备。</div>
                     <div class="ap-note">设置即时生效并自动保存在本设备；主题色同步作用于按钮、标签、进度条等主色元素。</div>
                 </div>
             </div>
@@ -16741,6 +16765,156 @@
       const bc=document.getElementById("apBgCustom"); if(bc&&bc.value.toLowerCase()!==bgv) bc.value=bgv;
     }
     function apSave(){ try{ localStorage.setItem(AP_KEY,JSON.stringify(apPrefs)); }catch(e){} }
+    /* ============================================================
+       ✏️ 标记字体颜色（Tom 2026-09-18 需求）
+       ------------------------------------------------------------
+       浮条上那排「变色」色点，此前只能现场用 ＋ 取色器一个个加、靠右键设默认；
+       换设备 / 清缓存就白干。这里把「可选颜色」和「默认标注色」提前放进设置模块。
+
+       ★ 真源只有一个：还是浮条那两个 key，设置页不另存一份，避免两处打架。
+         · hub_swatches_v1   → 可选色板（数组，最多 MK_MAX 个）
+         · hub_swatch_def_v1 → 默认标注色（单个 hex）
+         两个都删掉 = 回到「内置 5 色 + 跟随导航页 ⚙️ 设置里的标注字色」的老行为。
+
+       ★ 为什么调 window.HubSelBar：设置模块在主 script 块（先执行），浮条自己那块
+         在后面。apInit() 跑的时候 HubSelBar 还不存在 → mkRefresh 静默跳过（有 try）。
+         用户真正点色点是在交互时刻，那时浮条早已就位，能立刻重画。
+    ============================================================ */
+    const MK_SW_KEY="hub_swatches_v1", MK_DEF_KEY="hub_swatch_def_v1";
+    const MK_MAX=8;
+    const MK_BUILTIN=["#1E2533","#C0392B","#1F6FB2","#1E8449","#6B46C1"];
+    function mkHex(c){ return /^#[0-9a-fA-F]{3,8}$/.test(String(c==null?"":c)); }
+    function mkCustom(){
+      try{
+        const a=JSON.parse(localStorage.getItem(MK_SW_KEY)||"null");
+        if(!Array.isArray(a)) return null;
+        const out=[]; for(let i=0;i<a.length&&out.length<MK_MAX;i++) if(mkHex(a[i])) out.push(String(a[i]));
+        return out.length?out:null;
+      }catch(e){ return null; }
+    }
+    function mkWrite(a){ try{ localStorage.setItem(MK_SW_KEY,JSON.stringify(a)); }catch(e){} }
+    function mkDef(){ try{ const d=localStorage.getItem(MK_DEF_KEY); return mkHex(d)?d:""; }catch(e){ return ""; } }
+    function mkSetDef(c){ try{ localStorage.setItem(MK_DEF_KEY,String(c)); }catch(e){} }
+    /* 与浮条 palette() 同一套口径：用户配过色板就听用户的；没配过才去跟随
+       「⚙️ 设置」里的标注字色（保持老用户升级后观感不变）；默认色永远排第一。 */
+    function mkPalette(){
+      let base=mkCustom();
+      if(!base){
+        base=MK_BUILTIN.slice();
+        let p={}; try{ p=JSON.parse(localStorage.getItem("hub_text_v1"))||{}; }catch(e){ p={}; }
+        const seen={}; base.forEach(function(c){ seen[String(c).toLowerCase()]=1; });
+        const head=[];
+        if(p.mkFg&&!seen[String(p.mkFg).toLowerCase()]) head.push(p.mkFg);
+        base=head.concat(base).slice(0,MK_MAX);
+      }
+      const out=base.slice(0,MK_MAX), d=mkDef();
+      if(!mkHex(d)) return out;
+      let i=-1;
+      for(let k=0;k<out.length;k++) if(String(out[k]).toLowerCase()===d.toLowerCase()){ i=k; break; }
+      if(i>0) out.unshift(out.splice(i,1)[0]);
+      else if(i<0){ out.unshift(d); out.length=Math.min(out.length,MK_MAX); }
+      return out;
+    }
+    /* 让本页浮条立刻按新色板重画。嵌在导航页 iframe 里时本页浮条没启动（门卫不 boot），
+       那条浮条读的是同一份 localStorage，每次浮出都会重读 → 无需跨帧通知。 */
+    function mkRefresh(){
+      try{ if(window.HubSelBar&&typeof HubSelBar.renderSwatches==="function") HubSelBar.renderSwatches(); }catch(e){}
+    }
+    function mkRender(){
+      const swEl=document.getElementById("apMarkSw"), defEl=document.getElementById("apMarkDefSw");
+      if(!swEl||!defEl) return;
+      const sw=mkPalette(), d=mkDef();
+      /* 没显式设过默认色时，把第一颗当作"当前默认"显示 —— 用户要的是「一眼看到默认是哪个」，
+         但**不写回** storage，这样「跟随 ⚙️ 设置」的老行为不受影响。 */
+      const cur=mkHex(d)?d:(sw[0]||"");
+      swEl.innerHTML=sw.map(function(c){
+        return '<button type="button" class="ap-swatch" data-c="'+c+'" style="background:'+c+
+               '" title="点＝设为默认标注色 · 点右上角 ✕＝从可选颜色里去掉（'+c+'）">'+
+               '<span class="ap-x" data-x="'+c+'" title="从可选颜色里去掉">✕</span></button>';
+      }).join("");
+      defEl.innerHTML=sw.map(function(c){
+        const on=cur&&String(c).toLowerCase()===String(cur).toLowerCase();
+        return '<button type="button" class="ap-swatch'+(on?" active":"")+'" data-c="'+c+'" style="background:'+c+
+               '" title="'+(on?"当前默认标注色 ":"设为默认标注色 ")+c+'"></button>';
+      }).join("");
+      const dc=document.getElementById("apMarkDefCustom");
+      if(dc&&mkHex(cur)&&String(dc.value).toLowerCase()!==String(cur).toLowerCase()) dc.value=cur;
+      /* 元素每次都是新造的 → 事件在这里重绑（不要在 apMarkInit 里绑一次） */
+      swEl.querySelectorAll(".ap-swatch").forEach(function(s){
+        s.addEventListener("click",function(e){
+          const t=e.target, x=t&&t.getAttribute?t.getAttribute("data-x"):null;
+          if(x) mkRemove(x); else { mkSetDef(s.dataset.c); mkRender(); mkRefresh(); }
+        });
+      });
+      defEl.querySelectorAll(".ap-swatch").forEach(function(s){
+        s.addEventListener("click",function(){ mkSetDef(s.dataset.c); mkRender(); mkRefresh(); });
+      });
+      /* ★ dc 是**静态** HTML 元素（不在上面两个 innerHTML 重建的范围里），mkRender 会被
+         反复调用 → 必须只绑一次。否则每渲染一次就多挂一个监听器，而这些监听器又会各自
+         触发 mkRender，监听器数量指数级膨胀。 */
+      if(dc&&!dc.__mkBound){ dc.__mkBound=1;
+        dc.addEventListener("input",function(e){ mkSetDef(e.target.value); mkRender(); mkRefresh(); }); }
+    }
+    function mkAdd(c){
+      if(!mkHex(c)) return;
+      const cur=mkCustom()||mkPalette().slice();
+      const d=mkDef();
+      /* ★ 默认色若只是"渲染时插进来的"（用户只设了默认色、没动过色板），mkPalette 会把它
+         unshift 到首位；色板满时那一位就把**刚加进去的新色**顶掉 —— 用户看到的是
+         「点了＋添加，色板里没出现」。所以开始自定义色板时先把它固化进来。 */
+      if(mkHex(d)){
+        let has=false;
+        for(let i=0;i<cur.length;i++) if(String(cur[i]).toLowerCase()===d.toLowerCase()){ has=true; break; }
+        if(!has) cur.unshift(d);
+      }
+      const low=String(c).toLowerCase();
+      let has2=false;
+      for(let i=0;i<cur.length;i++) if(String(cur[i]).toLowerCase()===low){ has2=true; break; }
+      if(!has2){ cur.push(String(c)); mkTrimKeepDef(cur,d); }
+      mkWrite(cur);                     // 第一次自定义 = 把当前色板固化，之后不再跟随设置
+      mkRender(); mkRefresh();
+    }
+    /* 超出上限时挤掉**最旧的非默认色**：默认色排首位，如果直接 shift 会先把它挤掉，
+       而渲染时 mkPalette 又把它插回来 → 结果是刚加的新色被裁掉（点了像没反应）。 */
+    function mkTrimKeepDef(arr,d){
+      const dl=String(d||"").toLowerCase();
+      while(arr.length>MK_MAX){
+        let v=-1;
+        for(let i=0;i<arr.length;i++) if(String(arr[i]).toLowerCase()!==dl){ v=i; break; }
+        if(v<0) break;                  // 兜底：整条都是默认色（不可能），别再转
+        arr.splice(v,1);
+      }
+      return arr;
+    }
+    function mkRemove(c){
+      const cur=mkCustom()||mkPalette().slice();
+      const low=String(c).toLowerCase();
+      const out=cur.filter(function(x){ return String(x).toLowerCase()!==low; });
+      if(!out.length) return;           // 至少留一颗：一颗不剩时连"设为默认"都点不到
+      mkWrite(out);
+      if(String(mkDef()).toLowerCase()===low) mkSetDef(out[0]);
+      mkRender(); mkRefresh();
+    }
+    function mkReset(){
+      try{ localStorage.removeItem(MK_SW_KEY); localStorage.removeItem(MK_DEF_KEY); }catch(e){}
+      mkRender(); mkRefresh();
+    }
+    function apMarkInit(){
+      mkRender();
+      const rst=document.getElementById("apMarkReset");
+      if(rst) rst.addEventListener("click",mkReset);
+      const add=document.getElementById("apMarkAdd");
+      /* 用 change 不用 input：拖动取色器过程中 input 会连发，会把一堆中间色塞进色板 */
+      if(add) add.addEventListener("change",function(e){ mkAdd(e.target.value); });
+      /* 设置页是「每次都重新渲染」的视图 —— 若用户在浮条上右键改过默认色，
+         再切回设置页要能反映出来。用 document 级委托，不依赖 initViewTabs 的作用域。 */
+      document.addEventListener("click",function(e){
+        let t=e.target;
+        while(t&&t!==document&&!(t.getAttribute&&t.getAttribute("data-view"))) t=t.parentNode;
+        if(t&&t!==document&&t.getAttribute("data-view")==="goal") mkRender();
+      });
+    }
+
     function apInit(){
       const asw=document.getElementById("apAccentSw"); if(!asw) return;
       asw.innerHTML=AP_ACCENTS.map(function(a){return '<button type="button" class="ap-swatch" data-c="'+a[1]+'" style="background:'+a[1]+'" title="'+a[0]+'"></button>';}).join("");
@@ -16751,6 +16925,7 @@
       document.querySelectorAll("#apFontSeg button").forEach(function(b){ b.addEventListener("click",function(){ apPrefs.zoom=Number(b.dataset.fs); apSave(); apApply(); }); });
       document.getElementById("apAccentCustom").addEventListener("input",function(e){ apPrefs.accent=e.target.value; apSave(); apApply(); });
       document.getElementById("apBgCustom").addEventListener("input",function(e){ apPrefs.bg=e.target.value; apSave(); apApply(); });
+      apMarkInit();
       apApply();
     }
 
@@ -18925,7 +19100,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918x</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918y</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -19613,6 +19788,9 @@ html.embedded #buildTag{display:none}
   window.HubSelBar = {
     init: boot, hide: hide, show: function () { scan(); },
     docked: docked, palette: palette, boundCount: function () { return bound; },
+    /* ★ 2026-09-18（需求 L）：设置模块改完色板要能就地重画本页浮条。
+       原来没导出它，设置页只能"等浮条下次浮出自己重读"（也能生效，但不即时）。 */
+    renderSwatches: renderSwatches,
     swatches: palette, addSwatch: addSwatch, removeSwatch: removeSwatch,
     setDefaultSwatch: setDefSwatch, resetSwatches: resetSwatch,
     barId: BAR_ID
