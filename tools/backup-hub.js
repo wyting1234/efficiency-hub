@@ -9,7 +9,7 @@
 (function () {
     'use strict';
 
-    var VERSION = '1.8.3';
+    var VERSION = '1.8.4';
     var META_KEY = '__hub_meta_v1__';          // 记录每个 key 的最后写入时间
     var LAST_SNAP_KEY = '__hub_last_snap_v1__'; // 每日自动快照标记
     var ACT_KEY = '__hub_activity_v1__';        // 最近一次备份 / 同步的时间与项目
@@ -68,7 +68,11 @@
           keys: ['mySleepData', 'mySportData', 'myWeightData', 'myBpData',
                  'myWaterData', 'myDietData', 'healthFoodDB'] },
         { id: 'social', name: '人际交往与沟通', icon: '🤝',
-          keys: ['comm_daily', 'comm_week', 'comm_month'], prefixes: ['comm_'] },
+          // ★ 与 index.html 的 MODULES 对齐（2026-09-18 审计）：comm_ 前缀只覆盖前三个，
+          //   后面这些是同一工具的业务键，漏登记会让它们掉进「未归类」。
+          keys: ['comm_daily', 'comm_week', 'comm_month', 'tool_dialog', 'tool_relation', 'tool_script',
+                 'action_plan_data', 'action_categories', 'wisdom_data', 'if_then_plans', 'if_then_categories'],
+          prefixes: ['comm_'] },
         { id: 'learning', name: '学习目标管理', icon: '🎯',
           keys: ['wb_goal_seeded', 'wb_ex_seeded'],
           prefixes: ['wb_goal_db_', 'wb_goal_draft_', 'wb_goal_', 'wb_ex_'] },
@@ -77,10 +81,43 @@
         { id: 'travel', name: '旅行助手', icon: '🧭',
           keys: ['roam_last_tab'], prefixes: ['roam_assistant_', 'roam_'] },
         { id: 'chaomu', name: '朝暮计', icon: '🌅',
-          keys: [], prefixes: ['chaomuji_'],
+          // zmv_ / __zmq_：朝暮计的视图模式与压缩块（__zmq_<字节数>），
+          //   键名不带 chaomuji_ 前缀，只靠前缀匹配会掉进「未归类」。
+          keys: ['zmv_view_mode', '__zmq', 'chaomuji_diary_v1'],
+          prefixes: ['chaomuji_', '__zmq_', 'zmv_'],
           exclude: ['chaomuji_backups_v1'] },   // 旧版自带备份仓，避免体积翻倍
         { id: 'team', name: '成员管理', icon: '👥', keys: ['teamMembers_v1'] }
     ];
+
+    /* ---- 与导航页 index.html 的 MODULES 对齐：消掉「两份清单漂移」 ----
+       本文件要能独自在工具页里加载（那里没有 MODULES），所以自留一份 MANIFEST；
+       但 MANIFEST 与 index.html 的 MODULES 是同一个事实的两份抄写 ——
+       MODULES 决定「同步后该重载哪个工具页」，MANIFEST 决定「备份按模块怎么分组」，
+       两者不一致就会出现「备份算在 A、同步却重载 B」这种谁也想不通的现象。
+       2026-09-18 一次审计就查出 index.html 侧漏登记了 18 个键。
+       所以：导航页在场时以 MODULES 为准做**并集**（只加不减，绝不删掉本地独有的规则）；
+       MODULES 里有、MANIFEST 里没有的模块 id，就地补一个空壳条目，
+       否则并集来的键会找不到落点、全部掉进「未归类」。 */
+    try {
+        if (typeof MODULES !== 'undefined' && Array.isArray(MODULES)) {
+            var _byId = {}, _i, _j;
+            for (_i = 0; _i < MANIFEST.length; _i++) _byId[MANIFEST[_i].id] = MANIFEST[_i];
+            for (_i = 0; _i < MODULES.length; _i++) {
+                var _m = MODULES[_i];
+                if (!_m || !_m.id) continue;
+                var _g = _byId[_m.id];
+                if (!_g) {
+                    _g = _byId[_m.id] = { id: _m.id, name: _m.name || _m.id, icon: _m.icon || '📦',
+                                          keys: [], prefixes: [] };
+                    MANIFEST.push(_g);
+                }
+                var _ks = _m.keys || [];
+                for (_j = 0; _j < _ks.length; _j++) {
+                    if (_g.keys.indexOf(_ks[_j]) < 0) _g.keys.push(_ks[_j]);
+                }
+            }
+        }
+    } catch (e) { /* 并集失败不影响既有能力：退回 MANIFEST 单清单 */ }
 
     /* ============ 工具函数 ============ */
     function bytesOf(s) {
