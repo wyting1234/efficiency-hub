@@ -1156,7 +1156,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918f';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918g';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -2480,10 +2480,10 @@ document.addEventListener('pointerdown', e => {
 <script>
 /* 版本联动（技能 §21/§22，v2）：徽标改为「导航侧栏底部的一行」，不再是浮在视口上的浮层 ——
    浮层在手机端 / 侧栏收起时会盖在工具内容上，而且用户关不掉。
-   本页版本 = 项目最新推送版本（versions.json 的 latest）；打开工具时追加该工具自己的版本。
+   本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918f';
+  var NAV_VER = 'V20260918g';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -2519,12 +2519,23 @@ document.addEventListener('pointerdown', e => {
       if(f && FILES[f]) tv = FILES[f];
       if(!tv) tv = frameVer(cur.id);
     }
-    if(tv && tv !== NAV_VER){
+    /* ★ 2026-09-18（用户明确要求，并固定为今后所有推送的标准形态）：
+       导航栏里**同时**标出两个版本。
+       旧行为是「本工具版本 ≠ 全站版本」才追加「· 本工具 …」，
+       两者相同时只剩一个版本号 —— 而「版本相同」和「读不到工具版本」
+       长得一模一样，于是「这个工具到底加载成功了没有」答不上来。
+       现在只要有工具打开就把两个都写出来：
+         · 左边 = 全站最新（versions.json 的 latest）
+         · 右边 = 当前这个工具自己的 buildTag
+       两条数据源逐级降级（versions.json → 缓存 → iframe 自报），
+       读不到工具版本就退化成只写全站版本 —— 绝不显示空白。 */
+    if(tv){
       el.textContent = NAV_VER + ' · 本工具 ' + tv;
-      el.title = '项目最新版本 ' + NAV_VER + '；当前打开的工具版本 ' + tv;
+      el.title = '导航站最新版本 ' + NAV_VER + '；当前打开的工具版本 ' + tv +
+        (tv === NAV_VER ? '（两者相同）' : '');
     }else{
       el.textContent = NAV_VER;
-      el.title = '构建版本（确认本设备加载的是哪一版）：' + NAV_VER;
+      el.title = '导航站最新版本（未打开工具 / 该工具还没登记版本）：' + NAV_VER;
     }
   }
   /* 把徽标搬进侧栏底部（.side-foot）：进得去就是侧栏的一部分，进不去就保留原来的
@@ -2572,7 +2583,7 @@ document.addEventListener('pointerdown', e => {
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918f</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918g</div>
 </body>
 
 
