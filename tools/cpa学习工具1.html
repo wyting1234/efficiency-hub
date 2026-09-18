@@ -18655,7 +18655,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918v</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918w</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -19373,12 +19373,18 @@ html.embedded #buildTag{display:none}
   function arm() {
     if (parentHasBar()) return;                 // 父页负责 → 永久退出，不会双浮条
     boot();
+    /* ★ 只有真的装了自己的浮条才认领 owner。原来这行写在 IIFE **外面**
+       无条件执行——嵌在导航页 iframe 里时本页即使没装 DOM、也没绑任何
+       document，却照样把 owner 写成 'cpa-page'，正好把「这条浮条是谁的」这个
+       真机排查依据带偏。 */
+    try { if (window.HubSelBar) window.HubSelBar.owner = 'cpa-page'; } catch (e) {}
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arm);
   else arm();
 })();
-/* 标记来源，便于真机排查「这条浮条是导航页的还是本页的」 */
-try { if (window.HubSelBar) window.HubSelBar.owner = 'cpa-page'; } catch (e) {}
+/* owner 标记已挪进门卫（见 arm()）：只有真的 boot 了自己的浮条才认领。
+   真机排查时的判据是 owner === 'cpa-page' **且**（barId 元素存在 或 boundCount() > 0）；
+   嵌在导航页里时 owner 为空 —— 那时浮条是导航页的，本页没装。 */
 /*##CPASELBAR_JS_END##*/
 </script>
 
