@@ -2,12 +2,12 @@
   "scheme": "V<YYYYMMDD><letters>",
   "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
   "day": "20260918",
-  "seq": 13,
-  "latest": "V20260918m",
-  "updatedAt": "2026-09-18T13:08:18+08:00",
-  "note2": "本轮：**朝暮计「加载背景图缓慢」的根治 —— 把「存档用的原图」与「铺背景用的副图」拆成两轨存**。\n\n① 问题定位。启动链本来是 `ZMIMG.init() → persist() → bgHydrateAll() → bgWarmDecodeAll() → applyBg()`，看着没错，但里面有两处是假的：一是 `bgHydrateAll().then(n => { if (n) applyBg(); })` 的 `if (n)` 在稳态下恒为假（没有任何记录被改写），所以水合完之后根本不会重绘；二是 `bgWarmDecodeAll` 里等的是 `img.onload`，而 onload 只代表「尺寸已可用」，不代表像素解完 —— `applyBg` 照样把一张没解完的图铺上去，用户看到的就是「先白一下再闪出来」，8000×6000 实测这个空窗约 130ms。\n\n② 做法。原图照旧原样存档（`bg:<scope>`，导出与再次编辑都用它，一个像素都不动），另存一张长边 2560 的副图（`bgr:<scope>`）专供铺背景。三条保护：原图长边本来就 ≤2560 → 不生成副图（不把好情况搞坏）；副图若不比原图小 → 不存，免得白占空间；副图缺失或读取失败 → 渲染自动回落原图，背景绝不会因此消失，并把记录里的 `bgr` 标记清成 0，免得每次启动都白试一遍。老记录（有原图、无副图）在浏览器空闲时惰性补图，每次启动最多补 2 张，失败静默、下次再试。\n\n③ 两个反直觉的实测结论，都推翻了最初的设计。**副图不能用 WebP**：同一张 4000×3000 原图（解码 73.2ms），2560 WebP q0.86 解码 88.6ms —— 比原图还慢；2560 JPEG q0.86 解码 25.3ms，编码也从 608ms 降到 129ms。有损 WebP 的 VP8 解码成本远高于 JPEG，原图越大差距越悬殊（6000×4500：161→17ms，8000×6000：267→21ms）。所以编码格式定成 JPEG，并在缩放前先铺白底（JPEG 没有 alpha，透明像素会变黑块）。**预热必须等 `decode()` 而不是 `onload`**，否则「预热」两个字是假的。\n\n④ 顺带修掉一个真 bug：编辑态没有携带原始字节，导致「打开选择器 → 什么都不改 → 关掉」会把 5MB 的 JPEG 重新烘焙成 15MB 的无损 PNG（实测 master 变成 15026396 字节）。给编辑态挂上 master 字节后，未改构图就直接原样存回。\n\n⑤ 竞态加固：`ZMIMG.put` 里立刻 `revokeObjectURL` 会打断「正在使用这个 URL」的元素 —— 典型场景是 `closeBgPicker` 里未完成的异步保存与紧跟着重新打开编辑器抢同一个 URL，结果编辑器里的预览图当场失效（实测 0×0）。真撤销推迟 2 秒，新 URL 已经接管渲染，旧引用也来得及用完。\n\n⑥ 回归：全部走真机 Edge headless，A/B 两组每轮**交替**测量（首载天然比次载贵，按组跑会把顺序效应当成「副图更慢」—— 本套件第一版就是这么栽的），后台补图在测量窗口内屏蔽。结果 **58 PASS / 0 FAIL**。4000×3000：背景落地 66ms（无副图 107ms）、decode 16ms（无副图 57ms）；4× CPU 降速近似手机：落地 206ms（无副图 273ms）、decode 20ms（无副图 72ms）；8000×6000（18.8MB，手机原图量级）：落地 58ms（无副图 258ms）、decode 14ms（无副图 215ms），副图只占原图字节的 3.1%。另附 8 个专项场景：记录字段与标记、重新编辑取 master、紧跟重开不丢预览、副图缺失回落并自愈、老记录自动补图、小图不生成副图、IndexedDB 不可用降级、补丁前对照。本轮推送逐文件重拉线上基线并比对 git blob sha（`27ce0ff049bb1434` 与我打补丁前的副本完全一致），未回退任何并发改动。",
+  "seq": 14,
+  "latest": "V20260918n",
+  "updatedAt": "2026-09-18T13:50:35+08:00",
+  "note2": "本轮三件事：**清掉登记表缺口与双份漂移** + **「日间/夜间」真正全局（含子页）** + **「设置」里加输入文本/标注**。① 数据同步审计（audit_keys.py）此前查出 **18 个键没登记进 index.html 的 MODULES**（8 个工具），后果不是丢数据，而是「动一下这些键，后台同步就退化成刷新全部工具页」——会打断正在填的表单。这 18 个键已全部登记（accCheck_v3_migrated / workCategories / timeCategoriesV2 / timeTimerState / timeTimerHistory / timeDoneFolded / storage_categories / wb_ex_seeded / wb_goal_draft / wb_goal_seeded / roam_assistant / roam_last_tab / __zmq / chaomuji_diary_v1 / zmv_view_mode / cpaMasteryTree_v1 / cpaMasterySub_v1 / cpaMasteryScore_v1），并顺带补齐 info_categories / previewer_* / diary_* 三组同源漏项。重跑审计：**★缺口(写) 18 → 0**。② 同一件事的另一半是「两份抄写」：MODULES 管**同步分片**（同步后重载哪个工具页），tools/backup-hub.js 的 MANIFEST 管**备份分组**（备份算到哪个模块）。两者抄漏就会出现「备份算在 A、同步却重载 B」这种谁也查不出来的怪象。现在两手一起做：backup-hub.js 在导航页里加载时**并集** MODULES（以它为准，只加不减；MODULES 有而 MANIFEST 没有的模块就地补空壳条目，否则并集来的键会全掉进「未归类」），字面量也把 social 的 11 个业务键与 chaomu 的 zmv_view_mode / __zmq / chaomuji_diary_v1 补齐（原来只靠 comm_ / chaomuji_ 前缀覆盖不到）。审计脚本新增「逐键比对两份清单的归属结论」一段：现在 **74 个键判归完全一致**，以后一漂移就会直接打出来，不用等人去猜。审计还支持 `local` 参数，可直接拿本地补丁件自检。③ 需求「导航栏的日间模式和夜间模式适用全局，和子页」+「本功能放在设置里面，增加输入文本的字体、颜色以及标注」。侧栏底部原来的「🌙 夜间模式」按钮换成 **「⚙️ 设置」**（右侧标出当前是日间/夜间/跟随系统），打开是一个全站设置面板：**外观主题**（日间/夜间/跟随系统 + 子页深色范围）、**输入文本**（生效范围：输入框/富文本编辑器/正文；字体族、字号、行高、文字颜色）、**标注**（高亮底/下划线/加粗/斜体 + 标注底色与字色，带实时预览）。配置全部收在一个键 **hub_text_v1**（并镜像旧的 hub_theme 兼容老用户），由导航页的 HubPrefs 在写入后**主动注入**每个同源子页 iframe（直接改 contentDocument，不需要子页配合改造）：so 所谓「全局通用」= 所有子页读同一份，在设置里改一次，**已打开的子页当场生效、不用刷新**。子页深色两档：`base` 只翻底色/正文色/输入框（纯 CSS，最稳）；`auto` 再逐个元素把浅色底按色相压暗、深色字提亮 —— 实现上刻意拆成**先全读计算样式、再分片写入**两阶段（边读边写会让每次写入都让样式表失效、下一次 getComputedStyle 又要重算，上千元素就是 O(n²)），并挂 MutationObserver 在工具动态渲染后补一遍（只观察 childList：我们自己写的是 style 属性，不会触回来）。导航页**不做**逐元素换算 —— 它自带一套正经深色主题，叠一层只会把侧栏也搅浑。关闭深色时按记录把行内值原样写回去，所以是「回到原状」而不是「另一套样式」。④ 「接入工具编辑器」：tools/日记.html 的取色器默认值改为全站「标注底色 / 文字颜色」，字体下拉自动选中全局字体，字号在**本工具没自己存过** diary_editor_font 时按全局字号选最接近的一档（用户在日记里选过就永远以日记为准），并监听 storage —— 在设置里改一次子页当场跟上。⑤ 回归：语法 0 失败（index.html 4/4 内联块、日记 3/3、backup-hub.js node --check）；U+FFFD 恒 0；index.html 保持 CRLF（3194=3194）、日记纯 LF；审计 ★缺口 0；真机 Edge 本地 + 线上回归与截图见 note 附注。⑥ 现场提示：推送前发现线上已被并发推到 V20260918m（seq 13），核对后确认线上 index.html 与我基线的差异**只有版本字面量**，于是以**刚拉下来的线上件**为基线重打了一遍补丁，未回退任何并发改动；cpa 工具页本轮不动，versions.json 里它的版本原样保留。",
   "files": {
-    "index.html": "V20260918m",
+    "index.html": "V20260918n",
     "sync-github.js": "V20260918d",
     "tools/CPA会计掌握度系统.html": "V20260917i",
     "tools/code-previewer.html": "V20260917i",
@@ -23,7 +23,7 @@
     "tools/恒星时间管理法.html": "V20260917i",
     "tools/成员管理.html": "V20260917i",
     "tools/旅行助手.html": "V20260917i",
-    "tools/日记.html": "V20260917g",
+    "tools/日记.html": "V20260918n",
     "tools/时间统计.html": "V20260917i",
     "tools/时间统计2.html": "V20260917i",
     "tools/朝暮计.html": "V20260918m",
@@ -38,6 +38,7 @@
     "tools/social/toolkit.html": "V20260918h",
     "tools/social/path.html": "V20260918h",
     "tools/social/action.html": "V20260918h",
-    "tools/social/wisdom.html": "V20260918h"
+    "tools/social/wisdom.html": "V20260918h",
+    "tools/backup-hub.js": "V20260918n"
   }
 }
