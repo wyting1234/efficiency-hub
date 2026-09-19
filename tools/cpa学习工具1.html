@@ -13453,6 +13453,30 @@
             // 缺失 / null → 自动档（不是 1，也不是 3）
             if (state.ktCfg.to === undefined || state.ktCfg.to === null) state.ktCfg.to = KT_TO_AUTO;
             if (state.ktCfg.to !== KT_TO_AUTO && state.ktCfg.to < state.ktCfg.from) state.ktCfg.to = state.ktCfg.from;
+
+
+            /* ★ 2026-09-19（F2 收尾）：上一轮把默认档 KT_DEF_TO 从 5 改到 7，但那只改
+
+               「缺失时取什么」，**治不了已经落盘的 5** —— ktCfg.to 是持久化的（见
+
+               saveData），老版本默认写下的 5 会一直把「显示范围」钉在第 5 级，
+
+               于是速记的第 3 层（第 6–7 级）在树上凭空消失，用户看到的就是
+
+               「知识树没有联动 / 层级内容对不上」。
+
+               这里做**一次性**迁移：把老默认值 5 压回自动档（toV2 做闸门，只跑一次；
+
+               之后用户主动再选 5 不会被重置）。判定只认「恰好等于 5」，不碰其它值。 */
+
+            if (!state.ktCfg.toV2) {
+
+                state.ktCfg.toV2 = 1;
+
+                if (state.ktCfg.to === 5) state.ktCfg.to = KT_TO_AUTO;
+
+            }
+
             // ★ 2026-09-18：「一键编号」开关。只存开关本身 —— 模版是**共享偏好**
             //   （hub_cpa_kp_tmpl_v1，与「记录学习 → 模版设置」同一份），不在这里存第二份。
             if (state.ktCfg.num === undefined || state.ktCfg.num === null) state.ktCfg.num = false;
@@ -14312,6 +14336,34 @@
                     return it.raw && it.raw.indexOf(n.name) >= 0;
                 });
             }
+
+
+            /* ★ 2026-09-19（需求 P）：标记**按来源分层级**，不再互相串。
+
+               Tom 的口径：「学习记录的重点星标只打到 4 级知识点，1–3 级是其他地方打的，
+
+               不要乱了」。于是：
+
+                 · 知识点行（4–7 级）只认**学习记录**（rec）的标记，且**只落第 4 级**
+
+                   （知识点1级）—— 记录级标记撒到它名下每一个知识点行上，屏上就是
+
+                   「一章几十行全挂 ★」，等于没有信息；
+
+                 · 科目 / 章 / 节（1–3 级）只认**计划层预设**（preset，内容模块里配的），
+
+                   学习记录的标记**不再上卷**到这三行。 */
+
+            if (n.kind === 'kp') {
+
+                hit = (n.lv === 4) ? hit.filter(function (it) { return it.src === 'rec'; }) : [];
+
+            } else {
+
+                hit = hit.filter(function (it) { return it.src === 'preset'; });
+
+            }
+
             /* ★ 需求3：每个符号先看**它自己**那一档开没开 —— 三个开关彼此独立，
                所以「★ 关了、▲ 和 ？ 还开着」是完全正常的组合，不能再像原来那样
                用一次 some() 把三个一起决定出不出。 */
@@ -15170,9 +15222,21 @@
                 parts.push(cfg.course ? cfg.course : '全部科目');
                 if (+cfg.chapter > 0) parts.push('第 ' + cfg.chapter + L('chapter'));
                 if (+cfg.section > 0) parts.push('第 ' + cfg.section + L('section'));
+                /* ★ 2026-09-19：范围把更深的知识点挡住时，明确写出来 —— 否则用户看到
+
+                   「写了 3 层、树上只有 2 层」，只会当成「没联动」（本轮根因就是它：
+
+                   老存档把 ktCfg.to 钉在第 5 级，第 6–7 级被裁掉）。 */
+
+                const _deep = ktMaxTier(all);          // 已被绝对层级（4–7），不再 +3
+
+                const _clipped = (cfg.to !== KT_TO_AUTO) && visTo < _deep;
+
                 statEl.textContent = parts.join(' · ') + ' —— ' + total + ' 个节点' +
                     ' · 七级链路（科目›章›节›知识点1–4级）' +
                     ' · 显示 第' + cfg.from + '–' + visTo + ' 级' + (cfg.to === KT_TO_AUTO ? '（默认档）' : '') +
+                    (_clipped ? ' · ⚠️ 还有更深的层级被显示范围挡住（第 ' + (visTo + 1) + ' 级起，终点选「默认」可看全）' : '') +
+
                     (cfg.num ? ' · 编号模版「' + ktTmplName(ktCurTmpl()) + '」' : '');
             }
 
@@ -19523,7 +19587,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918af</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ag</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
