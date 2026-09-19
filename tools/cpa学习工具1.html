@@ -1075,6 +1075,17 @@
             border-color: var(--primary-light);
             box-shadow: var(--shadow);
         }
+        /* ★ 2026-09-19（需求 T）：学习记录条目默认折叠 —— 头部常显，
+           正文（时间 / 思路 / 速记 / 笔记）点击头部展开；▸ 随展开态旋转。 */
+        .record-card .fold-ind {
+            display: inline-block;
+            font-size: 12px;
+            opacity: .55;
+            margin-right: 6px;
+            transition: transform var(--transition);
+        }
+        .record-card:not(.folded) .fold-ind { transform: rotate(90deg); }
+        .record-card.folded .rec-fold { display: none; }
         .record-card .top {
             display: flex;
             justify-content: space-between;
@@ -3956,6 +3967,12 @@
                 <input type="text" id="filterRecQuery" placeholder="搜知识点 / 备注"
                        title="在当前科目的学习记录里搜关键词：知识点速记、备注、解题思路、记忆网络、闪卡补充笔记都算。搜不到时若别的科目有，会直接告诉你是哪个科目。"
                        style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-primary);font-size:12px;min-width:120px;flex:0 1 150px;height:26px;" />
+                <!-- ★ 2026-09-19（需求 S）：强制清理 —— 按**关键词**连根拔。
+                     「湖北」这类脏数据删卡不删记录会在下次生成时回来、删记录不删卡会以
+                     「未关联记录」残留挂着，这里一次删掉 命中记录 + 命中卡（含复习历史与笔记）。 -->
+                <button type="button" id="filterRecNuke"
+                        title="强制清理：输入关键词，一次性删除命中的学习记录与闪卡（含复习历史与笔记）。删除前会先列出命中数量；建议先导出备份。不可撤销。"
+                        style="padding:4px 10px;border:1px solid #dcb3b3;border-radius:6px;background:#fdf4f2;color:#a04545;font-size:12px;height:26px;cursor:pointer;flex:0 0 auto;">🧯 强制清理</button>
             </div>
         <div class="rec-export">
                 <button type="button" class="rec-exp-btn" id="expRecXlsxBtn">📊 导出 Excel</button>
@@ -7631,6 +7648,36 @@
             return out;
         }
 
+        /* ★ 2026-09-19（需求 S）：强制清理 —— 按**关键词**硬删。
+           派生链是 记录 → 知识树/闪卡：删卡不删记录，下次「生成 / 更新」原样回来；
+           删记录不删卡，卡按设计（复习历史必须保留）以「未关联记录」永久残留。
+           这里给一把连根拔的工具：命中记录 + 命中卡（连同 card.review 复习历史与
+           cardNotes[id] 笔记）一次删净，再静默重建闪卡。删除不可撤销，确认框先报命中数。 */
+        function recNukeByKeyword() {
+            const kw = (window.prompt('强制清理：输入要连根清除的关键词（例如「湖北」）。\n将删除：命中的学习记录 + 命中的闪卡（含其复习历史与笔记）。\n建议先「📊 导出 Excel」或设置里导出备份。此操作不可撤销。', '') || '').trim();
+            if (!kw) return;
+            const k = kw.toLowerCase();
+            const hitRecs = (state.records || []).filter(function (r) { return recSearchBlob(r).indexOf(k) >= 0; });
+            const hitCards = Object.keys(state.cards || {}).filter(function (id) {
+                const c = state.cards[id]; if (!c) return false;
+                const blob = [c.q, c.a, (c.tags || []).join(' ')].join('\n').toLowerCase();
+                return blob.indexOf(k) >= 0;
+            });
+            if (!hitRecs.length && !hitCards.length) { alert('没有命中「' + kw + '」的学习记录或闪卡。'); return; }
+            const recList = hitRecs.slice(0, 8).map(function (r) {
+                return '  · ' + (r.course || '?') + ' / 第' + (r.chapter || '?') + '章 / 第' + (r.section || '?') + '节';
+            }).join('\n') + (hitRecs.length > 8 ? '\n  ……（仅列前 8 条）' : '');
+            if (!confirm('命中「' + kw + '」：\n学习记录 ' + hitRecs.length + ' 条：\n' + recList + '\n闪卡 ' + hitCards.length + ' 张（含复习历史与笔记）。\n\n确认全部删除？不可撤销。')) return;
+            const recIds = {}; hitRecs.forEach(function (r) { recIds[r.id] = 1; });
+            state.records = (state.records || []).filter(function (r) { return !recIds[r.id]; });
+            hitCards.forEach(function (id) { delete state.cards[id]; if (state.cardNotes) delete state.cardNotes[id]; });
+            if (typeof ktNoteCacheReset === 'function') { try { ktNoteCacheReset(); } catch (e) {} }
+            saveData();
+            if (typeof fcBuild === 'function') { try { fcBuild(true); } catch (e) {} }
+            renderAll();
+            alert('已强制清理「' + kw + '」：删除学习记录 ' + hitRecs.length + ' 条、闪卡 ' + hitCards.length + ' 张（含复习历史与笔记）。\n知识树与闪卡列表已按剩余记录重建。');
+        }
+
         function renderRecords() {
             const container = document.getElementById('recordList');
             const course = state.currentCourse;
@@ -7711,7 +7758,7 @@
                 const sectionDisplay = secName ? `第${r.section}${L('section')} ${secName}` : `第${r.section}${L('section')}`;
 
                 html += `
-                    <div class="record-card" data-id="${r.id}">
+                    <div class="record-card${state._recExpand && state._recExpand.has(r.id) ? '' : ' folded'}" data-id="${r.id}">
                         <div class="top">
                             <div class="left">
                                 <span class="chapter">${chapterDisplay} <span class="sec">· ${sectionDisplay}</span></span>
@@ -7728,12 +7775,14 @@
                                 <div class="stars">${stars}</div>
                             </div>
                             <div class="right">
+                                <span class="fold-ind" title="点击头部任意处展开 / 收起详情">▸</span>
                                 <span class="duration">${durationDisplay}</span>
                                 <button class="kttree-btn" data-id="${r.id}" title="在知识树中定位这条记录：切到知识树、筛好科目/章/节、展开并高亮对应的知识点行">🌳</button>
                                 <button class="edit-btn" data-id="${r.id}" title="编辑">✎</button>
                                 <button class="delete-btn" data-id="${r.id}" title="删除">✕</button>
                             </div>
                         </div>
+                        <div class="rec-fold">
                         ${timeDisplay ? `<div class="time-row"><span class="time-badge">⏱️ ${timeDisplay}</span></div>` : ''}
                         ${(() => {
                             // 展示内容 / 展示方式由 CpaRecView 提供（见 tools 内联的增强脚本）
@@ -7757,6 +7806,7 @@
                             if (h === '<div class="bottom">') h += '<div class="item full"><span class="val empty">（展示内容已全部隐藏，可在列表上方「展示内容」里勾选回来）</span></div>';
                             return h + '</div>';
                         })()}
+                        </div>
                     </div>
                 `;
             });
@@ -7805,6 +7855,24 @@
                 if (more) {
                     state.recordLimit = (state.recordLimit || 120) + 120;
                     renderRecords();
+                    return;
+                }
+                /* ★ 2026-09-19（需求 T）：点击卡片头部 = 展开 / 收起正文。
+                   展开态记在 state._recExpand（Set），筛选 / 分页重渲染后不丢；
+                   编辑 / 删除 / 定位按钮已在上面的分支里 return，不会误触。 */
+                const topHit = e.target.closest ? e.target.closest('.record-card > .top') : null;
+                if (topHit) {
+                    const card = topHit.closest('.record-card');
+                    const id = card.dataset.id;
+                    if (!state._recExpand) state._recExpand = new Set();
+                    if (card.classList.contains('folded')) {
+                        card.classList.remove('folded');
+                        state._recExpand.add(id);
+                    } else {
+                        card.classList.add('folded');
+                        state._recExpand.delete(id);
+                    }
+                    return;
                 }
             });
             container.addEventListener('dblclick', function (e) {
@@ -7929,6 +7997,8 @@
                 let _qt = null;
                 _fQEl.addEventListener('input', () => { clearTimeout(_qt); _qt = setTimeout(() => renderRecords(), 180); });
             }
+            const _nukeEl = document.getElementById('filterRecNuke');
+            if (_nukeEl) _nukeEl.addEventListener('click', recNukeByKeyword);
 
             const starFilter = document.getElementById('starFilter');
             starFilter.addEventListener('click', (e) => {
@@ -11488,7 +11558,8 @@
                                 // ★ 卡片反面 = 直接下级。拆解上限之外的那一格（最后一格）
                                 //   已不作为独立节点，但它的文本由 fcRecOutline 的 direct 带出，
                                 //   从这里进 answers；下面 walk() 还会把 kids 的名字并进来（去重）。
-                                answers: (c.direct || []).slice()
+                                answers: (c.direct || []).slice(),
+                                answersH: (c.directH || []).slice()
                             };
                             nodes[pkey] = node;
                             // 挂到父节点下：
@@ -11525,24 +11596,33 @@
                 const walk = function (list) {
                     list.forEach(function (node, i) {
                         node.order = i + 1;
-                        (node.kids || []).forEach(function (k) { node.answers.push(k.name); });
+                        (node.kids || []).forEach(function (k) {
+                            node.answers.push(k.name);
+                            if (!node.answersH) node.answersH = [];
+                            node.answersH.push(k.h || null);
+                        });
                         flat.push(node);
                         walk(node.kids || []);
                     });
                 };
                 walk(roots);
                 flat.forEach(function (node) {
-                    const seen = {};
-                    node.answers = node.answers.filter(function (nm) {
-                        if (seen[nm]) return false;
-                        seen[nm] = 1; return true;
+                    /* ★ 需求 S：去重时 answersH 必须与 answers **同步**走（按下标配对），
+                       否则格式会错位到别的行上。 */
+                    const seen = {}; const _A = []; const _H = [];
+                    (node.answers || []).forEach(function (nm, i) {
+                        if (seen[nm]) return;
+                        seen[nm] = 1;
+                        _A.push(nm); _H.push((node.answersH || [])[i] || null);
                     });
+                    node.answers = _A; node.answersH = _H;
                     node.childUids = (node.kids || []).map(function (k) { return fcUid(k); });
                     rows.push({
                         sig: fcSig(node.course, node.chapter, node.section, node.tier, node.order),
                         course: node.course, chapter: node.chapter, section: node.section,
                         tier: node.tier, order: node.order, name: node.name,
                         answers: node.answers,
+                        answersH: node.answersH || [],
                         childUids: node.childUids,
                         path: node.path.slice(),
                         /* ★ 2026-09-18（F1 根因修复）：h / ip 必须跟着**行对象**一起走。
@@ -11716,6 +11796,12 @@
                     .map(function (x) { return fcNormText(x && x.t); })
                     .filter(Boolean);
             };
+            /* ★ 需求 S：直接下级**各自的**格式（与 direct 平行的数组，没上色的格为 null）。
+               fcBuild 用它拼卡片反面的 aH —— 反面每一行与记录里那一行同一个颜色。 */
+            const directHOf = function (node) {
+                return ((node && node.c) || [])
+                    .map(function (x) { return (x && x.h) ? String(x.h) : null; });
+            };
             /* ★ 2026-09-18（需求1）：把 rec.kpRich 的「格式旁挂」当场套回树上 ——
                记录侧的速记编辑器本来就是这么显示的（applyRichMap，路径 + 纯文本双校验），
                这里再套一遍，知识树的那一行才与学习记录的那一行**同一个颜色**。
@@ -11737,7 +11823,7 @@
                     if (nm && (keepDeep || lv <= maxLv)) {
                         out.push({
                             name: nm, lv: lv, parents: parents, ancestors: anc,
-                            direct: directOf(node), deep: lv > maxLv,
+                            direct: directOf(node), directH: directHOf(node), deep: lv > maxLv,
                             /* ★ 需求1 新增两个字段（都是只读的，老消费者不受影响）：
                                h  = 这一格的格式，来自 rec.kpRich（上面已套好）
                                ip = 这一格在速记树里的序号路径，正是 rec.kpRich 的键
@@ -11836,6 +11922,29 @@
             return map;
         }
 
+        /* ★ 需求 S：记录格式 → 卡片格式的**校验搬运**。
+           h 是带颜色/加粗的 HTML；只有当它渲染出的纯文本（按 fcNormText 归一）与卡片
+           文字一致时才搬，否则宁可不带格式 —— 绝不把 A 格的颜色套到 B 文字上。 */
+        function fcSyncH(h, txt) {
+            if (!h || !window.CpaRich || typeof window.CpaRich.toText !== 'function') return null;
+            try {
+                const t = fcNormText(window.CpaRich.toText(h));
+                const w = fcNormText(txt);
+                return (t && w && t === w) ? h : null;
+            } catch (e) { return null; }
+        }
+        /* 反面是多行：有格式的行用它的 h，没格式的行转义原文；至少一行带格式才产出。 */
+        function fcSyncAH(hs, lines) {
+            if (!Array.isArray(hs) || !window.CpaRich || typeof window.CpaRich.esc !== 'function') return null;
+            let any = false;
+            const parts = (lines || []).map(function (ln, i) {
+                const h = fcSyncH(hs[i], ln);
+                if (h) { any = true; return h; }
+                return window.CpaRich.esc(String(ln == null ? '' : ln));
+            });
+            return any ? parts.join('<br>') : null;
+        }
+
         // ---------- 生成 / 更新 ----------
         function fcBuild(silent) {
             fcState();
@@ -11869,6 +11978,11 @@
                 // 反面 = 该节点的直接下级。数据源已是学习记录，这里的下级天然就是
                 // 「这条学习路径上真的遇到过的下一级」，无需再收窄。
                 let autoA = n.answers.join('\n');
+                /* ★ 需求 S：卡片正反面格式直接**从记录搬**（qH = 这一格自己的 h；
+                   aH = 各直接下级的 h 逐行校验后用 <br> 拼）。至此三处同源：
+                   学习记录（编辑器 applyRichMap）→ 知识树（n.h）→ 闪卡（qH/aH）。 */
+                const autoQH = fcSyncH(n.h, autoQ);
+                const autoAH = fcSyncAH(n.answersH, autoA.split('\n'));
                 const srcNow = {
                     course: n.course, chapter: n.chapter, section: n.section,
                     tier: n.tier, order: n.order, path: n.path.slice()
@@ -11889,6 +12003,8 @@
                         edited: false, hidden: false, deleted: false, pinMine: false, manual: false,
                         createdAt: today, editedAt: ''
                     };
+                    if (autoQH) card.qH = autoQH;
+                    if (autoAH) card.aH = autoAH;
                     state.cards[id] = card;
                     added++;
                 } else {
@@ -11907,14 +12023,24 @@
                             card.q = autoQ; card.a = autoA;
                             // ★ 文字被记录刷走了，旧格式必须一起作废 —— 否则那些 <span>
                             //   会套在完全不同的新文字上（比「格式丢失」更糟）。
-                            delete card.qH; delete card.aH;
+                            if (autoQH) card.qH = autoQH; else delete card.qH;
+                            if (autoAH) card.aH = autoAH; else delete card.aH;
                             card.edited = false;
                             card.editedAt = today;
                             refreshed++;
                         } else { kept++; }
                     }
-                    else if (card.q !== autoQ || card.a !== autoA) { card.q = autoQ; card.a = autoA; delete card.qH; delete card.aH; refreshed++; }
-                    else { kept++; }
+                    else if (card.q !== autoQ || card.a !== autoA) {
+                        card.q = autoQ; card.a = autoA;
+                        if (autoQH) card.qH = autoQH; else delete card.qH;
+                        if (autoAH) card.aH = autoAH; else delete card.aH;
+                        refreshed++;
+                    } else {
+                        kept++;
+                        // ★ 需求 S：文字没变也可能刚上了色 —— 格式仍要跟记录走
+                        if (autoQH) card.qH = autoQH; else delete card.qH;
+                        if (autoAH) card.aH = autoAH; else delete card.aH;
+                    }
                 }
                 seen[id] = 1;
             });
@@ -19900,7 +20026,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ai</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918aj</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
