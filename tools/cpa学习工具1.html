@@ -3945,6 +3945,17 @@
                     <button class="star-filter-btn" data-star="4"><span class="star-icon">★</span>4</button>
                     <button class="star-filter-btn" data-star="5"><span class="star-icon">★</span>5</button>
                 </div>
+                <!-- ★ 2026-09-19（需求 R）：章 / 节 筛选 + 关键词搜索。
+                     选项由「当前科目」现算（大纲 ∪ 记录里出现过的章 / 节），所以记录里选过的
+                     章一定筛得到；科目一换自动重置回「全部」。 -->
+                <span class="filter-label">📖 章</span>
+                <select id="filterRecChapter" title="只看某一章的学习记录"><option value="all">全部</option></select>
+                <span class="filter-label">📄 节</span>
+                <select id="filterRecSection" title="只看某一节的学习记录"><option value="all">全部</option></select>
+                <span class="filter-label">🔍 关键词</span>
+                <input type="text" id="filterRecQuery" placeholder="搜知识点 / 备注"
+                       title="在当前科目的学习记录里搜关键词：知识点速记、备注、解题思路、记忆网络、闪卡补充笔记都算。搜不到时若别的科目有，会直接告诉你是哪个科目。"
+                       style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-primary);font-size:12px;min-width:120px;flex:0 1 150px;height:26px;" />
             </div>
         <div class="rec-export">
                 <button type="button" class="rec-exp-btn" id="expRecXlsxBtn">📊 导出 Excel</button>
@@ -7519,6 +7530,107 @@
         }
 
         // ---------- 记录列表 ----------
+        /* ★ 2026-09-19（需求 R）：学习记录的「章 / 节」筛选 + 关键词搜索。
+           · 章 / 节的选项**现算**：大纲里的 1..maxCh ∪ 记录里出现过的章 / 节取并集 ——
+             「记录里选过的章一定筛得到」，不会出现「有记录但下拉里没这一章」。
+           · 科目一换就重置回「全部」：否则会带着上一个科目的章号去筛新科目，
+             看着就是「这个科目没有记录」，属于自找的假失败。 */
+        function recFilterReset(course) {
+            state._recFilterCourse = course;
+            state._recFilterCh = 'all';
+            state._recFilterSec = 'all';
+        }
+        function syncRecSectionOptions(course) {
+            const chEl = document.getElementById('filterRecChapter');
+            const secEl = document.getElementById('filterRecSection');
+            if (!chEl || !secEl) return;
+            const ch = chEl.value;
+            const keepSec = (state._recFilterSec || secEl.value || 'all');
+            const secSet = {};
+            if (ch === 'all') {
+                (state.records || []).forEach(function (r) {
+                    if (!r || r.course !== course) return;
+                    const s = parseInt(r.section, 10) || 0;
+                    if (s > 0) secSet[s] = 1;
+                });
+            } else {
+                const list = (typeof getSectionsForChapter === 'function') ? getSectionsForChapter(course, parseInt(ch, 10)) : [];
+                if (list && list.length) list.forEach(function (s) { secSet[s] = 1; });
+                (state.records || []).forEach(function (r) {
+                    if (!r || r.course !== course) return;
+                    if ((parseInt(r.chapter, 10) || 0) !== parseInt(ch, 10)) return;
+                    const s = parseInt(r.section, 10) || 0;
+                    if (s > 0) secSet[s] = 1;
+                });
+            }
+            const secs = Object.keys(secSet).map(Number).sort(function (a, b) { return a - b; });
+            secEl.innerHTML = '<option value="all">全部</option>';
+            secs.forEach(function (s) {
+                const o = document.createElement('option');
+                o.value = s;
+                const n = (ch !== 'all' && typeof getSectionName === 'function') ? getSectionName(course, parseInt(ch, 10), s) : '';
+                o.textContent = n ? ('第' + s + L('section') + ' ' + n) : ('第' + s + L('section'));
+                secEl.appendChild(o);
+            });
+            secEl.value = (keepSec !== 'all' && secSet[keepSec]) ? String(keepSec) : 'all';
+            state._recFilterSec = secEl.value;
+        }
+        function syncRecFilterOptions(course) {
+            const chEl = document.getElementById('filterRecChapter');
+            const secEl = document.getElementById('filterRecSection');
+            if (!chEl || !secEl) return;
+            if (state._recFilterCourse !== course) recFilterReset(course);
+            const chSet = {};
+            const maxCh = (typeof getMaxChapter === 'function') ? (getMaxChapter(course) || 0) : 0;
+            for (let i = 1; i <= maxCh; i++) chSet[i] = 1;
+            (state.records || []).forEach(function (r) {
+                if (!r || r.course !== course) return;
+                const c = parseInt(r.chapter, 10) || 0;
+                if (c > 0) chSet[c] = 1;
+            });
+            const chs = Object.keys(chSet).map(Number).sort(function (a, b) { return a - b; });
+            const keepCh = (state._recFilterCh || chEl.value || 'all');
+            chEl.innerHTML = '<option value="all">全部</option>';
+            chs.forEach(function (c) {
+                const o = document.createElement('option');
+                o.value = c;
+                const n = (typeof getChapterName === 'function') ? getChapterName(course, c) : '';
+                o.textContent = n ? ('第' + c + L('chapter') + ' ' + n) : ('第' + c + L('chapter'));
+                chEl.appendChild(o);
+            });
+            chEl.value = (keepCh !== 'all' && chSet[keepCh]) ? String(keepCh) : 'all';
+            state._recFilterCh = chEl.value;
+            syncRecSectionOptions(course);
+        }
+        /* 关键词搜索要覆盖「一条记录里所有能看到的文字」——
+           否则用户明明在卡片上看见了这几个字，搜索却说没有。 */
+        function recSearchBlob(r) {
+            if (!r) return '';
+            const parts = [r.kpQuickRaw, r.notes, r.problemSolving, r.memoryNetwork, r.aiQA,
+                r.assessmentReason, r.course, r.resourceType, r.source, r.selfAssessment, r.date];
+            try { (r.knowledgePoints || []).forEach(function (k) { if (k) parts.push(k.text); }); } catch (e) {}
+            try {
+                const fcn = window.CpaFcNotes;
+                if (fcn && fcn.ofRecord) {
+                    const d = fcn.ofRecord(r);
+                    (d.supplement || []).forEach(function (n) { parts.push(n.text); });
+                    (d.tip || []).forEach(function (n) { parts.push(n.text); });
+                }
+            } catch (e) {}
+            return parts.filter(Boolean).join('\n').toLowerCase();
+        }
+        // 关键词在其他科目里命中几条 —— 用来把「数据是不是丢了」一句话说清楚
+        function recSearchOtherCourses(course, qLower) {
+            const out = {};
+            (state.records || []).forEach(function (r) {
+                if (!r || r.course === course) return;
+                if (recSearchBlob(r).indexOf(qLower) < 0) return;
+                const k = r.course || '（无科目）';
+                out[k] = (out[k] || 0) + 1;
+            });
+            return out;
+        }
+
         function renderRecords() {
             const container = document.getElementById('recordList');
             const course = state.currentCourse;
@@ -7526,6 +7638,15 @@
             const filterSrcEl = document.getElementById('filterSource');
             const filterSrc = filterSrcEl ? filterSrcEl.value : 'all';
             const filterStar = state.filterStar;
+            // ★ 需求 R：章 / 节 筛选 + 关键词搜索（选项按当前科目现算，科目变了自动重置）
+            syncRecFilterOptions(course);
+            const _chEl = document.getElementById('filterRecChapter');
+            const _secEl = document.getElementById('filterRecSection');
+            const _qEl = document.getElementById('filterRecQuery');
+            const fRecCh = _chEl ? _chEl.value : 'all';
+            const fRecSec = _secEl ? _secEl.value : 'all';
+            const fQRaw = _qEl ? String(_qEl.value || '').trim() : '';
+            const fQ = fQRaw.toLowerCase();
 
             let records = state.records.filter(r => r.course === course);
             if (filterType !== 'all') {
@@ -7538,6 +7659,10 @@
                 const target = parseInt(filterStar);
                 records = records.filter(r => r.understanding === target);
             }
+            // ★ 需求 R：章 / 节 精确匹配 + 关键词全文命中
+            if (fRecCh !== 'all') records = records.filter(r => (parseInt(r.chapter, 10) || 0) === parseInt(fRecCh, 10));
+            if (fRecSec !== 'all') records = records.filter(r => (parseInt(r.section, 10) || 0) === parseInt(fRecSec, 10));
+            if (fQ) records = records.filter(r => recSearchBlob(r).indexOf(fQ) >= 0);
             records.sort((a, b) => (a.date < b.date ? 1 : -1));
 
             // 切换科目时重置分页，避免上一个科目的展开状态串味
@@ -7549,10 +7674,23 @@
             document.getElementById('recordListCount').textContent = `(${records.length})`;
 
             if (records.length === 0) {
+                const own = state.records.filter(r => r.course === course).length;
+                let msg = own === 0 ? '还没有学习记录，点击「添加记录」开始吧' : '没有匹配筛选条件的记录，试试调整筛选器';
+                // ★ 需求 R：关键词搜不到时把「谁身上有」直接说出来 ——
+                //   否则「搜不到」会被当成「数据丢了」，实际常常只是科目不对。
+                if (own > 0 && fQ) {
+                    const others = recSearchOtherCourses(course, fQ);
+                    const names = Object.keys(others);
+                    msg = names.length
+                        ? ('本科目「' + course + '」里没搜到「' + fQRaw + '」；但其他科目有：' +
+                           names.map(function (n) { return n + '（' + others[n] + ' 条）'; }).join('、') +
+                           ' —— 点左侧科目名切过去就能看到。')
+                        : ('全部科目都没搜到「' + fQRaw + '」（搜索范围：知识点速记、备注、解题思路、记忆网络、AI 问答、闪卡补充笔记）。');
+                }
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="icon">📭</div>
-                        <p>${state.records.filter(r => r.course === course).length === 0 ? '还没有学习记录，点击「添加记录」开始吧' : '没有匹配筛选条件的记录，试试调整筛选器'}</p>
+                        <p>${msg}</p>
                     </div>
                 `;
                 return;
@@ -7772,6 +7910,25 @@
             document.getElementById('filterResourceType').addEventListener('change', () => { renderRecords(); });
             const fsEl = document.getElementById('filterSource');
             if (fsEl) fsEl.addEventListener('change', () => { renderRecords(); });
+
+            // ★ 需求 R：章 / 节 筛选 + 关键词搜索
+            const _fChEl = document.getElementById('filterRecChapter');
+            if (_fChEl) _fChEl.addEventListener('change', () => {
+                state._recFilterCh = _fChEl.value;
+                state._recFilterSec = 'all';
+                syncRecSectionOptions(state.currentCourse);
+                renderRecords();
+            });
+            const _fSecEl = document.getElementById('filterRecSection');
+            if (_fSecEl) _fSecEl.addEventListener('change', () => {
+                state._recFilterSec = _fSecEl.value;
+                renderRecords();
+            });
+            const _fQEl = document.getElementById('filterRecQuery');
+            if (_fQEl) {
+                let _qt = null;
+                _fQEl.addEventListener('input', () => { clearTimeout(_qt); _qt = setTimeout(() => renderRecords(), 180); });
+            }
 
             const starFilter = document.getElementById('starFilter');
             starFilter.addEventListener('click', (e) => {
@@ -11872,6 +12029,69 @@
             return n;
         }
 
+        /* ★ 2026-09-19（需求 R2）：来源体检 —— 有哪些卡**已经没有任何学习记录支撑**了。
+           症状：列表里每一行都写着「未关联记录」。
+           成因：卡是从学习记录派生的，但那条记录后来被删了 / 科目改了名 / 章节点换了位置，
+                 而卡片本身按设计**永不自动删除**（复习历史必须留着），于是旧内容一直挂着。
+           判定口径与 fcProgressOf 里的 linked **完全一致**（fcSourceRecords 为空即无来源），
+           所以「按钮说有 N 张」与「列表里 N 行写着未关联记录」必然对得上，不会各说各话。 */
+        function fcNoSrcCards() {
+            fcState();
+            return fcVisibleCards().filter(function (c) {
+                if (!c || c.manual) return false;
+                return fcSourceRecords(c).length === 0;
+            });
+        }
+        // 按（科目 | 章 | 节）归堆 —— 直接告诉用户「这些卡自称来自哪儿」
+        function fcNoSrcGroups(list) {
+            const g = {};
+            (list || []).forEach(function (c) {
+                const s = c.src || {};
+                const k = [s.course || '（无科目）', s.chapter || 0, s.section || 0].join('|');
+                g[k] = (g[k] || 0) + 1;
+            });
+            return Object.keys(g).map(function (k) {
+                const p = k.split('|');
+                return { label: p[0] + ' 第' + p[1] + '章 第' + p[2] + '节', n: g[k] };
+            }).sort(function (a, b) { return b.n - a.n; });
+        }
+        function fcCleanNoSrc() {
+            const list = fcNoSrcCards();
+            if (!list.length) { showToast('没有需要清理的卡片'); return; }
+            const gs = fcNoSrcGroups(list);
+            const head = gs.slice(0, 6).map(function (x) { return '· ' + x.label + '：' + x.n + ' 张'; }).join('\n');
+            if (!confirm('清理 ' + list.length + ' 张「来源记录已不存在」的卡？\n\n' + head +
+                (gs.length > 6 ? '\n· …… 另有 ' + (gs.length - 6) + ' 处' : '') +
+                '\n\n说明：只是打「已删除」标记 —— 不再出现在列表与复习轮转里；\n' +
+                '复习历史与笔记不会丢，顶部「🗑 恢复已删除」随时可以找回。')) return;
+            const today = dateToStr(new Date());
+            list.forEach(function (c) { c.deleted = true; c.deletedAt = today; });
+            saveData();
+            fcRender();
+            showToast('🧹 已清理 ' + list.length + ' 张无来源的卡（可点「🗑 恢复已删除」找回）');
+        }
+        // 数量为 0 时把按钮摘掉，>0 时挂上并更新文案（与 fcSyncRestoreBtn 同一套做法）
+        function fcSyncNoSrcBtn(n) {
+            const head = document.querySelector('#fcWrap .fc-head');
+            if (!head) return;
+            const cnt = (typeof n === 'number') ? n : fcNoSrcCards().length;
+            let btn = document.getElementById('fcNoSrcBtn');
+            if (!cnt) { if (btn && btn.parentNode) btn.parentNode.removeChild(btn); return; }
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.type = 'button';
+                btn.id = 'fcNoSrcBtn';
+                btn.className = 'fc-btn';
+                btn.addEventListener('click', fcCleanNoSrc);
+                const ref = document.getElementById('fcBulkDelBtn');
+                if (ref && ref.parentNode) ref.parentNode.insertBefore(btn, ref);
+                else head.appendChild(btn);
+            }
+            btn.textContent = '🧹 清理无来源的卡 (' + cnt + ')';
+            btn.title = '这 ' + cnt + ' 张卡的来源学习记录已经不在了（列表里写着「未关联记录」），内容停在生成那一刻。\n' +
+                '点一下把它们标记为已删除：不再出现在列表与复习轮转里，复习历史与笔记保留，可「恢复已删除」找回。';
+        }
+
         /* ★ 2026-09-18（需求 A）：批量删除模式开关。
            **只放内存、不落盘** —— 这是个「一次性动作模式」，刷新后回到关闭态更安全，
            免得下次打开页面就处在「一点就删」的状态里。 */
@@ -12425,6 +12645,7 @@
             const body = document.getElementById('fcBody');
             if (!body) return;
             const all = fcVisibleCards();
+            const _noSrc = fcNoSrcCards();
             const cfg = state.cardCfg;
             const from = Math.max(1, parseInt(cfg.from, 10) || 1);
             const to = Math.max(from, parseInt(cfg.to, 10) || 99);
@@ -12438,11 +12659,13 @@
                        (cfg.scopeAll
                            ? '范围＝整棵树'
                            : '范围＝学习记录' + (lr.skipped ? '（' + lr.skipped + ' 个节点还没学到）' : '')) +
-                       ' · 复习周期与记忆曲线共用')
+                       ' · 复习周期与记忆曲线共用' +
+                       (_noSrc.length ? ' · ⚠️ ' + _noSrc.length + ' 张卡的来源记录已不存在' : ''))
                     : '尚未生成';
             }
             const hiddenN = fcHiddenCount();
             fcSyncUnhideBtn(hiddenN);
+            try { fcSyncNoSrcBtn(_noSrc.length); } catch (e) {}
             const badge = document.getElementById('fcDueBadge');
             if (badge) {
                 const n = fcPendingCards().length;
@@ -19677,7 +19900,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ah</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ai</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
