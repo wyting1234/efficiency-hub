@@ -1075,7 +1075,7 @@
             border-color: var(--primary-light);
             box-shadow: var(--shadow);
         }
-        /* ★ 2026-09-19（需求 T）：学习记录条目默认折叠 —— 头部常显，
+        /* ★ 2026-09-19（需求 U）：学习记录条目默认折叠 —— 头部常显，
            正文（时间 / 思路 / 速记 / 笔记）点击头部展开；▸ 随展开态旋转。 */
         .record-card .fold-ind {
             display: inline-block;
@@ -7857,7 +7857,7 @@
                     renderRecords();
                     return;
                 }
-                /* ★ 2026-09-19（需求 T）：点击卡片头部 = 展开 / 收起正文。
+                /* ★ 2026-09-19（需求 U）：点击卡片头部 = 展开 / 收起正文。
                    展开态记在 state._recExpand（Set），筛选 / 分页重渲染后不丢；
                    编辑 / 删除 / 定位按钮已在上面的分支里 return，不会误触。 */
                 const topHit = e.target.closest ? e.target.closest('.record-card > .top') : null;
@@ -15380,27 +15380,53 @@
             return null;
         }
 
-        /* 写：树 → 记录（内容）。改写 rec.kpQuickRaw 那一行。返回改了几条记录。 */
+        /* ★ 2026-09-19（需求 U）：宽松兜底 —— 精确路径定位失败（行数或层级被改过，
+           ktLnLocate 返回 null）或该行找不到旧名后缀时，退而在该条记录的**每一行**上
+           试后缀替换。ktLnRename 自带防呆：只认「行尾与旧名归一化相等」的行，
+           行首编号/缩进一字不动，且只换行不增删行 ⇒ 大纲行数不会被搞乱。
+           代价：同一条记录里若有**同名**知识点（不同分支），会被一起改名 ——
+           实测「改不动、旧名（如「湖北」）下次重建又长回来」比「多改一个同名」更伤，取舍如此。 */
+        function ktLnLooseRename(rec, oldName, newName) {
+            var raw = String(rec.kpQuickRaw || '');
+            if (!raw || !ktLnNorm(oldName)) return 0;
+            var arr = raw.split('\n'), n = 0;
+            for (var i = 0; i < arr.length; i++) {
+                var nl = ktLnRename(arr[i], oldName, newName);
+                if (nl !== null && nl !== arr[i]) { arr[i] = nl; n++; }
+            }
+            if (n) rec.kpQuickRaw = arr.join('\n');
+            return n;
+        }
+
+        /* 写：树 → 记录（内容）。改写 rec.kpQuickRaw 那一行。返回改了几条记录。
+           ★ 需求 U：每条候选先走精确路径（ktLnLocate），失败则降级 ktLnLooseRename。 */
         function ktLnWriteName(row, oldName, newName) {
             if (!row) return 0;
-            var cands = ktLnCands(row), hit = 0;
+            var cands = ktLnCands(row), hit = 0, loose = 0;
             for (var i = 0; i < cands.length; i++) {
+                var done = false;
                 var m = ktLnLocate(cands[i], row);
-                if (!m) continue;
-                var nl = ktLnRename(m.line, oldName, newName);
-                if (nl === null || nl === m.line) continue;
-                var arr = String(m.rec.kpQuickRaw || '').split('\n');
-                arr[m.i] = nl;
-                m.rec.kpQuickRaw = arr.join('\n');
-                hit++;
+                if (m) {
+                    var nl = ktLnRename(m.line, oldName, newName);
+                    if (nl !== null && nl !== m.line) {
+                        var arr = String(m.rec.kpQuickRaw || '').split('\n');
+                        arr[m.i] = nl;
+                        m.rec.kpQuickRaw = arr.join('\n');
+                        hit++; done = true;
+                    }
+                }
+                if (!done) {
+                    var k = ktLnLooseRename(cands[i], oldName, newName);
+                    if (k) { hit++; loose += k; }
+                }
             }
             if (!hit) {
-                ktToast('⚠️ 名字在知识树上已改，但学习记录里的速记原文没能对上号（行数或层级被改过）—— 请到那条记录里核对一下');
+                ktToast('⚠️ 名字在知识树上已改，但学习记录的速记原文里没找到旧名（原文可能被改得对不上了）—— 请到那条记录里核对一下');
                 return 0;
             }
             try { if (typeof saveData === 'function') saveData(); } catch (e) {}
             try { if (typeof renderRecords === 'function') renderRecords(); } catch (e) {}
-            ktToast('✏️ 已改名，并同步写回 ' + hit + ' 条学习记录的速记原文');
+            ktToast('✏️ 已改名，并同步写回 ' + hit + ' 条学习记录的速记原文' + (loose ? '（其中 ' + loose + ' 行走宽松匹配）' : ''));
             return hit;
         }
 
@@ -20026,7 +20052,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918aj</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ak</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
