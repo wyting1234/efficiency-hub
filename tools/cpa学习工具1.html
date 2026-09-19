@@ -284,9 +284,12 @@
         .progress-stats .p-item .p-value .todo { color: var(--red); }
         .progress-stats .p-item .p-value .highlight { color: var(--primary); }
 
+        /* ★ 2026-09-19（需求Z3）：倒计时从「独立一整行」改成「🎯 考试项目」这一行右端的小胶囊。
+           原来它是 margin:8px 12px 0 的通栏块（自带背景 / 边框、居中一行），
+           在手机上凭空吃掉一整行高度；现在并进标题行，margin-left:auto 顶到右端。 */
         .exam-countdown {
-            margin: 8px 12px 0; padding: 7px 10px; border-radius: 8px;
-            font-size: 12.5px; font-weight: 600; text-align: center;
+            margin-left: auto; padding: 2px 9px; border-radius: 999px;
+            font-size: 11px; font-weight: 600; line-height: 1.8; white-space: nowrap;
             background: rgba(138, 115, 88, 0.1); color: var(--primary);
             border: 1px solid rgba(138, 115, 88, 0.22);
         }
@@ -446,23 +449,29 @@
 
         .sidebar-encouragement {
             border-top: 1px solid var(--border);
-            padding-top: 16px;
-            margin-top: 4px;
+            padding-top: 8px;
+            margin-top: 2px;
             text-align: center;
             font-size: 13px;
             color: var(--text-secondary);
-            line-height: 1.6;
+            line-height: 1.45;
         }
-        .sidebar-encouragement .quote-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+        /* ★ 2026-09-19（需求Z3）：这一块原来是「💪 / 主句 / 副句」三行，手机上把课程
+           列表挤得只剩两行可见。压成两行（图标 + 主句同行、副句紧随）并收掉上下留白 ——
+           省下的纵向空间会被 .course-list(flex:1) 直接吃掉，即「留出更多空间给科目显示」。 */
+        .sidebar-encouragement .quote-icon { display: inline-block; font-size: 14px; margin: 0 5px 0 0; vertical-align: -1px; }
         .sidebar-encouragement .main-text {
+            display: inline;
             font-weight: 600;
             color: var(--primary);
-            font-size: 14px;
+            font-size: 12.5px;
         }
         .sidebar-encouragement .sub-text {
-            font-size: 12px;
+            display: block;
+            font-size: 11px;
             color: var(--text-secondary);
             opacity: 0.8;
+            margin-top: 1px;
         }
 
         
@@ -1377,6 +1386,15 @@
             margin-bottom: 6px;
             font-weight: 600;
         }
+        /* ★ 2026-09-19（需求Z3）：标题行 —— 🎯 考试项目 在左、倒计时胶囊在右。
+           单独一行容器，是为了让倒计时能跟着标题走（原来它挂在 #progressStats 后面）。 */
+        .project-switcher-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .project-switcher-head label { margin-bottom: 0; }
         .project-switcher-row {
             display: flex;
             gap: 4px;
@@ -3363,6 +3381,19 @@
         .kt-me-open:hover { border-color: var(--primary-light); background: #FDFBF6; }
         .kt-me-openmore { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
         @media print { .kt-mark-edit { display: none !important; } }
+        /* ★ 2026-09-19（需求Z2）：知识树的「🖨️ 打印 / 📄 导出 PDF」。
+           写进 #printArea 的是**屏上这一棵树的克隆**（见 ktTreeSnapshot），类名与页面里
+           那套完全一致，所以这里只需处理一件事：.kt-tree 的 min-width:max-content 是
+           为了横向滚动，纸上要它换行。层级缩进（.kt-branch > .kt-kids 的 margin-left）
+           与 ★▲？ 标记都原样带走，不必另写一遍。 */
+        @media print {
+            #printArea .kt-print { padding: 0; }
+            #printArea .kt-tree { min-width: 0 !important; overflow: visible !important; }
+            #printArea .kt-print-head { margin: 0 0 10px; }
+            #printArea .kt-print-head h2 { margin: 0 0 4px; font-size: 18px; }
+            #printArea .kt-print-head .kt-print-sub { font-size: 12px; color: #555; line-height: 1.5; }
+            #printArea .kt-caret { color: #999; }
+        }
 
         /* ===== 学习记录列表：展示内容 / 展示方式 控件条 ===== */
         .rec-display-bar {
@@ -3522,7 +3553,12 @@
         </div>
         <!-- 项目（考试）切换 -->
         <div class="project-switcher">
-            <label for="projectSelect">🎯 考试项目</label>
+            <div class="project-switcher-head">
+                <label for="projectSelect">🎯 考试项目</label>
+                <!-- ★ 2026-09-19（需求Z3）：倒计时搬到这里（原来是 #progressStats 之后独立一行）。
+                     写成**静态节点**：位置固定在标题行右端，JS 只负责改文案 / 显隐。 -->
+                <span id="examCountdown" class="exam-countdown" style="display:none"></span>
+            </div>
             <div class="project-switcher-row">
                 <select id="projectSelect" title="切换考试项目"></select>
                 <button type="button" id="addProjectBtn" title="新增考试项目">＋</button>
@@ -4031,6 +4067,12 @@
                     <span class="fc-spacer"></span>
                     <button type="button" class="fc-btn" id="ktExpandAll" title="展开当前选中节的所有节点">＋ 全部展开</button>
                     <button type="button" class="fc-btn" id="ktCollapseAll" title="收拢当前选中节的所有节点">－ 全部收拢</button>
+                    <!-- ★ 2026-09-19（需求Z2）：打印 / 导出 PDF / 导出 MD。
+                         范围 = **屏上这一棵**（含展开态、收拢态、搜索过滤），不是全量数据 ——
+                         所以三个入口都是「克隆已经渲染好的那棵树」，不重算一遍。 -->
+                    <button type="button" class="fc-btn" id="ktPrintBtn" title="打印当前知识树视图：打出来的就是屏上这一棵（含展开 / 收拢与搜索过滤的结果）">🖨️ 打印</button>
+                    <button type="button" class="fc-btn" id="ktPdfBtn" title="导出 PDF：会打开打印对话框，在「目标 / 打印机」里选「另存为 PDF」即可">📄 导出 PDF</button>
+                    <button type="button" class="fc-btn" id="ktMdBtn" title="导出 Markdown：按屏上这一棵的层级缩进写成 .md（含一键编号与 ★▲？ 标记）">📥 导出 MD</button>
                 </div>
                 <div class="kt-bar">
                     <label>科目 <select id="ktCourse"></select></label>
@@ -4042,6 +4084,12 @@
                     </span>
                     <!-- ★ 2026-09-18（需求 C）：把行尾的「层级名 / N 项」换成符号 -->
                     <button type="button" class="fc-btn" id="ktSymBtn" title="层级角标：打开后在每行行尾显示一个层级符号（科目/章/节/知识点1-4级各一个）。默认关闭 —— 层级另有颜色、缩进、一键编号三条线索。符号取自「模版设置 → 🔣 每级符号」，与编号体系的符号体同源">🔣 层级角标</button>
+                    <!-- ★ 2026-09-19（需求Z1）：隐藏未学。
+                         判据与「📚 进度统计」的已学科目 / 已学章 / 已学节**同一口径**：
+                         这个科目 / 章 / 节上有没有一条学习记录；没有 = 未学，连整支收起来。
+                         知识点行（第 4–7 级）不受影响 —— 它们本来就只来自学习记录，
+                         有行的前提就是学过，所以恒为「已学」。 -->
+                    <button type="button" class="fc-btn" id="ktHideUnBtn" title="隐藏未学：把**没有任何学习记录**的科目 / 章 / 节连整支收起来（与「📚 进度统计」的已学口径一致）。知识点天然来自学习记录，不受影响。开关会记住。">🙈 隐藏未学</button>
                     <!-- ★ 2026-09-18（追加，需求3）：重点 / 难点 / 疑点 的显示开关。
                          三个符号**可以同时出**，各有一个开关、各自点亮，互相独立
                          （也独立于左边的「🔣 符号」）。
@@ -5119,15 +5167,20 @@
         function applyExamCountdown() {
             let box = document.getElementById('examCountdown');
             const cd = getExamCountdown();
-            if (!cd) { if (box) box.remove(); return; }
+            /* ★ 2026-09-19（需求Z3）：倒计时搬进「🎯 考试项目」标题行之后，两件事必须跟着改：
+                 · 没有考期时**隐藏**（原来是 remove 节点）—— 静态节点写在 HTML 里，
+                   删掉的话下次得重建到旧位置（#progressStats 之后），一行两处会打架；
+                 · 兜底新建也挂进 .project-switcher（只在老存档 / 局部内嵌时才走到）。 */
             if (!box) {
-                const anchor = document.getElementById('progressStats');
+                const anchor = document.querySelector('.project-switcher-head')
+                    || document.querySelector('.project-switcher');
                 if (!anchor) return;
-                box = document.createElement('div');
+                box = document.createElement('span');
                 box.id = 'examCountdown';
                 box.className = 'exam-countdown';
-                anchor.parentNode.insertBefore(box, anchor.nextSibling);
+                anchor.appendChild(box);
             }
+            if (!cd) { box.style.display = 'none'; box.textContent = ''; return; }
             const p = getCurrentProject();
             const label = (p && p.projectType === 'skill') ? '目标日' : '考试';
             let txt, cls;
@@ -5143,6 +5196,7 @@
             }
             box.className = 'exam-countdown ' + cls;
             box.textContent = '⏳ ' + txt;
+            box.style.display = '';
         }
 
         // ============================================================
@@ -14067,6 +14121,10 @@
             KT_MARKS.forEach(function (mk) {
                 if (typeof state.ktCfg.marks[mk.id] !== 'boolean') state.ktCfg.marks[mk.id] = true;
             });
+            /* ★ 2026-09-19（需求Z1）：「隐藏未学」开关。默认**关** —— 关着就是老行为
+               （整棵树全摊开）。这里不需要迁移闸门：老存档里根本没有这个键，
+               缺失时取到 false，正好就是它一直以来的样子。 */
+            if (typeof state.ktCfg.hideUn !== 'boolean') state.ktCfg.hideUn = false;
             return state.ktCfg;
         }
 
@@ -14495,6 +14553,129 @@
             let n = 0;
             (function rec(a) { (a || []).forEach(function (x) { n++; rec(x.children); }); })(list);
             return n;
+        }
+
+        /* ============ ★ 2026-09-19（需求Z1）：隐藏未学 ============
+           「未学」的判据**不是新造的**，与「📚 进度统计」的已学科目 / 已学章 / 已学节同源：
+           这个节点上有没有一条学习记录。两处读数因此不会各说各话。
+           知识点行为什么不受影响：第 4–7 级本来就只来自学习记录（ktAllNodes → fcWalkAll），
+           有行的前提就是学过 —— 它们恒为「已学」。
+           与「显示范围」的关系：范围先裁（ktClip）、隐藏后裁，两个开关各管一段、互不干扰。
+           ⚠️ 判据里那道 fcRecOutline 的门必须与 ktAllNodes 保持**同一道** ——
+              没写大纲的记录在树上根本不占位，若拿它算「学过」，就会出现
+              「统计说学过、树上却找不到那一格」。 */
+        function ktStudiedSet() {
+            var S = { co: {}, ch: {}, se: {} };
+            (state.records || []).forEach(function (r) {
+                if (!r || !r.course) return;
+                try { if (typeof fcRecOutline === 'function' && !fcRecOutline(r)) return; } catch (e) { return; }
+                var c = String(r.course), ch = parseInt(r.chapter, 10) || 0, se = parseInt(r.section, 10) || 0;
+                S.co[c] = 1;
+                S.ch[c + '|' + ch] = 1;
+                S.se[c + '|' + ch + '|' + se] = 1;
+            });
+            return S;
+        }
+        /* stat.n 收「被收起来的行数」——统计条拿它报数。
+           少了这一句，「树上凭空少了一大片」就又变成一次沉默失败。
+           ⚠️ 数的是**整支**的行数（含被连根拔起的子孙），不是「剪了几刀」——
+              用户看到的是屏幕上少了几行，报数就该按这个口径，否则
+              「隐藏 3 个」与屏幕上消失的 6 行对不上，反而更糊涂。 */
+        function ktPruneUnstudied(list, S, stat) {
+            var out = [];
+            (list || []).forEach(function (n) {
+                var drop = false;
+                if (n.kind !== 'kp') {
+                    var cs = ktNodeCS(n);
+                    var hit = (n.kind === 'course') ? S.co[cs.course]
+                        : (n.kind === 'chapter') ? S.ch[cs.course + '|' + cs.ch]
+                            : S.se[cs.course + '|' + cs.ch + '|' + cs.sec];
+                    drop = !hit;
+                }
+                if (drop) { stat.n += ktCountTree([n]); return; }
+                out.push({
+                    sig: n.sig, lv: n.lv, kind: n.kind, name: n.name, raw: n.raw,
+                    children: ktPruneUnstudied(n.children, S, stat)
+                });
+            });
+            return out;
+        }
+        var ktUnHiddenN = 0;      // 本轮被「隐藏未学」收起来的行数（ktRender 每轮刷新）
+
+        /* ============ ★ 2026-09-19（需求Z2）：打印 / 导出 PDF / 导出 MD ============
+           口径：「当前页面」= 屏上这一棵。所以**不重新算一遍数据**，而是直接克隆
+           #ktBody 里已经渲染好的那棵 .kt-tree —— 展开态、收拢态、搜索过滤、一键编号、
+           上色、★▲？ 标记全都原样带走。重走一遍 ktSevenTree 只会多出第二个真源，
+           迟早漂移（同一个 sig 两处画法不一致）。
+           导出物里把三样「交互」清掉：contenteditable、行内编辑控件、搜索高亮 <mark>。 */
+        function ktTreeSnapshot() {
+            var body = document.getElementById('ktBody');
+            var tree = body ? body.querySelector('.kt-tree') : null;
+            if (!tree) return null;
+            var c = tree.cloneNode(true);
+            var i, strip = c.querySelectorAll('[contenteditable]');
+            for (i = 0; i < strip.length; i++) strip[i].removeAttribute('contenteditable');
+            var ed = c.querySelectorAll('.kt-mark-edit');
+            for (i = 0; i < ed.length; i++) { if (ed[i].parentNode) ed[i].parentNode.removeChild(ed[i]); }
+            var mk = c.querySelectorAll('mark');
+            for (i = 0; i < mk.length; i++) {
+                if (mk[i].parentNode) mk[i].parentNode.replaceChild(document.createTextNode(mk[i].textContent), mk[i]);
+            }
+            return c;
+        }
+        // 打印头：「当前这一棵」是什么范围 —— 直接抄工具栏下方那条统计（它是同一份口径）
+        function ktExportHeadHTML() {
+            var el = document.getElementById('ktStat');
+            var sub = el ? String(el.textContent || '').replace(/\s+/g, ' ').trim() : '';
+            return '<div class="kt-print-head"><h2>🌳 知识树</h2>' +
+                '<div class="kt-print-sub">' + kpEsc(sub) + '<br>导出 ' + getToday() + '</div></div>';
+        }
+        function ktExportPrint(mode) {
+            var c = ktTreeSnapshot();
+            if (!c) { ktToast('知识树还没有内容可导出'); return; }
+            var area = document.getElementById('printArea');
+            if (!area) { area = document.createElement('div'); area.id = 'printArea'; document.body.appendChild(area); }
+            area.innerHTML = ktExportHeadHTML() + '<div class="kt-print">' + c.outerHTML + '</div>';
+            window.print();
+            if (mode === 'pdf') {
+                ktToast('📄 在打印对话框的「目标 / 打印机」里选「另存为 PDF」，即可保存成 PDF 文件');
+            }
+        }
+        // 文件名里的范围：科目 + 章 / 节（与工具栏三个下拉同一份口径）
+        function ktMdScopeName() {
+            var cfg = ktState();
+            var p = [cfg.course || '全部科目'];
+            if (+cfg.chapter > 0) p.push('第' + cfg.chapter + L('chapter'));
+            if (+cfg.section > 0) p.push('第' + cfg.section + L('section'));
+            return p.join('_').replace(/[\\/:*?"<>|\s]/g, '');
+        }
+        function ktExportMd() {
+            var body = document.getElementById('ktBody');
+            var tree = body ? body.querySelector('.kt-tree') : null;
+            if (!tree) { ktToast('知识树还没有内容可导出'); return; }
+            var rows = tree.querySelectorAll('.kt-row');
+            if (!rows.length) { ktToast('知识树还没有内容可导出'); return; }
+            /* 行序天然是前序 DFS（ktBranchHTML 就是按这个顺序拼的），
+               缩进按行上的 data-kt-lv —— 不必再解析一遍父子关系。 */
+            var out = ['# 🌳 知识树', ''];
+            var st = document.getElementById('ktStat');
+            if (st) out.push('> ' + String(st.textContent || '').replace(/\s+/g, ' ').trim());
+            out.push('', '');
+            for (var i = 0; i < rows.length; i++) {
+                var r = rows[i];
+                var lv = parseInt(r.getAttribute('data-kt-lv'), 10) || 1;
+                var nm = r.querySelector('.kt-name');
+                var text = nm ? String(nm.textContent || '').replace(/\s+/g, ' ').trim() : '';
+                var no = r.querySelector('.kt-no');
+                if (no) text = String(no.textContent || '').trim() + ' ' + text;
+                var ms = r.querySelectorAll('.kt-mark'), sym = '';
+                for (var j = 0; j < ms.length; j++) sym += String(ms[j].textContent || '').trim();
+                if (sym) text += ' ' + sym;
+                out.push(new Array(lv).join('  ') + '- ' + text);
+            }
+            downloadBlob('\uFEFF' + out.join('\n') + '\n',
+                '知识树_' + ktMdScopeName() + '_' + getToday() + '.md', 'text/markdown;charset=utf-8;');
+            ktToast('📥 已导出 Markdown（' + rows.length + ' 行）');
         }
 
         // ---------- ★ 层级范围 = 显示范围 ----------
@@ -15863,6 +16044,9 @@
             if (btn) btn.classList.toggle('active', !!cfg.num);
             const sbtn = document.getElementById('ktSymBtn');
             if (sbtn) sbtn.classList.toggle('active', !!cfg.sym);
+            /* ★ 2026-09-19（需求Z1）：隐藏未学按钮点亮 */
+            const hbtn = document.getElementById('ktHideUnBtn');
+            if (hbtn) hbtn.classList.toggle('active', !!cfg.hideUn);
             /* ★ 需求3：三个标记按钮各自点亮（cfg.marks 已由 ktState() 归一化过） */
             KT_MARKS.forEach(function (mk) {
                 const b = document.getElementById('ktMarkBtn_' + mk.id);
@@ -15928,7 +16112,11 @@
             const visTo = Math.max(cfg.from, toLv);
             // ★ 层级范围 = 显示范围：选 3–5 就只显示第 3–5 级，
             //   1–2 级（科目/章/节这类祖先行）与第 6–7 级一并隐藏（见 ktClip）。
-            const tree = ktClip(rawTree, cfg.from, visTo);
+            let tree = ktClip(rawTree, cfg.from, visTo);
+            /* ★ 2026-09-19（需求Z1）：隐藏未学 —— 排在「显示范围」之后，两个开关各管一段。 */
+            const _un = { n: 0 };
+            if (cfg.hideUn) tree = ktPruneUnstudied(tree, ktStudiedSet(), _un);
+            ktUnHiddenN = _un.n;
             const total = ktCountTree(tree);
             ktPaintStats(all);
 
@@ -15951,6 +16139,7 @@
                     ' · 七级链路（科目›章›节›知识点1–4级）' +
                     ' · 显示 第' + cfg.from + '–' + visTo + ' 级' + (cfg.to === KT_TO_AUTO ? '（默认档）' : '') +
                     (_clipped ? ' · ⚠️ 还有更深的层级被显示范围挡住（第 ' + (visTo + 1) + ' 级起，终点选「默认」可看全）' : '') +
+                    (cfg.hideUn ? ' · 🙈 已隐藏 ' + ktUnHiddenN + ' 个未学节点' : '') +
 
                     (cfg.num ? ' · 编号模版「' + ktTmplName(ktCurTmpl()) + '」' : '');
             }
@@ -15958,6 +16147,8 @@
             if (!total) {
                 body.innerHTML = '<div class="kt-empty">这个范围内没有节点。<br>' +
                     '上面的<b>显示范围</b>是第 ' + cfg.from + '–' + visTo + ' 级 —— ' +
+                    (cfg.hideUn ? '<b>🙈 隐藏未学</b> 开着，而这一范围内没有任何学习记录 —— ' +
+                        '点工具栏的「🙈 隐藏未学」把开关关掉，就能看到全部层级。<br>' : '') +
                     '该区间确实没有节点时，把范围放宽一档即可。</div>';
                 return;
             }
@@ -16130,6 +16321,27 @@
                     ktToast(mk.ch + ' ' + mk.name + (cfg.marks[mk.id] ? ' 已显示' : ' 已隐藏'));
                 });
             });
+
+            /* ★ 2026-09-19（需求Z1）：隐藏未学 */
+            const hunBtn = document.getElementById('ktHideUnBtn');
+            if (hunBtn) hunBtn.addEventListener('click', function () {
+                const cfg = ktState();
+                cfg.hideUn = !cfg.hideUn;
+                saveData();
+                ktPaintNoCtl();
+                ktRender();
+                ktToast(cfg.hideUn
+                    ? '🙈 已隐藏未学（没有学习记录的科目 / 章 / 节）'
+                    : '🙈 已显示全部层级');
+            });
+
+            /* ★ 2026-09-19（需求Z2）：打印 / 导出 PDF / 导出 MD —— 三颗按钮都打「屏上这一棵」 */
+            const kbPrint = document.getElementById('ktPrintBtn');
+            if (kbPrint) kbPrint.addEventListener('click', function () { ktExportPrint('print'); });
+            const kbPdf = document.getElementById('ktPdfBtn');
+            if (kbPdf) kbPdf.addEventListener('click', function () { ktExportPrint('pdf'); });
+            const kbMd = document.getElementById('ktMdBtn');
+            if (kbMd) kbMd.addEventListener('click', function () { ktExportMd(); });
 
             // ★ 2026-09-18：一键编号（开关 + 模版）
             const numBtn = document.getElementById('ktNumberBtn');
@@ -20392,7 +20604,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ao</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ap</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
