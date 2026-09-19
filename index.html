@@ -689,6 +689,18 @@
   .hub-selbar.dock .sb-sep{margin:0 1px}
 }
 
+/* ★ 需求 Y（2026-09-19）：下划线与删除线的线条颜色（text-decoration-color）。
+   真源 hub_deco_v1 与工具页「设置 → 外观设置」共用，那边是**唯一写入口**；
+   这里只跟随（见文末那段小脚本）。两个变量不存在时回落 currentColor
+   ⇒ 没设过的人观感与以前逐像素一致。
+   富文本会落进任意 contenteditable（SEL_EDIT），容器类名不统一 ⇒ 用**标签级**
+   规则兜住，不挑容器。静态 HTML 里没有 <u>/<s> 标签（只有浮条按钮那几个图标），
+   所以不会误伤别处。 */
+u { text-decoration-color: var(--deco-u, currentColor); }
+s, strike, del { text-decoration-color: var(--deco-s, currentColor); }
+/* 浮条上的 B / U / S 是**图标**，不是被标记的文字 —— 保持跟随按钮自身颜色 */
+.hub-selbar .sb-btn u, .hub-selbar .sb-btn s, .hub-selbar .sb-btn strike, .hub-selbar .sb-btn del { text-decoration-color: currentColor; }
+
 </style>
 
 
@@ -2666,7 +2678,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918an';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918ao';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -3995,7 +4007,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918an';
+  var NAV_VER = 'V20260918ao';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -4094,8 +4106,38 @@ document.addEventListener('pointerdown', e => {
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh);
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
+
+
+/* ★ 需求 Y（2026-09-19）：下划线与删除线的线条颜色 —— 与工具页「设置 → 外观设置」
+   同源共用一个 key（hub_deco_v1），那边是唯一写入口，这里只跟随：
+   把颜色写到本页 :root 的 --deco-u / --deco-s，CSS 里 u / s / … 的
+   text-decoration-color 读它。缺项就 removeProperty ⇒ 回落 currentColor。
+   工具页嵌在本页 iframe 里（同源）⇒ 它在设置 tab 改了颜色，storage 事件只发给
+   **别的**文档，正好落到这里 —— 父页立刻跟上，不用刷新。 */
+(function () {
+  var DECO_KEY = 'hub_deco_v1';
+  var RE_HEX = /^#[0-9a-fA-F]{3,8}$/;
+  function decoApply() {
+    var o = null, u = '', s = '';
+    try { o = JSON.parse(localStorage.getItem(DECO_KEY) || 'null'); } catch (e) { o = null; }
+    if (o && typeof o === 'object') {
+      if (RE_HEX.test(String(o.u || ''))) u = String(o.u);
+      if (RE_HEX.test(String(o.s || ''))) s = String(o.s);
+    }
+    var r = document.documentElement.style;
+    try {
+      if (u) r.setProperty('--deco-u', u); else r.removeProperty('--deco-u');
+      if (s) r.setProperty('--deco-s', s); else r.removeProperty('--deco-s');
+    } catch (e) {}
+  }
+  decoApply();
+  try {
+    window.addEventListener('storage', function (e) { if (!e || !e.key || e.key === DECO_KEY) decoApply(); });
+  } catch (e) {}
+  try { window.HubDeco = { key: DECO_KEY, apply: decoApply }; } catch (e) {}
+})();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918an</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918ao</div>
 </body>
 
 

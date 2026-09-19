@@ -109,8 +109,20 @@
         }
         .cpa-rt b, .cpa-rt strong, .kp-cell-in b, .kp-cell-in strong { font-weight: 700; }
         .cpa-rt i, .cpa-rt em { font-style: italic; }
-        .cpa-rt u, .kp-cell-in u { text-decoration: underline; }
-        .cpa-rt s, .cpa-rt strike, .cpa-rt del { text-decoration: line-through; }
+        .cpa-rt u, .kp-cell-in u { text-decoration: underline; text-decoration-color: var(--deco-u, currentColor); }
+        .cpa-rt s, .cpa-rt strike, .cpa-rt del { text-decoration: line-through; text-decoration-color: var(--deco-s, currentColor); }
+        /* ★ 需求 Y（2026-09-19）：下划线 / 删除线的**线条**颜色，与文字颜色互不干扰。
+           两个变量都不存在时回落 currentColor ⇒ 谁都没设过就什么都没变（这是能安全
+           上线的前提）。富文本还会落进闪卡正反面（.fc-face-q/.fc-face-a）、知识树
+           行名（.kt-name）、知识点格子等容器 —— 它们不挂 .cpa-rt，所以下面再用
+           **标签级**规则兜一层。静态 HTML 里没有 <u>/<s> 标签（只有浮条按钮那几个
+           图标），所以标签级选择器不会误伤。
+           ⚠️ 别改成内联颜色（<span style="text-decoration-color:…">）：那要放宽
+              sanitize 的 STYLE_OK 白名单，还会把「颜色」变成「内容」（要重写三条真源）。 */
+        u { text-decoration-color: var(--deco-u, currentColor); }
+        s, strike, del { text-decoration-color: var(--deco-s, currentColor); }
+        /* 浮条上的 B / U / S 是**图标**，不是被标记的文字 —— 保持跟随按钮自身颜色 */
+        .sb-btn u, .sb-btn s, .sb-btn strike, .sb-btn del { text-decoration-color: currentColor; }
         /* 短文本框变体（2026-09-18）：闪卡正反面 / 闪卡笔记 / 错题本 / 小节自检作答框
            原本是 rows="2"~"5" 的 textarea，直接套 .cpa-rt 会被 96px 的 min-height 撑高。 */
         .cpa-rt.rt-2 { min-height: 58px; }
@@ -2224,6 +2236,11 @@
         .ap-prev i{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);display:block}
         .ap-prev i.def{box-shadow:0 0 0 2px var(--card-bg),0 0 0 4px var(--primary)}
         .ap-prev em{font-size:11.5px;color:var(--text-secondary);font-style:normal;white-space:nowrap}
+        /* 需求 Y：色块「未设色＝跟随文字色」的斜纹（同 .ap-slot.is-white 的手法，
+           只写 background-image，底色仍由内联 background-color 决定） */
+        .ap-dot.is-auto{background-image:repeating-linear-gradient(45deg,rgba(70,58,46,.12) 0 2px,transparent 2px 6px)}
+        .ap-deco-tip{font-size:11px;color:var(--text-secondary);line-height:1.2;white-space:nowrap}
+        .ap-deco-prev{font-size:13.5px;line-height:1.9;color:#3E372E}
     
         /* ===== 增补：现在按钮 / 记录导出 / 打印 ===== */
         .now-btn{margin-left:6px;padding:3px 9px;font-size:12px;line-height:1.5;border:1px solid var(--border,#E2D9C8);border-radius:7px;background:#FAF6EE;cursor:pointer;color:var(--text-secondary,#777);vertical-align:middle;}
@@ -4174,6 +4191,19 @@
                             <button type="button" class="ap-mini" id="apMarkUndo" title="放弃这次改动，回到上次保存的颜色">↩ 撤销</button>
                             <button type="button" class="ap-mini" id="apMarkReset" title="清掉自定义色板，回到内置 5 色（并重新跟随本页的标注字色）">↩ 恢复内置 5 色</button>
                         </div>
+                    <div class="ap-row"><div class="ap-lab w2">下划线颜色</div>
+                        <span class="ap-dot is-auto" id="apDecoUDot" style="background-color:#8A7358"><input type="color" id="apDecoUCustom" value="#8A7358" title="下划线的线条颜色 —— 点色块用取色板挑色（文字颜色仍由浮条色板决定）"></span>
+                        <span class="ap-deco-tip" id="apDecoUTip">跟随文字色</span>
+                        <button type="button" class="ap-mini" id="apDecoUAuto" title="清掉自定义色，让下划线跟随文字本身的颜色">↩ 跟随文字</button>
+                    </div>
+                    <div class="ap-row"><div class="ap-lab w2">删除线颜色</div>
+                        <span class="ap-dot is-auto" id="apDecoSDot" style="background-color:#8A7358"><input type="color" id="apDecoSCustom" value="#8A7358" title="删除线的线条颜色 —— 点色块用取色板挑色（文字颜色仍由浮条色板决定）"></span>
+                        <span class="ap-deco-tip" id="apDecoSTip">跟随文字色</span>
+                        <button type="button" class="ap-mini" id="apDecoSAuto" title="清掉自定义色，让删除线跟随文字本身的颜色">↩ 跟随文字</button>
+                    </div>
+                    <div class="ap-row"><div class="ap-lab w2">效果预览</div>
+                        <div class="ap-deco-prev" id="apDecoPrev">这是<u>下划线</u>，这是<s>删除线</s> —— 只改线条颜色，文字颜色仍由浮条色板决定。</div>
+                    </div>
                     </div>
                     <div class="ap-note tight" id="apMarkHint"></div>
                     <div class="ap-note">设置即时生效并自动保存在本设备；主题色同步作用于按钮、标签、进度条等主色元素。</div>
@@ -18065,6 +18095,95 @@
       } catch (e) {}
       mkRender(); mkRefresh();
     }
+    /* ============================================================
+       🖍️ 下划线 / 删除线的线条颜色（Tom 2026-09-19 需求 Y）
+       ------------------------------------------------------------
+       改的是 **text-decoration-color**（线条颜色），不是文字颜色 ——
+       文字颜色仍由浮条上那 5 个色点决定，两条路互不干扰。
+
+       真源只有一个 key：hub_deco_v1 = {"u":"#RRGGBB","s":"#RRGGBB"}。
+       缺项 / 空串 = **跟随文字色**（currentColor）⇒ 没设过的人观感与以前
+       逐像素一致；删掉这个 key 就是彻底回老行为。
+
+       生效方式是 :root 上的 --deco-u / --deco-s，由 CSS 里 u / s / strike / del
+       的 text-decoration-color 读走。**刻意不把颜色内联进 HTML**：
+         ① 落盘的富文本是 <u>脂肪</u> 这种不带颜色的标记 ⇒ 历史内容一个字节
+            都不用重写，改颜色对所有旧数据立即生效；
+         ② sanitize 的 STYLE_OK 白名单里没有 text-decoration-color，内联就得
+            连白名单一起放宽（能少放一条就少放一条）；
+         ③ 内联等于把「颜色」变成「内容」⇒ 改一次颜色要重写 kpRich / qH·aH /
+            知识树三条真源，风险与成本都不成比例。
+
+       导航页（hub_live2.html）读同一个 key、只有跟随没有 UI；
+       这里改完会被那边的 storage 监听立刻接住，不需要刷新。
+    ============================================================ */
+    var DECO_KEY = 'hub_deco_v1';
+    var DECO_START = '#8A7358';   /* 只是取色板的起点色，不代表生效值 */
+    function decoRead() {
+      try { var o = JSON.parse(localStorage.getItem(DECO_KEY) || 'null'); return (o && typeof o === 'object') ? o : {}; } catch (e) { return {}; }
+    }
+    function decoVal(k) { var o = decoRead(), v = o[k]; return mkHexOK(v) ? String(v) : ''; }
+    function decoApply() {
+      var r = document.documentElement.style, u = decoVal('u'), s = decoVal('s');
+      try {
+        if (u) r.setProperty('--deco-u', u); else r.removeProperty('--deco-u');
+        if (s) r.setProperty('--deco-s', s); else r.removeProperty('--deco-s');
+      } catch (e) {}
+    }
+    function decoWrite(k, c) {
+      try {
+        var o = decoRead();
+        if (mkHexOK(c)) o[k] = String(c); else delete o[k];
+        /* 两个都跟随就把 key 整个删掉 —— 不留 {"u":"","s":""} 这种空壳 */
+        if (o.u || o.s) localStorage.setItem(DECO_KEY, JSON.stringify(o));
+        else localStorage.removeItem(DECO_KEY);
+      } catch (e) {}
+      decoApply(); decoRender();
+    }
+    function decoRender() {
+      var pairs = [['U', 'u'], ['S', 's']], i;
+      for (i = 0; i < pairs.length; i++) {
+        var id = pairs[i][0], v = decoVal(pairs[i][1]);
+        var start = v || apPrefs.accent || DECO_START;
+        var dot = document.getElementById('apDeco' + id + 'Dot');
+        var inp = document.getElementById('apDeco' + id + 'Custom');
+        var tip = document.getElementById('apDeco' + id + 'Tip');
+        var btn = document.getElementById('apDeco' + id + 'Auto');
+        if (dot) {
+          dot.classList.toggle('is-auto', !v);
+          dot.style.backgroundColor = start;
+        }
+        if (inp && String(inp.value).toLowerCase() !== String(start).toLowerCase()) inp.value = start;
+        if (tip) tip.textContent = v ? String(v).toUpperCase() : '跟随文字色';
+        if (btn) btn.disabled = !v;
+      }
+    }
+    function decoInit() {
+      decoApply();
+      ['U', 'S'].forEach(function (id) {
+        var inp = document.getElementById('apDeco' + id + 'Custom');
+        if (inp && !inp.__dcBound) {
+          inp.__dcBound = 1;
+          /* ★ 用 change 不用 input：拖取色板时 input 会连发几十次（#apMarkAdd 的教训）。
+             这些控件是**静态** HTML（不像色位每次都重建）⇒ 只绑一次。 */
+          inp.addEventListener('change', function () { decoWrite(id === 'U' ? 'u' : 's', inp.value); });
+        }
+        var btn = document.getElementById('apDeco' + id + 'Auto');
+        if (btn && !btn.__dcBound) {
+          btn.__dcBound = 1;
+          btn.addEventListener('click', function () { decoWrite(id === 'U' ? 'u' : 's', ''); });
+        }
+      });
+      decoRender();
+    }
+    /* 工具页也可能与导航页并排开着（同源两个文档）⇒ 跟着 storage 事件走一步 */
+    try {
+      window.addEventListener('storage', function (e) { if (!e || !e.key || e.key === DECO_KEY) decoApply(); });
+    } catch (e) {}
+    /* 给机刷留的只读探针（不提供写入能力 —— 只有 UI 能改） */
+    function decoState() { return { u: decoVal('u'), s: decoVal('s'), key: DECO_KEY }; }
+    try { window.HubDeco = { state: decoState, apply: decoApply }; } catch (e) {}
+
     function apMarkInit() {
       mkRender();
       var map = { apMarkSave: 'save', apMarkUndo: 'undo', apMarkReset: 'reset' };
@@ -18082,7 +18201,7 @@
         document.addEventListener('click', function(e) {
           var t = e.target;
           while (t && t !== document && !(t.getAttribute && t.getAttribute('data-view'))) t = t.parentNode;
-          if (t && t !== document && t.getAttribute('data-view') === 'goal') mkRender();
+          if (t && t !== document && t.getAttribute('data-view') === 'goal') { mkRender(); decoRender(); }
         });
       }
     }
@@ -18098,6 +18217,7 @@
       document.getElementById("apAccentCustom").addEventListener("input",function(e){ apPrefs.accent=e.target.value; apSave(); apApply(); });
       document.getElementById("apBgCustom").addEventListener("input",function(e){ apPrefs.bg=e.target.value; apSave(); apApply(); });
       apMarkInit();
+      decoInit();
       apApply();
     }
 
@@ -20272,7 +20392,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918an</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ao</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
