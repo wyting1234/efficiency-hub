@@ -14113,7 +14113,8 @@
             // ★ keepDeep：知识树是**展示**，要完整七级链路。不加这个开关，
             //   fcRecOutline 会按出题规则砍掉「倒数第二格」之后的那一层，
             //   树里那一层连带子树整支消失 —— 用户看到的就是「平级」。
-            fcWalkAll({ keepDeep: true }).forEach(function (n) {
+            const kpRows = fcWalkAll({ keepDeep: true });
+            kpRows.forEach(function (n) {
                 const k = n.course + '|' + n.chapter + '|' + n.section;
                 (byKey[k] = byKey[k] || []).push(n);
             });
@@ -14121,7 +14122,17 @@
             /* ★ 需求1：老数据一次性回填（只有 card.qH、没有 rec.kpRich 的那几格）。
                必须在建表**之前**跑：回填完了 h 才有值。内部有会话级开关，只真正跑一次。 */
             try { ktLnHeal(); } catch (e) {}
+            /* ★ 需求 V：先清掉「写着别人名字」的格式残留（旧实现搬错的那批，见 ktLnPurgeRich）。
+               必须排在下面取色之前 —— 这一轮的第一屏就是对的。 */
+            try { ktLnPurgeRich(); } catch (e) {}
             const kpRichIdx = ktCardRichIndex();
+            /* ★ 需求 V：闪卡的 sig = 「科目|章|节|层级|同级序号」——**不含分支名**，
+               不同分支下同层同序号的节点会撞成同一个 sig
+               （例：精华 › 脂肪 与 打篮球 › 买球 都是 tier5/order1）。
+               fcBuild 那边一直用 fcSigFixMap 消歧，知识树这边却拿**未消歧**的 n.sig
+               去取卡上的格式（qH）—— 取来的是**另一个节点**的上色 HTML，
+               画出来就是「这一行显示成 湖北」（那个节点的旧名）。这里补上同一套消歧。 */
+            const kpSigFix = ktSigFixMap(kpRows);
             combos.forEach(function (c) {
                 const key = c.course + '|' + c.chapter + '|' + c.section;
                 const list = byKey[key] || [];
@@ -14153,8 +14164,13 @@
                            → n.h，在 fcRecOutline 里套好），闪卡那份（card.qH）只做兜底 ——
                            老数据里可能只有卡、没有 kpRich（见 ktLnHeal，开头会自动回填）。
                            这一行之前是只读 card.qH 的，两处同一字却不同色，根因就在这里。 */
-                        rawSig: n.sig,
-                        h: (n.h || kpRichIdx[n.sig] || null)
+                        rawSig: kpSigFix[fcUid(n)] || n.sig,
+                        /* ★ 需求 V：格式旁挂只有在一件事成立时才配用 ——
+                           它渲染出来的文字 == 这一行的名字（ktRichOk 就是这条校验）。
+                           旧实现漏了这步，只用 sig 取；取到别的节点的 qH 时，
+                           那一行就被写成了那个节点的旧名。「湖北顶掉新记录第一行」即此。 */
+                        h: (ktRichOk(n.h, n.name)
+                            || ktRichOk(kpRichIdx[kpSigFix[fcUid(n)] || n.sig], n.name))
                     });
                 });
                 /* ★ 需求1：这一格（科目 / 章 / 节）一条学习记录都没有 —— 上面只产知识点节点，
@@ -14494,6 +14510,31 @@
             if (n && n.kind === 'section') return '第 ' + cs.sec + ' ' + L('section') + ' ';
             return '';
         }
+        /* ★ 需求 V：sig 撞号消歧表（与 fcBuild / fcIdOf 同一套 fcSigFixMap）。
+           rows 必须是 fcWalkAll 的行对象（fcUid 认 course/chapter/section/path）。
+           拿不到就返回空表 —— 调用方一律写成 `fix[uid] || n.sig`，退化成旧行为而不是报错。 */
+        function ktSigFixMap(rows) {
+            try { return (typeof fcSigFixMap === 'function') ? fcSigFixMap(rows || []) : {}; } catch (e) { return {}; }
+        }
+
+        /* ★ 需求 V：格式旁挂的**文字校验**。
+           一份带格式的 HTML，只有在一件事成立时才配当这一行的格式：
+               它渲染出来的纯文本 == 这一行的名字。
+           为什么非校验不可：h 的来源之一是按 sig 取的**闪卡 qH**（sig 会撞号，见上），
+           来源之二是记录侧的 rec.kpRich（applyRichMap 只校验了里面记的 t，没看 h 自己的文字）。
+           少了这一步，「湖北」这种属于**别的节点**的旧名就会被当成这一行的名字画出去：
+           屏幕上写着湖北、点开记录却是买球、闪卡也永远对不上（Tom 报的三件事同一根因）。
+           归一化口径与 ktNorm 一致（忽略空白与大小写；不剥行首序号 —— parse 早剥过了）。 */
+        function ktRichOk(h, name) {
+            if (!h) return null;
+            var nm = ktNorm(name);
+            if (!nm) return null;
+            try {
+                var t = window.CpaRich ? window.CpaRich.toText(String(h)) : String(h).replace(/<[^>]+>/g, '');
+                return (ktNorm(t) === nm) ? String(h) : null;
+            } catch (e) { return null; }
+        }
+
         /* 知识点行的「格式旁挂」住在闪卡里（state.cards[*].qH）——
            闪卡是知识点内容的唯一真源，树上再存一份必然打架（同需求 E「不为标记新增第二个存储」）。
            先一次遍历编成 sig → qH 的表，避免知识树上千行各查一次。 */
@@ -15319,6 +15360,8 @@
            下次重画又变回旧名（缺陷B）。本块把这两条链补齐，原则不变：
            **不新增第二个存储** —— 格式仍只住 rec.kpRich 与 card.qH 两处，只是让它们保持一致。
              读：树 → 记录优先（fcRecOutline 里 applyRichMap），闪卡兜底（ktAllNodes）
+                 ★ 需求 V：两条路都必须过 ktRichOk 文字校验 + ktSigFixMap 消歧 ——
+                   格式 HTML 的文字不是这一行的名字就**不许用**（否则显示成别人的旧名）
              写：树改名 → 回写 rec.kpQuickRaw（ktLnWriteName）
                  树上色 → 同时写 card.qH 与 rec.kpRich（ktCardWrite → ktLnWriteRich）
              补：老数据里只有 card.qH、没有 rec.kpRich → 一次性回填（ktLnHeal）
@@ -15341,8 +15384,13 @@
             if (!sigRaw) return null;
             var rows = [];
             try { rows = fcWalkAll({ keepDeep: true }) || []; } catch (e) { return null; }
+            /* ★ 需求 V：行上挂的 sigraw 现在是**消歧后**的 sig（撞号时形如 'sig#2'），
+               两种写法都要认 —— 否则「树上改名」找不到那一行，改名会静默失效。 */
+            var fix = ktSigFixMap(rows);
             for (var i = 0; i < rows.length; i++) {
-                if (rows[i] && rows[i].sig === sigRaw && !rows[i].virtual) return rows[i];
+                var r = rows[i];
+                if (!r || r.virtual) continue;
+                if (r.sig === sigRaw || (fix[fcUid(r)] || r.sig) === sigRaw) return r;
             }
             return null;
         }
@@ -15494,6 +15542,41 @@
            ⚠️ 这里**故意不调 ktLnWriteRich**：那个函数每次都经 ktLnRowOf → fcWalkAll，
               而回填会改记录 ⇒ 指纹变 ⇒ 每补一格就整表重建一次，退化成 O(n²)。
               本函数用一开始那份快照内联写完，最后一次 saveData 收尾。 */
+        /* ★ 需求 V（2026-09-19）：清掉**已经写错**的格式旁挂。
+           病征：知识树某一行显示成别的名字（往往是旧名，例「湖北」），点开学习记录却是对的。
+           成因：那份 h 里存的是那个旧名的上色 HTML（旧实现的 ktLnHeal 按撞号的 sig 搬错了）。
+           判据：h 渲染出的纯文本与本格自己的文字**对不上** ⇒ 它永远不可能被正确显示
+                 （显示侧现在也拒收，见 ktRichOk），留着只是脏数据、还会被别的路读出去。
+           ⚠️ 只删「对不上」的 —— t 与 h 文字一致的条目一律不动（那是用户真正的颜色）。
+           一次性（会话级闸门），只做删减，不动记录里任何别的字段。 */
+        var ktLnPurged = false;
+        function ktLnPurgeRich() {
+            if (ktLnPurged) return 0;
+            ktLnPurged = true;
+            var n = 0;
+            try {
+                if (!window.CpaRich) return 0;
+                var recs = (state && state.records) || [];
+                for (var i = 0; i < recs.length; i++) {
+                    var r = recs[i];
+                    if (!r || !r.kpRich || typeof r.kpRich !== 'object') continue;
+                    var own = {}, outl = null;
+                    try { outl = fcRecOutline(r, true); } catch (e) { continue; }
+                    (outl || []).forEach(function (c) { if (c && c.ip !== undefined) own[String(c.ip)] = c.t; });
+                    var hit = 0;
+                    Object.keys(r.kpRich).forEach(function (k) {
+                        var e0 = r.kpRich[k];
+                        if (!e0 || !e0.h) return;
+                        var txt = (own[k] !== undefined) ? own[k] : (e0.t || '');
+                        if (txt && !ktRichOk(e0.h, txt)) { delete r.kpRich[k]; hit++; }
+                    });
+                    if (hit) { n += hit; if (!Object.keys(r.kpRich).length) delete r.kpRich; }
+                }
+                if (n) { try { if (typeof saveData === 'function') saveData(); } catch (e) {} }
+            } catch (e) {}
+            return n;
+        }
+
         function ktLnHeal() {
             if (ktLnHealed) return;
             ktLnHealed = true;
@@ -15507,10 +15590,19 @@
                 if (!Object.keys(qH).length) return;
                 var rows = [];
                 try { rows = fcWalkAll({ keepDeep: true }) || []; } catch (e) { return; }
+                /* ★ 需求 V：撞号消歧 + 文字校验 —— 见下面循环里的 _qh */
+                var _fix = ktSigFixMap(rows);
                 var n = 0;
                 for (var i = 0; i < rows.length; i++) {
                     var row = rows[i];
-                    if (!row || row.virtual || !row.sig || !qH[row.sig]) continue;
+                    if (!row || row.virtual || !row.sig) continue;
+                    /* ★ 需求 V：① 取卡要走**消歧后**的 sig（否则拿的是别的节点的卡）；
+                       ② 这份 HTML 的文字必须就是这一行的名字才搬（ktRichOk）。
+                       旧实现在这里只写了 `qH[row.sig]` —— 撞号时把另一个节点的旧名
+                       （例：「湖北」）当成色值写进了 rec.kpRich（落盘！），此后每次重画
+                       这一行都显示那个旧名，改都改不回来。 */
+                    var _qh = ktRichOk(qH[_fix[fcUid(row)] || row.sig], row.name);
+                    if (!_qh) continue;
                     var cands = ktLnCands(row);
                     /* ★ 2026-09-18（F1 连带修复）：判据从「只看 row.h」改成
                        「行上有格式 **或** 记录里那一格已经有格式」。
@@ -15531,7 +15623,7 @@
                         var m = ktLnLocate(cands[j], row);
                         if (!m || !m.ip) continue;
                         if (!m.rec.kpRich || typeof m.rec.kpRich !== 'object') m.rec.kpRich = {};
-                        m.rec.kpRich[m.ip] = { t: m.t || String(row.name || ''), h: qH[row.sig] };
+                        m.rec.kpRich[m.ip] = { t: m.t || String(row.name || ''), h: _qh };
                         n++;
                     }
                 }
@@ -20089,7 +20181,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918al</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918am</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
