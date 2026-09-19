@@ -7626,6 +7626,12 @@
             const parts = [r.kpQuickRaw, r.notes, r.problemSolving, r.memoryNetwork, r.aiQA,
                 r.assessmentReason, r.course, r.resourceType, r.source, r.selfAssessment, r.date];
             try { (r.knowledgePoints || []).forEach(function (k) { if (k) parts.push(k.text); }); } catch (e) {}
+            /* ★ 需求 S2：知识树里改过名的知识点行名只存在 kpRich[*].t，
+               速记原文（kpQuickRaw）可能还是旧名 —— 不纳入就会「页面看得见、搜索找不到」。 */
+            try {
+                const mm = r.kpRich || {};
+                Object.keys(mm).forEach(function (k) { if (mm[k] && mm[k].t) parts.push(mm[k].t); });
+            } catch (e) {}
             try {
                 const fcn = window.CpaFcNotes;
                 if (fcn && fcn.ofRecord) {
@@ -7652,30 +7658,61 @@
            派生链是 记录 → 知识树/闪卡：删卡不删记录，下次「生成 / 更新」原样回来；
            删记录不删卡，卡按设计（复习历史必须保留）以「未关联记录」永久残留。
            这里给一把连根拔的工具：命中记录 + 命中卡（连同 card.review 复习历史与
-           cardNotes[id] 笔记）一次删净，再静默重建闪卡。删除不可撤销，确认框先报命中数。 */
+           cardNotes[id] 笔记）一次删净，再静默重建闪卡。删除不可撤销，确认框先报命中数。
+
+           ★ 需求 S2：搜索面必须**等于用户能看到的全部文字**，三路都要覆盖 ——
+             ① 记录侧 recSearchBlob（速记/备注/思路/记忆网络/AI问答/知识点/kpRich 行名/
+                关联卡笔记/科目来源日期）
+             ② 卡片侧 q / a / **qH / aH**（带色正文）/ **cardNotes[id][*].text**（补充笔记）/ tags
+             ③ **孤儿笔记**：cardNotes 里有、state.cards 里已无对应卡的条目
+           只补 ① 不补 ② 会造出「词只写在卡反面补记里 → 报没有命中 → 用户以为删不掉」，
+           这正是一类「页面看得见、工具删不掉」投诉的成因。改搜索面时三路一起想。 */
         function recNukeByKeyword() {
-            const kw = (window.prompt('强制清理：输入要连根清除的关键词（例如「湖北」）。\n将删除：命中的学习记录 + 命中的闪卡（含其复习历史与笔记）。\n建议先「📊 导出 Excel」或设置里导出备份。此操作不可撤销。', '') || '').trim();
+            const kw = (window.prompt('强制清理：输入要连根清除的关键词（例如「湖北」）。\n搜索面：学习记录全部文字 + 闪卡正面/反面 + 闪卡补充笔记（含已失去卡片的孤儿笔记）。\n将删除：命中的学习记录 + 命中的闪卡（含其复习历史与笔记）。\n建议先「📊 导出 Excel」或设置里导出备份。此操作不可撤销。', '') || '').trim();
             if (!kw) return;
             const k = kw.toLowerCase();
+            /* ★ 需求 S2：一条卡的全部可见文字（正面/反面、带格式的正面/反面、补充笔记、标签）。
+               cardNotes[id] 现存形状是 [{nid,t,kind,text}]，历史/手工数据可能是对象，两种都吃；
+               文本字段优先 text、退化 t。 */
+            const noteTextsOf = function (id) {
+                const arr = state.cardNotes && state.cardNotes[id];
+                if (!arr) return [];
+                const list = Array.isArray(arr) ? arr : Object.keys(arr).map(function (k2) { return arr[k2]; });
+                return list.map(function (n) { return (n && (n.text || n.t)) || ''; }).filter(Boolean);
+            };
             const hitRecs = (state.records || []).filter(function (r) { return recSearchBlob(r).indexOf(k) >= 0; });
             const hitCards = Object.keys(state.cards || {}).filter(function (id) {
                 const c = state.cards[id]; if (!c) return false;
-                const blob = [c.q, c.a, (c.tags || []).join(' ')].join('\n').toLowerCase();
+                const blob = [c.q, c.a, c.qH, c.aH, noteTextsOf(id).join('\n'), (c.tags || []).join(' ')]
+                    .join('\n').toLowerCase();
                 return blob.indexOf(k) >= 0;
             });
-            if (!hitRecs.length && !hitCards.length) { alert('没有命中「' + kw + '」的学习记录或闪卡。'); return; }
+            /* ★ 需求 S2：笔记按卡 id 存，卡没了（记录删过 / 科目改名过）笔记就成了
+               「看不到也删不掉」的孤儿 —— 一并扫出来清掉，「连根拔」才真的连根。 */
+            const orphanNotes = Object.keys(state.cardNotes || {}).filter(function (id) {
+                if (state.cards && state.cards[id]) return false;
+                return noteTextsOf(id).some(function (t) { return String(t).toLowerCase().indexOf(k) >= 0; });
+            });
+            if (!hitRecs.length && !hitCards.length && !orphanNotes.length) {
+                alert('没有命中「' + kw + '」的学习记录、闪卡或补充笔记。');
+                return;
+            }
             const recList = hitRecs.slice(0, 8).map(function (r) {
                 return '  · ' + (r.course || '?') + ' / 第' + (r.chapter || '?') + '章 / 第' + (r.section || '?') + '节';
             }).join('\n') + (hitRecs.length > 8 ? '\n  ……（仅列前 8 条）' : '');
-            if (!confirm('命中「' + kw + '」：\n学习记录 ' + hitRecs.length + ' 条：\n' + recList + '\n闪卡 ' + hitCards.length + ' 张（含复习历史与笔记）。\n\n确认全部删除？不可撤销。')) return;
+            const orphanLine = orphanNotes.length ? '\n孤儿笔记 ' + orphanNotes.length + ' 条（其卡片已不存在）' : '';
+            if (!confirm('命中「' + kw + '」：\n学习记录 ' + hitRecs.length + ' 条：\n' + recList + '\n闪卡 ' + hitCards.length + ' 张（含复习历史与笔记）' + orphanLine + '。\n\n确认全部删除？不可撤销。')) return;
             const recIds = {}; hitRecs.forEach(function (r) { recIds[r.id] = 1; });
             state.records = (state.records || []).filter(function (r) { return !recIds[r.id]; });
             hitCards.forEach(function (id) { delete state.cards[id]; if (state.cardNotes) delete state.cardNotes[id]; });
+            orphanNotes.forEach(function (id) { if (state.cardNotes) delete state.cardNotes[id]; });
             if (typeof ktNoteCacheReset === 'function') { try { ktNoteCacheReset(); } catch (e) {} }
             saveData();
             if (typeof fcBuild === 'function') { try { fcBuild(true); } catch (e) {} }
             renderAll();
-            alert('已强制清理「' + kw + '」：删除学习记录 ' + hitRecs.length + ' 条、闪卡 ' + hitCards.length + ' 张（含复习历史与笔记）。\n知识树与闪卡列表已按剩余记录重建。');
+            alert('已强制清理「' + kw + '」：删除学习记录 ' + hitRecs.length + ' 条、闪卡 ' + hitCards.length
+                + ' 张（含复习历史与笔记）' + (orphanNotes.length ? '、孤儿笔记 ' + orphanNotes.length + ' 条' : '')
+                + '。\n知识树与闪卡列表已按剩余记录重建。');
         }
 
         function renderRecords() {
@@ -20052,7 +20089,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ak</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918al</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
