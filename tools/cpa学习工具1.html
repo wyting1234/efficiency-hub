@@ -11998,6 +11998,8 @@
             let added = 0, kept = 0, refreshed = 0, gone = 0, hiddenKeep = 0, skipped = 0, scopeOutN = 0;
             // ★ 2026-09-18：删除跳过数（需求 1）/ 用户锁定跳过数（需求 2）
             let deletedKeep = 0, pinned = 0;
+            // ★ 需求 W：位置被复用的墓碑数（让位后重新出卡）
+            let deletedBlock = 0;
             const seen = {};
             const today = dateToStr(new Date());
             // 撞号消歧：同一 sig 下若有多个不同路径的节点，只让一个用原 sig（见 fcSigFixMap）
@@ -12010,7 +12012,10 @@
                 //   （虚拟的「节」节点 tier=3 已被上面的范围过滤挡掉，这里再兜一层
                 //     是防 range 被放宽到含 1–3 级时它漏进来 —— 它是容器，不是知识点。）
                 if (n.virtual || !n.hasKids || !String(n.answers.join('')).trim()) { skipped++; return; }
-                const id = fcIdOf(sigFix[fcUid(n)] || n.sig);
+                /* ★ 需求 W：sigRaw 要单独留一份 —— 墓碑让位时得把 cardIndex 的这个槽
+                   改指向新卡，而 id 本身是可变的。 */
+                const sigRaw = sigFix[fcUid(n)] || n.sig;
+                let id = fcIdOf(sigRaw);
                 const autoQ = n.name;
                 // 反面 = 该节点的直接下级。数据源已是学习记录，这里的下级天然就是
                 // 「这条学习路径上真的遇到过的下一级」，无需再收窄。
@@ -12030,9 +12035,31 @@
                 //   而且已删除的卡会被重建，用户会以为「删除失效」。
                 //   seen[id]=1 是给下面的 orphan 扫描看的：这张卡不是「不在范围」，是「有意跳过」。
                 if (card && (card.hidden || card.deleted)) {
-                    if (card.deleted) deletedKeep++; else hiddenKeep++;
-                    seen[id] = 1;
-                    return;
+                    /* ★ 需求 W：墓碑卡按**节点身份**认，不按 sig 认。
+                       sig = 科目|章|节|层级|同级序号 —— 是「位置坐标」，会被后来的节点复用：
+                       上一轮那条记录在第 4 级第 1 号删过卡，今天的「精华」正好落进同一个
+                       sig ⇒ 卡永远出不来。用户看到的是「应该有四个支点、只出三张」，
+                       点开记录却找不出任何问题（数据全对，是位置被占了）。
+                       判据：墓碑卡记的 src.path 与当前节点路径一致
+                             ⇒ 真的是「这个节点被删过」→ 照旧跳过（用户删的不能复活）；
+                             不一致 ⇒ 位置被复用、墓碑不属于当前节点 → 让位。
+                       让位 = 把墓碑挪出这个 sig（打 retired 标记，不再参与「恢复已删除」），
+                       **不删任何数据** —— 想彻底清掉用顶部「🧹 清空已删除」。 */
+                    const tombUid = (card.src && Array.isArray(card.src.path) && card.src.path.length)
+                        ? fcUid({ course: card.src.course, chapter: card.src.chapter,
+                                  section: card.src.section, path: card.src.path })
+                        : '';
+                    if (tombUid && tombUid !== fcUid(n)) {
+                        card.retired = true;
+                        id = fcNewId();
+                        state.cardIndex[sigRaw] = id;
+                        card = null;
+                        deletedBlock++;
+                    } else {
+                        if (card.deleted) deletedKeep++; else hiddenKeep++;
+                        seen[id] = 1;
+                        return;
+                    }
                 }
                 if (!card) {
                     card = {
@@ -12108,7 +12135,7 @@
             state.cardCfg.lastResult = {
                 added: added, kept: kept, refreshed: refreshed,
                 total: Object.keys(seen).length, skipped: skipped, learnedN: learnedN, scopeAll: scopeAll,
-                deletedKeep: deletedKeep, pinned: pinned
+                deletedKeep: deletedKeep, pinned: pinned, deletedBlock: deletedBlock
             };
             if (!silent) {
                 saveData();
@@ -12118,6 +12145,7 @@
                     (pinned ? '，锁定未动 ' + pinned + ' 张' : '') +
                     (hiddenKeep ? '，跳过已隐藏 ' + hiddenKeep + ' 张' : '') +
                     (deletedKeep ? '，跳过已删除 ' + deletedKeep + ' 张' : '') +
+                    (deletedBlock ? '，' + deletedBlock + ' 张旧卡的位置已被复用、已让位并重新出卡' : '') +
                     (skipped ? '，' + skipped + ' 张在第 ' + from + '–' + to + ' 级之外' : '') +
                     (scopeOutN ? '，' + scopeOutN + ' 张本次不在范围（历史保留）' : '') +
                     (gone ? '，' + gone + ' 张已不在学习记录中（历史保留）' : ''));
@@ -12183,11 +12211,27 @@
         //      用 cardIndex 里的 id 重建出来，用户会以为「删除失效」。
         //      打了 deleted 标记后 fcBuild 会跳过它，删掉就是真的不再出现。
         //   代价是存储里留着条目（几张卡的量级，可忽略），换来可恢复 + 删除可信。
+        /* ★ 需求 W：「恢复已删除」只认**还救得回来**的那批。
+           retired = 位置被别的知识点接管、已经作废的旧墓碑（见 fcBuild）。
+           把它恢复出来只会得到一张对不上任何节点的幽灵卡，所以不计入、也不恢复；
+           它仍然算「墓碑」，由 fcTombCount() 统计，交给「🧹 清空已删除」清掉。 */
         function fcDeletedCount() {
             fcState();
             let n = 0;
             Object.keys(state.cards).forEach(function (id) {
-                if (state.cards[id] && state.cards[id].deleted) n++;
+                const c = state.cards[id];
+                if (c && c.deleted && !c.retired) n++;
+            });
+            return n;
+        }
+
+        /* 墓碑总数 = 已删除 + 已作废（retired）。「🧹 清空已删除」按这个数清。 */
+        function fcTombCount() {
+            fcState();
+            let n = 0;
+            Object.keys(state.cards).forEach(function (id) {
+                const c = state.cards[id];
+                if (c && (c.deleted || c.retired)) n++;
             });
             return n;
         }
@@ -12300,12 +12344,52 @@
             fcState();
             let n = 0;
             Object.keys(state.cards).forEach(function (id) {
-                if (state.cards[id] && state.cards[id].deleted) { state.cards[id].deleted = false; n++; }
+                const c = state.cards[id];
+                // ★ 需求 W：retired 的墓碑不恢复（位置已被接管，恢复出来是幽灵卡）
+                if (c && c.deleted && !c.retired) { c.deleted = false; n++; }
             });
-            if (!n) { showToast('没有已删除的卡片'); return; }
+            if (!n) { showToast('没有可恢复的卡片（位置被接管的旧卡用「🧹 清空已删除」清掉）'); return; }
             saveData();
             fcRefreshViews();
             showToast('🗑 已恢复 ' + n + ' 张卡片（复习历史与笔记原样保留）');
+        }
+
+        /* ★ 需求 W1（2026-09-19）：清空已删除 —— 墓碑卡的**真删**。
+           为什么需要：删除一直是「打标记」（可恢复），代价是存储里留着条目。
+           墓碑多了有两个实际麻烦：
+             ① 白占 localStorage 与云快照的体积；
+             ② 墓碑是按 sig（位置坐标）记账的 —— 位置被后来的节点复用时会让新卡出不来
+                （fcBuild 里已改成「让位」，这里是最彻底的一刀：连条目一起清掉）。
+           真删 = 复习历史与补充笔记一起没了、**不可逆** ⇒ 必须弹确认并逐条说清。 */
+        function fcPurgeDeleted() {
+            fcState();
+            const ids = Object.keys(state.cards).filter(function (id) {
+                const c = state.cards[id];
+                return c && (c.deleted || c.retired);
+            });
+            if (!ids.length) { showToast('没有已删除的卡片'); return; }
+            const restorable = ids.filter(function (id) { return !state.cards[id].retired; }).length;
+            if (!confirm('彻底清空 ' + ids.length + ' 张已删除的闪卡？\n\n' +
+                '· 其中 ' + restorable + ' 张现在还能用「🗑 恢复已删除」找回，' +
+                (ids.length - restorable) + ' 张的位置已被别的知识点接管（早先已作废）。\n' +
+                '· 清空是**真删**，之后不可恢复。\n' +
+                '· 这些卡的复习历史与补充笔记会一并删除（笔记只挂在卡上）。\n' +
+                '· 如果知识点还在学习记录里，下次点「⚡ 生成 / 更新」会按记录**重新出卡**，\n' +
+                '  但那是从零开始的新卡（原来的复习进度不再保留）。\n\n' +
+                '确定要永久清空吗？')) return;
+            const gone = {};
+            ids.forEach(function (id) {
+                gone[id] = 1;
+                delete state.cards[id];
+                if (state.cardNotes) delete state.cardNotes[id];
+            });
+            /* cardIndex 里指向它们的槽位一并摘掉 —— 留着的话 fcIdOf 会拿到一个已经不存在的 id。
+               摘掉之后，下一次「⚡ 生成 / 更新」会给这个位置配一个新 id ⇒ 真的是重新出卡。 */
+            const ci = state.cardIndex || {};
+            Object.keys(ci).forEach(function (sig) { if (gone[ci[sig]]) delete ci[sig]; });
+            saveData();
+            fcRefreshViews();
+            showToast('🧹 已彻底清空 ' + ids.length + ' 张已删除的闪卡（位置已释放，可重新出卡）');
         }
 
         // ---------- ★ 需求 2：把「生成 / 更新」覆盖掉的内容换回来 ----------
@@ -12883,15 +12967,22 @@
             let dn = 0;
             try { dn = fcDeletedCount(); } catch (e) { dn = 0; }
             fcSyncRestoreBtn('fcUnDelBtn', dn, '🗑 恢复已删除 (' + dn + ')', fcUnDeleteAll);
+            /* ★ 需求 W1：清空已删除。按**墓碑总数**（含 retired）计数，
+               所以它可能比「恢复已删除」的数字大 —— 差额就是已作废的那批。 */
+            let tn = 0;
+            try { tn = fcTombCount(); } catch (e) { tn = 0; }
+            fcSyncRestoreBtn('fcPurgeDelBtn', tn, '🧹 清空已删除 (' + tn + ')', fcPurgeDeleted);
         }
 
         function fcUnhideAll() {
             fcState();
             let n = 0;
             Object.keys(state.cards).forEach(function (id) {
-                if (state.cards[id] && state.cards[id].hidden) { state.cards[id].hidden = false; n++; }
+                const c = state.cards[id];
+                // ★ 需求 W：同上 —— retired 的不恢复
+                if (c && c.hidden && !c.retired) { c.hidden = false; n++; }
             });
-            if (!n) { showToast('没有已隐藏的卡片'); return; }
+            if (!n) { showToast('没有可恢复的卡片'); return; }
             saveData();
             fcRender();
             showToast('👁 已恢复 ' + n + ' 张卡片（复习历史原样保留）');
@@ -20181,7 +20272,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918am</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918an</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -20249,6 +20340,21 @@ html.embedded #buildTag{display:none}
 /* 未保存标记：只要色位上带这个小点，就说明「眼前这套色还没写盘」 */
 .hub-selbar .sb-sw.sb-dirty::after{content:'';position:absolute;left:-1px;top:-1px;width:5px;height:5px;
   border-radius:50%;background:var(--primary,#8A7358);box-shadow:0 0 0 1.5px var(--card-bg,#FAF7F1)}
+
+/* ★ 需求 X（2026-09-19）：浮条多了「删除线」，按钮从 3 个变 4 个。
+   手机上是 .dock（flex-wrap:nowrap + width:max-content）——**不换行**，
+   4 按钮 + 5 色点算下来 ~381px，比 375px 机型还宽，会把整条顶出屏幕右边。
+   窄屏统一缩一档：按钮 28×30、色点 19px、间距 3px（实测最窄 ~280px）。
+   ★ 只在 ≤400px 生效：桌面拖窄不该改变观感（.dock 的判据本来也是指针类型，不是宽度），
+     这里再加一道宽度闸门，是为了「触摸 + 窄屏」这一种组合。 */
+@media (max-width:400px){
+  .hub-selbar.dock{gap:3px;padding:5px 6px}
+  .hub-selbar.dock .sb-btn{min-width:28px;height:30px;padding:0 5px;font-size:13px}
+  .hub-selbar.dock .sb-hl,.hub-selbar.dock .sb-clear{min-width:36px}
+  .hub-selbar.dock .sb-sws{gap:3px}
+  .hub-selbar.dock .sb-sw{width:19px;height:19px}
+  .hub-selbar.dock .sb-sep{margin:0 1px}
+}
 /* ★ 2026-09-19：加色按钮、保存/撤销按钮、右键设置菜单的样式随各自的 DOM 一起删除 ——
    浮条上已无这三族元素，留着就是会骗人的死 CSS。设置页那份色板编辑仍在本文件里。 */
 /*##CPASELBAR_CSS_END##*/
@@ -20264,7 +20370,7 @@ html.embedded #buildTag{display:none}
           —— 见文件末尾的门卫 arm()。这样 iOS 的 .ios-scroll 陷阱碰不到本块。 */
 
 /* ============================================================
- *  HubSelBar —— 选中文字后就地浮出的格式条（加粗 / 下划线 / 颜色 / 高亮）
+ *  HubSelBar —— 选中文字后就地浮出的格式条（加粗 / 下划线 / 删除线 / 颜色 / 高亮）
  *  ------------------------------------------------------------
  *  为什么浮层建在导航页、而不是注入到子页里去：
  *    工具页跑在同源 iframe 里。桌面上 iframe 是 height:100%，滚动在 iframe 内，
@@ -20684,6 +20790,12 @@ html.embedded #buildTag{display:none}
     var html = '';
     html += '<button type="button" class="sb-btn" data-cmd="bold" title="加粗"><b>B</b></button>';
     html += '<button type="button" class="sb-btn" data-cmd="underline" title="下划线"><u>U</u></button>';
+    /* ★ 需求 X（2026-09-19）：删除线。命令名是 execCommand 的 strikeThrough
+       （**不是** strikethrough —— 写错不会报错，只是安静地什么都不做）。
+       Chromium 产出 <strike>；sanitize 白名单里 S / STRIKE / DEL 三兄弟都在，
+       looksMarkup 也认它们 ⇒ 树 / 学习记录 / 闪卡三处都能显示与落盘，
+       净化规则一行都不用动。 */
+    html += '<button type="button" class="sb-btn" data-cmd="strikeThrough" title="删除线"><s>S</s></button>';
     html += '<button type="button" class="sb-btn sb-hl" data-hl="1" title="高亮底色">高亮</button>';
     html += '<span class="sb-sep"></span>';
     html += '<span class="sb-sws"></span>';   // ★ 5 个色点：由 renderSwatches() 现画（便于就地重画）
@@ -20701,8 +20813,18 @@ html.embedded #buildTag{display:none}
     /* ★ 2026-09-19：浮条上已无 input[type=color]（＋ 取色器搬去设置页），
        也没有右键设置菜单 —— 这两个监听器随之删掉，留着只会误导后来人。 */
     bar.addEventListener('click', function (ev) {
+      /* ★ 需求 X（2026-09-19）：这个「往上找按钮」的循环**原先写错了**。
+         判据写的是「有没有 getAttribute 这个方法」，而**元素节点全都有**它 ⇒
+         循环一步都不走，t 就停在 ev.target 上。用户点的是按钮里的**字母**
+         （<b>B</b> / <u>U</u> / <s>S</s>），ev.target 正是那个 b/u/s ——
+         它当然没有 data-cmd，三个分支全不命中，点击被**静默丢弃**：
+         不报错、不提示，看着就是「点了没反应」。Tom 报的「下划线没生效」即此。
+         （「高亮」按钮里是纯文本，文本节点不是事件目标 ⇒ target 就是按钮本身，
+           所以只有它一直是好的 —— 这条差异正好把病根指了出来。）
+         正确判据：**一直往上走，直到遇到「带目标属性」的那个元素**为止。 */
       var t = ev.target;
-      while (t && t !== bar && !t.getAttribute) t = t.parentNode;
+      while (t && t !== bar && !(t.getAttribute && (
+        t.getAttribute('data-cmd') || t.getAttribute('data-hl') || t.getAttribute('data-color')))) t = t.parentNode;
       if (!t || t === bar) return;
       /* ★ 2026-09-19：💾 保存 / ↩ 撤销 已从浮条搬进设置页，这里不再有这两个分支。
          浮条上剩下的每一条都是「作用在选中文字上」的动作。 */
@@ -20901,7 +21023,9 @@ html.embedded #buildTag{display:none}
   var stateCache = {};
   function refreshStates() {
     if (!bar) return;
-    var cmds = ['bold', 'underline'], i, b;
+    /* ★ 需求 X：删除线也要点亮「已生效」状态。少了它，光标停在带删除线的字上时
+       那个 S 不会高亮，用户没法判断当前是什么格式（加粗 / 下划线本来就是这么做的）。 */
+    var cmds = ['bold', 'underline', 'strikeThrough'], i, b;
     for (i = 0; i < cmds.length; i++) {
       var on = false;
       if (savedDoc) { try { on = !!savedDoc.queryCommandState(cmds[i]); } catch (e) { on = false; } }

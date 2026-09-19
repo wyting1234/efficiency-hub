@@ -674,6 +674,21 @@
 .hub-selbar .sb-sw.sb-dirty::after{content:'';position:absolute;left:-1px;top:-1px;width:5px;height:5px;
   border-radius:50%;background:var(--accent,#2563eb);box-shadow:0 0 0 1.5px var(--panel,#fff)}
 
+/* ★ 需求 X（2026-09-19）：浮条多了「删除线」，按钮从 3 个变 4 个。
+   手机上是 .dock（flex-wrap:nowrap + width:max-content）——**不换行**，
+   4 按钮 + 5 色点算下来 ~381px，比 375px 机型还宽，会把整条顶出屏幕右边。
+   窄屏统一缩一档：按钮 28×30、色点 19px、间距 3px（实测最窄 ~280px）。
+   ★ 只在 ≤400px 生效：桌面拖窄不该改变观感（.dock 的判据本来也是指针类型，不是宽度），
+     这里再加一道宽度闸门，是为了「触摸 + 窄屏」这一种组合。 */
+@media (max-width:400px){
+  .hub-selbar.dock{gap:3px;padding:5px 6px}
+  .hub-selbar.dock .sb-btn{min-width:28px;height:30px;padding:0 5px;font-size:13px}
+  .hub-selbar.dock .sb-hl,.hub-selbar.dock .sb-clear{min-width:36px}
+  .hub-selbar.dock .sb-sws{gap:3px}
+  .hub-selbar.dock .sb-sw{width:19px;height:19px}
+  .hub-selbar.dock .sb-sep{margin:0 1px}
+}
+
 </style>
 
 
@@ -1657,7 +1672,7 @@
 
 <script>
 /* ============================================================
- *  HubSelBar —— 选中文字后就地浮出的格式条（加粗 / 下划线 / 颜色 / 高亮）
+ *  HubSelBar —— 选中文字后就地浮出的格式条（加粗 / 下划线 / 删除线 / 颜色 / 高亮）
  *  ------------------------------------------------------------
  *  为什么浮层建在导航页、而不是注入到子页里去：
  *    工具页跑在同源 iframe 里。桌面上 iframe 是 height:100%，滚动在 iframe 内，
@@ -2077,6 +2092,12 @@
     var html = '';
     html += '<button type="button" class="sb-btn" data-cmd="bold" title="加粗"><b>B</b></button>';
     html += '<button type="button" class="sb-btn" data-cmd="underline" title="下划线"><u>U</u></button>';
+    /* ★ 需求 X（2026-09-19）：删除线。命令名是 execCommand 的 strikeThrough
+       （**不是** strikethrough —— 写错不会报错，只是安静地什么都不做）。
+       Chromium 产出 <strike>；sanitize 白名单里 S / STRIKE / DEL 三兄弟都在，
+       looksMarkup 也认它们 ⇒ 树 / 学习记录 / 闪卡三处都能显示与落盘，
+       净化规则一行都不用动。 */
+    html += '<button type="button" class="sb-btn" data-cmd="strikeThrough" title="删除线"><s>S</s></button>';
     html += '<button type="button" class="sb-btn sb-hl" data-hl="1" title="高亮底色">高亮</button>';
     html += '<span class="sb-sep"></span>';
     html += '<span class="sb-sws"></span>';   // ★ 5 个色点：由 renderSwatches() 现画（便于就地重画）
@@ -2094,8 +2115,18 @@
     /* ★ 2026-09-19：浮条上已无 input[type=color]（＋ 取色器搬去设置页），
        也没有右键设置菜单 —— 这两个监听器随之删掉，留着只会误导后来人。 */
     bar.addEventListener('click', function (ev) {
+      /* ★ 需求 X（2026-09-19）：这个「往上找按钮」的循环**原先写错了**。
+         判据写的是「有没有 getAttribute 这个方法」，而**元素节点全都有**它 ⇒
+         循环一步都不走，t 就停在 ev.target 上。用户点的是按钮里的**字母**
+         （<b>B</b> / <u>U</u> / <s>S</s>），ev.target 正是那个 b/u/s ——
+         它当然没有 data-cmd，三个分支全不命中，点击被**静默丢弃**：
+         不报错、不提示，看着就是「点了没反应」。Tom 报的「下划线没生效」即此。
+         （「高亮」按钮里是纯文本，文本节点不是事件目标 ⇒ target 就是按钮本身，
+           所以只有它一直是好的 —— 这条差异正好把病根指了出来。）
+         正确判据：**一直往上走，直到遇到「带目标属性」的那个元素**为止。 */
       var t = ev.target;
-      while (t && t !== bar && !t.getAttribute) t = t.parentNode;
+      while (t && t !== bar && !(t.getAttribute && (
+        t.getAttribute('data-cmd') || t.getAttribute('data-hl') || t.getAttribute('data-color')))) t = t.parentNode;
       if (!t || t === bar) return;
       /* ★ 2026-09-19：💾 保存 / ↩ 撤销 已从浮条搬进设置页，这里不再有这两个分支。
          浮条上剩下的每一条都是「作用在选中文字上」的动作。 */
@@ -2294,7 +2325,9 @@
   var stateCache = {};
   function refreshStates() {
     if (!bar) return;
-    var cmds = ['bold', 'underline'], i, b;
+    /* ★ 需求 X：删除线也要点亮「已生效」状态。少了它，光标停在带删除线的字上时
+       那个 S 不会高亮，用户没法判断当前是什么格式（加粗 / 下划线本来就是这么做的）。 */
+    var cmds = ['bold', 'underline', 'strikeThrough'], i, b;
     for (i = 0; i < cmds.length; i++) {
       var on = false;
       if (savedDoc) { try { on = !!savedDoc.queryCommandState(cmds[i]); } catch (e) { on = false; } }
@@ -2633,7 +2666,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260918am';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260918an';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -3962,7 +3995,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260918am';
+  var NAV_VER = 'V20260918an';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -4062,7 +4095,7 @@ document.addEventListener('pointerdown', e => {
   window.HubNavBadge = { ver: NAV_VER, paint: refresh };
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918am</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260918an</div>
 </body>
 
 
