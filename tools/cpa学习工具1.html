@@ -331,8 +331,13 @@
         /* 列表要能滚：会计 30 章 × 每章若干节，全摊开是一两百行 —— 不给上限会把弹窗撑得比屏幕还高 */
         .pm-list { max-height: 300px; overflow: auto; border: 1px solid #E7DFD0; border-radius: 9px;
                    background: #FDFBF7; padding: 6px 8px; }
-        .pm-course { font-size: 11px; font-weight: 700; color: #8A7358; letter-spacing: .3px;
+        /* ★ 需求 Q：科目行也要挂三颗 chip（第 1 级自己的 重点/难点/疑点），
+           所以这一行从「纯标题」变成「标题 + 右侧 chip」—— 需要 flex。 */
+        .pm-course { display: flex; align-items: center; gap: 6px;
+                     font-size: 11px; font-weight: 700; color: #8A7358; letter-spacing: .3px;
                      margin: 5px 0 3px; padding-bottom: 2px; border-bottom: 1px dashed #E7DFD0; }
+        .pm-course > .pm-cname { flex: 1 1 auto; min-width: 0; overflow: hidden;
+                                 text-overflow: ellipsis; white-space: nowrap; }
         .pm-course:first-child { margin-top: 0; }
         .pm-row { display: flex; align-items: center; gap: 6px; padding: 1px 2px; border-radius: 6px; }
         .pm-row:hover { background: #F4EEE3; }
@@ -7578,6 +7583,7 @@
                                     <span class="tag source${isClassifyActive('source', r.source) ? '' : ' deprecated'}"${isClassifyActive('source', r.source) ? '' : ' title="该分类已从「资料来源」中删除"'}>${r.source || '未知'}</span>
                                     ${r.selfAssessment ? `<span class="tag ${assessmentClass}">${assessmentEmoji} ${r.selfAssessment}</span>` : ''}
                                     ${Array.isArray(r.marks) && r.marks.length ? `<span class="tag rec-marktag">${r.marks.map(m => ({ key: '★ 重点', hard: '▲ 难点', doubt: '？ 疑点' }[m] || '')).join(' ')}</span>` : ''}
+                                    ${(() => { try { const fcn = window.CpaFcNotes; if (!fcn) return ''; const dn = fcn.ofRecord(r); if (!dn.total) return ''; const t0 = (dn.supplement[0] && dn.supplement[0].text) || (dn.tip[0] && dn.tip[0].text) || ''; return '<span class="tag fc-notetag" title="' + String(t0).replace(/"/g, '&quot;').slice(0, 120) + '（闪卡 / 复习里补充的笔记，与闪卡反面同源）">📎 补充笔记 ' + dn.total + '</span>'; } catch (e) { return ''; } })()}
                                     ${r.addToMemory === false ? '<span class="mem-tag off">不进记忆曲线</span>' : '<span class="mem-tag">🧠 记忆曲线</span>'}
                                     ${getRecordTomatoCount(r) > 0 ? ('<span class="tag pomo-tag">🍅 ' + getRecordTomatoCount(r) + '</span>') : ''}
                                 </div>
@@ -8396,11 +8402,14 @@
             const cs = (proj && proj.courses) || [];
             if (!cs.length) {
                 return '<div class="pm-empty">还没有' + kpEsc(L('course')) + ' —— 先在上面「' + kpEsc(L('course')) +
-                    '清单」或「大纲结构」里加一个，回到这里就能按章 / 节配重难疑点了。</div>';
+                    '清单」或「大纲结构」里加一个，回到这里就能按 科目 / 章 / 节 配重难疑点了。</div>';
             }
             return cs.map(function (course) {
                 const chs = pdOutlineOf(proj, course);
-                const head = '<div class="pm-course">' + kpEsc(course) + '</div>';
+                /* ★ 需求 Q：科目（第 1 级）自己那一格 = '0|0'，与章 / 节平权、互不传染。 */
+                const head = '<div class="pm-course"><span class="pm-cname" title="' +
+                    kpEsc(course + ' · 整个科目（第 1 级）') + '">' + kpEsc(course) + '</span>' +
+                    pdMarkChips(draft, course, '0|0') + '</div>';
                 if (!chs.length) {
                     return head + '<div class="pm-empty">这个' + kpEsc(L('course')) +
                         '还没有章 / 节结构 —— 先填上面的「大纲结构」，保存后再回来配。</div>';
@@ -8455,18 +8464,20 @@
         function pdMarkSumText(proj, draft) {
             const n = pdMarkCount(draft);
             if (!n) return '还没有任何预设 —— 三个符号都空着时，知识树上只会显示「📝 学习记录里勾过的」。';
-            let nCh = 0, nSec = 0;
+            let nCo = 0, nCh = 0, nSec = 0;
             const by = { key: 0, hard: 0, doubt: 0 };
             const m = draft || {};
             Object.keys(m).forEach(function (c) {
                 Object.keys(m[c] || {}).forEach(function (k) {
                     const a = m[c][k];
                     if (!Array.isArray(a) || !a.length) return;
-                    if (String(k).split('|')[1] === '0') nCh++; else nSec++;
+                    if (String(k) === '0|0') nCo++;
+                    else if (String(k).split('|')[1] === '0') nCh++;
+                    else nSec++;
                     a.forEach(function (id) { if (by[id] !== undefined) by[id]++; });
                 });
             });
-            return '已预设 <b>' + n + '</b> 处（章 ' + nCh + ' · 节 ' + nSec + '）：★ 重点 ' + by.key +
+            return '已预设 <b>' + n + '</b> 处（科目 ' + nCo + ' · 章 ' + nCh + ' · 节 ' + nSec + '）：★ 重点 ' + by.key +
                 ' · ▲ 难点 ' + by.hard + ' · ？ 疑点 ' + by.doubt +
                 '。保存后到「🌳 知识树」用 ★ ▲ ？ 三个开关查看。';
         }
@@ -8508,12 +8519,14 @@
                 '<div class="pf-hint">缩进表示层级：不缩进=科目，缩进1=章，缩进2=节。<b>再深的缩进会被忽略</b>（知识点不属于科目设计，请在「学习记录 → 知识点速记」里写，那里占第 4–7 级）。留空则保留现有结构。</div></div>' +
                 /* ★ 需求1（2026-09-18）：内容模块 —— 章 / 节 重难疑点的**提前配置**。
                    放在「大纲结构」下面，因为它配的就是大纲里那两层。 */
-                '<div class="pf"><label>内容模块 · 章 / 节 重难疑点预配置</label>' +
+                '<div class="pf"><label>内容模块 · 科目 / 章 / 节 重难疑点预配置</label>' +
                 '<div class="pf-hint" style="margin:0 0 7px;">' +
-                    '这是<b>计划层</b>：学之前就把「哪一章 / 哪一节是重点」定下来。' +
+                    '这是<b>计划层</b>：学之前就把「哪个科目 / 哪一章 / 哪一节是重点」定下来。' +
+                    '<b>三行各自独立、不跨层</b>：科目行的标记只出在科目行，章行只出在章行，' +
+                    '节行只出在本节 —— 标了第 2 节，第 3 章和整个科目<b>都不会</b>跟着亮。' +
                     '知识树上的 ★ ▲ ？ 会把这里配的与「📝 学习记录里勾的」<b>合并显示</b> —— ' +
                     '预设＝虚线轮廓、记录＝实底，两层互不覆盖；哪天不想要了，删掉一边另一边还在。' +
-                    '按<b>章号 / 节号</b>存，大纲里改名不影响已配好的预设。</div>' +
+                    '按<b>编号</b>存（科目写 0|0、章级写 章|0、节写 章|节），大纲里改名不影响已配好的预设。</div>' +
                 '<div class="pm-tools">' +
                     '<span class="pm-legend"><i class="pm-dot pm-d-key">★</i>重点<i class="pm-dot pm-d-hard">▲</i>难点<i class="pm-dot pm-d-doubt">？</i>疑点</span>' +
                     '<span class="pm-sp"></span>' +
@@ -8615,7 +8628,7 @@
                 const cl = box.querySelector('#pdMarkClear');
                 if (cl) cl.onclick = function () {
                     if (!pdMarkCount(pdMarkDraft)) { showToast('内容模块本来就是空的'); return; }
-                    if (!confirm('清空这个项目里所有「章 / 节 重难疑点」预设？\n\n' +
+                    if (!confirm('清空这个项目里所有「科目 / 章 / 节 重难疑点」预设？\n\n' +
                                  '只清这里的预设；📝 学习记录里勾好的标记不受影响。')) return;
                     pdMarkDraft = {};
                     pdPaintMarks();
@@ -12053,6 +12066,36 @@
             return out;
         }
 
+        /* ★ 需求 Q（2026-09-19）：把「闪卡 / 复习时写的笔记」变成**全局可读的同一份数据**。
+           复习面板（内嵌闪卡）写下的东西落在 state.cardNotes[cardId]（见 fcAddNote），
+           原先只有闪卡自己的正反面读得到 —— 于是「复习时补充了信息」在 📝 学习记录 和
+           🌳 知识树 里完全看不见，三个模块各说各话（Tom：「这几个数据相互联通」）。
+           这里只做一件事：把「一条学习记录 → 它名下所有卡的笔记」查出来，供其它 <script>
+           块只读展示。**不新开存储、不复制数据** —— 它们读的就是同一份 state.cardNotes。 */
+        function fcNotesOfRecord(r) {
+            const out = { supplement: [], assoc: [], tip: [], total: 0 };
+            if (!r) return out;
+            let cards = [];
+            try { cards = fcCardsForRecord(r) || []; } catch (e) { cards = []; }
+            fcState();
+            cards.forEach(function (c) {
+                if (!c) return;
+                (state.cardNotes[c.id] || []).forEach(function (n) {
+                    const k = out[n.kind] ? n.kind : 'assoc';
+                    out[k].push({ t: n.t || '', text: n.text || '', h: n.h || null, from: n.from || '闪卡笔记' });
+                });
+            });
+            ['supplement', 'assoc', 'tip'].forEach(function (k) {
+                out[k].sort(function (a, b) { return String(b.t).localeCompare(String(a.t)); });
+            });
+            out.total = out.supplement.length + out.assoc.length + out.tip.length;
+            return out;
+        }
+        window.CpaFcNotes = {
+            ofRecord: fcNotesOfRecord,
+            countOfRecord: function (r) { return fcNotesOfRecord(r).total; }
+        };
+
         function fcAddNote(id, kind, text, html) {
             text = String(text || '').trim();
             if (!text) return;
@@ -14009,8 +14052,9 @@
             return ['●', '■', '◆', '▷', '✓', '✧', '∷'][Math.max(1, Math.min(7, lv)) - 1] || '';
         }
         /* 「科目|章|节」→ 该节下所有带标记的来源。两个来源，一个索引：
-             ① src:'preset' —— 🎯 编辑项目配置 →「内容模块」里**预先配好**的章 / 节（计划层，
-                proj.marks[科目]['章|节'] = ['key','hard','doubt'] 的子集，节写 0 = 章级）；
+             ① src:'preset' —— 🎯 编辑项目配置 →「内容模块」里**预先配好**的科目 / 章 / 节
+                （计划层，proj.marks[科目]['章|节'] = ['key','hard','doubt'] 的子集；
+                节写 0 = 章级，章与节都写 0（'0|0'）= 科目级 —— 三格各自独立，互不传染）；
              ② src:'rec'    —— 📝 学习记录编辑界面勾的 record.marks（执行层）。
            为什么要分两层：原来只有「记录」一个来源，「我打算把第 3 章当重点」这件事无处安放，
            只能等学完再补 —— 补完又和记录里那份混在一起，就是用户说的「乱」。
@@ -14029,7 +14073,9 @@
                         if (!Array.isArray(ids) || !ids.length) return;
                         var pr = String(kk).split('|');
                         var pch = parseInt(pr[0], 10) || 0, psec = parseInt(pr[1], 10) || 0;
-                        if (!pch) return;      // 章必须有；节可以缺（0 = 章级预设）
+                        /* ★ 需求 Q：允许科目级（'0|0'）—— 第 1 级也能有自己的
+                           重点 / 难点 / 疑点。仍然挡掉「有节号却没有章号」这种非法键。 */
+                        if (!pch && psec) return;
                         var key = [course, pch, psec].join('|');
                         (idx[key] || (idx[key] = [])).push({ marks: ids.slice(), raw: '', src: 'preset' });
                     });
@@ -14301,12 +14347,13 @@
                 (pick.list || []).forEach(function (i) { if (recs0[i]) out.push(recs0[i]); });
                 return out;
             }
-            if (ktMe.kind !== 'chapter' && ktMe.kind !== 'section') return out;
+            if (ktMe.kind !== 'course' && ktMe.kind !== 'chapter' && ktMe.kind !== 'section') return out;
             var recs = (state && state.records) || [];
             for (var i = 0; i < recs.length; i++) {
                 var r = recs[i];
                 if (!r || r.course !== ktMe.course) continue;
-                if ((parseInt(r.chapter, 10) || 0) !== ktMe.ch) continue;
+                // ★ 需求 Q：科目行 = 这个科目下的**全部**记录（章 / 节不参与筛选）
+                if (ktMe.kind !== 'course' && (parseInt(r.chapter, 10) || 0) !== ktMe.ch) continue;
                 if (ktMe.kind === 'section' && (parseInt(r.section, 10) || 0) !== ktMe.sec) continue;
                 out.push(r);
             }
@@ -14315,26 +14362,28 @@
         }
 
         /* 这个节点该亮哪几个符号。
-           科目 / 章 / 节三个祖先行按 (科目, 章, 节) **逐级汇总** —— 收起时也要能一眼
-           看出「这一章里有重点」；知识点行则额外要求**名字出现在那条记录的速记文本里**，
+           ★ 需求 Q（2026-09-19）：**严格各自独立、绝不跨层**。
+           Tom：「选中单节，会上下传染」—— 病灶正在这里：原先 科目行 concat 本科目名下
+           **所有**键（含每一节的）、章行 concat 本章**所有**节的，于是「只把第 2 节标成
+           重点」会让第 3 章和整个科目同时亮起 ★。写入口一直是干净的（内容模块每颗 chip
+           只写自己那一格），脏的是渲染侧的这次汇总。
+           现在一格一格对，精确键：
+             科目 → '科目|0|0'     章 → '科目|章|0'     节 → '科目|章|节'
+           谁打了谁显示：上级不继承、下级不上卷。
+           知识点行额外要求**名字出现在那条记录的速记文本里** ——
            否则勾一次「重点」就是整节几十行全挂上符号，等于没有信息。 */
         function ktMarkSyms(n, idx) {
             idx = idx || {};
             var cs = ktNodeCS(n);
             var hit = [];
-            var keys = Object.keys(idx);
-            if (n.kind === 'course') {
-                keys.forEach(function (k) { if (k.split('|')[0] === cs.course) hit = hit.concat(idx[k]); });
-            } else if (n.kind === 'chapter') {
-                keys.forEach(function (k) {
-                    if (k.split('|')[0] === cs.course && (+k.split('|')[1] || 0) === cs.ch) hit = hit.concat(idx[k]);
-                });
-            } else if (n.kind === 'section') {
-                hit = idx[[cs.course, cs.ch, cs.sec].join('|')] || [];
-            } else {
-                hit = (idx[[cs.course, cs.ch, cs.sec].join('|')] || []).filter(function (it) {
-                    return it.raw && it.raw.indexOf(n.name) >= 0;
-                });
+            var key;
+            if (n.kind === 'course') key = [cs.course, 0, 0].join('|');
+            else if (n.kind === 'chapter') key = [cs.course, cs.ch, 0].join('|');
+            else key = [cs.course, cs.ch, cs.sec].join('|');
+            var got = idx[key];
+            hit = got ? got.slice() : [];
+            if (n.kind === 'kp') {
+                hit = hit.filter(function (it) { return it.raw && it.raw.indexOf(n.name) >= 0; });
             }
 
 
@@ -14409,7 +14458,8 @@
            哪些行能改：
              章 / 节 → ✅ 计划层。这是「我打算把第 3 章当重点」唯一能落笔的地方。
              知识点 → ✅ 执行层。必须先唯一定位到一条学习记录，定位不到就明说、不瞎写。
-             科目   → ❌ 汇总行：它下面几十条记录，写谁都不对（提示去章 / 节或记录里改）。 */
+             科目   → ✅ 计划层（★ 需求 Q 起）：第 1 级也有自己的 重点/难点/疑点，
+                      写 '0|0' 这一格；与章 / 节**各自独立**，标了节不会传染到科目。 */
 
         // 从 sig 反解「这一行是谁」。sig 是树上唯一的键，不必再把节点对象存起来：
         //   co|科目 ／ ch|科目|章 ／ se|科目|章|节 ／ 科目|章|节#序号路径
@@ -14476,13 +14526,15 @@
         // 章 / 节行上「记录层另有几处」—— 只报数，不在这儿改：那些标记归 📝 学习记录
         function ktMeRecCount() {
             var out = [];
-            if (ktMe.kind !== 'chapter' && ktMe.kind !== 'section') return out;
+            if (ktMe.kind !== 'course' && ktMe.kind !== 'chapter' && ktMe.kind !== 'section') return out;
             var idx = ktMarkIndex();
             var acc = { key: 0, hard: 0, doubt: 0 };
             Object.keys(idx).forEach(function (k) {
                 var p = k.split('|');
                 if (p[0] !== ktMe.course) return;
-                if ((parseInt(p[1], 10) || 0) !== ktMe.ch) return;
+                // ★ 需求 Q：这一格本身不算「另有」——只统计**这一行下方**的执行层标记
+                if (ktMe.kind === 'course') { if (p[0] === ktMe.course && false) return; }
+                if (ktMe.kind !== 'course' && (parseInt(p[1], 10) || 0) !== ktMe.ch) return;
                 if (ktMe.kind === 'section' && (parseInt(p[2], 10) || 0) !== ktMe.sec) return;
                 idx[k].forEach(function (it) {
                     if (it.src !== 'rec') return;
@@ -14511,8 +14563,10 @@
                 document.body.appendChild(ktMeEl);   // 必须是 body：挂 #ktBody 里会被重画冲掉
             }
             var cur = [], where = '', note = '', editable = false;
-            var what = L(ktMe.kind === 'section' ? 'section' : 'chapter');
-            if (ktMe.kind === 'chapter' || ktMe.kind === 'section') {
+            var what = L(ktMe.kind === 'section' ? 'section'
+                        : (ktMe.kind === 'course' ? 'course' : 'chapter'));
+            // ★ 需求 Q：科目行也进「可改计划层」这一支（写 '0|0' 那一格）
+            if (ktMe.kind === 'course' || ktMe.kind === 'chapter' || ktMe.kind === 'section') {
                 editable = true;
                 cur = ktMePresetVal();
                 where = '写入 <b>🎯 考试项目 → ✎ 编辑项目配置 → 内容模块</b>（计划层）';
@@ -14535,8 +14589,8 @@
                         (pick.exact ? '' : '　⚠️ 该记录的速记里没直接出现这个名字，按位置匹配');
                 }
             } else {
-                where = '科目行是<b>汇总行</b> —— 它下面几十条记录，写谁都不对。<br>' +
-                    '请在<b>章 / 节</b>行上右键改计划层，或去 <b>📝 学习记录</b> 改执行层。';
+                where = '这一行没有可落笔的位置 —— 请在 <b>科目 / 章 / 节</b> 行上改计划层，' +
+                    '或去 <b>📝 学习记录</b> 改执行层。';
             }
             var h = '<div class="kt-me-head"><span class="kt-me-title">' + kpEsc(ktMe.name || '（未命名）') +
                 '</span><button type="button" class="kt-me-close" data-ktme-close="1" title="关闭（Esc）">✕</button></div>' +
@@ -14572,7 +14626,7 @@
                         ? '<div class="kt-me-openmore">还有 ' + (cands.length - 6) + ' 条，去 📝 学习记录 里看全部</div>'
                         : '') +
                     '</div>';
-            } else if (ktMe.kind === 'kp' || ktMe.kind === 'chapter' || ktMe.kind === 'section') {
+            } else if (ktMe.kind === 'kp' || ktMe.kind === 'course' || ktMe.kind === 'chapter' || ktMe.kind === 'section') {
                 h += '<div class="kt-me-openbox"><div class="kt-me-openh">' +
                     '📝 这一行还没有对应的学习记录 —— 去 📝 学习记录 里记一条就会挂上来。</div></div>';
             }
@@ -14617,7 +14671,7 @@
             KT_MARKS.forEach(function (m) { if (m.id === mkId) mk = m; });
             if (!mk) return;
             var on = false, whereTxt = '';
-            if (ktMe.kind === 'chapter' || ktMe.kind === 'section') {
+            if (ktMe.kind === 'course' || ktMe.kind === 'chapter' || ktMe.kind === 'section') {
                 var cur = ktMePresetVal();
                 var at = cur.indexOf(mkId);
                 on = at < 0;
@@ -14677,6 +14731,39 @@
         // 一棵「分支」= 节点本身 + （展开时）它的子级容器。
         // 结构对齐参考图：kt-row 是色块/文字，kt-kids 是右移一档的下一层，
         // 连接线由 CSS 的直角折线画（.kt-kids 的左边框 + 每个分支的短横线）。
+        /* ★ 需求 Q（2026-09-19）：知识树行的 title 里带一句「这一节在闪卡 / 复习里补充了
+           N 条笔记」。数据与闪卡反面**同源**（window.CpaFcNotes → state.cardNotes），
+           这里只读、不复制、不新开存储 —— 用户要的「几个模块数据相互联通」。
+           为什么要缓存：ktBranchHTML 是逐行渲染的，一页上千行若每行都遍历记录会明显卡顿；
+           缓存键是「科目|章|节」，在 ktRender 里重置一次（见 ktNoteCacheReset）。 */
+        var ktNoteCache = null;
+        function ktNoteCacheReset() { ktNoteCache = null; }
+        function ktNoteCount(course, ch, sec) {
+            if (!ktNoteCache) ktNoteCache = {};
+            var key = [course, ch, sec].join('|');
+            if (ktNoteCache[key] !== undefined) return ktNoteCache[key];
+            var n = 0;
+            try {
+                var fn = window.CpaFcNotes;
+                if (fn && typeof fn.countOfRecord === 'function') {
+                    (state.records || []).forEach(function (r) {
+                        if (!r || r.course !== course) return;
+                        if ((parseInt(r.chapter, 10) || 0) !== ch) return;
+                        if ((parseInt(r.section, 10) || 0) !== sec) return;
+                        n += fn.countOfRecord(r);
+                    });
+                }
+            } catch (e) { n = 0; }
+            ktNoteCache[key] = n;
+            return n;
+        }
+        function ktNoteTip(n) {
+            if (!n || (n.kind !== 'kp' && n.kind !== 'section')) return '';
+            var cs = ktNodeCS(n);
+            var c = ktNoteCount(cs.course, cs.ch, cs.sec);
+            return c ? (' · 📎 这一节在闪卡 / 复习里补充了 ' + c + ' 条笔记（与闪卡反面同源）') : '';
+        }
+
         function ktBranchHTML(n, expd, q, matched, keep, stat, NO) {
             const kids = n.children || [];
             const open = !!expd[n.sig];
@@ -14696,11 +14783,13 @@
                 (kids.length ? ' · ' + kids.length + ' 个子节点' : '') +
                 (ktMarkAny ? ' · 悬停『★ 重点 / ▲ 难点 / ？ 疑点』可切换标记显示' : '') +
                 /* ★ 2026-09-18（需求 G）：行名可直接选中上色 —— 能改名的只有知识点行 */
-                ((n.kind === 'chapter' || n.kind === 'section' || n.kind === 'kp')
+                ((n.kind === 'course' || n.kind === 'chapter' || n.kind === 'section' || n.kind === 'kp')
                     ? ' · 行名可选中上色' + (n.kind === 'kp' ? ' / 直接改名' : '') +
                       /* ★ 2026-09-18（需求 K）：右键 / 长按面板里多了「打开对应学习记录」 */
                       ' · 右键/长按可打开对应学习记录'
-                    : '');
+                    : '') +
+                /* ★ 需求 Q：这一节在闪卡 / 复习里补充过几条笔记（与闪卡反面同一份数据） */
+                ktNoteTip(n);
             let h = '<div class="kt-branch">';
             h += '<div class="kt-row kt-lv' + n.lv +
                  '" data-kt-sig="' + kpEsc(n.sig) + '" data-kt-lv="' + n.lv + '"' +
@@ -15191,6 +15280,7 @@
             ktMarkOn = (cfg.marks && typeof cfg.marks === 'object') ? cfg.marks : {};
             ktMarkAny = KT_MARKS.some(function (mk) { return !!ktMarkOn[mk.id]; });
             ktMarkIdx = ktMarkAny ? ktMarkIndex() : {};  // 三个都关就不必算索引
+            ktNoteCacheReset();                  // ★ 需求 Q：本节的「补笔记数」缓存按轮重建
             ktMkHintPaint();                     // ★ 需求 F：图例里那句深浅说明按需出现
             const rawTree = ktSevenTree(cfg, all, proj);
             // ★ 一键编号：在**未裁剪**的 rawTree 上算，键是 sig（见上方 ktNoText 的口径说明）
@@ -19587,7 +19677,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ag</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ah</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
