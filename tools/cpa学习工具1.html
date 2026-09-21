@@ -2548,7 +2548,7 @@
 .fc-panel .plan-dialog { max-width: 620px; }
 .fc-card-box { border: 1px solid #E6DCCB; border-radius: 11px; background: #FFFDF8; padding: 16px 17px; margin: 10px 0; }
 .fc-face-label { font-size: 11.5px; color: #A99A83; letter-spacing: 1px; margin-bottom: 6px; font-weight: 600; }
-.fc-face-q { font-size: 18px; line-height: 1.65; color: #2F2820; font-weight: 600; word-break: break-word; }
+.fc-face-q { font-size: 18px; line-height: 1.65; color: #2F2820; font-weight: 600; white-space: pre-wrap; word-break: break-word; }
 .fc-face-a { font-size: 14.5px; line-height: 1.85; color: #3E372E; white-space: pre-wrap; word-break: break-word; }
 .fc-flip { display: block; width: 100%; margin-top: 14px; padding: 10px; border-radius: 9px;
            border: 1px dashed #CBB99C; background: #FBF7EF; color: #6F5C45; font-size: 13.5px;
@@ -3231,7 +3231,8 @@
            注意：原样式块里 @media (max-width:1024px) 的 .form-row{1fr} 只有 (0,1,0)，
            .form-row.four 是 (0,2,0)，特异性更高会盖掉它 —— 所以断点必须自带 */
         .form-row.four { grid-template-columns: repeat(4, 1fr); gap: 14px 18px; }
-        @media (max-width: 1440px) { .form-row.four { grid-template-columns: 1fr 1fr; } }
+        /* ★ 2026-09-21：与 .five 的五列下限对齐 —— 两行同时降档，避免出现「红框 2 列 / 绿框 5 列」的错位。 */
+        @media (max-width: 1400px) { .form-row.four { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 1024px) { .form-row.four { grid-template-columns: 1fr; } }
 
         /* ===== 记录学习表单：明细 10 项 —— 5 列 × 2 行（开始时间 → 自评原因） =====
@@ -3243,9 +3244,14 @@
            里 .form-row{1fr} 的 (0,1,0)。列宽按「视口 → 表单宽」的实测关系定（见 patch 日志）：
            视口 2560→表宽 2043 / 2200→1683 / 1920→1403 / 1700→1183 / 1400→883 / 1024→639。 */
         .form-row.five { grid-template-columns: repeat(5, 1fr); gap: 14px 18px; }
-        @media (max-width: 1900px) { .form-row.five { grid-template-columns: repeat(4, 1fr); } }
-        @media (max-width: 1500px) { .form-row.five { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 1100px) { .form-row.five { grid-template-columns: 1fr 1fr; } }
+        /* ★ 2026-09-21（Tom：「绿框的十项变成五列，每列两项」）：五列的生效下限从 1900 拉到 1400。
+           原来 1501–1900 掉到 4 列 ⇒ 10 项排成 4/4/2，最后两列各只有 1 项，不成「每列两项」。
+           实测「视口 → 表单宽」= 视口 − 517（见上表）：1400 时表宽 883，
+           扣掉 4 个 18px 间隙后每列 162px —— 时间 / 数字输入与 5 颗星都在这个宽度内放得下，
+           所以 1400 是「五列」的安全下限。 */
+        @media (max-width: 1400px) { .form-row.five { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 1180px) { .form-row.five { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 900px) { .form-row.five { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 560px) { .form-row.five { grid-template-columns: 1fr; } }
         /* 三标记（★ ▲ ？）搬进 .form-row.five 后，原来只挂在 .form-row.full 上的两条补偿
            要跟着搬过来，否则 .hint 会多出 4px 上边距、与 chips 的间距和以前不一样 */
@@ -5304,6 +5310,7 @@
             ktCfg: { from: 1, to: 0, course: '', chapter: 0, section: 0 },
             kpMigrated: false,     // 一次性迁移闸门：老「自由输入」知识点 → 知识点速记（见 migrateKpQuickRaw）
             tierV2: false,         // 一次性迁移闸门：闪卡层级口径 1-4 → 4-7（见 migrateTierV2）
+            fcRawT: false,         // 一次性迁移闸门：卡片正文从「归一化比较键」换回原文（见 migrateCardRaw）
             currentCourse: '会计',
             editingId: null,
             filterStar: 'all',
@@ -11750,6 +11757,7 @@
                                 //   已不作为独立节点，但它的文本由 fcRecOutline 的 direct 带出，
                                 //   从这里进 answers；下面 walk() 还会把 kids 的名字并进来（去重）。
                                 answers: (c.direct || []).slice(),
+                                answersRaw: (c.directT || []).slice(),
                                 answersH: (c.directH || []).slice()
                             };
                             nodes[pkey] = node;
@@ -11791,6 +11799,10 @@
                             node.answers.push(k.name);
                             if (!node.answersH) node.answersH = [];
                             node.answersH.push(k.h || null);
+                            /* ★ 2026-09-21：与 answers 平行的**原文**（含 SOFT）。
+                               answers / answersH / answersRaw 三者必须同步走，否则文字与格式错位。 */
+                            if (!node.answersRaw) node.answersRaw = [];
+                            node.answersRaw.push(String(k.t == null ? k.name : k.t));
                         });
                         flat.push(node);
                         walk(node.kids || []);
@@ -11800,13 +11812,15 @@
                 flat.forEach(function (node) {
                     /* ★ 需求 S：去重时 answersH 必须与 answers **同步**走（按下标配对），
                        否则格式会错位到别的行上。 */
-                    const seen = {}; const _A = []; const _H = [];
+                    const seen = {}; const _A = []; const _H = []; const _R = [];
                     (node.answers || []).forEach(function (nm, i) {
                         if (seen[nm]) return;
                         seen[nm] = 1;
                         _A.push(nm); _H.push((node.answersH || [])[i] || null);
+                        /* ★ 2026-09-21：原文数组与 answers 同步去重，下标才永远指同一行 */
+                        _R.push((node.answersRaw || [])[i] || nm);
                     });
-                    node.answers = _A; node.answersH = _H;
+                    node.answers = _A; node.answersH = _H; node.answersRaw = _R;
                     node.childUids = (node.kids || []).map(function (k) { return fcUid(k); });
                     rows.push({
                         sig: fcSig(node.course, node.chapter, node.section, node.tier, node.order),
@@ -11818,6 +11832,7 @@
                            软换行永远画不出来（本轮第一版补丁正是栽在这里）。 */
                         t: String(node.t == null ? '' : node.t),
                         answers: node.answers,
+                        answersRaw: node.answersRaw || [],
                         answersH: node.answersH || [],
                         childUids: node.childUids,
                         path: node.path.slice(),
@@ -11992,6 +12007,14 @@
                     .map(function (x) { return fcNormText(x && x.t); })
                     .filter(Boolean);
             };
+            /* ★ 2026-09-21：与 direct **严格平行**的原文数组（同一次过滤 ⇒ 同一个下标 = 同一个下级）。
+               direct 是 fcNormText 归一化过的比较键，而卡片反面要显示的是**原文**
+               （含 SOFT 软换行、保留空格与大小写）。两者下标必须一一对齐，否则文字与格式错位。 */
+            const directTOf = function (node) {
+                return ((node && node.c) || [])
+                    .map(function (x) { return String((x && x.t) == null ? '' : x.t); })
+                    .filter(function (x) { return !!fcNormText(x); });
+            };
             /* ★ 需求 S：直接下级**各自的**格式（与 direct 平行的数组，没上色的格为 null）。
                fcBuild 用它拼卡片反面的 aH —— 反面每一行与记录里那一行同一个颜色。 */
             const directHOf = function (node) {
@@ -12019,7 +12042,7 @@
                     if (nm && (keepDeep || lv <= maxLv)) {
                         out.push({
                             name: nm, lv: lv, parents: parents, ancestors: anc,
-                            direct: directOf(node), directH: directHOf(node), deep: lv > maxLv,
+                            direct: directOf(node), directT: directTOf(node), directH: directHOf(node), deep: lv > maxLv,
                             /* ★ 需求1 新增两个字段（都是只读的，老消费者不受影响）：
                                h  = 这一格的格式，来自 rec.kpRich（上面已套好）
                                ip = 这一格在速记树里的序号路径，正是 rec.kpRich 的键
@@ -12175,10 +12198,11 @@
                    改指向新卡，而 id 本身是可变的。 */
                 const sigRaw = sigFix[fcUid(n)] || n.sig;
                 let id = fcIdOf(sigRaw);
-                const autoQ = n.name;
+                // ★ 2026-09-21：正文取**原文**（见 fcDispQ / fcDispA 的注释）
+                const autoQ = fcDispQ(n);
                 // 反面 = 该节点的直接下级。数据源已是学习记录，这里的下级天然就是
                 // 「这条学习路径上真的遇到过的下一级」，无需再收窄。
-                let autoA = n.answers.join('\n');
+                let autoA = fcDispA(n);
                 /* ★ 需求 S：卡片正反面格式直接**从记录搬**（qH = 这一格自己的 h；
                    aH = 各直接下级的 h 逐行校验后用 <br> 拼）。至此三处同源：
                    学习记录（编辑器 applyRichMap）→ 知识树（n.h）→ 闪卡（qH/aH）。 */
@@ -12634,6 +12658,45 @@
             return stripKpNo(String(s || '')).replace(/\s+/g, '').toLowerCase();
         }
 
+        /* ★ 2026-09-21（软换行回归 #2）：**卡片正文的取字口径**，收敛到这两个函数。
+           为什么必须单独有它们：fcNormText 是「比较键」——它抹掉所有空白
+           （JS 的 \s **包含 U+2028 软换行**）并转小写；而卡片正反面一直直接取
+           n.name / n.answers，那正是归一化过的比较键。后果三条：
+             · 软换行看不见（Tom 本轮报的就是这条）；
+             · 知识点里的空格被吃掉（「新概念英语 第一册」→「新概念英语第一册」）；
+             · 英文被写成小写（「CPA」→「cpa」）。
+           这两个函数只做一件事：优先取原文，没有原文（老节点没有 t 字段）才退回比较键，
+           保证任何情况下都不会出现空卡片。 */
+        function fcDispQ(n) { return String((n && (n.t || n.name)) || ''); }
+        function fcDispA(n) {
+            const a = (n && n.answersRaw && n.answersRaw.length) ? n.answersRaw : ((n && n.answers) || []);
+            return a.join('\n');
+        }
+
+        /* ★ 2026-09-21：存量卡片一次性换回原文（闸门 state.fcRawT，只真跑一次）。
+           只动「系统派生」的卡：用户编辑过（edited）/ 自建（manual）/ 隐藏 / 已删一律不碰
+           —— 与 fcBuild 的刷新闸门同一口径，用户的手写内容一个字都不覆盖。
+           复习历史（card.review）、卡片笔记（state.cardNotes）、复习排期都不在此函数射程内。 */
+        function migrateCardRaw() {
+            try {
+                fcState();
+                if (state.fcRawT) return 0;
+                state.fcRawT = true;
+                let hit = 0;
+                Object.keys(state.cards || {}).forEach(function (id) {
+                    const c = state.cards[id];
+                    if (!c || c.edited || c.manual || c.hidden || c.deleted) return;
+                    const nd = fcNodeOfCard(c);
+                    if (!nd) return;
+                    const q = fcDispQ(nd), a = fcDispA(nd);
+                    if (q && q !== c.q) { c.q = q; hit++; }
+                    if (a !== c.a) { c.a = a; hit++; }
+                });
+                if (hit) saveData();
+                return hit;
+            } catch (e) { return 0; }
+        }
+
         // 一次学习（记录）对应哪些卡 —— **与 fcBuild 同源**（见 fcLearnedSetForRecord）。
         // 记录的知识点文本一个节点都命中不了时（例如手工写的自由文本），退化为「该节
         // 已有的卡片」，宁可多给、不要漏掉。
@@ -13006,8 +13069,8 @@
             if (!card.src) { showToast('⚠️ 自建卡片没有系统原文'); return; }
             const n = fcNodeOfCard(card);
             if (!n) { showToast('⚠️ 树里已找不到这个节点，无法恢复原文'); return; }
-            card.q = n.name;
-            card.a = n.answers.join('\n');
+            card.q = fcDispQ(n);      // ★ 2026-09-21：恢复的必须是**原文**，不是归一化比较键
+            card.a = fcDispA(n);
             delete card.qH; delete card.aH;      // 回到系统原文 → 手工格式一并作废
             card.edited = false;
             card.editedAt = dateToStr(new Date());
@@ -13638,8 +13701,8 @@
             if (!card || !card.src) { showToast('⚠️ 自建卡片没有系统原文'); return; }
             const n = fcNodeOfCard(card);
             if (!n) { showToast('⚠️ 树里已找不到这个节点，无法恢复原文'); return; }
-            card.q = n.name;
-            card.a = n.answers.join('\n');
+            card.q = fcDispQ(n);      // ★ 2026-09-21：恢复的必须是**原文**，不是归一化比较键
+            card.a = fcDispA(n);
             delete card.qH; delete card.aH;      // 回到系统原文 → 手工格式一并作废
             card.edited = false;
             card.editedAt = dateToStr(new Date());
@@ -13973,6 +14036,10 @@
         function initCardModule() {
             if (fcBound) return;        // 见 fcBound 注释：防重复绑定（重复绑会让层级范围按钮失效）
             fcBound = true;
+            /* ★ 2026-09-21：存量卡片正文换回原文（见 migrateCardRaw）。
+               启动顺序是 loadData → … → initCardModule，所以 fcNodeOfCard / fcWalkAll 此刻可用。
+               失败不影响初始化（内部已 try）。 */
+            try { migrateCardRaw(); } catch (e) {}
             const build = document.getElementById('fcBuildBtn');
             if (build) build.addEventListener('click', function () { fcBuild(false); });
             // ★ 2026-09-18（需求 A）：批量删除开关（只切内存标志，不动任何卡片数据）
@@ -14963,7 +15030,7 @@
                 if (!card) {
                     if (!row) return false;
                     card = {
-                        id: id, q: text, a: (row.answers || []).join('\n'), tags: [],
+                        id: id, q: text, a: fcDispA(row), tags: [],
                         src: {
                             course: row.course, chapter: row.chapter, section: row.section,
                             tier: row.tier, order: row.order, path: (row.path || []).slice()
@@ -20956,7 +21023,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921e</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921f</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
