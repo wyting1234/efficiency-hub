@@ -2822,6 +2822,52 @@
 /* 深底色块（lv1/lv2）上的搜索高亮：mark 的黄底会把继承来的白字吞掉，压回深字 */
 .kt-lv1 .kt-name mark, .kt-lv2 .kt-name mark { color: #5A4A2E; }
 .kt-lvhint { color: #A8997F; }
+/* ===== ★ 2026-09-21（Tom 需求②）：知识树的「大纲视角 / 符号视角」=====
+   两档都「借用学习记录里面的展示模式」（📝 学习记录 → 📌 知识点速记 的
+   大纲视角 / 符号视角）：一行一个节点、行首一列（编号 或 该层符号）、
+   层级用**可见缩进**表达、正文是浅底圆角 chip —— 与卡片里的 .kp-hrow 家族同源。
+   为什么另开一套类名（.kt-oline / .kt-ono / .kt-otext）而不复用 .kt-row：
+   .kt-row 是**横排胶囊**（display:flex + 深色底 + width:fit-content，为「左→右折线树」
+   设计的），拿它排纵向大纲会变成一串深浅不一的色块；大纲要的是「一列编号 + 一列文字」。
+   ⚠️ 缩进用 margin-left 表达（0/14/28/…/84px，与速记 .kpi 的 14px/级同档），
+      不画连接线 —— 连线是思维导图档的层级线索，大纲档靠缩进 + 编号两列。 */
+.kt-modegrp { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; }
+.kt-modecap { font-size: 12px; color: var(--text-secondary); }
+.kt-modegrp .kt-mbtn { padding: 3px 9px; font-size: 12px; white-space: nowrap; flex: 0 0 auto; }
+/* 大纲 / 符号档：flex 纵向列。min-width:0 覆盖 .kt-tree 的 max-content —— 大纲是文档，
+   要按容器宽度换行，不要横向滚动条（那是折线树才需要的）。 */
+.kt-tree.kt-flat { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 6px 4px; }
+.kt-oline { display: flex; align-items: flex-start; gap: 7px; line-height: 1.6; }
+.kt-olv1 { margin-left: 0; }
+.kt-olv2 { margin-left: 14px; }
+.kt-olv3 { margin-left: 28px; }
+.kt-olv4 { margin-left: 42px; }
+.kt-olv5 { margin-left: 56px; }
+.kt-olv6 { margin-left: 70px; }
+.kt-olv7 { margin-left: 84px; }
+.kt-oline > .kt-ono { flex: 0 0 auto; min-width: 48px; text-align: right; padding-top: 2px; }
+.kt-oline > .kt-ono.kt-ono-sym { min-width: 16px; text-align: left; font-size: 12px; padding-top: 1px; }
+.kt-oline > .kt-otext {
+    flex: 0 1 auto; font-size: 12.5px; color: var(--text); background: #F1EBDF;
+    border-radius: 6px; padding: 1px 9px; border-left: 3px solid #DCCFB8; word-break: break-word;
+}
+.kt-oline.kt-olv1 > .kt-otext { background: #EAE0CC; border-left-color: var(--primary); font-weight: 600; }
+.kt-oline.kt-olv2 > .kt-otext { border-left-color: #C9B896; font-weight: 600; }
+.kt-oline.kt-olv3 > .kt-otext { background: #F6F2E9; }
+.kt-oline.kt-olv4 > .kt-otext, .kt-oline.kt-olv5 > .kt-otext,
+.kt-oline.kt-olv6 > .kt-otext, .kt-oline.kt-olv7 > .kt-otext {
+    background: #F6F2E9; border-left-color: #E0D8CA; font-size: 12px;
+}
+.kt-oline > .kt-mark { padding-top: 1px; }
+/* 「从学习记录跳过来」的高亮脉冲：.kt-hit 原来只挂在 .kt-row 上，大纲档也要亮 */
+.kt-oline.kt-hit { animation: ktHitPulse 2.4s ease-out 1; border-radius: 6px; }
+@media (max-width: 700px) {
+    .kt-olv2 { margin-left: 10px; } .kt-olv3 { margin-left: 20px; } .kt-olv4 { margin-left: 30px; }
+    .kt-olv5 { margin-left: 40px; } .kt-olv6 { margin-left: 50px; } .kt-olv7 { margin-left: 60px; }
+    .kt-oline > .kt-ono { min-width: 40px; font-size: 10.5px; }
+    .kt-oline > .kt-otext { font-size: 12px; padding: 1px 7px; }
+}
+
 /* 2026-09-18（需求 D）：.kt-kidn（行尾「N 项 / ∷N」）已从渲染端移除 ——
    连同上面两条 .kt-lv1/.kt-lv2 的配色一起删掉，不留「看着像在用、其实永不生效」的规则。
    子节点数改挂在行的 title 上（见 ktBranchHTML 的 ktRowTip）。 */
@@ -3480,6 +3526,65 @@
            只是淡显 + 虚线左边框，并说明它的归宿是卡片反面、不单独出卡。 */
         .kp-hrow.kp-hdeep > .kp-htext { background: transparent; border-left-style: dashed; border-left-color: #E2D8C6; color: var(--text-secondary); }
         .kp-hrow.kp-hdeep > .kp-hno { color: #B9AE9A; }
+        /* ===== ★ 2026-09-21（Tom：速记的 默认 / 大纲 / MD 三视角「类比符号视角，
+           层级要清晰，类比符号视角设计新的排版」）=====
+           原状：三视角的每一行都是「缩进（空格）+ 编号 + 正文」拼成的一个字符串 ——
+           正文与编号连在一起，层级只靠每级 2 个空格表达（13px 字号下约 7px / 级），
+           四层下来几乎看不出归属，与旁边的「符号视角」（一行一个浅底 chip）判若两物。
+           新排版把每行拆成**同一行内的三格**，视觉语言与符号视角同源
+           （.kp-hrow / .kp-hno / .kp-htext）：
+             .kpi  缩进格 —— 只负责把行推右（每级 14px，与卡片 .kp-hrow 的
+                              kp-hlv2/3/4 的 14/28/42px 同档）。它里面**装着那串缩进空格**
+                              （不是靠 CSS 造出来的），所以文本层一字未变。
+             .kho  编号格 —— 定宽右对齐等宽字，编号成列，同级的行一眼对齐。
+             .kpn  正文格 —— 浅底圆角 chip（.kp-htext 同色），按级加重 / 淡化。
+           为什么要拆成三格而不是继续拼一个字符串：编号的宽度不齐（一、 / （一） /
+           1. / （1）），右对齐才能成列；混在正文串里做不到 —— 会越看越像纯文本。
+           ⚠️ 三格都是 inline 级、行仍由 <br> 分隔，**不引入块级行容器** ——
+              domLines / beforeinput / 回车续号 / Tab 缩进四条链全部按「<br> 分行、
+              行内元素整体收进行里」写的，换成 <div> 行要同时动这四条。
+           ⚠️ 三格拼起来的纯文本 = 缩进 + 编号 + 正文，与 toFlat / toOutline / toMD
+              逐字同形（有对照断言）：保存 / 导出 / 一键编号 / 草稿全部零改动。 */
+        .cpa-rt .kpi { display: inline-block; vertical-align: top; }
+        .cpa-rt .kpi-k1 { min-width: 0; }
+        .cpa-rt .kpi-k2 { min-width: 14px; }
+        .cpa-rt .kpi-k3 { min-width: 28px; }
+        .cpa-rt .kpi-k4 { min-width: 42px; }
+        .cpa-rt .kpi-k5 { min-width: 56px; }
+        .cpa-rt .kpi-k6 { min-width: 70px; }
+        .cpa-rt .kpi-k7 { min-width: 84px; }
+        /* ★ 2026-09-21（打磨）：编号格改成**定宽**（不是 min-width）。
+           三档的编号串长度不同 —— 真机实测：「（一） 」46.03px、outline 空串 42px、
+           md 档带 «# » / «- » 前缀最宽 58.28px。用 min-width:42px 时盒宽由内容决定，
+           md 档深层行会被自己的长编号顶右，chip 左沿出现「第 2 层比第 3 层还靠右」
+           的倒挂（实测 87px > 85px）—— 层级反而看不出深浅。
+           定宽 60px 后（全局 box-sizing:border-box，含 6px 右 padding ⇒ 内容 54px，
+           装得下最宽的 52.28px），三档的 chip 左沿一律 = 缩进(14px/级) + 60px + gap，
+           随深度**严格递增**，一眼可辨。
+           为什么不用 overflow:hidden 截掉溢出的编号：编号是层级线索，截了就看不见了。 */
+        .cpa-rt .kho {
+            display: inline-block; width: 60px; text-align: right; vertical-align: top;
+            white-space: nowrap;
+            font-family: ui-monospace, Consolas, "Courier New", monospace;
+            font-size: 11.5px; font-weight: 600; letter-spacing: -.2px;
+            color: var(--text-secondary); padding: 2px 6px 0 0;
+        }
+        .cpa-rt .kpn {
+            vertical-align: top; font-size: 12.5px; line-height: 1.55;
+            padding: 1px 8px; border-radius: 6px; word-break: break-word;
+            background: #F1EBDF; border-left: 3px solid #DCCFB8;
+        }
+        .cpa-rt .kpn.kp-hlv1 { background: #EAE0CC; border-left-color: var(--primary); font-weight: 600; }
+        .cpa-rt .kpn.kp-hlv2 { border-left-color: #C9B896; }
+        .cpa-rt .kpn.kp-hlv3, .cpa-rt .kpn.kp-hlv4 { background: #F6F2E9; border-left-color: #E0D8CA; font-size: 12px; }
+        @media (max-width: 700px) {
+            .cpa-rt .kpi-k2 { min-width: 10px; } .cpa-rt .kpi-k3 { min-width: 20px; }
+            .cpa-rt .kpi-k4 { min-width: 30px; } .cpa-rt .kpi-k5 { min-width: 40px; }
+            .cpa-rt .kpi-k6 { min-width: 50px; } .cpa-rt .kpi-k7 { min-width: 60px; }
+            .cpa-rt .kho { width: 56px; font-size: 11px; }
+            .cpa-rt .kpn { font-size: 12px; padding: 1px 7px; }
+        }
+
         /* ★ 「思维导图视角」：纵向树 + 虚线连接，**不带编号** —— 层级完全由连线与缩进表达。
            为什么不画成知识树那种「左→右分支」：记录卡片在手机 / 效率中心 iframe 里宽度很窄，
            横向分支会把内容挤出视口、逼出横向滚动条；纵向树只在垂直方向增长。
@@ -3995,7 +4100,7 @@
                                     <label>🔢 编号模版 <span style="font-weight:400;color:var(--text-secondary);">(「一键编号」与四个视角的行首编号都按此模版生成；只改编号写法，不动内容与层级)</span></label>
                                         <div class="kp-tmpl-list" id="kpTmplList">
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="chap" /> <span class="kp-tmpl-name">第1章 / 第1节 / 一、 / （一） / 1. / （1） / ①</span><span class="kp-tmpl-desc">章节体（七级）：第N章 → 第N节 → 一、 → （一） → 1. → （1） → ①。档位 = 知识树的链路层级（1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级），所以同一个知识点在速记与知识树里编号一致</span></label>
-                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="chapv" /> <span class="kp-tmpl-name">科目 / 第1章 / 第1节 / 一、 / （一） / 1. / （1）</span><span class="kp-tmpl-desc">章节体·变体（七级）：科目级<b>不编号</b>，从章开始 第N章 → 第N节 → 一、 → （一） → 1. → （1）。与上一套的区别只在起算位置 —— 科目名本身就是标识，不该被编成「第1章」，所以这套把「第N章」下移到第 2 级，章 / 节 / 知识点逐级对位</span></label>
+                                        <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="chapv" /> <span class="kp-tmpl-name">第1部分 / 第1章 / 第1节 / 一、 / （一） / 1. / （1）</span><span class="kp-tmpl-desc">章节体·变体（七级）：<b>第N部分</b> → 第N章 → 第N节 → 一、 → （一） → 1. → （1）。与上一套的区别只在起算位置 —— 上一套把「第N章」摆在链路第 1 级（科目），于是科目行被编成「第1章 会计」、章行被编成「第1节」，整体错位一档；这套在第 1 级先立「第N部分」，科目名下辖的章 / 节 / 知识点逐级对位</span></label>
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="gongwen" /> <span class="kp-tmpl-name">一、 / （一） / 1. / （1） / ① / a. / i.</span><span class="kp-tmpl-desc">中文公文体（七级）：一、 → （一） → 1. → （1） → ① → a. → i.</span></label>
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="roman" /> <span class="kp-tmpl-name">I. / A. / 1. / a. / (1) / (i) / a)</span><span class="kp-tmpl-desc">罗马体系（七级，出厂默认）：I. → A. → 1. → a. → (1) → (i) → a)</span></label>
                                         <label class="kp-tmpl"><input type="radio" name="kpTmpl" value="symbol" /> <span class="kp-tmpl-name">● / ■ / ◆ / ▷ / ✓ / ✧ / ∷</span><span class="kp-tmpl-desc">符号体（七级）：每级一个符号，符号取自下面的「🔣 每级符号」；这里显示的名字会跟着你改的符号一起变</span></label>
@@ -4142,9 +4247,22 @@
                     <label>科目 <select id="ktCourse"></select></label>
                     <label>章 <select id="ktChapter"></select></label>
                     <label>节 <select id="ktSection"></select></label>
+                    <!-- ★ 2026-09-21（Tom 需求②）：知识点展示的**展示方式**三档 ——
+                         思维导图（左→右折线树，原样保留）/ 大纲视角 / 符号视角。
+                         后两档「借用学习记录里面的展示模式」：一行一个节点、行首一列
+                         （编号 或 该层符号）、层级用缩进表达 —— 与「📝 学习记录 →
+                         📌 知识点速记」的 大纲 / 符号 视角同一套视觉语言。
+                         三档共用同一份数据与同一条筛选链（科目/章/节、显示范围、
+                         隐藏未学、搜索、★▲？标记），切换只换画法，不写任何数据。 -->
+                    <span class="kt-modegrp" id="ktModeGrp">
+                        <span class="kt-modecap">展示</span>
+                        <button type="button" class="fc-btn kt-mbtn" id="ktModeBtn_mind" data-ktmode="mind" title="思维导图视角（默认）：左→右折线树，点 ▸ / ▾ 展开收拢">🧠 思维导图</button>
+                        <button type="button" class="fc-btn kt-mbtn" id="ktModeBtn_outline" data-ktmode="outline" title="大纲视角：一行一个节点、层级用缩进表达、行首一列编号（与「📝 学习记录 → 知识点速记 → 大纲视角」同一套排版；编号按当前模版生成）。本视角一次摊开全部层级（不折叠）">🗂 大纲视角</button>
+                        <button type="button" class="fc-btn kt-mbtn" id="ktModeBtn_symbol" data-ktmode="symbol" title="符号视角：行首换成该层的符号（取自「🧩 模版设置 → 🔣 每级符号」），层级用缩进表达（与「📝 学习记录 → 知识点速记 → 符号视角」同源）。本视角一次摊开全部层级（不折叠）">🔣 符号视角</button>
+                    </span>
                     <span class="kt-noctl">
                         <button type="button" class="fc-btn" id="ktNumberBtn" title="按编号模版给每一行加上行首编号（只影响本页显示，不改动科目/章/节与学习记录）">🔢 一键编号</button>
-                        <select id="ktNoTmpl" title="编号模版（与「📝 学习记录 → 🧩 模版设置」共用同一份偏好）。四套体系各七档，档位 = 链路层级：1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级"></select>
+                        <select id="ktNoTmpl" title="编号模版（与「📝 学习记录 → 🧩 模版设置」共用同一份偏好）。五套体系各七档，档位 = 链路层级：1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级"></select>
                     </span>
                     <!-- ★ 2026-09-18（需求 C）：把行尾的「层级名 / N 项」换成符号 -->
                     <button type="button" class="fc-btn" id="ktSymBtn" title="层级角标：打开后在每行行尾显示一个层级符号（科目/章/节/知识点1-4级各一个）。默认关闭 —— 层级另有颜色、缩进、一键编号三条线索。符号取自「模版设置 → 🔣 每级符号」，与编号体系的符号体同源">🔣 层级角标</button>
@@ -14183,6 +14301,32 @@
         const KT_TO_AUTO = 0;
         const KT_DEF_TO = 7;                  // 默认展开到第 7 级：科目›章›节›知识点1–4级
 
+        /* ★ 2026-09-21（Tom 需求②）：知识树的「展示方式」三档。
+           为什么要新增：知识树原来只有一种画法（左→右折线树）。Tom 要的是
+           「在现有的展示框架下，增加知识点展示的大纲和符号视角，借用学习记录里面的展示模式」——
+           两档都借用「📝 学习记录 → 📌 知识点速记」的排版语言：
+             outline 一行一个节点 + 行首一列编号 + 层级用缩进表达；
+             symbol  同上，行首换成该层的符号（取自「🧩 模版设置 → 🔣 每级符号」）。
+           mind 是原样保留的那一档（默认）。
+           ⚠️ 为什么是「三选一」而不是再加两个独立开关：大纲与思维导图是两种**排版**，
+              同时开就是两棵树上下叠着；而「编号 / 符号」是行首标记，可以并存 ——
+              那两件事已由既有的「🔢 一键编号」与「🔣 每级符号」各管一列。
+           ⚠️ 为什么不需要迁移闸门：老存档里根本没有 mode 这个键，缺失时取到的
+              正好是默认值 mind（= 它一直以来的样子）。非法值一律压回 mind。 */
+        var KT_MODES = [
+            { id: 'mind',    name: '思维导图' },
+            { id: 'outline', name: '大纲视角' },
+            { id: 'symbol',  name: '符号视角' }
+        ];
+        function ktModeNorm(v) {
+            for (var i = 0; i < KT_MODES.length; i++) if (KT_MODES[i].id === v) return v;
+            return 'mind';
+        }
+        function ktModeName(v) {
+            var id = ktModeNorm(v);
+            for (var i = 0; i < KT_MODES.length; i++) if (KT_MODES[i].id === id) return KT_MODES[i].name;
+            return '思维导图';
+        }
         function ktProj() {
             try { return (typeof getCurrentProject === 'function') ? getCurrentProject() : null; } catch (e) { return null; }
         }
@@ -14267,6 +14411,8 @@
                （整棵树全摊开）。这里不需要迁移闸门：老存档里根本没有这个键，
                缺失时取到 false，正好就是它一直以来的样子。 */
             if (typeof state.ktCfg.hideUn !== 'boolean') state.ktCfg.hideUn = false;
+            /* ★ 2026-09-21（需求②）：展示方式（见 KT_MODES）。三选一，默认 mind。 */
+            state.ktCfg.mode = ktModeNorm(state.ktCfg.mode);
             return state.ktCfg;
         }
 
@@ -14798,7 +14944,7 @@
             var body = document.getElementById('ktBody');
             var tree = body ? body.querySelector('.kt-tree') : null;
             if (!tree) { ktToast('知识树还没有内容可导出'); return; }
-            var rows = tree.querySelectorAll('.kt-row');
+            var rows = tree.querySelectorAll('.kt-row, .kt-oline');
             if (!rows.length) { ktToast('知识树还没有内容可导出'); return; }
             /* 行序天然是前序 DFS（ktBranchHTML 就是按这个顺序拼的），
                缩进按行上的 data-kt-lv —— 不必再解析一遍父子关系。 */
@@ -14895,6 +15041,17 @@
         var ktMeEl = null;
         var ktMeLp = 0;   // 长按刚开过面板的时间戳：紧随其后的 contextmenu 不再开一遍
         var ktSymOn = false;      // 层级名 / N 项 是否符号化（ktBranchHTML 读它，避免每行都去 ktState()）
+        /* ★ 2026-09-21（需求②）：行首编号开关（= ktCfg.num，即「🔢 一键编号」）。
+           为什么要单独存一份而不是每行去 ktState()：渲染一个节点一行要调好几次，
+           而「一键编号」是一个**全局**开关 —— 一个开关管所有档，三档行为一致：
+             · 思维导图档：开着行首出编号、关着不出（ktBranchHTML 读它）；
+             · 大纲档    ：同上（ktFlatRows 读它）。关着时那一列整列不出 ——
+                           这正是「学习记录 → 知识点速记 → 大纲视角」的样子
+                           （纯缩进 + 正文），需求② 要借用的就是它；
+             · 符号档    ：行首恒出该层符号（符号是这一档的定义，与编号无关）。
+           原来大纲档是**恒定**出编号的，于是同一个开关在三档里成了三种行为
+           （符号档无效 / 大纲档被强制开 / 导图档可关）—— 现在收敛成一种。 */
+        var ktNoOn = false;
         /* ★ 需求3（2026-09-18）：重点 ★ / 难点 ▲ / 疑点 ？ 三个符号**各自**一个开关。
            原先三者挤在一个布尔里（ktCfg.mark），只能「全出 / 全不出」；现在拆成对象：
              ktMarkOn = { key:true, hard:true, doubt:true }
@@ -15150,7 +15307,7 @@
             try {
                 var body = document.getElementById('ktBody');
                 if (!body || !sig) return false;
-                var old = body.querySelectorAll('.kt-row.kt-hit');
+                var old = body.querySelectorAll('.kt-row.kt-hit, .kt-oline.kt-hit');
                 for (var j = 0; j < old.length; j++) old[j].classList.remove('kt-hit');
                 var row = ktMeRowEl(sig);
                 if (!row) return false;
@@ -15158,7 +15315,7 @@
                 try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { row.scrollIntoView(); }
                 clearTimeout(ktHitT);
                 ktHitT = setTimeout(function () {
-                    var rs = body.querySelectorAll('.kt-row.kt-hit');
+                    var rs = body.querySelectorAll('.kt-row.kt-hit, .kt-oline.kt-hit');
                     for (var k = 0; k < rs.length; k++) rs[k].classList.remove('kt-hit');
                 }, 2600);
                 return true;
@@ -15437,7 +15594,7 @@
             var body = document.getElementById('ktBody');
             if (!body) return null;
             // 不拼 CSS 选择器：sig 里有 '|' 和 '#'，转义规则各家不一致；直接按属性比更稳
-            var rows = body.querySelectorAll('.kt-row[data-kt-sig]');
+            var rows = body.querySelectorAll('.kt-row[data-kt-sig], .kt-oline[data-kt-sig]');
             for (var i = 0; i < rows.length; i++) {
                 if (rows[i].getAttribute('data-kt-sig') === sig) return rows[i];
             }
@@ -15653,6 +15810,24 @@
             return c ? (' · 📎 这一节在闪卡 / 复习里补充了 ' + c + ' 条笔记（与闪卡反面同源）') : '';
         }
 
+        /* ★ 2026-09-21（需求②）：行的悬停说明。原来这段是写在 ktBranchHTML 里的
+           一行内联表达式，大纲 / 符号档也要同一句 —— 抽成函数，两处调用同一份真源
+           （拆开写过一次的东西，改文案时必然漂移）。 */
+        function ktRowTipOf(n) {
+            var kids = (n && n.children) || [];
+            return ((n.raw && n.raw.crumb) ? n.raw.crumb + ' · ' : '') +
+                '第 ' + n.lv + ' 级 · ' + ktLvName(n.lv) +
+                (kids.length ? ' · ' + kids.length + ' 个子节点' : '') +
+                (ktMarkAny ? ' · 悬停『★ 重点 / ▲ 难点 / ？ 疑点』可切换标记显示' : '') +
+                /* ★ 2026-09-18（需求 G）：行名可直接选中上色 —— 能改名的只有知识点行 */
+                ((n.kind === 'course' || n.kind === 'chapter' || n.kind === 'section' || n.kind === 'kp')
+                    ? ' · 行名可选中上色' + (n.kind === 'kp' ? ' / 直接改名' : '') +
+                      /* ★ 2026-09-18（需求 K）：右键 / 长按面板里多了「打开对应学习记录」 */
+                      ' · 右键/长按可打开对应学习记录'
+                    : '') +
+                /* ★ 需求 Q：这一节在闪卡 / 复习里补充过几条笔记（与闪卡反面同一份数据） */
+                ktNoteTip(n);
+        }
         function ktBranchHTML(n, expd, q, matched, keep, stat, NO) {
             const kids = n.children || [];
             const open = !!expd[n.sig];
@@ -15667,24 +15842,13 @@
             //   层级改由两样东西表达：颜色与缩进（父子关系）+ 行尾层级角标（第几级）。
             /* ★ 需求 D：行尾角标 / 项数撤掉后，这两条信息改挂行的 title —— 悬停即可见。
                老写法只在有 crumb 时才输出 title，现在恒定输出，保证信息一定查得到。 */
-            const ktRowTip = ((n.raw && n.raw.crumb) ? n.raw.crumb + ' · ' : '') +
-                '第 ' + n.lv + ' 级 · ' + ktLvName(n.lv) +
-                (kids.length ? ' · ' + kids.length + ' 个子节点' : '') +
-                (ktMarkAny ? ' · 悬停『★ 重点 / ▲ 难点 / ？ 疑点』可切换标记显示' : '') +
-                /* ★ 2026-09-18（需求 G）：行名可直接选中上色 —— 能改名的只有知识点行 */
-                ((n.kind === 'course' || n.kind === 'chapter' || n.kind === 'section' || n.kind === 'kp')
-                    ? ' · 行名可选中上色' + (n.kind === 'kp' ? ' / 直接改名' : '') +
-                      /* ★ 2026-09-18（需求 K）：右键 / 长按面板里多了「打开对应学习记录」 */
-                      ' · 右键/长按可打开对应学习记录'
-                    : '') +
-                /* ★ 需求 Q：这一节在闪卡 / 复习里补充过几条笔记（与闪卡反面同一份数据） */
-                ktNoteTip(n);
+            const ktRowTip = ktRowTipOf(n);
             let h = '<div class="kt-branch">';
             h += '<div class="kt-row kt-lv' + n.lv +
                  '" data-kt-sig="' + kpEsc(n.sig) + '" data-kt-lv="' + n.lv + '"' +
                  ' title="' + kpEsc(ktRowTip) + '">' +
                 caret +
-                ((NO && NO[n.sig]) ? '<span class="kt-no">' + kpEsc(NO[n.sig]) + '</span>' : '') +
+                ((ktNoOn && NO && NO[n.sig]) ? '<span class="kt-no">' + kpEsc(NO[n.sig]) + '</span>' : '') +
                 ktNameTag(n, q) +
                 /* ★ 2026-09-18（需求 D）：行尾的「层级角标」与「项数」两个小胶囊不再渲染。
                    用户原话：「去掉知识树里面重点难点疑点的图标前面小红框里面的东西，碍眼」——
@@ -15717,6 +15881,45 @@
             return h;
         }
 
+        /* ============ ★ 2026-09-21（Tom 需求②）：大纲视角 / 符号视角的渲染 ============
+           借用「📝 学习记录 → 📌 知识点速记」的展示模式：一行一个节点、行首一列
+           （编号 / 该层符号）、层级用可见缩进表达、正文是浅底圆角 chip。
+           与思维导图档的三点差别（都是刻意的）：
+             · 一次摊开**全部**在显示范围内的层级，不折叠 —— 大纲就是要一眼看全，
+               ▸ / ▾ 两个 caret 在这一档不渲染（点了也没意义）；
+             · 行首编号在大纲档**恒定显示**（与速记的大纲视角一致：那里的
+               toOutline(roots, true) 也是恒带编号）；思维导图档仍听「🔢 一键编号」；
+             · 符号档的行首是「该层的符号」，符号表与编号体系的符号体**同源**
+               （ktSymCh → CpaKpEditor.symChOf → hub_cpa_kp_sym_v1），不写第二份默认表。
+           保留项一个不少：科目/章/节与显示范围筛选、隐藏未学、搜索高亮（同一个
+           ktNameTag）、★▲？标记（同一个 ktMarkHTML）、右键 / 长按改标记、行名选中上色 /
+           改名（.kt-name 原样带过去）、导出 MD / 打印（ktExportMd 的行选择器已同时认
+           .kt-row 与 .kt-oline）。缩进 14px/级，与速记 .kpi 同档。 */
+        function ktFlatRows(tree, which, q, matched, keep, stat, NO) {
+            var sym = (which === 'symbol');
+            var out = [];
+            (function walk(list) {
+                (list || []).forEach(function (n) {
+                    if (q && !keep[n.sig] && !matched[n.sig]) return;
+                    var lv = Math.max(1, Math.min(7, n.lv));
+                    var head = '';
+                    /* ★ 2026-09-21：符号档恒出符号；大纲档的编号跟 ktNoOn（= 「一键编号」）。
+                       与 ktBranchHTML 取同一个门控，三档行为才一致。 */
+                    if (sym) head = '<span class="kt-no kt-ono kt-ono-sym">' + kpEsc(ktSymCh(n.lv)) + '</span>';
+                    else if (ktNoOn && NO && NO[n.sig]) head = '<span class="kt-no kt-ono">' + kpEsc(NO[n.sig]) + '</span>';
+                    out.push('<div class="kt-oline kt-olv' + lv +
+                        '" data-kt-sig="' + kpEsc(n.sig) + '" data-kt-lv="' + n.lv +
+                        '" title="' + kpEsc(ktRowTipOf(n)) + '">' +
+                        head +
+                        '<span class="kt-otext">' + ktNameTag(n, q) + '</span>' +
+                        (ktMarkAny ? ktMarkHTML(n, ktMarkIdx) : '') +
+                        '</div>');
+                    stat.n++;
+                    walk(n.children);
+                });
+            })(tree);
+            return out.join('');
+        }
         /* ============ ★ 2026-09-18（需求 G）：知识树上的文字 / 颜色 ============
            Tom 的原话：「为何只有思维导图视角下才有文字变色的功能，其视角以及
            文字编辑界面尤其是知识树没有文字变色相关功能」。
@@ -16256,6 +16459,11 @@
             const btn = document.getElementById('ktNumberBtn');
             if (btn) btn.classList.toggle('active', !!cfg.num);
             const sbtn = document.getElementById('ktSymBtn');
+            /* ★ 2026-09-21（需求②）：展示方式三档，当前那一档点亮 */
+            KT_MODES.forEach(function (md) {
+                const b = document.getElementById('ktModeBtn_' + md.id);
+                if (b) b.classList.toggle('active', ktModeNorm(cfg.mode) === md.id);
+            });
             if (sbtn) sbtn.classList.toggle('active', !!cfg.sym);
             /* ★ 2026-09-19（需求Z1）：隐藏未学按钮点亮 */
             const hbtn = document.getElementById('ktHideUnBtn');
@@ -16297,7 +16505,8 @@
             }
 
             const cfg = ktState();
-            ktSymOn = !!cfg.sym;                 // ★ 需求 C：层级名 / N 项 是否符号化
+            ktSymOn = !!cfg.sym;
+            ktNoOn = !!cfg.num;                  // ★ 需求②：思维导图档的行首编号只看这个开关                 // ★ 需求 C：层级名 / N 项 是否符号化
             /* ★ 需求3：三个标记符号各自一档 */
             ktMarkOn = (cfg.marks && typeof cfg.marks === 'object') ? cfg.marks : {};
             ktMarkAny = KT_MARKS.some(function (mk) { return !!ktMarkOn[mk.id]; });
@@ -16307,6 +16516,8 @@
             const rawTree = ktSevenTree(cfg, all, proj);
             // ★ 一键编号：在**未裁剪**的 rawTree 上算，键是 sig（见上方 ktNoText 的口径说明）
             const NO = {};
+            /* ★ 一键编号：NO 表只在开关打开时算（大纲档也走这一个门控 —— 见 ktNoOn
+               的注释，关掉时行首整列不出，与学习记录的大纲视角一致）。 */
             if (cfg.num) {
                 (function ktNoWalk(list, path) {
                     (list || []).forEach(function (n, i) {
@@ -16354,7 +16565,8 @@
                     (_clipped ? ' · ⚠️ 还有更深的层级被显示范围挡住（第 ' + (visTo + 1) + ' 级起，终点选「默认」可看全）' : '') +
                     (cfg.hideUn ? ' · 🙈 已隐藏 ' + ktUnHiddenN + ' 个未学节点' : '') +
 
-                    (cfg.num ? ' · 编号模版「' + ktTmplName(ktCurTmpl()) + '」' : '');
+                    (cfg.num ? ' · 编号模版「' + ktTmplName(ktCurTmpl()) + '」' : '') +
+                    (cfg.mode !== 'mind' ? ' · 展示「' + ktModeName(cfg.mode) + '」' : '');
             }
 
             if (!total) {
@@ -16401,17 +16613,23 @@
             })(tree);
 
             const stat = { n: 0 };
-            const html = tree.map(function (n) {
-                if (q && !keep[n.sig] && !matched[n.sig]) return '';
-                return ktBranchHTML(n, expd, q, matched, keep, stat, NO);
-            }).join('');
+            /* ★ 2026-09-21（需求②）：展示方式三档。大纲 / 符号 = 扁平缩进排版
+               （一行一个节点、行首一列编号或符号，与「学习记录 → 知识点速记」同源）；
+               思维导图 = 原来那棵左→右折线树，逐字不动。 */
+            const flat = (cfg.mode === 'outline' || cfg.mode === 'symbol');
+            const html = flat
+                ? ktFlatRows(tree, cfg.mode, q, matched, keep, stat, NO)
+                : tree.map(function (n) {
+                    if (q && !keep[n.sig] && !matched[n.sig]) return '';
+                    return ktBranchHTML(n, expd, q, matched, keep, stat, NO);
+                }).join('');
 
             if (q && !stat.n) {
                 body.innerHTML = '<div class="kt-empty">没有匹配「' + kpEsc(ktQuery.trim()) + '」的节点。</div>';
                 return;
             }
             // 外层 .kt-tree 承载横向滚动的 min-width: max-content（见 CSS）
-            body.innerHTML = '<div class="kt-tree">' + html + '</div>';
+            body.innerHTML = '<div class="kt-tree' + (flat ? ' kt-flat' : '') + '">' + html + '</div>';
         }
 
         // ---------- 事件（只绑一次） ----------
@@ -16449,7 +16667,7 @@
                —— 左键仍然是「点 caret 展开 / 收拢」那条链路的事。 */
             if (body) {
                 body.addEventListener('contextmenu', function (e) {
-                    const row = (e.target && e.target.closest) ? e.target.closest('.kt-row[data-kt-sig]') : null;
+                    const row = (e.target && e.target.closest) ? e.target.closest('.kt-row[data-kt-sig], .kt-oline[data-kt-sig]') : null;
                     if (!row) return;
                     // 右键在知识树里没有别的用途，直接吃掉浏览器菜单 —— 这是唯一的改标记入口
                     e.preventDefault();
@@ -16458,7 +16676,7 @@
                 });
                 let lpTimer = 0, lpRow = null, lpMoved = false;
                 body.addEventListener('touchstart', function (e) {
-                    const row = (e.target && e.target.closest) ? e.target.closest('.kt-row[data-kt-sig]') : null;
+                    const row = (e.target && e.target.closest) ? e.target.closest('.kt-row[data-kt-sig], .kt-oline[data-kt-sig]') : null;
                     if (!row) return;
                     lpRow = row; lpMoved = false;
                     clearTimeout(lpTimer);
@@ -16498,7 +16716,7 @@
                 if (!ktMeEl) return;
                 const t = e.target;
                 // 点面板内部、或点另一行（那一下会走 contextmenu 重新开），都不算「点外面」
-                if (t && t.closest && (t.closest('#ktMePop') || t.closest('.kt-row[data-kt-sig]'))) return;
+                if (t && t.closest && (t.closest('#ktMePop') || t.closest('.kt-row[data-kt-sig], .kt-oline[data-kt-sig]'))) return;
                 ktMeClose();
             });
             document.addEventListener('keydown', function (e) {
@@ -16506,6 +16724,24 @@
             });
             window.addEventListener('scroll', function () { if (ktMeEl) ktMePlace(); }, true);
             window.addEventListener('resize', function () { if (ktMeEl) ktMePlace(); });
+
+            // ★ 2026-09-18（需求 C）：符号显示开关
+            /* ★ 2026-09-21（需求②）：展示方式三档（思维导图 / 大纲视角 / 符号视角）。
+               切换只改画法：数据一个字节不动，筛选 / 展开态 / 编号 / 标记全部沿用。 */
+            KT_MODES.forEach(function (md) {
+                const b = document.getElementById('ktModeBtn_' + md.id);
+                if (!b) return;
+                b.addEventListener('click', function () {
+                    const cfg = ktState();
+                    if (ktModeNorm(cfg.mode) === md.id) return;
+                    cfg.mode = md.id;
+                    saveData();
+                    ktPaintNoCtl();
+                    ktRender();
+                    ktToast('展示方式：' + md.name +
+                        (md.id === 'mind' ? '' : '（一次摊开全部层级；数据不变）'));
+                });
+            });
 
             // ★ 2026-09-18（需求 C）：符号显示开关
             const symBtn = document.getElementById('ktSymBtn');
@@ -18936,12 +19172,18 @@
                 if (d === 6) return '（' + n + '）';
                 return circledNo(n);
             }
-            if (id === 'chapv') {                   // 章节体·变体：科目 / 第1章 / 第1节 / 一、 / （一） / 1. / （1）
-                /* 与 chap 的唯一差别：把「第N章」从第 1 级下移到第 2 级。
-                   链路第 1 级是**科目**，科目名本身就是标识，不该有「第1章」这种序号 ——
-                   chap 摆在 d1 会让知识树把科目行编成「第1章 会计」、章行编成「第1节」，
-                   整体错位一档。这里 d1 返回空串（= 该级不编号），从章开始逐级对位。 */
-                if (d === 1) return '';
+            if (id === 'chapv') {                   // 章节体·变体：第1部分 / 第1章 / 第1节 / 一、 / （一） / 1. / （1）
+                /* 与 chap 的唯一差别：链路第 1 级（科目）上立一档「第N部分」，
+                   「第N章」随之从第 1 级下移到第 2 级。
+                   为什么要这一档（Tom 2026-09-21：「编号模版 科目/第一章/第一节…
+                   优化成 第一部分/第一章/第一节…，展示后面继续沿用」）：
+                   科目是**分卷**的容器 —— 一个科目下可以有几个部分，每个部分再分章。
+                   旧写法 d1 返回空串（科目级不编号），在知识树上就是那一个科目行光秃秃、
+                   与下面每一行都有编号并列，读起来像漏了一档；补上「第N部分」之后
+                   七档都有编号、逐级对位。「第N章」及以下一字不动。
+                   ⚠️ parse 那条链不必跟着改：cutSysNo / sysLevelOf 都从 sysTok 取形态，
+                      这里改了它们自动跟上（这正是「形态只有一份定义」的好处）。 */
+                if (d === 1) return '第' + n + '部分';
                 if (d === 2) return '第' + n + '章';
                 if (d === 3) return '第' + n + '节';
                 if (d === 4) return cnNum(n) + '、';
@@ -19250,8 +19492,8 @@
         function toFlat(roots) {
             var out = [];
             walk(roots, function (n, p) {
-                /* 编号可能为空串（chapv 的科目级）—— 空编号后不能再补那个分隔空格，
-                   否则科目行会多出一个前导空格。对另四套完全等价（它们第 1 级非空）。 */
+                /* 编号可能为空串（符号体把某一级设成「无」时就会）—— 空编号后不能再补
+                   那个分隔空格，否则该行会多出一个前导空格。对编号非空的几套完全等价。 */
                 const _no = noStr(p);
                 out.push(new Array(p.length).join('  ') + (_no ? (_no + ' ') : '') + n.t);
             });
@@ -19475,12 +19717,34 @@
             if (m === 'md') return (d === 1) ? ('# ' + no + ' ') : (new Array(d).join('  ') + '- ' + no + ' ');
             return new Array(p.length).join('  ') + (no ? (no + ' ') : '');
         }
+        /* ★ 2026-09-21：把行首前缀拆成「缩进」与「缩进之后那一段（编号 / MD 标记）」——
+           三段式行壳的两个格各装一段（.kpi 装缩进、.kho 装编号）。
+           拆法**必须**与 viewPrefix 逐字一致：ind + tail === viewPrefix(m, p, d)。
+           两处一旦漂移，框里的纯文本就不再等于 toFlat 的形态，保存回读会悄悄掉层级。
+           为什么缩进要单独占一格：编号宽度不齐（一、 / （一） / 1. / （1）），
+           右对齐才能成列；缩进若混在同一格里，右对齐会把缩进一起吃掉。 */
+        function viewSplit(m, p, d) {
+            var full = viewPrefix(m, p, d);
+            var ind = new Array(d).join('  ');
+            if (m === 'md' && d === 1) ind = '';       // MD 第 1 级顶格，'# ' 前不留缩进
+            return { ind: ind, tail: full.slice(ind.length) };
+        }
+        /* ★ 2026-09-21（Tom 需求③）：三视角的行渲染 —— 三段式行壳。
+           行仍由 <br> 分隔（不改分行方式）；每行 = 缩进格 + 编号格 + 正文 chip。
+           ★ 关键不变量：三格拼起来的**纯文本一个字都没变** —— .kpi 里就是那串缩进空格、
+           .kho 里就是前缀串（编号 / «# » / «- »）、.kpn 里就是节点正文。
+           所以 .value 的读、domLines、captureRich、parse、保存、导出、一键编号
+           全部零改动（有专门的「纯文本逐字相同」对照断言）。 */
         function viewHTML(m, roots) {
             var out = [];
             walk(roots, function (n, p, d) {
                 var body = window.rtRender ? window.rtRender(n.h, n.t) : esc(n.t);
-                out.push(esc(viewPrefix(m, p, d)) +
-                    '<span class="kpn" data-kp="' + esc(p.join('.')) + '">' + body + '</span>');
+                var sp = viewSplit(m, p, d);
+                var kil = Math.max(1, Math.min(7, d));
+                var klv = Math.max(1, Math.min(4, d));
+                out.push('<span class="kpi kpi-k' + kil + '">' + esc(sp.ind) + '</span>' +
+                    '<span class="kho">' + esc(sp.tail) + '</span>' +
+                    '<span class="kpn kp-hlv' + klv + '" data-kp="' + esc(p.join('.')) + '">' + body + '</span>');
             });
             return out.join('<br>');
         }
@@ -19549,8 +19813,19 @@
         // 去掉行首 k 个字符（缩进 + 编号），后面的富文本结构原样保留
         function stripPrefix(nodes, k) {
             var box = document.createElement('div');
+            /* ★ 2026-09-21：行首现在是「缩进格 .kpi + 编号格 .kho + 正文 chip .kpn」
+               三段式（见 viewHTML）。.kpi / .kho 与 .kpn 一样是**标记壳**、不该进 nd.h；
+               但它们的文字占了行首 k 个字符 —— 直接跳过会把正文也一起吃掉 k 个字符，
+               格式就套错位置了。所以按它们的纯文本长度把 left 扣掉。 */
+            var left = k;
             for (var i = 0; i < nodes.length; i++) {
                 var nd = nodes[i];
+                if (nd.nodeType === 1 && nd.classList &&
+                    (nd.classList.contains('kpi') || nd.classList.contains('kho'))) {
+                    left -= nodePlain(nd).length;
+                    if (left < 0) left = 0;
+                    continue;
+                }
                 // .kpn 只是「这一行属于哪个节点」的外壳标记，不该跟着进 nd.h
                 if (nd.nodeType === 1 && nd.classList && nd.classList.contains('kpn')) {
                     /* ★★ .kpn 只是「这一行属于哪个节点」的标记壳，不该进 nd.h。
@@ -19570,7 +19845,6 @@
                     for (var j = 0; j < nd.childNodes.length; j++) _host.appendChild(nd.childNodes[j].cloneNode(true));
                 } else box.appendChild(nd.cloneNode(true));
             }
-            var left = k;
             (function eat(node) {
                 while (left > 0 && node.firstChild) {
                     var c = node.firstChild;
@@ -19632,12 +19906,25 @@
         function kpIndentLine(root, out) {
             var cur = curLine(root);
             if (!cur || !cur.nodes.length) return;
-            var first = cur.nodes[0];
-            /* ★ 2026-09-18：domLines 现在把内联元素整体收进行里 —— 某一级没有
-               编号前缀时，行首就是 <span class="kpn">，所以要往里走一层找第一个文本节点。 */
-            var tn = first, guard = 0;
-            while (tn && tn.nodeType === 1 && guard++ < 8) tn = tn.firstChild;
-            if (!tn || tn.nodeType !== 3) return;
+            /* ★ 2026-09-21：行首是「缩进格 .kpi」—— 那串缩进空格就在它的文本节点里。
+               第 1 级的缩进格是**空**的（没有文本节点），旧写法（firstChild 一路下钻
+               再判 nodeType === 3）会直接 return ⇒ 表现是「第 1 级按 Tab 没有反应」。
+               这里先找 .kpi：没有文本节点就补一个（缩进全在它身上，补空文本节点
+               不改变任何显示）；找不到 .kpi（老排版的纯文本行 / 粘贴进来的行）
+               就退回原来的走法。 */
+            var cell = null, first = cur.nodes[0];
+            if (first && first.nodeType === 1 && first.classList && first.classList.contains('kpi')) cell = first;
+            var tn = null;
+            if (cell) {
+                tn = cell.firstChild;
+                if (tn && tn.nodeType !== 3) tn = null;
+                if (!tn) { tn = document.createTextNode(''); cell.appendChild(tn); }
+            } else {
+                var g = 0;
+                tn = first;
+                while (tn && tn.nodeType === 1 && g++ < 8) tn = tn.firstChild;
+                if (!tn || tn.nodeType !== 3) return;
+            }
             if (out) {
                 var m = String(tn.data).match(/^[ \t\u3000]{1,2}/);
                 if (!m) return;
@@ -19645,7 +19932,21 @@
             } else {
                 tn.data = '  ' + tn.data;
             }
+            kpIndentPaint(cell);
             try { root.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) {}
+        }
+        /* 缩进格的**可见宽度**跟着文本缩进走（文本是唯一真源，宽度只是把它画大）。
+           每级 2 空格 ⇒ 层级 = floor(长度 / 2) + 1，夹在 1–7。 */
+        function kpIndentPaint(cell) {
+            if (!cell || cell.nodeType !== 1) return;
+            var len = nodePlain(cell).length;
+            var d = Math.floor(len / 2) + 1;
+            if (d > 7) d = 7;
+            if (d < 1) d = 1;
+            var keep = [], cur = String(cell.className || '').split(/\s+/);
+            for (var i = 0; i < cur.length; i++) if (cur[i] && !/^kpi-k[1-7]$/.test(cur[i])) keep.push(cur[i]);
+            keep.push('kpi-k' + d);
+            cell.className = keep.join(' ');
         }
         // 三视角的 contenteditable 键盘分支（textarea 那条老路原地保留，见下方 onTextKey）
         function onTextKeyRich(ev, t) {
@@ -20301,7 +20602,7 @@
            本轮推广到全部体系，消灭「只有罗马体偏移、别的体不偏移」的分裂。 */
         var TMPLS = [
             { id: 'chap',    name: '第1章/第1节/一、/（一）/1./（1）/①' },
-            { id: 'chapv',   name: '科目/第1章/第1节/一、/（一）/1./（1）' },
+            { id: 'chapv',   name: '第1部分/第1章/第1节/一、/（一）/1./（1）' },
             { id: 'gongwen', name: '一、/（一）/1./（1）/①/a./i.' },
             { id: 'roman',   name: 'I./A./1./a./(1)/(i)/a)' },
             { id: 'symbol',  name: '●/■/◆/▷/✓/✧/∷' }
@@ -21023,7 +21324,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921f</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921h</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -22193,7 +22494,11 @@ html.embedded #buildTag{display:none}
         } catch (e) { return ''; }
     }
 
-    // 光标所在行的**行号**（0 起）。口径与 caretLine 完全一致：<br> 与块级边界都算换行。
+    // 光标所在行的**行号**（0 起）。口径与 **domLines** 一致：块级边界算换行、
+    // 带 data-soft 的 <br>（节点内部的软换行）**不算** —— 因为它的消费者 curLine
+    // 就是拿这个行号去索引 domLines。
+    // ⚠️ 别与上面 caretLine 的口径混为一谈：那个函数走 innerText.split('\n')，
+    //    软换行在 innerText 里确实生成一个 \n，所以它**要**把软换行算成换行才自洽。
     // 为什么另要一个行号：contenteditable 上没有 selectionStart，要改「光标所在那一行」
     // 的行首（Tab 缩进）就得先知道它是第几行。
     function caretLineIndex(root) {
@@ -22207,7 +22512,14 @@ html.embedded #buildTag{display:none}
             var pre = r.cloneRange();
             pre.setStart(root, 0);
             var frag = pre.cloneContents();
-            var brs = frag.querySelectorAll('br').length;
+            /* ★ 2026-09-21（契约对齐）：带 data-soft 的 <br> 是**节点内部的软换行**、
+               不是行边界 —— 这是 domLines 早就写下的同一条口径。这里原来把**所有**
+               br 都算成行号，于是「软换行所在行」之后的每一行行号都偏大（真机实测：
+               第 2 行的 chip 返回 idx=2，应为 1）；而它的消费者 curLine 拿这个 idx 去
+               索引 domLines ⇒ Tab 缩进 / 回车续号会落到错误的行上。
+               注意别顺手把上面的 caretLine 一起改：那个函数用 innerText.split('\n') 取行，
+               软换行在 innerText 里**确实**生成一个 \n，所以它自己是自洽的、不用动。 */
+            var brs = frag.querySelectorAll('br:not([data-soft])').length;
             var blk = frag.querySelectorAll('div,p,li').length;
             return brs + (blk > 0 ? blk - 1 : 0);
         } catch (e) { return -1; }
