@@ -3225,12 +3225,32 @@
         .heat-note b { color: var(--primary-dark); }
         .heat-empty { padding: 44px 16px; text-align: center; color: var(--text-secondary); font-size: 13px; line-height: 1.8; }
 
-        /* ===== 记录学习表单：八项内容 4 列表展示（开始时间 → 学习状态自评） =====
+        /* ===== 记录学习表单：基本信息 4 项一行（科目 · 日期 · 章 · 节） =====
+           ★ 2026-09-21（需求 E）：Tom「红框，记录学习中科目、日期、章、节变成一行」。
+           原来是两个 .form-row（科目·日期 / 章·节）各占一行，现合成一个 4 列栅格。
            注意：原样式块里 @media (max-width:1024px) 的 .form-row{1fr} 只有 (0,1,0)，
            .form-row.four 是 (0,2,0)，特异性更高会盖掉它 —— 所以断点必须自带 */
         .form-row.four { grid-template-columns: repeat(4, 1fr); gap: 14px 18px; }
-        @media (max-width: 1280px) { .form-row.four { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 1440px) { .form-row.four { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 1024px) { .form-row.four { grid-template-columns: 1fr; } }
+
+        /* ===== 记录学习表单：明细 10 项 —— 5 列 × 2 行（开始时间 → 自评原因） =====
+           ★ 2026-09-21（需求 E）：Tom「绿框变成两行，清理出面板空间」。
+           10 个字段平铺进同一个 5 列栅格 ⇒ 恰好两行，DOM 顺序就是阅读顺序：
+             第 1 行  开始时间 / 结束时间 / 时长 / 番茄个数 / 理解程度
+             第 2 行  学习途径 / 资料来源 / 重点·难点·疑点 / 学习状态自评 / 自评原因
+           断点必须自带：.form-row.five 是 (0,2,0)，会盖掉 @media(max-width:1024px)
+           里 .form-row{1fr} 的 (0,1,0)。列宽按「视口 → 表单宽」的实测关系定（见 patch 日志）：
+           视口 2560→表宽 2043 / 2200→1683 / 1920→1403 / 1700→1183 / 1400→883 / 1024→639。 */
+        .form-row.five { grid-template-columns: repeat(5, 1fr); gap: 14px 18px; }
+        @media (max-width: 1900px) { .form-row.five { grid-template-columns: repeat(4, 1fr); } }
+        @media (max-width: 1500px) { .form-row.five { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 1100px) { .form-row.five { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 560px) { .form-row.five { grid-template-columns: 1fr; } }
+        /* 三标记（★ ▲ ？）搬进 .form-row.five 后，原来只挂在 .form-row.full 上的两条补偿
+           要跟着搬过来，否则 .hint 会多出 4px 上边距、与 chips 的间距和以前不一样 */
+        .form-row.five .field .rec-line { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .form-row.five .field .rec-line .hint { margin-top: 0; }
 
         /* ===== 模版设置面板 ===== */
         .kp-tmpl-list { display: flex; flex-direction: column; gap: 8px; }
@@ -3736,7 +3756,11 @@
             </div>
             <div class="form-body" id="formBody">
                 <form id="recordForm" autocomplete="off" novalidate>
-                    <div class="form-row">
+                    <!-- ★ 2026-09-21（需求 E）：基本信息四项收成一行。
+                         Tom 的原话：「红框，记录学习中科目、日期、章、节变成一行」。
+                         原来是两个 .form-row（科目·日期 / 章·节）各占一行，现在合并成一个
+                         4 列栅格：DOM 顺序一字未改，只是撤掉了两行之间的那道行边界。 -->
+                    <div class="form-row four">
                         <div class="field">
                             <label><span data-lv="course">课程</span> <span class="required">*</span>
                                 <button type="button" class="mini-add-btn" id="addCourseBtn">➕ 新增<span data-lv="course">课程</span></button>
@@ -3752,8 +3776,6 @@
                             <label>日期 <span class="required">*</span></label>
                             <input type="date" id="fDate" required />
                         </div>
-                    </div>
-                    <div class="form-row">
                         <div class="field">
                             <label><span data-lv="chapter">章</span> <span class="required">*</span>
                                 <button type="button" class="mini-add-btn" id="addChapterBtn">➕ 新增<span data-lv="chapter">章</span></button>
@@ -3779,7 +3801,20 @@
                             </label>
                         </div>
                     </div>
-                    <div class="form-row four">
+                    <!-- ★ 2026-09-21（需求 E）：明细 10 项收成 5 列 × 2 行。
+                         Tom 的原话：「绿框变成两行，清理出面板空间」。
+                         原来这里是四块：.form-row.four（开始时间…番茄个数）+
+                         .form-row.three（学习途径/资料来源/理解程度）+
+                         .form-row.full（重点/难点/疑点，独占整行）+
+                         .form-row（学习状态自评/自评原因）—— 共 4 行。
+                         现在 10 个字段平铺进同一个 5 列栅格，恰好两行，DOM 顺序 = 阅读顺序：
+                           第 1 行  开始时间 / 结束时间 / 时长 / 番茄个数 / 理解程度
+                           第 2 行  学习途径 / 资料来源 / 重点·难点·疑点 / 学习状态自评 / 自评原因
+                         关于「重点/难点/疑点」从前为什么要独占整行：当时它是 4 列栅格里的
+                         一格，会跟「理解程度」并排、而落不到「理解程度」与「学习状态自评」
+                         中间；现在第 2 行第 3 格正好就是那个位置，所以那条例外可以撤掉。
+                         数据口径未变：仍落在 record.marks，仍是 🌳 知识树行尾 ★ ▲ ？ 的唯一数据源。 -->
+                    <div class="form-row five">
                         <div class="field">
                             <label>开始时间 <span style="font-weight:400;color:var(--text-secondary);">(可选)</span></label>
                             <input type="time" id="fStartTime" step="60" /><button type="button" class="now-btn" data-target="fStartTime" title="填入当前时间">⏰ 现在</button>
@@ -3798,13 +3833,18 @@
                             <input type="number" id="fTomatoCount" min="0" step="1" value="0" />
                             <span class="auto-calc" id="tomatoLinkHint">🍅 点番茄钟「开始」，起止时间与个数会自动填进来</span>
                         </div>
-                    </div>
-                    <!-- ★ 2026-09-18（需求 D）：重点 / 难点 / 疑点 —— 独立整行。
-                         它是 🌳 知识树行尾那三个符号的**唯一数据源**（知识树只读展示），
-                         数据落在 record.marks（随 records 自动落盘）。
-                         独立成行的原因：原来挤在 4 列栅格里只是与「理解程度」并排，
-                         并没有落在「理解程度」与「学习状态自评」中间（见 patchG 文件头）。 -->
-                    <div class="form-row three">
+                        <div class="field">
+                            <label>理解程度 <span class="required">*</span></label>
+                            <div class="star-rating" id="starRating">
+                                <span class="star" data-val="1">☆</span>
+                                <span class="star" data-val="2">☆</span>
+                                <span class="star" data-val="3">☆</span>
+                                <span class="star" data-val="4">☆</span>
+                                <span class="star" data-val="5">☆</span>
+                            </div>
+                            <span class="hint" id="starLabel">点击星星评级</span>
+                            <input type="hidden" id="fUnderstanding" value="0" required />
+                        </div>
                         <div class="field">
                             <label>学习途径 <span class="required">*</span>
                                 <button type="button" class="mini-add-btn" id="manageTypeBtn" title="增删改「学习途径」分类">⚙️ 管理</button>
@@ -3828,20 +3868,6 @@
                             </select>
                         </div>
                         <div class="field">
-                            <label>理解程度 <span class="required">*</span></label>
-                            <div class="star-rating" id="starRating">
-                                <span class="star" data-val="1">☆</span>
-                                <span class="star" data-val="2">☆</span>
-                                <span class="star" data-val="3">☆</span>
-                                <span class="star" data-val="4">☆</span>
-                                <span class="star" data-val="5">☆</span>
-                            </div>
-                            <span class="hint" id="starLabel">点击星星评级</span>
-                            <input type="hidden" id="fUnderstanding" value="0" required />
-                        </div>
-                    </div>
-                    <div class="form-row full">
-                        <div class="field">
                             <label>重点 / 难点 / 疑点</label>
                             <div class="rec-line">
                                 <div class="rec-marks" id="fMarkChips">
@@ -3852,8 +3878,6 @@
                                 <span class="hint" id="markLabel">可多选，也可都不选 —— 勾了之后在 🌳 知识树里显示为符号</span>
                             </div>
                         </div>
-                    </div>
-                    <div class="form-row">
                         <div class="field">
                             <label>学习状态自评 <span class="required">*</span></label>
                             <select id="fSelfAssessment" required>
@@ -20932,7 +20956,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921d</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921e</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
