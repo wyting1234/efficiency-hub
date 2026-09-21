@@ -3934,6 +3934,9 @@
                                         <button type="button" id="kpRenumberBtn" title="按层级重新编号（1 / 1.1 / 1.1.1 / 1.1.1.1）">🔢 一键编号</button>
                                         <button type="button" id="kpToMdBtn" title="生成 Markdown，切到 MD 视角并复制到剪贴板">📋 转 Markdown</button>
                                         <button type="button" id="kpCopyMdBtn" title="复制当前 Markdown 到剪贴板">⧉ 复制 MD</button>
+                                        <!-- ★ 2026-09-21：手机没有 Shift 键 —— 给软换行一个显式入口（桌面也可点）。
+                                             用法：先把光标点进要换行的那条要点文字里，再点这个按钮。 -->
+                                        <button type="button" id="kpSoftBrBtn" title="在光标处换行、但不新增知识点（等同桌面 Shift+Enter）。先把光标点进要点文字里再用">⏎ 换行</button>
                                         <span class="kp-bar-stat" id="kpStat"></span>
                                     </div>
                                 </div>
@@ -19155,13 +19158,21 @@
              ③ 回读：把 DOM 行的 HTML 去掉行首「缩进 + 编号」前缀后旁挂到 nd.h ——
                 与格子同一套「路径 + 纯文本双校验」，对不上就宁丢格式、绝不改纯文本。 */
 
-        /* ★★ 2026-09-21 软换行（Tom 报：大纲模式下 Shift+Enter 换行 → 保存后
-           被按换行拆成多个知识点、层级也乱）—— 完整根因见文件顶部 rtSoftJoin 的契约。
-           本文件这三处是「显示层 → 数据层」的通道，必须成套修改：
-             · 拦截：委托 beforeinput（下方），Shift+Enter 不再让浏览器插 <br>，
-                     改插一个 SOFT 文本节点；
-             · 回读：domLines 不再把带 data-soft 的 <br> 当行边界；
-                     lineText 把它还原成 SOFT（原来用 textContent，直接吞掉）；
+        /* ★★ 2026-09-21 软换行（Tom 两轮反馈）
+           第一轮：大纲模式下 Shift+Enter 换行 → 保存后被按换行拆成多个知识点、层级也乱。
+           第二轮：「Shift+Enter 没有换行成功」——
+             第一版插的是 U+2028，但实测 Chromium **根本不把 U+2028 渲染成换行**
+             （同排两字 getBoundingClientRect().top 完全相同、getClientRects().length === 1，
+             white-space:pre-wrap 也一样）⇒ 按了完全看不到变化。这是第二轮修掉的。
+             现在编辑态插**带标记的 <br>**：<br> 是浏览器真正认的换行元素；
+             插完立刻能看见（见 CpaRich.softBreak 的「外壳之后」规则）。
+           本文件这三处是「显示层 ↔ 数据层」的通道，必须成套修改：
+             · 拦截：委托 beforeinput（下方）。Shift+Enter 不让浏览器裸插 <br>，
+                     改插 <br data-soft="1">（带 self-describing 标记）；
+                     同时把手机软键盘回车（insertParagraph）收敛成"新增知识点"，
+                     因为它原生会塞一个 <div> 把后面几个知识点包进去、破坏结构；
+             · 回读：domLines 不把带 data-soft 的 <br> 当行边界；
+                     nodePlain 把它还原成 SOFT（原来用 textContent，直接吞掉）；
              · 渲染：writeViews → viewHTML → rtRender 自动把 SOFT 写成 data-soft br。
            为什么用 beforeinput 而不是 keydown：实测 Chromium 下
              · 普通 Enter   → beforeinput.inputType = 'insertParagraph'
@@ -19184,6 +19195,25 @@
             if (id === 'fKpQuick' || id === 'fKpOutline' || id === 'fKpMd') return true;
             return t.classList.contains('kp-cell-in');
         }
+        /* 「⏎ 换行」按钮插到哪个容器：只认「当前 selection 真的落在知识输入区里」。
+           为什么不退回"当前视角主容器"：用户可能刚在闪卡 / 错题本里点过光标，
+           硬插会把换行写进别人的框里 —— 宁可什么都不做。
+           ⚠️ startContainer 通常是**文本节点**，必须先上溯一层再走元素链
+              （第一版漏了这一步，按钮点了完全没反应）。 */
+        function softTarget() {
+            try {
+                var sel = window.getSelection();
+                if (sel && sel.rangeCount) {
+                    var n = sel.getRangeAt(0).startContainer;
+                    if (n && n.nodeType === 3) n = n.parentNode;
+                    while (n && n.nodeType === 1) {
+                        if (n.isContentEditable && softHost(n)) return n;
+                        n = n.parentNode;
+                    }
+                }
+            } catch (e) { }
+            return null;
+        }
         function insertSoft(el) {
             if (window.CpaRich && typeof window.CpaRich.softBreak === 'function') {
                 if (window.CpaRich.softBreak(el)) return true;
@@ -19193,21 +19223,51 @@
                 if (!sel || !sel.rangeCount) return false;
                 var r = sel.getRangeAt(0);
                 if (!r.collapsed) r.deleteContents();
-                var tn = document.createTextNode(SOFT);
-                r.insertNode(tn);
-                r.setStartAfter(tn); r.collapse(true);
-                sel.removeAllRanges(); sel.addRange(r);
+                /* 退化路径（CpaRich 不可用时）：同样插带标记的 <br>，别插 U+2028 —— 那个看不见。 */
+                var br = document.createElement('br');
+                br.setAttribute('data-soft', '1');
+                r.insertNode(br);
+                var af = document.createRange();
+                af.setStartAfter(br); af.collapse(true);
+                sel.removeAllRanges(); sel.addRange(af);
                 try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
                 return true;
             } catch (e) { return false; }
         }
+        /* ★★ 2026-09-21：同一个委托里管两件事 ——
+           ① insertLineBreak（Shift+Enter）= 节点内软换行；
+           ② insertParagraph（手机软键盘的「回车」/ 没派发 keydown 的场景）= 新增知识点。
+           实测原生 insertParagraph 会在编辑器里塞一个 <div>，把后面几个知识点一起包进去：
+           结构被破坏，而且**没有**产生带编号的新行（用户以为新增了一行，保存后其实没变）。
+           这里把它收敛到与桌面 Enter 完全相同的那条路（续编号 + 继承缩进）。
+           ⚠️ 网格格子里不存在"新增知识点"这回事 —— 那里 insertParagraph 也算软换行。 */
         document.addEventListener('beforeinput', function (ev) {
-            if (!ev || ev.inputType !== 'insertLineBreak') return;
+            if (!ev) return;
             var t = ev.target;
             if (!t || !t.isContentEditable || !softHost(t)) return;
-            ev.preventDefault();
-            insertSoft(t);
+            var it = ev.inputType;
+            if (it === 'insertLineBreak') {
+                ev.preventDefault();
+                insertSoft(t);
+                return;
+            }
+            if (it === 'insertParagraph') {
+                ev.preventDefault();
+                if (t.classList && t.classList.contains('kp-cell-in')) insertSoft(t);
+                else continueLine(t);
+            }
         }, true);
+        /* 新增知识点（回车续号）—— 从 onTextKeyRich 抽出来，供 keydown 与上面的
+           beforeinput 共用：桌面按 Enter 与手机软键盘回车必须走同一条路，
+           否则两边的编号 / 缩进行为会分叉。 */
+        function continueLine(t) {
+            var R = window.CpaRich;
+            if (!R || !t) return;
+            var line = R.caretLine(t) || '';
+            var c = lineCtx(line, line.length);
+            var nx = c.rest.trim() ? nextNoOf(c.rest) : '';
+            R.insertBreak(t, c.ind + c.marker + nx);
+        }
 
         function kpPlain(e) {
             if (!e) return '';
@@ -19420,17 +19480,18 @@
                正常路径由上面那个委托 beforeinput 兜住；这里补一道，防「不支持
                beforeinput 的环境」。两者互斥 —— keydown 里 preventDefault 之后
                浏览器不再派发 beforeinput，不会插两次。 */
+            /* Shift+Enter = 节点内软换行（不新增知识点、不改层级）。 */
             if (ev.key === 'Enter' && ev.shiftKey) {
                 ev.preventDefault();
                 insertSoft(t);
                 return;
             }
+            /* ★ 2026-09-21：回车续号与 beforeinput 那条路共用 continueLine ——
+               桌面按 Enter 走 keydown（它先于 beforeinput，且 preventDefault 之后
+               beforeinput 不再触发），手机软键盘不派发 keydown 时由 beforeinput 兜住。 */
             if (ev.key === 'Enter' && !ev.shiftKey) {
                 ev.preventDefault();
-                var line = R.caretLine(t) || '';
-                var c = lineCtx(line, line.length);
-                var nx = c.rest.trim() ? nextNoOf(c.rest) : '';
-                R.insertBreak(t, c.ind + c.marker + nx);
+                continueLine(t);
                 return;
             }
             if (ev.key === 'Tab') {
@@ -19506,6 +19567,9 @@
             writeViews();
             renderGrid();
             updateStat();
+            /* ★ 2026-09-21：「⏎ 换行」只在可编辑视角有意义（符号视角是只读预览） */
+            var _sft = el('kpSoftBrBtn');
+            if (_sft) _sft.disabled = (mode === 'symbol');
             growAll();
             paintTmpl();
             renderSymPane();
@@ -20449,6 +20513,18 @@
             var tm = el('kpToMdBtn'); if (tm) tm.addEventListener('click', doToMD);
             var cm = el('kpCopyMdBtn');
             if (cm) cm.addEventListener('click', function () { syncFromView(); copyText(toMD(tree)); });
+            /* ★ 2026-09-21：知识点编辑区的「⏎ 换行」按钮 —— 手机没有 Shift 键，
+               这是软换行唯一的入口（桌面也能点，比记快捷键友好）。
+               ⚠️ mousedown 里 preventDefault 是关键：否则点按钮会把焦点从
+               contenteditable 抢走，selection 丢失，就不知道往哪儿插了。 */
+            var sft = el('kpSoftBrBtn');
+            if (sft) {
+                sft.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+                sft.addEventListener('click', function () {
+                    var tg = softTarget();
+                    if (tg) insertSoft(tg);
+                });
+            }
             var ga = el('kpGridAdd');
             if (ga) ga.addEventListener('click', function (ev) {
                 var b = (ev.target && ev.target.closest) ? ev.target.closest('button[data-addcol]') : null;
@@ -20735,7 +20811,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921b</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -21939,11 +22015,21 @@ html.embedded #buildTag{display:none}
         try { e.dispatchEvent(new Event('input', { bubbles: true })); } catch (e3) { }
     }
 
-    /* 插入软换行（Shift+Enter）：在光标处放一个 **SOFT 文本节点**，不写 <br>。
-       为什么不复用 insertBreak：那是**硬**换行（知识点之间），插的就是 <br>。
-       为什么不用 execCommand('insertText', false, SOFT)：实测能塞进去，但 Range
-       直插更可控 —— 不依赖已废弃的 execCommand，也不用赌某些内核会不会把 LS 转成
-       <br>；插入后光标正好落在 SOFT 之后（打字接在后面，与 textarea 手感一致）。 */
+    /* 插入软换行（Shift+Enter / 「⏎ 换行」按钮）= 插一个 <br data-soft="1">。
+       —— 为什么不复用 insertBreak：那是**硬**换行（知识点之间），插的是裸 <br>。
+       —— 为什么不插 U+2028（第一版做法）：Chromium 不把它渲染成换行，用户看不见。
+       —— 为什么带 data-soft：回读时 domLines 要能认出"这不是行边界"，
+          nodePlain 再把它还原成 SOFT（= 节点内部的换行，parse 不会据此拆节点）。
+       ★ 关键在**插哪儿**（实测得出的唯一能让用户"按下就看见"的位置）：
+         Chromium 的规则是 —— 一个 <br> 只有在**后面还有渲染内容**时才产生换行，
+         位于行尾（后面什么都没有）的 <br> 会被直接忽略。实测给行尾 br 配
+         wbr / contenteditable=false 占位 / display:block 都无效（数字与不配完全一致）。
+         所以：
+           · 光标后面（本行内）还有文字 → 插在光标处（后面有内容，立刻断行）；
+           · 光标已在行尾 → 插到当前 .kpn 外壳**之后**（后面永远跟着下一行的内容，
+             同样立刻断行）。这条让"行末按 Shift+Enter"也有了即时反馈：
+             实测容器高 96→113，立刻多出一行。
+       ⚠️ 别用 execCommand('insertText', false, ...)：Range 直插更可控。 */
     function softBreak(e) {
         try {
             e.focus();
@@ -21951,10 +22037,37 @@ html.embedded #buildTag{display:none}
             if (!sel || !sel.rangeCount) return false;
             var r = sel.getRangeAt(0);
             if (!r.collapsed) r.deleteContents();
-            var tn = document.createTextNode(SOFT);
-            r.insertNode(tn);
-            r.setStartAfter(tn); r.collapse(true);
-            sel.removeAllRanges(); sel.addRange(r);
+            var br = document.createElement('br');
+            br.setAttribute('data-soft', '1');
+            // 光标所在的知识点外壳（格子之类没有外壳，保持 null）
+            var kpn = null, n = r.startContainer;
+            if (n && n.nodeType === 3) n = n.parentNode;
+            while (n && n.nodeType === 1) {
+                if (n.classList && n.classList.contains('kpn')) { kpn = n; break; }
+                n = n.parentElement;
+            }
+            // 光标之后（到本行末）是否还有非空白文字？
+            var tail = '';
+            if (kpn) {
+                try {
+                    var t2 = document.createRange();
+                    t2.setStart(r.startContainer, r.startOffset);
+                    t2.setEndAfter(kpn);
+                    tail = String(t2.toString());
+                } catch (x) { tail = ''; }
+            }
+            var at = r;
+            if (kpn && tail.replace(/[\s\u200b\u2028\ufeff]/g, '') === '') {
+                at = document.createRange();
+                at.setStartAfter(kpn);
+                at.collapse(true);
+            }
+            at.insertNode(br);
+            var after = document.createRange();
+            after.setStartAfter(br);
+            after.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(after);
             try { e.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) { }
             return true;
         } catch (err) { return false; }
