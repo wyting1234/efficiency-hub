@@ -11711,6 +11711,12 @@
                             const node = {
                                 course: base.course, chapter: base.chapter, section: base.section,
                                 tier: lvAbs, name: c.name,
+                                /* ★ 2026-09-21（Tom：知识树也要看得出软换行）：把**原文**也带上 ——
+                                   name 是 fcNormText 归一化过的（配对 / 去重 / 路径口径，不能动），
+                                   而 ktLabelText 要把 SOFT 画成 <br data-soft>，就必须拿到原文。
+                                   只加字段：path / sig / fcUid 一个口径都不动
+                                   （fcUid = course|chapter|section|path，不看新字段）。 */
+                                t: String(c.t == null ? '' : c.t),
                                 path: anc.concat(c.parents).concat([c.name]),
                                 /* ★ 需求1：这一格的格式来自**记录**（rec.kpRich，
                                    fcRecOutline 解析时已套进 c.h），ip 是它在速记树里的序号路径。 */
@@ -11782,6 +11788,11 @@
                         sig: fcSig(node.course, node.chapter, node.section, node.tier, node.order),
                         course: node.course, chapter: node.chapter, section: node.section,
                         tier: node.tier, order: node.order, name: node.name,
+                        /* ★ 2026-09-21：与上面 h / ip 同一个教训 —— 这一句是**新构造**的
+                           行对象，没列到的字段就没了。原文不跟着下来，ktAllNodes 的 n.t
+                           就是 undefined，ktLabelText 只能退回归一化名，知识树里那个
+                           软换行永远画不出来（本轮第一版补丁正是栽在这里）。 */
+                        t: String(node.t == null ? '' : node.t),
                         answers: node.answers,
                         answersH: node.answersH || [],
                         childUids: node.childUids,
@@ -14377,6 +14388,9 @@
                         course: c.course, chapter: c.chapter, section: c.section,
                         tier: n.tier,                       // ★ 4–7 绝对层级
                         order: n.order, name: n.name, kidN: n.hasKids ? n.answers.length : 0,
+                        /* ★ 2026-09-21：原文（含 SOFT）—— 知识树行名靠它画软换行，
+                           见 ktLabelText。ktSevenTree 的 mk(..., n) 会把它当 raw 传下去。 */
+                        t: String(n.t == null ? '' : n.t),
                         crumb: n.path.join(' › '),
                         virtual: !!n.virtual,
                         /* ★ 2026-09-18（需求1）：知识点行的格式优先取**记录侧**（rec.kpRich
@@ -14743,15 +14757,25 @@
         function ktLabelText(n, q) {
             /* ★ 2026-09-21：n.name 走的是 fcNormText（连空格都抹掉 —— 配对 / 去重的
                口径，不能动），于是「知识点内部的软换行」在树/卡的名字里会变成
-               两个字直接粘住。这里是**显示**，取未归一化的原文，并把 SOFT 折成
-               一个空格。n.raw 缺失（章 / 节行）时自动退回原口径。 */
+               两个字直接粘住。这里是**显示**，取未归一化的原文。
+               ★ 同日（Tom：知识树也要看得出换行）：SOFT 改画成 <br data-soft="1">
+               —— 与 .kp-htext / .kpn 同一个显示层载体（契约见文件顶部 rtSoftJoin）。
+               .kt-name 是 flex 子项、没有 nowrap，<br> 是强制断行，行高自然长成两行。
+               （旧写法是把 SOFT 折成一个空格，但那段其实是死代码：它取 n.raw.t，
+                 而 ktAllNodes 从来没把 t 带上来 ⇒ 一直退回归一化名 ⇒ 换行看不见。
+                 本轮补了 E5/E6/E7 三层透传，n.raw.t 才真的拿到原文。）
+               ⚠️ 必须**先转义再插 <br>**：反过来的话 kpEsc 会把标签本身转义成文本。
+               ⚠️ 搜索偏移仍按「SOFT 折成空格」算：1 换 1，与原文逐字对齐，
+                 所以高亮切片的下标与旧实现完全一致（搜索语义一个字没变）。 */
             const src = (n && n.raw && n.raw.t) ? n.raw.t : ((n && n.name) || '');
-            const nm = String(src).replace(/\u2028/g, ' ');
-            if (!q) return kpEsc(nm);
-            const at = nm.toLowerCase().indexOf(q);
-            if (at < 0) return kpEsc(nm);
-            return kpEsc(nm.slice(0, at)) + '<mark>' + kpEsc(nm.slice(at, at + q.length)) + '</mark>' +
-                kpEsc(nm.slice(at + q.length));
+            const raw2 = String(src);
+            const folded = raw2.replace(/\u2028/g, ' ');
+            const hl = function (s) { return kpEsc(s).replace(/\u2028/g, '<br data-soft="1">'); };
+            if (!q) return hl(raw2);
+            const at = folded.toLowerCase().indexOf(q);
+            if (at < 0) return hl(raw2);
+            return hl(raw2.slice(0, at)) + '<mark>' + hl(raw2.slice(at, at + q.length)) + '</mark>' +
+                hl(raw2.slice(at + q.length));
         }
 
         // 层级角标里写什么：用工具栏 / 统计条同一套词汇（第 4 级 · 知识点1级 …）。
@@ -15648,13 +15672,44 @@
                 ((n.kind === 'kp' && n.raw && n.raw.rawSig) ? ' data-kt-sigraw="' + kpEsc(n.raw.rawSig) + '"' : '') +
                 '>' + body + '</span>';
         }
+        /* ★ 2026-09-21：从行名的 DOM 取**原文** —— 关键是别把软换行吃掉。
+           行名现在把 SOFT 画成 <br data-soft="1">（见 ktLabelText），而 el.textContent
+           会把 <br> 变成「什么都不占」，读回来的就是「两段直接粘住」的串。后果：
+             · ktEditCommit → ktCardWrite 把它写进 card.q ⇒ 闪卡正面（rtRender(qH,q)）
+               再也渲染不出那个换行（实测：补这一笔之前 card.q 是粘连的，之后带 U+2028）；
+             · 与 data-kt-base 的比较失去意义 —— 拿一个「被抹平的显示串」去跟数据层的
+               名字比，比中比不中都说明不了问题。
+           所以按 childNodes 走一遍：带 data-soft 的 <br> 还原成 U+2028，其余 <br> 记 \n
+           （行名里本不该有硬换行，这只是兜底）。与 CpaRich.toText / domLines 同一套走法。
+           尾部空白仍然抹掉（含尾随 SOFT —— 行尾的软换行没有意义）。
+           ⚠️ 这不是在修一个「旧版会毁数据」的缺陷 —— 那条假设实测**不成立**：
+             旧版 ktLabelText 取的是 n.raw.t，而 ktAllNodes 从来没有把 t 带上来，
+             那段「折成空格」的分支其实一直是死代码，所以旧版既看不见换行、
+             也没有毁过数据（本轮 ②/③ 两个场景对旧版实测过，kpQuickRaw 里 U+2028 一直在）。
+             这一笔是**配合新写法**才必须有的：不还原 SOFT，写回去的就是粘连串。 */
+        function ktNameText(el) {
+            var s = '';
+            (function walk(n) {
+                for (var i = 0; i < n.childNodes.length; i++) {
+                    var c = n.childNodes[i];
+                    if (c.nodeType === 3) { s += c.data; continue; }
+                    if (c.nodeType !== 1) continue;
+                    if (c.tagName === 'BR') {
+                        s += (c.getAttribute && c.getAttribute('data-soft')) ? '\u2028' : '\n';
+                        continue;
+                    }
+                    walk(c);
+                }
+            })(el);
+            return s.replace(/\u00a0/g, ' ').replace(/[\s\u2028]+$/, '');
+        }
         function ktEditCommit(el) {
             if (!el || !el.getAttribute) return;
             var sig = el.getAttribute('data-kt-edit') || '';
             var kind = el.getAttribute('data-kt-kind') || '';
             var R = window.CpaRich;
             if (!sig || !R) return;
-            var text = String(el.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+$/, '');
+            var text = ktNameText(el);
             if (!text) return;                       // 整行被清空 → 不动数据（行名不是可空字段）
             var html = R.sanitize(ktMkStrip(el.innerHTML));
             var fmt = (html && R.looksMarkup(html)) ? html : null;
@@ -20268,6 +20323,14 @@
         //   「拆解只到倒数第二格」只约束**出题侧**（fcRecMaxLv / fcRecOutline）
         //   与**写入侧**（getKnowledgePoints），不约束展示；超出该层的那一行用
         //   .kp-hdeep 淡显标出（它进卡片反面，不单独出卡）。
+        /* ★ 2026-09-21（Tom：阅读类界面也要看得出软换行）：记录卡 / 复习清单 /
+           当日明细的「大纲视角 / MD视角」走的是 <pre white-space:pre>，**只认 \n**，
+           而数据层的软换行是 U+2028 —— 它在 <pre> 里是个看不见的字符，于是
+           「一个知识点写了两行」在这两个视角里被压成一行（列表与复习界面同病）。
+           这里只在**显示层**把 SOFT 翻成 \n：toOutline / toMD 的返回口径一个字不改
+           （它们是数据层的文本载体，改了会连累复制 / 导出 / 草稿）。
+           顺带让这两个视角里复制出来的也是真换行，而不是一个隐形字符。 */
+        function softNL(s) { return String(s == null ? '' : s).replace(/\u2028/g, '\n'); }
         function kpBlockHtml(rec, v) {
             var kps = (rec && rec.knowledgePoints) || [];
             var raw = (rec && rec.kpQuickRaw) || '';
@@ -20278,8 +20341,8 @@
             applyRichMap(roots, rec && rec.kpRich);
             if (!roots.length) return '<span class="rec-kp-empty">未记录</span>';
             // ★ 不裁层级：recMaxLv 只用来标记「哪一层是答案层」，不用来删/并节点。
-            if (v === 'md') return '<pre class="rec-pre rec-pre-md">' + esc(toMD(roots)) + '</pre>';
-            if (v === 'outline') return '<pre class="rec-pre">' + esc(toOutline(roots, true)) + '</pre>';
+            if (v === 'md') return '<pre class="rec-pre rec-pre-md">' + esc(softNL(toMD(roots))) + '</pre>';
+            if (v === 'outline') return '<pre class="rec-pre">' + esc(softNL(toOutline(roots, true))) + '</pre>';
             if (v === 'mind') return kpMindHtml(roots, recMaxLv(rec));
             if (v === 'symbol') return kpSymHtml(roots, recMaxLv(rec));
             return kpHierHtml(roots, recMaxLv(rec));
@@ -20811,7 +20874,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921b</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921c</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
