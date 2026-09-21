@@ -3499,11 +3499,13 @@
      就被调用 —— 那时后面的脚本还没执行，裸名 CpaRich 会抛
      "CpaRich is not defined"，而且是**整段渲染失败**（错题本列表直接 0 条，
      界面上看不出任何报错）。实测就是这么发现的，只有监听 window.onerror 才看得见。
-   所以这 4 个辅助不依赖任何外部对象，并且在**第一个业务 <script> 之前**就定义好：
+   所以这些辅助不依赖任何外部对象，并且在**第一个业务 <script> 之前**就定义好：
      rtRender(h, t)  有旁挂格式就用格式，否则转义纯文本（与改造前逐字等价）
      rtText(el)      取纯文本 —— 写进原字段，导出/打印/检索/卡片签名全部零改动
      rtFmt(el)       取旁挂 HTML，只在真的带格式时返回，否则 null（不多存一个字节）
      rtSet(id,h,t)   回填
+     rtSoftJoin(s)   ★ 2026-09-21：软换行只在显示层写成 <br data-soft="1">
+     rtSoftEq(a, b)  ★ 2026-09-21：比较时把 \n 与 U+2028 视为同一个「换行」
    参数传元素或 id 都行；内部再够 CpaRich，够不到就自己兜底 —— 任何时候调用都安全。
    ============================================================ */
 (function () {
@@ -3514,10 +3516,39 @@
         if (x.nodeType === 1) return x;
         try { return document.getElementById(String(x)); } catch (e) { return null; }
     }
+    /* ★★ 2026-09-21 软换行（修 Tom 报的缺陷：「学习记录 → 大纲模式，单个文本框里
+       Shift+Enter 换行，保存后这段文字被按换行拆成多个知识点，层级也乱」）
+       ------------------------------------------------------------
+       契约（两个方向必须同时成立，改一处就要改另一处）：
+         数据层   SOFT = U+2028 (LS)  = 一个知识点**内部**的换行
+                  \n               = 知识点**之间**的换行（层级边界）
+         显示层   LS → <br data-soft="1">
+       为什么数据层不能直接用 LS 显示：实测 Chromium 不把裸 LS 当换行
+         （同一行里 LS 前后两个字的 getBoundingClientRect().top 完全相同），
+         所以必须换成 <br>；而 <br> 与「回车（新节点）」在文本层无法区分 ——
+         这正是原缺陷的成因，所以要带 data-soft 这个自描述标记区分开。
+       为什么数据层不能直接用 <br>：parse() 按 /\r?\n/ 拆行，toFlat/toOutline
+         输出的纯文本是要被重新 parse 的（保存 → 重开 → 大纲视角），
+         只要有 \n 就会重新拆成两行。 */
+    var RT_SOFT = '\u2028';
+    window.RT_SOFT = RT_SOFT;
+    window.rtSoftJoin = function (v) {
+        return String(v == null ? '' : v).replace(/\u2028/g, '<br data-soft="1">');
+    };
+    /* 软换行无关的等值比较：把「真 \n」与 LS 视为同一个换行。
+       用在「路径 + 纯文本」双校验上 —— 历史数据可能是真 \n，新写的都是 LS，
+       语义相同就不该因此丢格式。 */
+    function rtSoftKey(v) {
+        return String(v == null ? '' : v).replace(/\r\n?/g, '\n').replace(/\n/g, RT_SOFT);
+    }
+    window.rtSoftKey = rtSoftKey;
+    window.rtSoftEq = function (a, b) { return rtSoftKey(a) === rtSoftKey(b); };
     window.rtRender = function (h, t) {
         var C = window.CpaRich;
-        if (C && C.render) { try { return C.render(h, t); } catch (e) { } }
-        return esc0(t);
+        var out = null;
+        if (C && C.render) { try { out = C.render(h, t); } catch (e) { } }
+        if (out == null) out = esc0(t);
+        return window.rtSoftJoin(out);
     };
     window.rtText = function (x) {
         var e = el0(x);
@@ -7120,8 +7151,12 @@
             // 纯编号残渣不是知识点，丢掉（否则每行一级都会多出一个假知识点）
             const residue = /^(?:[0-9]{1,3}|[一二三四五六七八九十]{1,3}|[\u2460-\u2473])[.、．)）:：]?$/;
             const pushTok = function (s) {
+                // ★ 2026-09-21：节点内部的软换行（SOFT）在这里折成空格 ——
+                //   knowledgePoints[].text 是**单行展示**口径（记录卡片的标签条、
+                //   复习标题、Excel 导出、检索），留着 U+2028 只会变成一个看不见的
+                //   字符（导出到 Excel 更是个怪符号）。层级/原文仍由 kpQuickRaw 承担。
                 String(s || '').split(/[；;、]+/).forEach(function (part) {
-                    const tok = stripKpNo(String(part || '').trim());
+                    const tok = stripKpNo(String(part || '').replace(/\u2028/g, ' ').trim());
                     if (tok && !residue.test(tok)) out.push({ text: tok });
                 });
             };
@@ -7707,7 +7742,9 @@
            否则用户明明在卡片上看见了这几个字，搜索却说没有。 */
         function recSearchBlob(r) {
             if (!r) return '';
-            const parts = [r.kpQuickRaw, r.notes, r.problemSolving, r.memoryNetwork, r.aiQA,
+            // ★ 2026-09-21：软换行折成空格再进检索正文 —— 否则「甲乙」这样连着的
+            //   搜索词会被节点内部的换行隔开，明明看得见的字却搜不到。
+            const parts = [String(r.kpQuickRaw || '').replace(/\u2028/g, ' '), r.notes, r.problemSolving, r.memoryNetwork, r.aiQA,
                 r.assessmentReason, r.course, r.resourceType, r.source, r.selfAssessment, r.date];
             try { (r.knowledgePoints || []).forEach(function (k) { if (k) parts.push(k.text); }); } catch (e) {}
             /* ★ 需求 S2：知识树里改过名的知识点行名只存在 kpRich[*].t，
@@ -14701,7 +14738,12 @@
         }
 
         function ktLabelText(n, q) {
-            const nm = String(n.name || '');
+            /* ★ 2026-09-21：n.name 走的是 fcNormText（连空格都抹掉 —— 配对 / 去重的
+               口径，不能动），于是「知识点内部的软换行」在树/卡的名字里会变成
+               两个字直接粘住。这里是**显示**，取未归一化的原文，并把 SOFT 折成
+               一个空格。n.raw 缺失（章 / 节行）时自动退回原口径。 */
+            const src = (n && n.raw && n.raw.t) ? n.raw.t : ((n && n.name) || '');
+            const nm = String(src).replace(/\u2028/g, ' ');
             if (!q) return kpEsc(nm);
             const at = nm.toLowerCase().indexOf(q);
             if (at < 0) return kpEsc(nm);
@@ -19113,6 +19155,60 @@
              ③ 回读：把 DOM 行的 HTML 去掉行首「缩进 + 编号」前缀后旁挂到 nd.h ——
                 与格子同一套「路径 + 纯文本双校验」，对不上就宁丢格式、绝不改纯文本。 */
 
+        /* ★★ 2026-09-21 软换行（Tom 报：大纲模式下 Shift+Enter 换行 → 保存后
+           被按换行拆成多个知识点、层级也乱）—— 完整根因见文件顶部 rtSoftJoin 的契约。
+           本文件这三处是「显示层 → 数据层」的通道，必须成套修改：
+             · 拦截：委托 beforeinput（下方），Shift+Enter 不再让浏览器插 <br>，
+                     改插一个 SOFT 文本节点；
+             · 回读：domLines 不再把带 data-soft 的 <br> 当行边界；
+                     lineText 把它还原成 SOFT（原来用 textContent，直接吞掉）；
+             · 渲染：writeViews → viewHTML → rtRender 自动把 SOFT 写成 data-soft br。
+           为什么用 beforeinput 而不是 keydown：实测 Chromium 下
+             · 普通 Enter   → beforeinput.inputType = 'insertParagraph'
+             · Shift+Enter → beforeinput.inputType = 'insertLineBreak'
+             · keydown 里 preventDefault 之后，beforeinput **根本不会触发**
+             · 回车续号走 execCommand('insertLineBreak')，**不**派发 beforeinput
+           ⇒「本编辑器里出现 insertLineBreak」= 用户按了软换行，判据干净且不误伤，
+             还顺带覆盖了手机软键盘（它未必派发 keydown）。 */
+        var SOFT = '\u2028';
+        function softDisp(v) {
+            return window.rtSoftJoin ? window.rtSoftJoin(v)
+                : String(v == null ? '' : v).replace(/\u2028/g, '<br data-soft="1">');
+        }
+        /* 哪些可编辑容器吃「软换行」：三个视角 + 网格格子。
+           ⚠️ 只有它们 —— 闪卡反面、错题本那些长文本字段是**纯文本语义**（存 \n、
+           导出/打印都按多行走），那里 Shift+Enter 就该是普通换行，不要动。 */
+        function softHost(t) {
+            if (!t || t.nodeType !== 1 || !t.classList) return false;
+            var id = t.id;
+            if (id === 'fKpQuick' || id === 'fKpOutline' || id === 'fKpMd') return true;
+            return t.classList.contains('kp-cell-in');
+        }
+        function insertSoft(el) {
+            if (window.CpaRich && typeof window.CpaRich.softBreak === 'function') {
+                if (window.CpaRich.softBreak(el)) return true;
+            }
+            try {
+                var sel = window.getSelection();
+                if (!sel || !sel.rangeCount) return false;
+                var r = sel.getRangeAt(0);
+                if (!r.collapsed) r.deleteContents();
+                var tn = document.createTextNode(SOFT);
+                r.insertNode(tn);
+                r.setStartAfter(tn); r.collapse(true);
+                sel.removeAllRanges(); sel.addRange(r);
+                try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { }
+                return true;
+            } catch (e) { return false; }
+        }
+        document.addEventListener('beforeinput', function (ev) {
+            if (!ev || ev.inputType !== 'insertLineBreak') return;
+            var t = ev.target;
+            if (!t || !t.isContentEditable || !softHost(t)) return;
+            ev.preventDefault();
+            insertSoft(t);
+        }, true);
+
         function kpPlain(e) {
             if (!e) return '';
             var t = window.CpaRich ? window.CpaRich.toText(e.innerHTML)
@@ -19131,7 +19227,7 @@
                         var str = String(v == null ? '' : v).replace(/\u00a0/g, ' ');
                         var body = R ? R.esc(str) : str.replace(/&/g, '&amp;')
                             .replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                        this.innerHTML = body.replace(/\n/g, '<br>');
+                        this.innerHTML = softDisp(body.replace(/\n/g, '<br>'));
                     }
                 });
                 e.__kpVal = 1;
@@ -19171,7 +19267,14 @@
                     var c = kids[i];
                     if (c.nodeType === 3) { cur.push(c); continue; }
                     if (c.nodeType !== 1) continue;
-                    if (c.tagName === 'BR') { lines.push(cur); cur = []; continue; }
+                    /* ★ 2026-09-21：带 data-soft 的 <br> 是「节点**内部**的软换行」
+                       （契约见文件顶部 rtSoftJoin 注释），它是本行的**内容**、不是行边界。
+                       这一条就是「Shift+Enter 被拆成多个知识点」的修复点 ——
+                       原来任何 <br> 都当行边界，回读时一行被切成两行。 */
+                    if (c.tagName === 'BR') {
+                        if (c.getAttribute && c.getAttribute('data-soft')) { cur.push(c); continue; }
+                        lines.push(cur); cur = []; continue;
+                    }
                     if (isBlockEl(c.tagName)) {
                         if (cur.length) { lines.push(cur); cur = []; }
                         walkDom(c);
@@ -19190,9 +19293,22 @@
             if (cur.length) lines.push(cur);
             return lines;
         }
+        /* ★ 2026-09-21：原实现直接拼 textContent —— <br> 的 textContent 是空串，
+           于是「节点内部的软换行」在这一步被无声吃掉，captureRich 的
+           「路径 + 纯文本双校验」随即对不上，用户刚上的色被丢掉。
+           现在按节点走：文本节点取原文、data-soft 的 <br> 记作 SOFT。 */
+        function nodePlain(n) {
+            if (!n) return '';
+            if (n.nodeType === 3) return String(n.data || '');
+            if (n.nodeType !== 1) return '';
+            if (n.tagName === 'BR') return (n.getAttribute && n.getAttribute('data-soft')) ? SOFT : '';
+            var s = '';
+            for (var i = 0; i < n.childNodes.length; i++) s += nodePlain(n.childNodes[i]);
+            return s;
+        }
         function lineText(nodes) {
             var s = '';
-            for (var i = 0; i < nodes.length; i++) s += String(nodes[i].textContent || '');
+            for (var i = 0; i < nodes.length; i++) s += nodePlain(nodes[i]);
             return s.replace(/\u00a0/g, ' ').replace(/\s+$/, '');
         }
         // 去掉行首 k 个字符（缩进 + 编号），后面的富文本结构原样保留
@@ -19251,11 +19367,17 @@
                 var nd = flat[j], t = String(nd.t == null ? '' : nd.t);
                 if (!t) continue;
                 var full = lineText(lines[j]);
-                var at = full.lastIndexOf(t);
+                /* ★ 2026-09-21：先在「\n 与 SOFT 等价」的口径下定位 ——
+                   DOM 里的软换行是 <br data-soft>（lineText 已还原成 SOFT），
+                   而树里的 nd.t 可能是历史数据里的真 \n，字面不同、语义相同。
+                   \n→SOFT 是 1 换 1，at 的字符偏移仍然可以直接喂给 stripPrefix。 */
+                var key = window.rtSoftKey || function (v) { return String(v == null ? '' : v); };
+                var at = key(full).lastIndexOf(key(t));
                 if (at < 0) continue;                      // 这一行认不出来 → 保留树里原有的 h
                 var html = R.sanitize(stripPrefix(lines[j], at));
+                var plain = R.toText(html).replace(/\u00a0/g, ' ').replace(/\s+$/, '');
                 if (html && R.looksMarkup(html) &&
-                    R.toText(html).replace(/\u00a0/g, ' ').replace(/\s+$/, '') === t) {
+                    (plain === t || (window.rtSoftEq && window.rtSoftEq(plain, t)))) {
                     nd.h = html;
                 } else {
                     delete nd.h;                           // 这一行是权威读数：没格式就是没格式
@@ -19294,6 +19416,15 @@
         function onTextKeyRich(ev, t) {
             var R = window.CpaRich;
             if (!R) return;
+            /* ★ 2026-09-21：Shift+Enter = 节点内部的软换行（不拆行、不改层级）。
+               正常路径由上面那个委托 beforeinput 兜住；这里补一道，防「不支持
+               beforeinput 的环境」。两者互斥 —— keydown 里 preventDefault 之后
+               浏览器不再派发 beforeinput，不会插两次。 */
+            if (ev.key === 'Enter' && ev.shiftKey) {
+                ev.preventDefault();
+                insertSoft(t);
+                return;
+            }
             if (ev.key === 'Enter' && !ev.shiftKey) {
                 ev.preventDefault();
                 var line = R.caretLine(t) || '';
@@ -20604,7 +20735,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918ap</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921a</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -21614,6 +21745,17 @@ html.embedded #buildTag{display:none}
     var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ESC[c]; }); }
 
+    /* ★★ 2026-09-21 软换行常量（完整说明见文件顶部 rtSoftJoin 那段注释契约）
+       SOFT(U+2028) 是**数据层**的「知识点内部换行」；渲染进 DOM 时写成
+       <br data-soft="1">，回读时再还原成 SOFT。这里三个函数是本侧的三个转换口：
+         · softJoin  —— 数据层 → 显示层（本块只给 rtHtml / set 用，其余走 rtRender）
+         · toText    —— 显示层 → 数据层（顺带把真正的 <br> 折成 \n）
+         · sanitize  —— 把显示层的标记还原成数据层的 SOFT（否则属性被白名单抹掉，
+                        那一行下次渲染就退化成**硬换行**，节点被拆开 —— 原缺陷复发） */
+    var SOFT = '\u2028';
+    var RE_SOFTBR = /<br[^>]*data-soft[^>]*>/gi;
+    function softJoin(v) { return String(v == null ? '' : v).replace(/\u2028/g, '<br data-soft="1">'); }
+
     var TAG_OK = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, MARK: 1, SPAN: 1, BR: 1, DIV: 1, P: 1 };
     // 样式白名单：只放「格式条会产出」的那几条，且不允许 url()/expression
     var STYLE_OK = { 'color': 1, 'background-color': 1, 'font-weight': 1, 'font-style': 1, 'text-decoration': 1, 'text-decoration-line': 1 };
@@ -21624,7 +21766,10 @@ html.embedded #buildTag{display:none}
     // 白名单净化：不认识的标签拆掉、只留子节点；属性除 style 全丢；style 逐条过滤
     function sanitize(h) {
         var d = document.createElement('div');
-        d.innerHTML = String(h == null ? '' : h);
+        // ★ 2026-09-21：data-soft 只属于「渲染层」，进数据层（nd.h / kpRich / qH…）
+        //   一律先还原成 SOFT —— 白名单会把 data-soft 属性抹掉，抹掉之后再渲染
+        //   就是一个**硬换行**，节点会被拆开（原缺陷复发）。
+        d.innerHTML = String(h == null ? '' : h).replace(RE_SOFTBR, SOFT);
         (function walk(node) {
             var kids = [].slice.call(node.childNodes);
             for (var i = 0; i < kids.length; i++) {
@@ -21667,7 +21812,10 @@ html.embedded #buildTag{display:none}
     function toText(h) {
         var s = String(h == null ? '' : h);
         if (!looksMarkup(s)) return s;
-        s = s.replace(/<br\s*\/?>/gi, '\n')
+        // ★ 2026-09-21：先捞「软换行」的 br（→ SOFT，不参与 parse 拆行），
+        //   剩下的 <br> 才是知识点之间的换行。
+        s = s.replace(RE_SOFTBR, SOFT)
+            .replace(/<br\s*\/?>/gi, '\n')
             .replace(/<\/(div|p|li|tr|h[1-6])\s*>/gi, '\n')
             .replace(/<[^>]*>/g, '');
         var d = document.createElement('div');
@@ -21720,7 +21868,7 @@ html.embedded #buildTag{display:none}
         var hh = String(h == null ? '' : h);
         var val = (hh && looksMarkup(hh)) ? sanitize(hh) : esc(t);
         if (e.tagName === 'TEXTAREA' || e.tagName === 'INPUT') e.value = (hh && looksMarkup(hh)) ? toText(hh) : String(t == null ? '' : t);
-        else e.innerHTML = val;
+        else e.innerHTML = softJoin(val);
     }
 
     // 把 .value 接到 HTML 上 —— 让既有的 e.value 读写在 contenteditable 上照旧可用
@@ -21791,12 +21939,38 @@ html.embedded #buildTag{display:none}
         try { e.dispatchEvent(new Event('input', { bubbles: true })); } catch (e3) { }
     }
 
+    /* 插入软换行（Shift+Enter）：在光标处放一个 **SOFT 文本节点**，不写 <br>。
+       为什么不复用 insertBreak：那是**硬**换行（知识点之间），插的就是 <br>。
+       为什么不用 execCommand('insertText', false, SOFT)：实测能塞进去，但 Range
+       直插更可控 —— 不依赖已废弃的 execCommand，也不用赌某些内核会不会把 LS 转成
+       <br>；插入后光标正好落在 SOFT 之后（打字接在后面，与 textarea 手感一致）。 */
+    function softBreak(e) {
+        try {
+            e.focus();
+            var sel = window.getSelection();
+            if (!sel || !sel.rangeCount) return false;
+            var r = sel.getRangeAt(0);
+            if (!r.collapsed) r.deleteContents();
+            var tn = document.createTextNode(SOFT);
+            r.insertNode(tn);
+            r.setStartAfter(tn); r.collapse(true);
+            sel.removeAllRanges(); sel.addRange(r);
+            try { e.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) { }
+            return true;
+        } catch (err) { return false; }
+    }
+
     // 知识树单元格读：t 保持原语义（textContent + nbsp 归空格 + 去尾空白），h 只在带格式时给
     function cell(node) {
         if (!node || node.nodeType !== 1) return { t: '', h: null };
         var html = String(node.innerHTML || '');
+        /* ★ 2026-09-21：格子 = **单个**节点，里面的换行一律算「节点内部软换行」。
+           原实现走 textContent —— <br> 的 textContent 是空串，于是格子里的换行
+           在 nd.t 里**静默消失**（只剩 h 里还有），t 与 h 从此说的不是同一件事。
+           现在折成 SOFT：先由 toText 认 data-soft（→SOFT），粘贴进来的裸 <br> 与
+           块级边界（→\n）也一并算软换行。 */
         return {
-            t: String(node.textContent || '').replace(/\u00a0/g, ' ').replace(/\s+$/, ''),
+            t: toText(html).replace(/\r?\n/g, SOFT).replace(/\u00a0/g, ' ').replace(/\s+$/, ''),
             h: looksMarkup(html) ? sanitize(html) : null
         };
     }
@@ -21849,11 +22023,11 @@ html.embedded #buildTag{display:none}
     window.CpaRich = {
         esc: esc, sanitize: sanitize, toText: toText, norm: norm, render: render,
         rawOf: rawOf, textOf: textOf, fmtOf: fmtOf, set: set, shim: shim,
-        caretLine: caretLine, caretLineIndex: caretLineIndex, insertBreak: insertBreak, cell: cell,
+        caretLine: caretLine, caretLineIndex: caretLineIndex, insertBreak: insertBreak, softBreak: softBreak, cell: cell,
         richMapOf: richMapOf, applyRichMap: applyRichMap, carryRich: carryRich,
         looksMarkup: looksMarkup
     };
-    window.rtHtml = function (h, t) { return render(h, t); };
+    window.rtHtml = function (h, t) { return softJoin(render(h, t)); };
 
     // 给 [data-rt] 的可编辑容器装 .value 兼容层 + 空值归一（保住 :empty 占位提示）
     function initRT() {
