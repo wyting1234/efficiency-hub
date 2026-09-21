@@ -15660,8 +15660,30 @@
             var h = null;
             if (n.kind === 'kp') h = (n.raw && n.raw.h) ? String(n.raw.h) : null;
             else if (ktKpH[n.sig] && String(ktKpH[n.sig].t || '') === full) h = ktKpH[n.sig].h || null;
+            /* ★ 2026-09-21（知识树软换行没画出来的**真正**根因）：
+               旁挂格式 h 只在与**当前原文**逐字对齐时才配用。原来只校验到
+               ktRichOk / ktNorm 那一层，而 ktNorm 会抹掉所有空白（含 SOFT）——
+               于是「先上色、后插软换行」留下的**过期格式**照样通过；偏偏
+               CpaRich.render 在有格式时**完全忽略 t**（`if (hh && looksMarkup(hh))
+               return sanitize(hh);`），行名就渲染成那份没有换行的旧文字，
+               知识树里两段直接粘住（大纲 / MD 视角因为走 ktLabelText 反而正常）。
+               判据用 rtSoftKey：\r\n / \n / SOFT 视为同一个换行 —— 换行的**写法**
+               不同不误伤，换行的**有无**不同就判不等 ⇒ 退回 ktLabelText（取原文）。
+               只在拿到原文（n.raw.t）时才收紧：章 / 节行没有原文，且那一支已经用
+               === 严格比过 ktKpH[sig].t，不必重复。 */
+            var srcT = (n.raw && n.raw.t) ? String(n.raw.t) : full;
+            if (h && n.raw && n.raw.t) {
+                try {
+                    var _key = window.rtSoftKey || function (v) {
+                        return String(v == null ? '' : v).replace(/\r\n?/g, '\n').replace(/\n/g, '\u2028');
+                    };
+                    var _C = window.CpaRich;
+                    var _htxt = (_C && _C.toText) ? _C.toText(String(h)) : String(h).replace(/<[^>]+>/g, '');
+                    if (_key(_htxt) !== _key(srcT)) h = null;
+                } catch (e) { h = null; }
+            }
             var body = (!q && h && typeof window.rtRender === 'function')
-                ? window.rtRender(h, full) : ktLabelText(n, q);
+                ? window.rtRender(h, srcT) : ktLabelText(n, q);
             var ed = (n.kind === 'chapter' || n.kind === 'section' || n.kind === 'kp');
             var pre = ed ? ktPreOf(n) : '';
             return '<span class="kt-name' + (ed ? ' kt-name-ed' : '') + '"' +
@@ -19144,19 +19166,26 @@
             });
             return out.join('\n').replace(/[ \t]+$/gm, '');
         }
+        /* ★ 2026-09-21（Tom：大纲 / MD 视角的续行也要看得出层级）：
+           「行前缀」= 缩进 + 编号 + 一个空格。这里抽成**唯一实现**，两处生成器与
+           「续行缩进」共用 —— 续行若自己再抄一份，改编号方案的那天必然走样。
+           纯重构：toOutline / toMD 的输出逐字不变（有专门的对照断言）。 */
+        function kpLinePrefix(m, p, d, withNo) {
+            var no = noStr(p);
+            if (m === 'md') return (d === 1) ? ('# ' + no + ' ') : (new Array(d).join('  ') + '- ' + no + ' ');
+            return new Array(d).join('  ') + (withNo && no ? (no + ' ') : '');
+        }
         function toOutline(roots, withNo) {
             var out = [];
             walk(roots, function (n, p, d) {
-                const _nn = withNo ? noStr(p) : '';
-                out.push(new Array(d).join('  ') + (_nn ? (_nn + ' ') : '') + n.t);
+                out.push(kpLinePrefix('outline', p, d, !!withNo) + n.t);
             });
             return out.join('\n').replace(/[ \t]+$/gm, '');
         }
         function toMD(roots) {
             var out = [];
             walk(roots, function (n, p, d) {
-                if (d === 1) out.push('# ' + noStr(p) + ' ' + n.t);
-                else out.push(new Array(d).join('  ') + '- ' + noStr(p) + ' ' + n.t);
+                out.push(kpLinePrefix('md', p, d, true) + n.t);
             });
             return out.join('\n').replace(/[ \t]+$/gm, '');
         }
@@ -20330,7 +20359,36 @@
            这里只在**显示层**把 SOFT 翻成 \n：toOutline / toMD 的返回口径一个字不改
            （它们是数据层的文本载体，改了会连累复制 / 导出 / 草稿）。
            顺带让这两个视角里复制出来的也是真换行，而不是一个隐形字符。 */
-        function softNL(s) { return String(s == null ? '' : s).replace(/\u2028/g, '\n'); }
+        /* 续行缩进要对齐到**正文起点**，所以先要「行前缀占几列」。
+           .rec-pre 的字体是等宽族（ui-monospace / Consolas / Courier New），
+           所以缩进就是列数；CJK 按东亚宽度算 2 列（等宽下 CJK 字的步进通常是
+           Latin 的整两倍，与浏览器实际排版一致）。 */
+        function kpCols(s) {
+            var str = String(s == null ? '' : s), w = 0;
+            for (var i = 0; i < str.length; i++) {
+                var c = str.charCodeAt(i);
+                w += (c >= 0x1100 && (c <= 0x115f || c === 0x2329 || c === 0x232a ||
+                    (c >= 0x2e80 && c <= 0xa4cf && c !== 0x303f) ||
+                    (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) ||
+                    (c >= 0xfe30 && c <= 0xfe6f) || (c >= 0xff00 && c <= 0xff60) ||
+                    (c >= 0xffe0 && c <= 0xffe6))) ? 2 : 1;
+            }
+            return w;
+        }
+        /* 与生成器同一顺序、同一函数算前缀宽 —— pads[i] 对第 i 行（= 第 i 个节点） */
+        function kpPrefixPads(m, roots, withNo) {
+            var pads = [];
+            walk(roots || [], function (n, p, d) { pads.push(kpCols(kpLinePrefix(m, p, d, withNo))); });
+            return pads;
+        }
+        /* s 的第 i 行 → pads[i] 列缩进的续行。没有 pads 就退回「顶到第 0 列」（旧行为）。 */
+        function softNL(s, pads) {
+            return String(s == null ? '' : s).split('\n').map(function (line, i) {
+                if (line.indexOf('\u2028') < 0) return line;
+                var n = (pads && pads[i] > 0) ? pads[i] : 0;
+                return line.replace(/\u2028/g, '\n' + new Array(n + 1).join(' '));
+            }).join('\n').replace(/[ \t]+$/gm, '');
+        }
         function kpBlockHtml(rec, v) {
             var kps = (rec && rec.knowledgePoints) || [];
             var raw = (rec && rec.kpQuickRaw) || '';
@@ -20341,8 +20399,8 @@
             applyRichMap(roots, rec && rec.kpRich);
             if (!roots.length) return '<span class="rec-kp-empty">未记录</span>';
             // ★ 不裁层级：recMaxLv 只用来标记「哪一层是答案层」，不用来删/并节点。
-            if (v === 'md') return '<pre class="rec-pre rec-pre-md">' + esc(softNL(toMD(roots))) + '</pre>';
-            if (v === 'outline') return '<pre class="rec-pre">' + esc(softNL(toOutline(roots, true))) + '</pre>';
+            if (v === 'md') return '<pre class="rec-pre rec-pre-md">' + esc(softNL(toMD(roots), kpPrefixPads('md', roots, true))) + '</pre>';
+            if (v === 'outline') return '<pre class="rec-pre">' + esc(softNL(toOutline(roots, true), kpPrefixPads('outline', roots, true))) + '</pre>';
             if (v === 'mind') return kpMindHtml(roots, recMaxLv(rec));
             if (v === 'symbol') return kpSymHtml(roots, recMaxLv(rec));
             return kpHierHtml(roots, recMaxLv(rec));
@@ -20874,7 +20932,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921c</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921d</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
