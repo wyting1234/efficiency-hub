@@ -3221,6 +3221,71 @@
             margin-left: auto; font-size: 11px; color: #bbb;
             font-variant-numeric: tabular-nums; white-space: nowrap;
         }
+        /* ===== v53：日记统计条（头部绿框位置）+ 编辑区标签选择器 + 标签管理弹窗 ===== */
+        .dp-head .dp-stat {
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+            flex: 1 1 260px; min-width: 0;
+        }
+        .dp-head .dp-stat .dp-st {
+            display: inline-flex; align-items: baseline; gap: 3px;
+            font-size: 11px; color: #8a8a99; white-space: nowrap;
+            background: #fafaff; border: 1px solid #eeeef5; border-radius: 8px;
+            padding: 2px 7px; font-variant-numeric: tabular-nums;
+        }
+        .dp-head .dp-stat .dp-st b { font-size: 12px; color: var(--main); font-weight: 700; }
+        .dp-head .dp-stat .dp-st i { font-style: normal; color: #a8a8b8; }
+        .dp-head .dp-stat .dp-st-tag { cursor: pointer; }
+        .dp-head .dp-stat .dp-st-tag:hover { background: #f2f0ff; border-color: #ddd6ff; color: var(--main); }
+        .dp-head .dp-tags {
+            flex-basis: 100%; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+            font-size: 11px; color: #a8a8b8; padding-top: 1px;
+        }
+        .dp-head .dp-tags > em { font-style: normal; color: #c2c2ce; }
+        .dp-head .dp-tags > em b { color: var(--main); font-weight: 700; font-size: 11px; }
+        .dp-head .dp-tags .dp-tg {
+            display: inline-flex; align-items: baseline; gap: 3px;
+            background: #fafaff; border: 1px solid #eeeef5; border-radius: 8px;
+            padding: 1px 7px; white-space: nowrap; color: #8a8a99;
+            font-variant-numeric: tabular-nums;
+        }
+        .dp-head .dp-tags .dp-tg em { font-style: normal; font-weight: 600; color: #6b6b7b; }
+        .dp-head .dp-tags .dp-tg b { color: var(--main); }
+        .dp-head .dp-tags .dp-tg-none em { color: #b3b3c0; font-weight: 400; }
+        html[data-view="mobile"] .dp-head .dp-stat .dp-st,
+        html[data-view="mobile"] .dp-head .dp-tags .dp-tg { font-size: 10px; padding: 1px 5px; }
+        html[data-view="mobile"] .dp-head .dp-stat .dp-st b,
+        html[data-view="mobile"] .dp-head .dp-tags .dp-tg b { font-size: 11px; }
+        /* 编辑区标签选择器（与天气 / 心情同一排） */
+        .rv-diary-head .rv-di-tags {
+            display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;
+            border: 1px solid #e5e5ef; border-radius: 8px;
+            padding: 4px 8px; background: #fafaff; font-size: 12px;
+        }
+        .rv-diary-head .rv-di-tags .rv-tglab { color: #a8a8b8; }
+        .rv-diary-head .rv-di-tags .rv-tgc {
+            cursor: pointer; -webkit-user-select: none; user-select: none;
+            border: 1px solid #e5e5ef; background: #fff; border-radius: 7px;
+            padding: 1px 7px; font-size: 11px; color: #8a8a99; line-height: 1.6;
+        }
+        .rv-diary-head .rv-di-tags .rv-tgc.on {
+            background: var(--main); border-color: var(--main); color: #fff; font-weight: 600;
+        }
+        .rv-diary-head .rv-di-tags .rv-tgadd { cursor: pointer; color: #bbb; padding: 1px 5px; font-size: 12px; }
+        .rv-diary-head .rv-di-tags .rv-tgadd:hover { color: var(--main); }
+        /* 标签统计与管理弹窗 */
+        .dtg-row { display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-bottom: 1px solid #f4f4f8; font-size: 12px; }
+        .dtg-row .dtg-n { font-weight: 600; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dtg-row .dtg-n .dtg-warn { color: #e17055; font-size: 10px; font-weight: 400; }
+        .dtg-row .dtg-m { color: #999; font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .dtg-row .dtg-a { color: #bbb; cursor: pointer; padding: 0 3px; white-space: nowrap; }
+        .dtg-row .dtg-a:hover { color: var(--main); }
+        .dtg-row .dtg-ok { color: var(--main); font-weight: 600; }
+        .dtg-bar { height: 4px; border-radius: 2px; background: #f0f0f5; overflow: hidden; margin-top: 4px; }
+        .dtg-bar > i { display: block; height: 100%; background: linear-gradient(90deg, #a29bfe, #6c5ce7); }
+        .dtg-add { display: flex; gap: 6px; padding: 12px 4px 0; }
+        .dtg-add input { flex: 1; min-width: 0; border: 1px solid #e5e5ef; border-radius: 8px; padding: 8px 9px; font-size: 12px; outline: none; }
+        .dtg-add button { border: 0; border-radius: 8px; background: var(--main); color: #fff; padding: 8px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+
         .diary-page .dp-meta { flex-shrink: 0; padding: 8px 2px 2px; }
         .diary-page .rv-tools { flex-shrink: 0; padding: 6px 2px 8px; }
         /* 手指友好：全屏页工具条的按钮整体放大一档 */
@@ -4871,6 +4936,17 @@
             <span class="x" onclick="closeM('mInk')">✕</span>
         </h3>
         <div id="mInkBody"></div>
+    </div>
+</div>
+
+<!-- ===== v53: 模态框 · 日记标签（统计 + 管理） ===== -->
+<div class="modal" id="mDiaryTags" style="align-items:center">
+    <div class="sheet" style="border-radius:16px; padding:16px; width:calc(100% - 32px); max-width:480px; max-height:88vh; overflow:auto">
+        <h3 style="border:none; font-size:14px; padding:0 0 8px; display:flex; justify-content:space-between; align-items:center">
+            <span>🏷 日记标签</span>
+            <span class="x" onclick="closeM('mDiaryTags')">✕</span>
+        </h3>
+        <div id="mDiaryTagsBody"></div>
     </div>
 </div>
 
@@ -7901,6 +7977,10 @@
                 </div>
                 <div class="m-item" onclick="closeMenu();diaryClear()">
                     <span class="ico">🧹</span> 清空本篇
+                </div>
+                <div class="m-item" onclick="closeMenu();openDiaryTags()">
+                    <span class="ico">🏷</span> 标签统计与管理
+                    <span style="margin-left:auto;color:#c5c5cf;font-size:13px">›</span>
                 </div>
                 <div class="m-item" onclick="closeMenu();go('review')">
                     <span class="ico">📓</span> 返回复盘
@@ -11748,7 +11828,7 @@
     /* v8: 专注页分组折叠 + 详情侧栏 */
     const FCD_COLORS = ['#f7f7fc','#fff7e6','#e8f5e9','#e3f2fd','#fce4ec','#f3e5f5','#f5f5f5','#fffbe6'];
     /* v13: 肉眼可见的版本号 —— 用于判断浏览器是否还在用旧缓存 */
-    const APP_VER = 'v51';
+    const APP_VER = 'v53';
     let focusDetailOpen = false,
         focusDetailPct = +((S.settings && S.settings.focusDetailPct) || 32),
         focusDetailColor = (S.settings && S.settings.focusDetailColor) || '#f7f7fc',
@@ -14426,7 +14506,7 @@
         const anchor = reviewDiaryAnchor();
         const list = JSON.parse(localStorage.getItem(DIARY_KEY) || '{}');
         if (anchor) {
-            list[anchor] = { html, ts: Date.now(), weather: getDiaryField('weather'), mood: getDiaryField('mood') };
+            list[anchor] = { html, ts: Date.now(), weather: getDiaryField('weather'), mood: getDiaryField('mood'), tags: diaryCurTags() };
             localStorage.setItem(DIARY_KEY, JSON.stringify(list));
             reviewDiaryDirty = false;
             diaryLastSavedAt = Date.now();
@@ -14446,6 +14526,7 @@
                 s.classList.toggle('on', s.dataset.mood === rec.mood);
             });
         }
+        restoreDiaryTags(rec);      // v53：标签与天气 / 心情一起恢复
     }
     /* v23b: 天气 / 心情改动也算「有改动」，交给自动保存处理 */
     function diaryHeadChanged() { reviewDiaryDirty = true; diarySaveHint(); }
@@ -14620,7 +14701,9 @@
                     ${['day','week','month','year'].map(k => `<span data-r="${k}" class="${k===r?'on':''}" onclick="setReviewRange('${k}')">${({day:'日',week:'周',month:'月',year:'年'})[k]}</span>`).join('')}
                 </span>
                 ${dateInputHtml}
+                <span class="dp-stat" id="dpStatBar"></span>
                 <span class="rv-di-hint" id="rvDiaryHint">未保存</span>
+                <span class="dp-tags" id="dpTagBar" style="display:none"></span>
             </div>
             <div class="rv-diary-head dp-meta">${rvDiaryHeadFieldsHTML()}</div>
             <div class="rv-tools" id="rvDiTools">${rvDiaryToolsHTML()}</div>
@@ -14670,6 +14753,11 @@
             <span class="rv-di-tag" id="rvDiMoodWrap">
                 心情
                 ${emo.map(e => `<span class="rv-emo" data-mood="${e}" onclick="pickDiaryMood(this,'${e}')">${e}</span>`).join('')}
+            </span>
+            <span class="rv-di-tags" id="rvDiagTags">
+                <span class="rv-tglab">标签</span>
+                ${diaryTagList().map(t => `<span class="rv-tgc" data-tag="${esc(t)}" onclick="toggleDiaryTag(this)">${esc(t)}</span>`).join('')}
+                <span class="rv-tgadd" onclick="openDiaryTags()" title="标签管理">＋</span>
             </span>`;
     }
 
@@ -14718,6 +14806,7 @@
         reviewDiaryDirty = false;
         diarySaveHint();
         updateDiaryCount();
+        renderDiaryStats();         // v53：头部统计条（今日 / 本周 / 本月 / 本年 + 标签累计）
         ed.addEventListener('input', () => { reviewDiaryDirty = true; diarySaveHint(); updateDiaryCount(); });
         ed.addEventListener('blur',  () => { if (reviewDiaryDirty) saveDiaryDraft(ed, true); });
         // v23b: 30s 静默自动保存（切到别的页面时由 reviewBeforeLeave 停表）
@@ -14736,8 +14825,337 @@
         const el = document.getElementById('dpCharCount');
         if (!el) return;
         const ed = document.getElementById('rvDiary');
-        const n = ed ? (ed.innerText || '').replace(/\s+/g, '').length : 0;
+        const n = ed ? diaryCountChars(ed.innerText || '') : 0;   // v53：口径与统计条统一
         el.textContent = n ? `${n} 字` : '';
+    }
+    /* ==================== v53：日记标签 + 统计 ====================
+       两层数据：
+         · 标签表  DIARY_TAGS_KEY = ['生活','工作','教育','健康','财富', …]（可增删改）
+         · 每篇日记 rec.tags = ['生活', …]（与 weather / mood 同层，写进 DIARY_KEY 那条记录）
+       统计口径：按日记锚点键判定归属周期（day / week / month / year 四种），
+       空日记（去空白后 0 字）不计入篇数。 */
+    const DIARY_TAGS_KEY = 'chaomuji_diary_tags_v1';
+    const DIARY_TAGS_DEFAULT = ['生活', '工作', '教育', '健康', '财富'];
+
+    function diaryTagList() {
+        try {
+            const a = JSON.parse(localStorage.getItem(DIARY_TAGS_KEY) || 'null');
+            if (Array.isArray(a)) {
+                const out = [];
+                a.forEach(x => {
+                    const t = String(x == null ? '' : x).trim();
+                    if (t && out.indexOf(t) < 0) out.push(t);
+                });
+                return out;
+            }
+        } catch (e) {}
+        return DIARY_TAGS_DEFAULT.slice();
+    }
+    function diarySaveTagList(a) {
+        try { localStorage.setItem(DIARY_TAGS_KEY, JSON.stringify(a || [])); } catch (e) {}
+    }
+    function diaryAll() {
+        try {
+            const o = JSON.parse(localStorage.getItem(DIARY_KEY) || '{}');
+            return (o && typeof o === 'object') ? o : {};
+        } catch (e) { return {}; }
+    }
+    function diaryRecTags(rec) {
+        return (rec && Array.isArray(rec.tags))
+            ? rec.tags.map(t => String(t == null ? '' : t).trim()).filter(t => !!t)
+            : [];
+    }
+    /* 剥标签取纯文本：标签先按正则剥掉（与复盘第三框摘要同一套剥法），
+       剩下的实体引用交给浏览器解码。不挂到文档里，避免触发任何资源加载。 */
+    function diaryPlain(html) {
+        const raw = String(html == null ? '' : html);
+        if (!raw) return '';
+        const stripped = raw
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n')
+            .replace(/<[^>]*>/g, '');
+        const d = document.createElement('div');
+        d.innerHTML = stripped;
+        return d.textContent || '';
+    }
+    /* 字数口径只允许一份：去掉所有空白后的字符数（底部「N 字」与统计条共用） */
+    function diaryCountChars(txt) { return String(txt == null ? '' : txt).replace(/\s+/g, '').length; }
+    function diaryWordCount(html) { return diaryCountChars(diaryPlain(html)); }
+    /* ISO 周 → 该周周一。与 getISOWeek 同一套 UTC 口径，可往返互验 */
+    function diaryWeekMonday(y, w) {
+        const jan4 = new Date(Date.UTC(y, 0, 4));
+        const dow = (jan4.getUTCDay() + 6) % 7;                       // 0 = 周一
+        return new Date(jan4.getTime() - dow * 86400000 + (w - 1) * 7 * 86400000);
+    }
+    function diaryUTCYMD(d) {
+        return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0')
+             + '-' + String(d.getUTCDate()).padStart(2, '0');
+    }
+    /* ★周键的「年」字段是锚点日期的自然年，而周号是 ISO 周号 —— 跨年那几天两者并不一致：
+       2025-12-29 属于 ISO 2026-W01，但键是 `2025-12-W01`（年取自锚点）；反向亦然
+       （2027-01-01 属于 ISO 2026-W53，键是 `2027-01-W53`）。
+       直接用键里的年去算周一，会整体偏 52 周。所以按 Y-1 / Y / Y+1 三个候选各算一次，
+       取「离键里那个月的 15 号最近」的那个 —— 正常周命中的就是本身，跨年周也能落对。 */
+    function diaryWeekMondayInKey(key, y, w) {
+        const ref = new Date(key.slice(0, 4) + '-' + key.slice(5, 7) + '-15T00:00:00').getTime();
+        let best = null, bestD = Infinity;
+        for (let k = -1; k <= 1; k++) {
+            const d = diaryWeekMonday(y + k, w);
+            if (!d || isNaN(d.getTime())) continue;
+            const dd = Math.abs(d.getTime() - ref);
+            if (dd < bestD) { bestD = dd; best = d; }
+        }
+        return best;
+    }
+    /* 锚点键 → 该篇覆盖的日期区间与粒度。
+       ⚠️ 周键形如 `2026-09-W39`（周号从下标 9 起），必须用正则捕获组取，
+       不能用固定下标切片 —— 上一版按固定下标取会拿到 '-W39'，一元加号之后是 NaN，
+       整条记录会被所有大小比较判成 false，于是静默漏统计（累计对得上、周期全少一篇）。 */
+    function diaryAnchorSpan(k) {
+        const key = String(k || '');
+        let m;
+        if ((m = key.match(/^(\d{4})-(\d{2})-(\d{2})$/))) return { kind: 'day', s: key, e: key };
+        if ((m = key.match(/^(\d{4})-(\d{2})-W(\d{1,2})$/))) {
+            const mon = diaryWeekMondayInKey(key, +m[1], +m[3]);
+            if (!mon) return null;
+            return { kind: 'week', s: diaryUTCYMD(mon), e: diaryUTCYMD(new Date(mon.getTime() + 6 * 86400000)) };
+        }
+        if (/^(\d{4})-(\d{2})$/.test(key)) return { kind: 'month', s: key + '-01', e: key + '-31' };
+        if (/^(\d{4})$/.test(key))       return { kind: 'year', s: key + '-01-01', e: key + '-12-31' };
+        return null;
+    }
+    /* 统计周期以「当前锚点」为准而不是今天 —— 翻到上周，数字跟着走 */
+    function diaryPeriod(kind, anchor) {
+        const a = anchor || today();
+        if (kind === 'day') return { kind: 'day', s: a, e: a };
+        if (kind === 'week') {
+            const d = new Date(a + 'T00:00:00');
+            const mon = new Date(d.getTime() - ((d.getDay() + 6) % 7) * 86400000);
+            return { kind: 'week', s: ymd(mon), e: ymd(new Date(mon.getTime() + 6 * 86400000)) };
+        }
+        if (kind === 'month') { const m = a.slice(0, 7); return { kind: 'month', s: m + '-01', e: m + '-31' }; }
+        return { kind: 'year', s: a.slice(0, 4) + '-01-01', e: a.slice(0, 4) + '-12-31' };
+    }
+    /* 归属判定：算进「粒度不粗于该周期、且起点落在区间内」的周期。
+       「今日」只认日粒度的日记 —— 周/月/年粒度那一篇不是「今天写的」。 */
+    function diaryInPeriod(span, per) {
+        if (!span) return false;
+        if (per.kind === 'day')   return span.kind === 'day' && span.s === per.s;
+        if (per.kind === 'week')  return (span.kind === 'day' || span.kind === 'week') && span.s >= per.s && span.s <= per.e;
+        if (per.kind === 'month') return span.kind !== 'year' && span.s >= per.s && span.s <= per.e;
+        return span.s >= per.s && span.s <= per.e;
+    }
+    function diaryFmtW(n) { return n >= 1000 ? (n / 1000).toFixed(1) + 'K' : String(n); }
+    function diaryAnchorNow() {
+        return (typeof reviewAnchor === 'string' && reviewAnchor) ? reviewAnchor : today();
+    }
+    /* 汇总四个周期 + 标签累计。tagRows = 标签表 ∪ 记录里出现过的标签 ——
+       从标签表删掉但日记里还留着的也照样列出来，不丢数据。 */
+    function diaryCollectStats() {
+        const all = diaryAll();
+        const anchor = diaryAnchorNow();
+        const per = { day: diaryPeriod('day', anchor), week: diaryPeriod('week', anchor),
+                      month: diaryPeriod('month', anchor), year: diaryPeriod('year', anchor) };
+        const out = { day: { n: 0, w: 0 }, week: { n: 0, w: 0 }, month: { n: 0, w: 0 }, year: { n: 0, w: 0 },
+                      total: { n: 0, w: 0 }, tagMap: {}, tagRows: [], noTag: { n: 0, w: 0 } };
+        Object.keys(all).forEach(k => {
+            const rec = all[k];
+            if (!rec || typeof rec !== 'object') return;
+            const w = diaryWordCount(rec.html);
+            if (!w) return;                                            // 空日记不计入
+            const span = diaryAnchorSpan(k);
+            if (!span) return;
+            out.total.n++; out.total.w += w;
+            ['day', 'week', 'month', 'year'].forEach(p => {
+                if (diaryInPeriod(span, per[p])) { out[p].n++; out[p].w += w; }
+            });
+            const ts = diaryRecTags(rec);
+            if (!ts.length) { out.noTag.n++; out.noTag.w += w; return; }
+            ts.forEach(t => {
+                if (!out.tagMap[t]) out.tagMap[t] = { n: 0, w: 0 };
+                out.tagMap[t].n++; out.tagMap[t].w += w;
+            });
+        });
+        const seen = {};
+        diaryTagList().forEach(t => {
+            seen[t] = 1;
+            const o = out.tagMap[t] || { n: 0, w: 0 };
+            out.tagRows.push({ t: t, n: o.n, w: o.w, inList: true });
+        });
+        Object.keys(out.tagMap).forEach(t => {
+            if (seen[t]) return;
+            out.tagRows.push({ t: t, n: out.tagMap[t].n, w: out.tagMap[t].w, inList: false });
+        });
+        return out;
+    }
+    /* 头部统计条（截图绿框位置）：第一行周期片，第二行整宽的标签累计 */
+    function renderDiaryStats() {
+        const box = document.getElementById('dpStatBar');
+        if (!box) return;
+        const s = diaryCollectStats();
+        const chip = (lbl, o) => `<span class="dp-st"><i>${lbl}</i><b>${o.n}</b>篇 · <b>${diaryFmtW(o.w)}</b>字</span>`;
+        box.innerHTML = chip('今日', s.day) + chip('本周', s.week) + chip('本月', s.month) + chip('本年', s.year)
+            + `<span class="dp-st dp-st-tag" onclick="openDiaryTags()" title="标签统计与管理">🏷 标签管理 ›</span>`;
+        const bar = document.getElementById('dpTagBar');
+        if (!bar) return;
+        if (!s.tagRows.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+        bar.style.display = 'flex';
+        bar.innerHTML = `<em title="统计口径：按日记锚点（日 / 周 / 月 / 年）归属周期；空日记不计入篇数">累计 <b>${s.total.n}</b>篇 · <b>${diaryFmtW(s.total.w)}</b>字</em>`
+            + s.tagRows.map(r => `<span class="dp-tg"><em>${esc(r.t)}</em><b>${r.n}</b>篇 · <b>${diaryFmtW(r.w)}</b>字</span>`).join('')
+            + (s.noTag.n ? `<span class="dp-tg dp-tg-none"><em>未打标签</em><b>${s.noTag.n}</b>篇 · <b>${diaryFmtW(s.noTag.w)}</b>字</span>` : '');
+    }
+    /* 当前这篇已选的标签（读 DOM，不读存储） */
+    function diaryCurTags() {
+        const wrap = document.getElementById('rvDiagTags');
+        if (!wrap) return [];
+        const out = [];
+        wrap.querySelectorAll('.rv-tgc.on').forEach(el => { if (el.dataset.tag) out.push(el.dataset.tag); });
+        return out;
+    }
+    function restoreDiaryTags(rec) {
+        const wrap = document.getElementById('rvDiagTags');
+        if (!wrap) return;
+        const on = diaryRecTags(rec);
+        wrap.querySelectorAll('.rv-tgc').forEach(el => el.classList.toggle('on', on.indexOf(el.dataset.tag) >= 0));
+    }
+    function toggleDiaryTag(el) {
+        if (!el || !el.dataset.tag) return;
+        el.classList.toggle('on');
+        reviewDiaryDirty = true;
+        const ed = document.getElementById('rvDiary');
+        if (ed) saveDiaryDraft(ed, true);       // 点标签立刻落盘，不等 30s 自动保存
+        diarySaveHint();
+        renderDiaryStats();
+    }
+    /* 标签表变了 → 重建选择器（保留已选状态） */
+    function refreshDiaryTagPicker() {
+        const wrap = document.getElementById('rvDiagTags');
+        if (!wrap) return;
+        const cur = diaryCurTags();
+        const addBtn = wrap.querySelector('.rv-tgadd');
+        wrap.querySelectorAll('.rv-tgc').forEach(el => el.remove());
+        diaryTagList().forEach(t => {
+            const c = document.createElement('span');
+            c.className = 'rv-tgc' + (cur.indexOf(t) >= 0 ? ' on' : '');
+            c.dataset.tag = t;
+            c.textContent = t;
+            c.setAttribute('onclick', 'toggleDiaryTag(this)');
+            wrap.insertBefore(c, addBtn);
+        });
+    }
+    /* ---------- 标签管理弹窗（统计 + 增删改） ---------- */
+    let diaryTagEdit = null;                    // 正在重命名的标签名
+    function openDiaryTags() { diaryTagEdit = null; renderDiaryTagsModal(); openM('mDiaryTags'); }
+    function renderDiaryTagsModal() {
+        const body = document.getElementById('mDiaryTagsBody');
+        if (!body) return;
+        const s = diaryCollectStats();
+        const max = s.tagRows.reduce((m, r) => Math.max(m, r.n), 1);
+        let h = `<div style="font-size:11px;color:#aaa;padding:0 4px 8px">累计 `
+              + `<b style="color:#6c5ce7">${s.total.n}</b> 篇 · <b style="color:#6c5ce7">${diaryFmtW(s.total.w)}</b> 字`
+              + `　· 空日记不计入 · 未打标签 ${s.noTag.n} 篇</div>`;
+        if (!s.tagRows.length) {
+            h += `<div style="text-align:center;color:#bbb;padding:20px 0;font-size:12px">还没有可统计的日记</div>`;
+        }
+        s.tagRows.forEach(r => {
+            if (diaryTagEdit === r.t) {
+                h += `<div class="dtg-row">`
+                   + `<input id="dtgRen" maxlength="12" value="${esc(r.t)}"`
+                   + ` style="flex:1;min-width:0;border:1px solid #e5e5ef;border-radius:8px;padding:6px 8px;font-size:12px;outline:none"`
+                   + ` onkeydown="if(event.key==='Enter'){diaryTagRenameOK()}else if(event.key==='Escape'){diaryTagEdit=null;renderDiaryTagsModal()}">`
+                   + `<span class="dtg-a dtg-ok" onclick="diaryTagRenameOK()">保存</span>`
+                   + `<span class="dtg-a" onclick="diaryTagEdit=null;renderDiaryTagsModal()">取消</span>`
+                   + `</div>`;
+                return;
+            }
+            h += `<div class="dtg-row">`
+               + `<div style="flex:1;min-width:0">`
+               +   `<div class="dtg-n">${esc(r.t)}${r.inList ? '' : '<span class="dtg-warn">（已从标签表移除）</span>'}</div>`
+               +   `<div class="dtg-bar"><i style="width:${Math.round(r.n / max * 100)}%"></i></div>`
+               + `</div>`
+               + `<div class="dtg-m">${r.n} 篇 · ${diaryFmtW(r.w)} 字</div>`
+               + (r.inList
+                    ? `<span class="dtg-a" data-tag="${esc(r.t)}" onclick="diaryTagEdit=this.dataset.tag;renderDiaryTagsModal()" title="重命名">✏️</span>`
+                    + `<span class="dtg-a" data-tag="${esc(r.t)}" onclick="diaryTagDel(this.dataset.tag)" title="删除">🗑</span>`
+                    : `<span class="dtg-a" data-tag="${esc(r.t)}" onclick="diaryTagReadd(this.dataset.tag)" title="加回标签表">＋</span>`)
+               + `</div>`;
+        });
+        h += `<div class="dtg-add">`
+           + `<input id="dtgNew" maxlength="12" placeholder="新增标签，如：阅读 / 理财" onkeydown="if(event.key==='Enter')diaryTagAdd()">`
+           + `<button onclick="diaryTagAdd()">＋ 添加</button>`
+           + `</div>`;
+        body.innerHTML = h;
+    }
+    function diaryTagAdd() {
+        const inp = document.getElementById('dtgNew');
+        const t = inp ? String(inp.value || '').trim() : '';
+        if (!t) { showToast('请输入标签名'); return; }
+        const list = diaryTagList();
+        if (list.indexOf(t) >= 0) { showToast('标签「' + t + '」已存在'); return; }
+        if (list.length >= 30) { showToast('标签最多 30 个'); return; }
+        list.push(t);
+        diarySaveTagList(list);
+        refreshDiaryTagPicker();
+        renderDiaryTagsModal();
+        renderDiaryStats();
+        showToast('已添加标签「' + t + '」');
+    }
+    function diaryTagRenameOK() {
+        const old = diaryTagEdit;
+        if (!old) return;
+        const inp = document.getElementById('dtgRen');
+        const t = inp ? String(inp.value || '').trim() : '';
+        if (!t) { showToast('标签名不能为空'); return; }
+        if (t === old) { diaryTagEdit = null; renderDiaryTagsModal(); return; }
+        const list = diaryTagList();
+        if (list.indexOf(t) >= 0) { showToast('标签「' + t + '」已存在'); return; }
+        const i = list.indexOf(old);
+        if (i >= 0) list[i] = t;
+        diarySaveTagList(list);
+        /* 已经打过这个标签的日记一起改名，否则统计里会裂成两个标签 */
+        const all = diaryAll();
+        let n = 0;
+        Object.keys(all).forEach(k => {
+            const rec = all[k];
+            if (!rec || !Array.isArray(rec.tags)) return;
+            const j = rec.tags.indexOf(old);
+            if (j >= 0) { rec.tags[j] = t; n++; }
+        });
+        if (n) { try { localStorage.setItem(DIARY_KEY, JSON.stringify(all)); } catch (e) {} }
+        diaryTagEdit = null;
+        refreshDiaryTagPicker();
+        restoreDiaryTags(diaryAll()[reviewDiaryAnchor()]);
+        renderDiaryTagsModal();
+        renderDiaryStats();
+        showToast('已重命名，同步更新 ' + n + ' 篇日记');
+    }
+    function diaryTagDel(t) {
+        if (!t) return;
+        const list = diaryTagList();
+        if (list.indexOf(t) < 0) return;
+        if (list.length <= 1) { showToast('至少保留一个标签'); return; }
+        askConfirm('删除标签「' + t + '」？用它标记过的日记不会被删，只会变成「未打标签」。',
+            function () {
+                const l = diaryTagList();
+                const i = l.indexOf(t);
+                if (i >= 0) { l.splice(i, 1); diarySaveTagList(l); }
+                refreshDiaryTagPicker();
+                restoreDiaryTags(diaryAll()[reviewDiaryAnchor()]);
+                renderDiaryTagsModal();
+                renderDiaryStats();
+                showToast('已删除标签「' + t + '」');
+            }, { title: '删除标签', danger: true, okText: '删除' });
+    }
+    function diaryTagReadd(t) {
+        if (!t) return;
+        const list = diaryTagList();
+        if (list.indexOf(t) >= 0) return;
+        list.push(t);
+        diarySaveTagList(list);
+        refreshDiaryTagPicker();
+        renderDiaryTagsModal();
+        renderDiaryStats();
+        showToast('已把「' + t + '」加回标签表');
     }
     /* v23b: 切后台 / 关标签页时也补一次保存，避免最后 30 秒的改动丢失 */
     if (typeof window !== 'undefined' && window.addEventListener && !window.__rvDiaryFlush) {
@@ -20387,7 +20805,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260918p</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921g</div>
 <!-- build-tag:end -->
 </body>
 </html>
