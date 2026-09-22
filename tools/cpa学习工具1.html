@@ -2974,6 +2974,11 @@
         .rec-pane { display: flex; flex-direction: column; gap: 16px; min-width: 0; --rec-ta-min: 96px; }
         .rec-pane[hidden] { display: none; }
         .rec-pane .field { display: flex; flex-direction: column; min-width: 0; }
+        /* ★ 2026-09-22（需求1）：红框三块搬进 #recPaneInfo。行距不能再用 .rec-pane 的
+           gap:16px —— 会和 .form-row 自己的 margin-bottom:14px 叠加成 30px，比原来松。
+           所以把这个 pane 的 gap 关掉，让 .form-row 的 margin 说了算（与搬之前逐像素一致）。 */
+        #recPaneInfo { gap: 0; }
+        #recPaneInfo > .form-row:last-child { margin-bottom: 0; }
         .rec-pane textarea { width: 100%; box-sizing: border-box; min-height: var(--rec-ta-min); line-height: 1.75; resize: none; overflow-y: hidden; }
 
         /* 草稿恢复条 */
@@ -3884,6 +3889,20 @@
             </div>
             <div class="form-body" id="formBody">
                 <form id="recordForm" autocomplete="off" novalidate>
+                                        <div class="rec-draft-bar" id="recDraftBar" hidden>
+                        <span id="recDraftMsg"></span>
+                        <button type="button" id="recDraftDrop">丢弃草稿</button>
+                    </div>
+                    <div class="form-row full">
+                        <div class="field">
+                            <div class="rec-tabs" id="recTabs" role="tablist">
+                                <button type="button" class="rec-tab active" role="tab" aria-selected="true" aria-controls="recPaneInfo" data-rec="info" title="本记录的基本信息与学习明细（科目 / 章 / 节 · 起止时间与时长 · 理解程度 · 重点难点疑点 · 学习状态自评）">📋 记录信息</button>
+                                <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneKp" data-rec="kp">📌 知识点记录</button>
+                                <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneOther" data-rec="other">📝 其他</button>
+                                <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneTmpl" data-rec="tmpl" title="设置一键编号使用的编号模版">🧩 模版设置</button>
+                            </div>
+
+                            <div class="rec-pane" id="recPaneInfo" role="tabpanel">
                     <!-- ★ 2026-09-21（需求 E）：基本信息四项收成一行。
                          Tom 的原话：「红框，记录学习中科目、日期、章、节变成一行」。
                          原来是两个 .form-row（科目·日期 / 章·节）各占一行，现在合并成一个
@@ -4020,19 +4039,8 @@
                             <input type="text" id="fAssessmentReason" placeholder="例如：多选题频繁出错" />
                         </div>
                     </div>
-                                        <div class="rec-draft-bar" id="recDraftBar" hidden>
-                        <span id="recDraftMsg"></span>
-                        <button type="button" id="recDraftDrop">丢弃草稿</button>
-                    </div>
-                    <div class="form-row full">
-                        <div class="field">
-                            <div class="rec-tabs" id="recTabs" role="tablist">
-                                <button type="button" class="rec-tab active" role="tab" aria-selected="true" aria-controls="recPaneKp" data-rec="kp">📌 知识点记录</button>
-                                <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneOther" data-rec="other">📝 其他</button>
-                                <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneTmpl" data-rec="tmpl" title="设置一键编号使用的编号模版">🧩 模版设置</button>
                             </div>
-
-                            <div class="rec-pane" id="recPaneKp" role="tabpanel">
+                            <div class="rec-pane" id="recPaneKp" role="tabpanel" hidden>
                                 <div class="field">
                                     <label>📌 知识点速记 <span style="font-weight:400;color:var(--text-secondary);">(可选 · 默认视角回车自动续编号 · 保存时按分隔符并入知识点)</span></label>
                                     <div class="kp-mode-row">
@@ -9035,6 +9043,59 @@
                 ' · ▲ 难点 ' + by.hard + ' · ？ 疑点 ' + by.doubt +
                 '。保存后到「🌳 知识树」用 ★ ▲ ？ 三个开关查看。';
         }
+
+        /* ===== ★ 2026-09-22：弹窗 × 浏览器「返回键」集成 =====
+           Tom 报障：在「科目设计」（新增科目 / 编辑项目配置 / 新增章·节）这类 .proj-mask
+           弹窗里按浏览器返回键，弹窗连同**整个工具页**一起被导航走（闪退）。
+           根因：这些弹窗是纯 DOM 浮层，打开时不写任何 history ⇒ 返回键不被它吸收，
+           于是执行浏览器默认行为 = 弹出「进入本页」那条历史 ⇒ 本页被卸载
+           （工具页跑在导航页的同源 iframe 里时，等于整个 iframe 被换掉）。
+           做法（不改动任何一个弹窗自身的逻辑）：
+             · 观测 body：出现 .proj-mask → 压一条 history 哨兵；
+             · .proj-mask 被移除（点取消 / 保存 / 遮罩关闭）→ 回收哨兵（history.back），
+               否则用户之后要多按一次返回键才生效；
+             · 收到 popstate（真·返回键）→ 若还有弹窗就直接移除它
+               （各弹窗的 close 只做 removeChild，等价于点「取消」），并打标记避免重复回收。 */
+        (function () {
+            var stack = [];      // 打开中的 .proj-mask（后进先出）
+            var suppress = 0;    // 我们自己 history.back() 的次数 —— 对应的 popstate 要吞掉
+            function isMask(n) { return n && n.nodeType === 1 && n.classList && n.classList.contains('proj-mask'); }
+            function arm(node) {
+                if (node.__dlgArmed) return;
+                node.__dlgArmed = true;
+                stack.push(node);
+                try { history.pushState({ __projDlg: stack.length }, ''); node.__dlgPushed = true; }
+                catch (e) { node.__dlgPushed = false; }
+            }
+            function disarm(node) {
+                var i = stack.indexOf(node);
+                if (i >= 0) stack.splice(i, 1);
+                if (node.__dlgPushed) {
+                    node.__dlgPushed = false;
+                    suppress++;
+                    try { history.back(); } catch (e) { suppress--; }
+                }
+            }
+            new MutationObserver(function (muts) {
+                for (var i = 0; i < muts.length; i++) {
+                    var m = muts[i], j;
+                    for (j = 0; j < m.addedNodes.length; j++) { if (isMask(m.addedNodes[j])) arm(m.addedNodes[j]); }
+                    for (j = 0; j < m.removedNodes.length; j++) {
+                        var n = m.removedNodes[j];
+                        if (!isMask(n)) continue;
+                        if (n.__dlgPopClosed) { n.__dlgPopClosed = false; }   // 返回键关闭：哨兵已被 pop 消费
+                        else { disarm(n); }
+                    }
+                }
+            }).observe(document.body, { childList: true });
+            window.addEventListener('popstate', function () {
+                if (suppress > 0) { suppress--; return; }
+                var top = stack.pop();
+                if (!top) return;
+                top.__dlgPopClosed = true;
+                if (top.parentNode) top.parentNode.removeChild(top);
+            });
+        })();
 
         // ---------- 项目配置弹窗（新增 / 编辑） ----------
         function openProjectDialog(mode) {
@@ -20439,7 +20500,7 @@
         }
 
         /* ================= Tab 切换 ================= */
-        var TAB_PANES = { kp: 'recPaneKp', other: 'recPaneOther', tmpl: 'recPaneTmpl' };
+        var TAB_PANES = { info: 'recPaneInfo', kp: 'recPaneKp', other: 'recPaneOther', tmpl: 'recPaneTmpl' };
         function setTab(t) {
             curTab = TAB_PANES[t] ? t : 'kp';
             eachNode('#recTabs .rec-tab', function (b) {
@@ -21077,7 +21138,7 @@
             var f = el('recordForm');
             if (f) f.addEventListener('reset', function () { window.setTimeout(clearDraft, 0); });
             bindAutoGrow();
-            setTab(load(REC_TAB_KEY) === 'other' ? 'other' : 'kp');
+            setTab(TAB_PANES[load(REC_TAB_KEY)] ? load(REC_TAB_KEY) : 'info');
             applyMode();
             restoreDraft();
             if (draftTimer) clearInterval(draftTimer);
@@ -21354,7 +21415,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922c</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922e</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
