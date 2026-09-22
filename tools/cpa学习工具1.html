@@ -3056,6 +3056,14 @@
         .kp-cell.kp-lv3 { background: #fff; }
         .kp-cell.kp-lv4 { background: #F5F6F7; }
         /* 有下级的父格（跨行合并格）：编号 + 文字作为一组，在整块区域里居中 */
+        /* ★ 2026-09-22（第九轮）：表单网格的合并格改「顶部对齐」—— Tom 截图圈出
+           合并格内容悬空居中、右端空白与右列格子左 padding 拼成一大块无内容地带。
+           顶对齐后「（二）编译过程…」与它 span 的第一行（1. 分号;）平齐，阅读顺序
+           与层级一致，右侧空白退成格子的右下角、不再与相邻列的空白连片。
+           卡片只读网格（.rvp-kpgrid 复用 .kp-cell 皮肤）的居中是**故意设计**
+           （大合并格靠顶会显得文字被吊起来），用 #kpGrid 作用域限定，不影响卡片。 */
+        #kpGrid .kp-cell.kp-merged { justify-content: flex-start; align-items: flex-start; }
+        #kpGrid .kp-cell.kp-merged .kp-cell-in { flex: 0 1 auto; min-width: 56px; text-align: left; padding-top: 3px; }
         .kp-cell.kp-merged { justify-content: center; }
         .kp-cell.kp-merged .kp-cell-in { flex: 0 1 auto; min-width: 56px; text-align: center; }
         .kp-cell .kp-cell-no { flex: 0 0 auto; min-width: 24px; font-size: 11.5px; font-weight: 700; color: var(--primary); }
@@ -3533,41 +3541,48 @@
            四层下来几乎看不出归属，与旁边的「符号视角」（一行一个浅底 chip）判若两物。
            新排版把每行拆成**同一行内的三格**，视觉语言与符号视角同源
            （.kp-hrow / .kp-hno / .kp-htext）：
-             .kpi  缩进格 —— 只负责把行推右（每级 14px，与卡片 .kp-hrow 的
-                              kp-hlv2/3/4 的 14/28/42px 同档）。它里面**装着那串缩进空格**
+                           .kpi  缩进格 —— 只负责把行推右（每级 18px）。它里面**装着那串缩进空格**
                               （不是靠 CSS 造出来的），所以文本层一字未变。
-             .kho  编号格 —— 定宽右对齐等宽字，编号成列，同级的行一眼对齐。
-             .kpn  正文格 —— 浅底圆角 chip（.kp-htext 同色），按级加重 / 淡化。
-           为什么要拆成三格而不是继续拼一个字符串：编号的宽度不齐（一、 / （一） /
-           1. / （1）），右对齐才能成列；混在正文串里做不到 —— 会越看越像纯文本。
+             .kpn  正文格 —— 浅底圆角 chip（.kp-htext 同色），按级加重 / 淡化；
+                              编号（.kp-noin）在 chip 内部开头，弱化小号等宽灰字，
+                              排版语言类比符号视角的「符号紧贴文字块」。
+           ★ 2026-09-22（第九轮）：原「.kho 定宽 60px 编号列」取消 —— 编号宽度参与
+              左沿，层级被编号长短扰动；outline 档编号为空时整段死空白；编号离正文远。
+              编号进 chip 后 chip 左沿 = 纯缩进，绝对单调。
            ⚠️ 三格都是 inline 级、行仍由 <br> 分隔，**不引入块级行容器** ——
               domLines / beforeinput / 回车续号 / Tab 缩进四条链全部按「<br> 分行、
               行内元素整体收进行里」写的，换成 <div> 行要同时动这四条。
            ⚠️ 三格拼起来的纯文本 = 缩进 + 编号 + 正文，与 toFlat / toOutline / toMD
               逐字同形（有对照断言）：保存 / 导出 / 一键编号 / 草稿全部零改动。 */
         .cpa-rt .kpi { display: inline-block; vertical-align: top; }
+        /* ★ 2026-09-22（第九轮）：步长 14→18px —— 编号并入 chip（.kp-noin）后，
+           chip 左沿 = 纯缩进，层级深浅全靠这一列，18px/级比 14px 更一眼可辨。 */
         .cpa-rt .kpi-k1 { min-width: 0; }
-        .cpa-rt .kpi-k2 { min-width: 14px; }
-        .cpa-rt .kpi-k3 { min-width: 28px; }
-        .cpa-rt .kpi-k4 { min-width: 42px; }
-        .cpa-rt .kpi-k5 { min-width: 56px; }
-        .cpa-rt .kpi-k6 { min-width: 70px; }
-        .cpa-rt .kpi-k7 { min-width: 84px; }
-        /* ★ 2026-09-21（打磨）：编号格改成**定宽**（不是 min-width）。
-           三档的编号串长度不同 —— 真机实测：「（一） 」46.03px、outline 空串 42px、
-           md 档带 «# » / «- » 前缀最宽 58.28px。用 min-width:42px 时盒宽由内容决定，
-           md 档深层行会被自己的长编号顶右，chip 左沿出现「第 2 层比第 3 层还靠右」
-           的倒挂（实测 87px > 85px）—— 层级反而看不出深浅。
-           定宽 60px 后（全局 box-sizing:border-box，含 6px 右 padding ⇒ 内容 54px，
-           装得下最宽的 52.28px），三档的 chip 左沿一律 = 缩进(14px/级) + 60px + gap，
-           随深度**严格递增**，一眼可辨。
-           为什么不用 overflow:hidden 截掉溢出的编号：编号是层级线索，截了就看不见了。 */
-        .cpa-rt .kho {
-            display: inline-block; width: 60px; text-align: right; vertical-align: top;
-            white-space: nowrap;
+        .cpa-rt .kpi-k2 { min-width: 18px; }
+        .cpa-rt .kpi-k3 { min-width: 36px; }
+        .cpa-rt .kpi-k4 { min-width: 54px; }
+        .cpa-rt .kpi-k5 { min-width: 72px; }
+        .cpa-rt .kpi-k6 { min-width: 90px; }
+        .cpa-rt .kpi-k7 { min-width: 108px; }
+        /* ★★ 2026-09-22（第九轮，Tom 反馈「编号和后面的文字间隙有点大」「排版
+           没达到符号视角的层级感」）：**编号格（.kho 定宽 60px）取消**，编号改到
+           chip 内部开头（.kp-noin）—— 真机 probe9 实测旧版三档 chip 左沿
+           75/89/103/117px，其中 60px 是编号列：outline 档编号为空时整段死空白、
+           d1 内容起点 75px（符号视角只要 39px）；右对齐编号列还把「一、」推离
+           正文，观感间隙 ≈15px。新排版：
+             .kpi   缩进格 —— 只负责把行推右（18px/级），chip 左沿 = 纯缩进，
+                    绝对单调（编号宽度不再参与左沿，倒挂物理上不可能发生）；
+             .kpn   正文 chip —— 编号（.kp-noin）在 chip 内部开头：弱化小号等宽灰字，
+                    紧跟一个 tail 自带的空格就是与正文的间隙（≈4px，符号视角是 7px），
+                    类比「符号视角里符号紧贴文字块」的排版语言。
+           ⚠️ 三格拼纯文本的**不变量原样保留**：ind + tail + body 逐字同形
+              （.kp-noin 只是 tail 的新外壳，stripPrefix 同步清壳，见该函数）。
+           ⚠️ 行仍由 <br> 分隔、不引入块级行容器 —— domLines / beforeinput /
+              回车续号 / Tab 缩进四条链的契约不动。 */
+        .cpa-rt .kp-noin {
             font-family: ui-monospace, Consolas, "Courier New", monospace;
-            font-size: 11.5px; font-weight: 600; letter-spacing: -.2px;
-            color: var(--text-secondary); padding: 2px 6px 0 0;
+            font-size: 11px; font-weight: 600; letter-spacing: -.2px;
+            color: var(--text-secondary); margin-right: 1px;
         }
         .cpa-rt .kpn {
             vertical-align: top; font-size: 12.5px; line-height: 1.55;
@@ -3575,13 +3590,15 @@
             background: #F1EBDF; border-left: 3px solid #DCCFB8;
         }
         .cpa-rt .kpn.kp-hlv1 { background: #EAE0CC; border-left-color: var(--primary); font-weight: 600; }
-        .cpa-rt .kpn.kp-hlv2 { border-left-color: #C9B896; }
-        .cpa-rt .kpn.kp-hlv3, .cpa-rt .kpn.kp-hlv4 { background: #F6F2E9; border-left-color: #E0D8CA; font-size: 12px; }
+        .cpa-rt .kpn.kp-hlv2 { background: #F1EBDF; border-left-color: #C9B896; }
+        .cpa-rt .kpn.kp-hlv3 { background: #F6F2E9; border-left-color: #D8CDB6; font-size: 12px; }
+        .cpa-rt .kpn.kp-hlv4 { background: #FAF7F1; border-left-color: #E4DCCB; font-size: 12px; }
+        /* 空行（无编号可显示且正文为空）不出色块 —— 免得满屏一段段的空 chip */
+        .cpa-rt .kpn:empty { background: none; border-left-color: transparent; padding: 1px 4px; }
         @media (max-width: 700px) {
-            .cpa-rt .kpi-k2 { min-width: 10px; } .cpa-rt .kpi-k3 { min-width: 20px; }
-            .cpa-rt .kpi-k4 { min-width: 30px; } .cpa-rt .kpi-k5 { min-width: 40px; }
-            .cpa-rt .kpi-k6 { min-width: 50px; } .cpa-rt .kpi-k7 { min-width: 60px; }
-            .cpa-rt .kho { width: 56px; font-size: 11px; }
+            .cpa-rt .kpi-k2 { min-width: 12px; } .cpa-rt .kpi-k3 { min-width: 24px; }
+            .cpa-rt .kpi-k4 { min-width: 36px; } .cpa-rt .kpi-k5 { min-width: 48px; }
+            .cpa-rt .kpi-k6 { min-width: 60px; } .cpa-rt .kpi-k7 { min-width: 72px; }
             .cpa-rt .kpn { font-size: 12px; padding: 1px 7px; }
         }
 
@@ -19742,9 +19759,14 @@
                 var sp = viewSplit(m, p, d);
                 var kil = Math.max(1, Math.min(7, d));
                 var klv = Math.max(1, Math.min(4, d));
+                /* ★ 2026-09-22（第九轮）：编号（sp.tail）从独立 .kho 格移进 chip 内部
+                   的 .kp-noin —— 排版语言对齐符号视角（符号紧贴文字块）。
+                   ⚠️ 拼接出的纯文本仍是 ind + tail + body，逐字与旧版相同；
+                      tail 为空（大纲档一键编号关着 / 某级符号设「无」）就不输出编号壳，
+                      消掉旧 .kho 定宽留下的整段死空白。 */
                 out.push('<span class="kpi kpi-k' + kil + '">' + esc(sp.ind) + '</span>' +
-                    '<span class="kho">' + esc(sp.tail) + '</span>' +
-                    '<span class="kpn kp-hlv' + klv + '" data-kp="' + esc(p.join('.')) + '">' + body + '</span>');
+                    '<span class="kpn kp-hlv' + klv + '" data-kp="' + esc(p.join('.')) + '">' +
+                    (sp.tail ? '<span class="kp-noin">' + esc(sp.tail) + '</span>' : '') + body + '</span>');
             });
             return out.join('<br>');
         }
@@ -19858,6 +19880,14 @@
                     } else { node.removeChild(c); }
                 }
             })(box);
+            /* ★ 2026-09-22（第九轮）：编号现在住在 chip 内部的 .kp-noin 里，
+               eat() 按字符吃 left 时正好把编号文本整段吃掉 —— 但吃空的
+               <span class="kp-noin"></span> 外壳会留在 box 里跟着进 nd.h
+               （toText 校验对空元素无分辨力）。清一次空壳；万一 left 没吃干净
+              （异常边界），保留元素、交给 sanitize 的白名单处理。 */
+            Array.prototype.slice.call(box.querySelectorAll('.kp-noin')).forEach(function (el) {
+                if (!nodePlain(el).length && el.parentNode) el.parentNode.removeChild(el);
+            });
             return box.innerHTML;
         }
         /* 把 DOM 里**当前**的格式回读进新树。为什么用「行尾定位节点文字」而不是行号对齐：
@@ -21324,7 +21354,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921h</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922c</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
