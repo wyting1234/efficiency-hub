@@ -694,6 +694,18 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
             flex-shrink: 0;
         }
+        /* v55：四象限 Ⅱ 格「今日计划」分组标题 */
+        .qtoday-h {
+            font-size: 9.5px;
+            font-weight: 600;
+            color: #b8860b;
+            letter-spacing: .3px;
+            padding: 3px 2px 2px;
+            margin-top: 1px;
+            border-top: 1px dashed rgba(184, 134, 11, .45);
+        }
+        .qtoday-h:first-child { border-top: none; margin-top: 0; }
+        .qtoday-h.sub { color: #b9b3a4; font-weight: 500; border-top: 1px dashed rgba(0, 0, 0, .1); }
         .qempty {
             color: #c5c5cc;
             font-size: 10px;
@@ -5578,6 +5590,23 @@ oninput="pgRefresh()"></textarea>
         const b = document.getElementById('saveFab');
         if (b) b.classList.toggle('show', _dirty);
     }
+    /* ===== v55 · 历史脏优先级归一（需求：粘贴生成的计划要能进清单） =====
+       v54 的 pgBuildTask 把「跟随上次」这个**设置值**当成了任务优先级写进
+       task.priority（'follow'）。而四象限按 `t.priority === q.p`（q.p 是数字 1~4）
+       分组 ⇒ 这些任务在四象限四格里**一格都不出现**，用户看到的就是「粘贴生成的
+       计划没进清单」。这里把历史脏值一次性归一到 Ⅱ 重要不紧急(2)，与新版生成口径一致。
+       闸门 pgFollowFixedV1 落盘；数据未就绪（tasks 为空）时不设闸门，留给下次。 */
+    function normalizeFollowPri() {
+        if (S.pgFollowFixedV1) return 0;
+        if (!Array.isArray(S.tasks) || !S.tasks.length) return 0;
+        let n = 0;
+        S.tasks.forEach(function (t) { if (t && t.priority === 'follow') { t.priority = 2; n++; } });
+        if (!n) return 0;
+        S.pgFollowFixedV1 = true;
+        save();
+        try { commitSave(true); } catch (e) {}
+        return n;
+    }
     /* 防丢兜底：有未保存更改时关闭/刷新页面先询问 */
     window.addEventListener('beforeunload', e => {
         if (!_dirty) return;
@@ -6237,7 +6266,7 @@ oninput="pgRefresh()"></textarea>
         else if (sortBy === 'time-desc') ts.sort((a, b) => nextTaskDate(b).localeCompare(nextTaskDate(a)));
         else if (sortBy === 'created-asc') ts.sort((a, b) => (a.id || '').localeCompare(b.id || ''));
         else if (sortBy === 'created-desc') ts.sort((a, b) => (b.id || '').localeCompare(a.id || ''));
-        else if (sortBy === 'priority') ts.sort((a, b) => (a.priority || 4) - (b.priority || 4) || ((b.pinned ? 1 : 0) - (
+        else if (sortBy === 'priority') ts.sort((a, b) => (+a.priority || 4) - (+b.priority || 4) || ((b.pinned ? 1 : 0) - (
             a.pinned ? 1 : 0)));
         /* v47：已完成清单按「完成时间」倒序 —— 刚勾完的排最前，符合直觉 */
         if (filter === 'archived') {
@@ -6277,6 +6306,15 @@ oninput="pgRefresh()"></textarea>
     let _goKeepFocusView = false;   // 由 quickFocus 等定向进入计时视图时置真，避免被 go() 复位回卡片列表
 
     function go(p) {
+        /* v55 需求：专注计时进行中，不得切换到其它界面（清单 / 视图 / 习惯 / 复盘 / 我的）。
+           专注页内部的「卡片列表 ↔ 计时器」仍可切换 —— 那是同一页，且顶部「回到计时页」
+           横幅依赖它。用 try 包住：fState 在下方才用 let 声明，早期若有调用可安全降级。 */
+        try {
+            if (p !== 'focus' && page === 'focus' && fState === 'run') {
+                showToast('专注计时进行中 · 请先暂停或结束计时，再切换页面');
+                return;
+            }
+        } catch (e) {}
         if (!SUB_PAGES.includes(p)) prevPage = p;
         // v24 修正：必须在 page 被覆盖「之前」判断——离开复盘页 / 日记页时先把草稿落盘。
         // （旧写法在 page=p 之后判断新页，等于进页面时保存，此时旧编辑器 DOM 已失效，等于没保存）
@@ -8327,10 +8365,29 @@ oninput="pgRefresh()"></textarea>
 
         if (view === 'quadrant') {
             // ---- 四象限视图 ----
+            /* v55 需求：Ⅱ「重要不紧急」就是「计划做」的格子。每天自动把当日要处理的
+               计划（今天到期，或已逾期未完成）提到格子顶部单列，跨天自动换新。
+               计划 = priority 2 的任务（粘贴生成默认落这里）。勾完即出列，无需手动清理。 */
+            const _qtd = today();
+            const isTodayPlan = t => t.priority === 2 && !t.failed &&
+                (taskState(t) === 'overdue' || taskDates(t).indexOf(_qtd) >= 0);
             const qs = QUADS.map(q => {
                 const items = ts.filter(t => t.priority === q.p);
-                const tasksHtml = items.length ? items.map(t => qTaskHTML(t)).join('') :
-                    '<div class="qempty">点击 ＋ 添加</div>';
+                let tasksHtml;
+                if (q.p === 2 && filter !== 'archived') {
+                    const tds = items.filter(isTodayPlan);
+                    const rest = items.filter(t => tds.indexOf(t) < 0);
+                    tasksHtml = (tds.length
+                            ? `<div class="qtoday-h">📅 今日计划 · ${tds.length} 项</div>` +
+                              tds.map(t => qTaskHTML(t)).join('') +
+                              (rest.length ? `<div class="qtoday-h sub">其余 · 重要不紧急 · ${rest.length} 项</div>` : '')
+                            : '') +
+                        (rest.length ? rest.map(t => qTaskHTML(t)).join('')
+                                     : (tds.length ? '' : '<div class="qempty">点击 ＋ 添加</div>'));
+                } else {
+                    tasksHtml = items.length ? items.map(t => qTaskHTML(t)).join('') :
+                        '<div class="qempty">点击 ＋ 添加</div>';
+                }
                 return `<div class="quad ${q.cls}">
                     <div class="qhd"><b>${q.name}</b><span class="qtip">${q.tip}</span>
                         <span class="qadd" onclick="openQuadAdd(${q.p})">＋</span></div>
@@ -20872,6 +20929,8 @@ oninput="pgRefresh()"></textarea>
         invalidateDateCache();
         updateSaveFab();
     }
+    /* v55：历史脏优先级归一 —— 必须赶在首屏渲染之前，否则四象限首帧仍缺这些任务 */
+    try { normalizeFollowPri(); } catch (e) {}
     applyBg();
     /* v48：背景图实体在 IndexedDB，启动时要把它们取回来。
        顺序：打开并回读校验 → 申请持久化（不申请的话磁盘紧张时浏览器可直接回收）
@@ -21186,7 +21245,7 @@ oninput="pgRefresh()"></textarea>
     }
     function pgBuildTask(o) {
         const t = {
-            id: uid(), title: o.title, priority: 'follow',
+            id: uid(), title: o.title, priority: 2,
             mode: 'none', date: null, dates: null,
             category: o.category || '', tags: (o.tags || []).slice(),
             subs: o.subs || [], done: false, failed: false, pinned: false,
@@ -21438,7 +21497,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922d</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922h</div>
 <!-- build-tag:end -->
 </body>
 </html>
