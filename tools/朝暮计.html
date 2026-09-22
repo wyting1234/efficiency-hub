@@ -5704,7 +5704,21 @@
                    : (t.dates && t.dates.length) ? t.dates.slice().sort()[0]
                    : null;
         if (!seed) return [];
-        const start = seed, end = to;
+        const start = seed;
+        // ★ 任务自身的截止边界：显式「到期」日，以及「跨天 / 自选多日」那串日期的收尾日，
+        //   取两者中更早的那个。
+        //   原写法 end 恒等于调用方给的窗口上界（今天 + 365 天），从不看任务自己的结束日 ——
+        //   于是「跨天 09-21~09-30 + 每天」会一路展开到明年：显示层读 dates 首尾说「到 09-30
+        //   截止」，判定层却看不到头，09-30 之后没打卡照样算逾期，显示与判定口径分裂。
+        //   跨天与自选多日的 dates 都是「有头有尾的一串」，显示层也只显示首尾，所以两种模式
+        //   一视同仁地封顶，避免同一个概念有两套口径。单日模式没有显式终点，开放式重复不变。
+        const _bounds = [];
+        if (t.due) _bounds.push(String(t.due).slice(0, 10));
+        if ((t.mode === 'cross' || t.mode === 'multi') && t.dates && t.dates.length) {
+            _bounds.push(t.dates.slice().sort().pop());
+        }
+        const _spanEnd = _bounds.length ? _bounds.sort()[0] : null;
+        const end = (_spanEnd && _spanEnd < to) ? _spanEnd : to;
         const set = new Set();
         const MAX = 200;
         const push = d => { if (d >= from && d <= to) set.add(d); };
@@ -10114,8 +10128,13 @@
         if (mode === 'single') { date = fDate; if (!date) return notify('请选择日期') }
         if (mode === 'cross') { if (fDates.length !== 2) return notify('跨天需选择起止日期');
             dates = [];
+            // ★ 日期串一律按「本地日期」生成（fmtDLocal）。
+            //   原写法把起点解析成本地零点，却按 UTC 取前 10 位 —— UTC+8 下本地零点等于
+            //   前一天 16:00Z，整串日期于是整体前移一天：用户选「今天~09-30」会存成
+            //   「昨天~09-30」。而重复任务的种子取 dates 里最早那天，那个被回退的昨天就
+            //   成了一个「漏掉的实例」，被判逾期 1 天并在清单里画出橙色叉号。
             let d = new Date(fDates[0] + 'T00:00');
-            while (d.toISOString().slice(0, 10) <= fDates[1]) { dates.push(d.toISOString().slice(0, 10));
+            while (fmtDLocal(d) <= fDates[1]) { dates.push(fmtDLocal(d));
                 d.setDate(d.getDate() + 1) } }
         if (mode === 'multi') { if (!fDates.length) return notify('请选择日期');
             dates = [...fDates] }
@@ -11828,7 +11847,7 @@
     /* v8: 专注页分组折叠 + 详情侧栏 */
     const FCD_COLORS = ['#f7f7fc','#fff7e6','#e8f5e9','#e3f2fd','#fce4ec','#f3e5f5','#f5f5f5','#fffbe6'];
     /* v13: 肉眼可见的版本号 —— 用于判断浏览器是否还在用旧缓存 */
-    const APP_VER = 'v53';
+    const APP_VER = 'v54';
     let focusDetailOpen = false,
         focusDetailPct = +((S.settings && S.settings.focusDetailPct) || 32),
         focusDetailColor = (S.settings && S.settings.focusDetailColor) || '#f7f7fc',
@@ -13174,8 +13193,10 @@
         const isHabitMulti = c.kind === 'habit' && c.goal && c.goal.mode === 'multi' && (c.goal.total || 0) > 1;
         let rowsHTML = `<div class="fcd-row"><span>发起</span><span>${sd}</span></div>`;
         if (isHabitMulti) {
-            const today = new Date().toISOString().slice(0, 10);
-            const recToday = (S.focusDateMap && S.focusDateMap[c.id] && S.focusDateMap[c.id][today]) || 0;
+            // ★ 今日键按本地日期取；顺手不再用局部常量遮蔽全局的 today() 函数
+            //   （原写法在同一作用域里声明 const today，按 UTC 取值，凌晨会取到昨天那格）。
+            const tds = today();
+            const recToday = (S.focusDateMap && S.focusDateMap[c.id] && S.focusDateMap[c.id][tds]) || 0;
             const done = +recToday || 0;
             const total = c.goal.total || 1;
             const pct = Math.max(0, Math.min(1, done / total));
@@ -14188,7 +14209,9 @@
         let heat = '';
         for (let i = 363; i >= 0; i--) { const dt = new Date();
             dt.setDate(dt.getDate() - i);
-            const ds = dt.toISOString().slice(0, 10);
+            // ★ 格子日期必须按本地日期取。dt 是「当前时刻」而非本地零点，按 UTC 取值时
+            //   本地 00:00–07:59 打开页面会让整张 365 格热力图整体错位一天（UTC+8）。
+            const ds = fmtDLocal(dt);
             const m = daily[ds] || 0;
             heat += `<i class="${m>120?'l3':m>60?'l2':m>0?'l1':''}" title="${ds} ${m}min"></i>` }
         return `<div class="card" style="margin-top:12px"><b style="font-size:12px">📊 统计</b>
@@ -20805,7 +20828,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260921g</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922a</div>
 <!-- build-tag:end -->
 </body>
 </html>
