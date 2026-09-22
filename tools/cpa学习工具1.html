@@ -9590,6 +9590,194 @@ function parseOutlineAbstract(text) {
     };
 }
 
+/* ---------- A-3c. 学习指南批量添加（编辑项目配置 · 缩进大纲式粘贴） ----------
+   选型（2026-09-22，Tom 三口径）：
+   ① 格式 = 缩进大纲式：不缩进=科目，缩进1=章，缩进2=节；节下更深层写
+     「目标: / 难点: / 掌握: / 时长:」字段行，比字段更深的裸文本行 = 上一字段续行。
+   ② 写了就覆盖、没写的字段不动（merge，不是整节替换；冒号后留空 = 不动）。
+   ③ 定位不到的科目 / 章 / 节自动创建（与「导入文件」同口径）。
+   与大纲模式（parseOutlineFull）的关键差异：章 / 节号**优先从行首编号解析**
+   —— 批量补常是「第5章的几节」，按顺序编号会错位；无编号才顺序 +1。        */
+function cnNum2Int(s) {
+    s = String(s == null ? '' : s).trim();
+    if (/^[0-9]+$/.test(s)) return parseInt(s, 10);
+    const digit = { '零': 0, '一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9 };
+    const unit = { '十': 10, '百': 100 };
+    let total = 0, cur = 0, ok = false;
+    for (let i = 0; i < s.length; i++) {
+        const c = s.charAt(i);
+        if (digit[c] !== undefined) { cur = digit[c]; ok = true; }
+        else if (unit[c] !== undefined) { total += (ok ? cur : 1) * unit[c]; cur = 0; ok = false; }
+        else return NaN;
+    }
+    if (!ok && !total) return NaN;
+    return total + cur;
+}
+
+function gdParseLvlNo(t) {
+    // 返回 { no, name }；no=0 = 没有可靠编号（调用方退回顺序 +1）
+    let m = t.match(/^第\s*([0-9一二三四五六七八九十百零]+)\s*[章节讲课部单元篇]/);
+    if (m) {
+        const n = cnNum2Int(m[1]);
+        return { no: isNaN(n) ? 0 : n, name: stripOutlineNo(t) };
+    }
+    m = t.match(/^([0-9]+)\s*[、.．:：]\s*(.+)$/);   // 「2、存货」/「3. 存货」
+    if (m) return { no: parseInt(m[1], 10) || 0, name: m[2].trim() };
+    return { no: 0, name: stripOutlineNo(t) };
+}
+
+const GD_FIELD_RES = [
+    [/^学习目标\s*[:：]/, 'objective'],
+    [/^重点难点\s*[:：]/, 'keypoints'],
+    [/^掌握程度\s*[:：]/, 'mastery'],
+    [/^建议时长\s*[:：]/, 'duration'],
+    [/^建议学时\s*[:：]/, 'duration'],
+    [/^目标\s*[:：]/, 'objective'],
+    [/^难点\s*[:：]/, 'keypoints'],
+    [/^掌握\s*[:：]/, 'mastery'],
+    [/^时长\s*[:：]/, 'duration'],
+    [/^学时\s*[:：]/, 'duration']
+];
+
+function parseGuideBulk(text) {
+    const items = [], skipped = [], chNames = {};
+    const rows = [];
+    String(text == null ? '' : text).split(/\r?\n/).forEach(function (l) {
+        const m = l.match(/^(\s*)(\S.*)$/);
+        if (!m) return;
+        rows.push({ ind: m[1].replace(/\t/g, '    ').length, raw: m[2].trim() });
+    });
+    if (!rows.length) return { items: items, skipped: skipped, chNames: chNames };
+    rows.forEach(function (r) {
+        for (let i = 0; i < GD_FIELD_RES.length; i++) {
+            if (GD_FIELD_RES[i][0].test(r.raw)) {
+                r.field = GD_FIELD_RES[i][1];
+                r.val = r.raw.replace(GD_FIELD_RES[i][0], '').trim();
+                return;
+            }
+        }
+    });
+    const struct = rows.filter(function (r) { return !r.field; });
+    const levels = Array.from(new Set(struct.map(function (r) { return r.ind; })))
+        .sort(function (a, b) { return a - b; }).slice(0, 3);
+
+    let course = '', ch = 0, sec = 0, item = null, lastField = '';
+    const ensureItem = function (c, n, s, name) {
+        if (!c || !n || !s) return null;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].course === c && items[i].ch === n && items[i].sec === s) {
+                if (name) items[i].name = name;
+                return items[i];
+            }
+        }
+        const it = { course: c, ch: n, sec: s, name: name || '', fields: {} };
+        items.push(it);
+        return it;
+    };
+    rows.forEach(function (r) {
+        if (r.field) {
+            if (!item) { skipped.push(r.raw); return; }   // 字段行前面还没有节 → 跳过并报告
+            item.fields[r.field] = r.val;
+            lastField = r.field;
+            return;
+        }
+        const tier = levels.indexOf(r.ind);
+        if (tier < 0) {                        // 比节更深 → 上一字段的续行
+            if (item && lastField && r.raw) {
+                const prev = item.fields[lastField];
+                item.fields[lastField] = prev ? (prev + '\n' + r.raw) : r.raw;
+            } else skipped.push(r.raw);
+            return;
+        }
+        const name = r.raw.replace(/^[-*•·▪◦]\s*/, '').trim();
+        if (!name) return;
+        if (tier === 0) {
+            course = name;                     // 科目行：不剥编号（同 parseOutlineFull 口径）
+            ch = 0; sec = 0; item = null; lastField = '';
+        } else if (tier === 1 && course) {
+            const pr = gdParseLvlNo(name);
+            ch = pr.no || (ch + 1);
+            sec = 0; item = null; lastField = '';
+            if (pr.name) chNames[course + '|' + ch] = pr.name;
+        } else if (tier === 2 && course && ch) {
+            const pr = gdParseLvlNo(name);
+            sec = pr.no || (sec + 1);
+            lastField = '';
+            item = ensureItem(course, ch, sec, pr.name);
+        } else skipped.push(r.raw);
+    });
+    return { items: items, skipped: skipped, chNames: chNames };
+}
+
+function applyGuideBulk(target, parsed) {
+    if (!target || !parsed || !parsed.items.length) return null;
+    const res = { written: 0, newCourses: [], newChs: 0, newSecs: 0, chNamed: 0 };
+    if (typeof dettachBuiltinStructure === 'function') dettachBuiltinStructure(target);
+    if (!Array.isArray(target.courses)) target.courses = [];
+    target.chapterNames = target.chapterNames || {};
+    target.sectionNames = target.sectionNames || {};
+    const ensureCourse = function (c) {
+        if (target.courses.indexOf(c) < 0) {
+            target.courses.push(c);
+            if (typeof ensureCourseStructure === 'function') ensureCourseStructure(target, c);
+            res.newCourses.push(c);
+        }
+        if (!target.chapterNames[c]) target.chapterNames[c] = {};
+        if (!target.sectionNames[c]) target.sectionNames[c] = {};
+    };
+    parsed.items.forEach(function (it) {
+        ensureCourse(it.course);
+        const sn = target.sectionNames[it.course];
+        if (!Array.isArray(sn[it.ch])) { sn[it.ch] = []; res.newChs++; }
+        const arr = sn[it.ch];
+        while (arr.length < it.sec) { arr.push(''); res.newSecs++; }
+        const key = it.course + '|' + it.ch + '|' + it.sec;
+        const o = Object.assign({}, target.targetOverrides[key] || {});
+        if (it.name) o.name = it.name;     // 节名与「导入文件」同口径：写 overrides.name
+        ['objective', 'keypoints', 'mastery', 'duration'].forEach(function (f) {
+            const v = it.fields[f];
+            if (v === undefined || v === '') return;   // 没写 / 冒号后留空 = 不动
+            if (f === 'duration') {
+                const num = parseFloat(String(v).replace(/[^0-9.]/g, ''));
+                if (isNaN(num) || num <= 0) return;
+                o.duration = num + 'h';
+            } else o[f] = v;
+        });
+        if (Object.keys(o).length) target.targetOverrides[key] = o;
+        res.written++;
+    });
+    // 章名（写了就覆盖 —— 与「导入文件」的章名称列同口径）
+    Object.keys(parsed.chNames || {}).forEach(function (k) {
+        const p = k.split('|');
+        const c = p[0], n = parseInt(p[1], 10);
+        if (!c || isNaN(n) || n < 1) return;
+        ensureCourse(c);
+        if (!Array.isArray(target.sectionNames[c][n])) target.sectionNames[c][n] = [];
+        target.chapterNames[c][n] = parsed.chNames[k];
+        res.chNamed++;
+    });
+    target.targetOverrides = target.targetOverrides || {};
+    // 清理空串（与 applyGoalRows 同一收尾，避免空白覆盖有效内容）
+    Object.keys(target.targetOverrides).forEach(function (k) {
+        const v = target.targetOverrides[k];
+        Object.keys(v).forEach(function (f) { if (v[f] === '') delete v[f]; });
+        if (!Object.keys(v).length) delete target.targetOverrides[k];
+    });
+    return res;
+}
+
+function pdGuideHTML(ll) {
+    const cL = (ll && ll.course) || '科目', chL = (ll && ll.chapter) || '章', sL = (ll && ll.section) || '节';
+    return '<div class="pf"><label>📖 学习指南 · 批量添加（缩进大纲式粘贴）</label>' +
+        '<div class="pf-hint" style="background:#f6f1e8;border:1px dashed #d8c9ad;padding:8px 10px;border-radius:8px;line-height:1.7;">三个层级：<b>不缩进=' + kp3Esc(cL) + '</b>，缩进 1=<b>' + kp3Esc(chL) + '</b>（行首写「第2章」就按 2 定位，不写编号按顺序 +1），缩进 2=<b>' + kp3Esc(sL) + '</b>；' + kp3Esc(sL) + '下面再缩进一行写字段：<code>目标:</code> <code>难点:</code> <code>掌握:</code> <code>时长:</code>（写哪个存哪个，<b>写了就覆盖、没写的字段不动</b>；一行写不下换行接着写，会并进上一字段）。定位不到的' + kp3Esc(cL) + ' / ' + kp3Esc(chL) + ' / ' + kp3Esc(sL) + '<b>自动创建</b>。<b>「📥 解析并写入」点完立即落盘生效</b>，不依赖下方「保存」按钮。</div>' +
+        '<textarea id="pdGuideBulk" rows="9" placeholder="会计&#10;  第二章 存货&#10;    第1节 存货的确认和初始计量&#10;      目标: 理解存货的确认条件与初始计量&#10;      难点: 跌价准备的计提与转回，历年高频&#10;      掌握: 掌握&#10;      时长: 1.5h&#10;    第2节 存货的期末计量&#10;      目标: 掌握可变现净值的计算与存货减值"></textarea>' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-top:7px;flex-wrap:wrap;">' +
+        '<button type="button" class="pd-btn" id="pdGuidePreview">👁 解析预览</button>' +
+        '<button type="button" class="pd-btn primary" id="pdGuideApply">📥 解析并写入</button>' +
+        '<span class="pf-hint" id="pdGuideStat" style="margin:0;"></span></div>' +
+        '<div class="pf-hint" id="pdGuideResult" style="margin-top:7px;display:none;max-height:190px;overflow:auto;"></div></div>';
+}
+
 /* ---------- A-4. 模式选择器与示例模板 ---------- */
 function ogModeOf(box) {
     const b = (box && box.querySelector) ? box.querySelector('#pdOutlineMode button.on') : null;
@@ -10449,6 +10637,9 @@ if (document.readyState === 'loading') {
                 '</div>' +
                 '<div class="pm-list" id="pdMarkList"></div>' +
                 '<div class="pf-hint" id="pdMarkSum" style="margin-top:5px;"></div></div>' +
+                /* ★ 第十四轮（2026-09-22）：学习指南批量添加。只在编辑模式渲染 ——
+                   新项目还没有 id，targetOverrides 无处落盘，先保存再进编辑。 */
+                (isEdit ? pdGuideHTML(ll) : '') +
                 '<div class="pf-actions">' +
                 (isEdit ? '<button id="pdDel" class="pd-btn danger">删除项目</button>' : '') +
                 '<button id="pdCancel" class="pd-btn">取消</button>' +
@@ -10546,6 +10737,67 @@ if (document.readyState === 'loading') {
                                  '只清这里的预设；📝 学习记录里勾好的标记不受影响。')) return;
                     pdMarkDraft = {};
                     pdPaintMarks();
+                };
+            })();
+
+            /* ★ 第十四轮（2026-09-22）：学习指南批量添加的弹窗内接线。
+               写入立即落盘：指南数据与「保存」按钮管的结构 / 科目清单是两个数据域，
+               若绑在保存上，用户点取消会出现「结构回滚、指南却已写入」的半套状态。 */
+            (function () {
+                const ta = box.querySelector('#pdGuideBulk');
+                if (!ta) return;
+                const rbox = box.querySelector('#pdGuideResult');
+                const stat = box.querySelector('#pdGuideStat');
+                const show = function (html, isErr) {
+                    rbox.style.display = html ? 'block' : 'none';
+                    rbox.innerHTML = html;
+                    rbox.style.color = isErr ? '#b3261e' : '';
+                };
+                const failMsg = function (parsed) {
+                    let t = '❌ 没解析到有效的节 —— 确认：不缩进=科目、缩进 1=章、缩进 2=节，字段行写在节的下面。';
+                    if (parsed && parsed.skipped.length) t += '<br>未识别的前几行：' + kp3Esc(parsed.skipped.slice(0, 3).join(' ｜ '));
+                    return t;
+                };
+                const summarize = function (parsed) {
+                    let html = '共解析出 <b>' + parsed.items.length + '</b> 节：<div style="margin-top:4px;">';
+                    html += parsed.items.slice(0, 12).map(function (it) {
+                        const fs = [];
+                        if (it.fields.objective) fs.push('目标');
+                        if (it.fields.keypoints) fs.push('难点');
+                        if (it.fields.mastery) fs.push('掌握');
+                        if (it.fields.duration) fs.push('时长 ' + kp3Esc(it.fields.duration));
+                        return '· ' + kp3Esc(it.course) + ' · 第' + it.ch + '章 · 第' + it.sec + '节' + (it.name ? ' ' + kp3Esc(it.name) : '') + ' → ' + (fs.length ? fs.join(' / ') : '仅定位（不写字段）');
+                    }).join('<br>');
+                    if (parsed.items.length > 12) html += '<br>… 其余 ' + (parsed.items.length - 12) + ' 节略';
+                    html += '</div>';
+                    if (parsed.skipped.length) html += '<br>⚠️ 有 ' + parsed.skipped.length + ' 行没参与解析：' + kp3Esc(parsed.skipped.slice(0, 3).join(' ｜ '));
+                    return html;
+                };
+                box.querySelector('#pdGuidePreview').onclick = function () {
+                    const parsed = parseGuideBulk(ta.value);
+                    if (!parsed.items.length) { show(failMsg(parsed), true); stat.textContent = ''; return; }
+                    show(summarize(parsed), false);
+                    stat.textContent = '预览 ' + parsed.items.length + ' 节';
+                };
+                box.querySelector('#pdGuideApply').onclick = function () {
+                    const parsed = parseGuideBulk(ta.value);
+                    if (!parsed.items.length) { show(failMsg(parsed), true); stat.textContent = ''; return; }
+                    const res = applyGuideBulk(editing, parsed);
+                    saveProjects();
+                    applyProject(currentProjectId);
+                    try { renderAll(); } catch (e) {}
+                    try { renderGoalSummary(); } catch (e) {}
+                    let html = '✅ 已写入 <b>' + res.written + '</b> 节的学习指南';
+                    const bits = [];
+                    if (res.newCourses.length) bits.push('新建科目 ' + kp3Esc(res.newCourses.join('、')));
+                    if (res.newChs) bits.push('新建章 ' + res.newChs + ' 个');
+                    if (res.newSecs) bits.push('补齐节 ' + res.newSecs + ' 个');
+                    if (res.chNamed) bits.push('章名覆盖 ' + res.chNamed + ' 个');
+                    if (bits.length) html += '（' + bits.join('，') + '）';
+                    html += '。指南卡片与建议学时已同步；弹窗可继续改其它配置。';
+                    if (parsed.skipped.length) html += '<br>⚠️ 未解析 ' + parsed.skipped.length + ' 行：' + kp3Esc(parsed.skipped.slice(0, 3).join(' ｜ '));
+                    show(html, false);
+                    stat.textContent = '已写入 ' + res.written + ' 节';
                 };
             })();
 
@@ -22726,7 +22978,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922h</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922i</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
