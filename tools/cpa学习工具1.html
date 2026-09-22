@@ -690,6 +690,14 @@
             color: var(--text-secondary);
         }
         .form-actions .btn-reset:hover { background: var(--bg); }
+        .form-actions .btn-tabjump {
+            background: #EFE7D9;
+            color: var(--text-secondary);
+        }
+        .form-actions .btn-tabjump:hover {
+            background: #E5DAC6;
+            transform: translateY(-1px);
+        }
         .form-actions .btn-cancel-edit {
             background: transparent;
             color: var(--text-secondary);
@@ -3593,7 +3601,28 @@
             vertical-align: top; font-size: 12.5px; line-height: 1.55;
             padding: 1px 8px; border-radius: 6px; word-break: break-word;
             background: #F1EBDF; border-left: 3px solid #DCCFB8;
+            /* ★ 2026-09-22（第十二轮，Tom「记录学习默认模式的排版还是不齐」）：
+              原规则没写 display ⇒ 默认 inline。而「节点内部的软换行」是把
+              <br data-soft="1"> 插在 chip **内部**（契约见 rtSoftJoin / softDisp）——
+              inline 元素遇到内部 <br> 会**跨行折行**：后续片段回到父块内容左边缘
+              重新起排，.kpi 缩进格被丢掉、padding-left 与 border-left 不落在后继片段上，
+              而 background **每行片段都画** ⇒ 色块从最左边冒出来、层级越深偏得越多。
+              改 inline-block，折行发生在 chip 内部，左沿与缩进严格对齐。 */
+            display: inline-block;
+            max-width: 100%;
+            box-sizing: border-box;
         }
+        /* inline-block 会按内容收缩，长行必须给上限；上限按层级扣掉左侧缩进格的宽度。
+           --kpi-step 与 .kpi-k* 的 min-width 同步（700px 断点里会变小，那里再覆盖一次）。
+           用**相邻兄弟选择器**：缩进格 .kpi 与 chip .kpn 是同级相邻元素。 */
+        .cpa-rt { --kpi-step: 18px; }
+        .cpa-rt .kpi-k1 + .kpn { max-width: 100%; }
+        .cpa-rt .kpi-k2 + .kpn { max-width: calc(100% - var(--kpi-step)); }
+        .cpa-rt .kpi-k3 + .kpn { max-width: calc(100% - var(--kpi-step) * 2); }
+        .cpa-rt .kpi-k4 + .kpn { max-width: calc(100% - var(--kpi-step) * 3); }
+        .cpa-rt .kpi-k5 + .kpn { max-width: calc(100% - var(--kpi-step) * 4); }
+        .cpa-rt .kpi-k6 + .kpn { max-width: calc(100% - var(--kpi-step) * 5); }
+        .cpa-rt .kpi-k7 + .kpn { max-width: calc(100% - var(--kpi-step) * 6); }
         .cpa-rt .kpn.kp-hlv1 { background: #EAE0CC; border-left-color: var(--primary); font-weight: 600; }
         .cpa-rt .kpn.kp-hlv2 { background: #F1EBDF; border-left-color: #C9B896; }
         .cpa-rt .kpn.kp-hlv3 { background: #F6F2E9; border-left-color: #D8CDB6; font-size: 12px; }
@@ -3601,6 +3630,7 @@
         /* 空行（无编号可显示且正文为空）不出色块 —— 免得满屏一段段的空 chip */
         .cpa-rt .kpn:empty { background: none; border-left-color: transparent; padding: 1px 4px; }
         @media (max-width: 700px) {
+            .cpa-rt { --kpi-step: 12px; }   /* 与下面 .kpi-k* 的 min-width 同步 */
             .cpa-rt .kpi-k2 { min-width: 12px; } .cpa-rt .kpi-k3 { min-width: 24px; }
             .cpa-rt .kpi-k4 { min-width: 36px; } .cpa-rt .kpi-k5 { min-width: 48px; }
             .cpa-rt .kpi-k6 { min-width: 60px; } .cpa-rt .kpi-k7 { min-width: 72px; }
@@ -4412,7 +4442,15 @@
                         <span class="rec-autosave" id="kpDraftStat"></span>
                         <button type="button" class="btn-cancel-edit" id="cancelEditBtn">取消编辑</button>
                         <button type="reset" class="btn-reset">清空</button>
-                        <button type="submit" class="btn-submit">✅ 保存记录</button>
+                        <!-- ★ 2026-09-22（第十二轮，Tom：「记录信息和知识点记录是一体的，
+                             之前为了界面美化才拆成两个 tab」「只有知识点记录页面才保留保存功能」）：
+                             保存收敛到「📌 知识点记录」，其余页签给跳转按钮；
+                             显隐由 syncFormActions()（住在 setTab 里）按当前页签同步。
+                             ⚠️ 两个 tab 的字段仍在同一个 <form> 里 —— 保存一次提交全部，
+                                学习记录卡片的展示口径一字未改。 -->
+                        <button type="button" class="btn-tabjump" id="gotoInfoBtn" hidden>← 返回 📋 记录信息</button>
+                        <button type="button" class="btn-tabjump" id="gotoKpBtn">下一步 · 📌 知识点记录 →</button>
+                        <button type="submit" class="btn-submit" id="saveRecBtn" hidden>✅ 保存记录</button>
                     </div>
                 </form>
             </div>
@@ -5935,6 +5973,9 @@
             // ⚠️ 顺序有讲究，三步都不能换位：
             //   ① kpQuickRaw 先补齐 —— ②③ 都要读大纲原文（fcRepairCardPaths → fcAncestorPath
             //      与 fcWalkAll 都依赖记录大纲），原文没补出来的记录在它们眼里等于空。
+            /* ★ 2026-09-22（第十二轮）：先把存量速记里的 HTML 实体污染清掉
+               （影响 kpQuickRaw / knowledgePoints[].text / kpRich[*].t，见 migrateKpEntities）。 */
+            migrateKpEntities();
             migrateKpQuickRaw();
             //   ② 闪卡层级口径迁移 + 老卡 path 修复（两者都在 migrateTierV2 里，见其注释）。
             //      ★ 用 try 包起来：这一步内部要读 KT_KP_OFFSET 这类**同块 const**，
@@ -5963,6 +6004,70 @@
         //   · 不删不改 knowledgePoints —— 记录卡片的展示照旧；
         //   · 幂等 —— state.kpMigrated 做闸门，重复打开不反复跑。
         // 单条 r.kpMigrated = true 是审计标记，日后可据此查出哪些记录是迁移来的。
+        /* ★ 2026-09-22（第十二轮）：一次性修掉**存量**速记里的 HTML 实体污染。
+       缺陷源头见 CpaRich.toText 的短路判据（已同轮修复）。注意修复**不会自愈存量**：
+       库里的值已经是「&lt;cstdio&gt;」，重新读进来只是 esc → 再解码 → 还是 &lt;。
+       所以这里主动把纯文本字段反转义一次。三条约束：
+         · 只解一层（先处理具名实体，最后才是 &amp;）—— 否则真实的「&amp;lt;」会被误伤成「<」；
+         · 只动**纯文本**字段：problemSolvingH / memoryNetworkH / aiQAH / notesH / kpRich[*].h
+           是 HTML 源码，里面的 &amp; 是合法转义，一律不碰；
+         · 幂等：state.entFixedV1 做闸门，重复打开不反复跑（与 kpMigrated 同构）。 */
+        function migEnt(s) {
+            if (typeof s !== 'string' || s.indexOf('&') < 0) return s;
+            return s.replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+                .replace(/&amp;/g, '&');
+        }
+        /* 宽松版：**只**给 knowledgePoints[].text 用 —— 它是 kpQuickRaw 按「；;、」
+           切分后的衍生品，实体可能正巧被切掉分号（实测 Tom 的数据里就是
+           "#include&lt" / "cstdio&gt"，全是残缺实体），带分号的严格匹配会整个漏掉。
+           宽松匹配的实际风险极低（文本里裸写 "&lt" 的场合几乎不存在），
+           而且这些 text 在下一次编辑保存时本就会被重新解析成正确值。 */
+        function migEntLoose(s) {
+            if (typeof s !== 'string' || s.indexOf('&') < 0) return s;
+            return s.replace(/&(lt|gt|quot|#39|amp);?/g, function (m, e) {
+                return e === 'lt' ? '<' : e === 'gt' ? '>' : e === 'quot' ? '"'
+                    : e === '#39' ? "'" : '&';
+            });
+        }
+        function migrateKpEntities() {
+            if (state.entFixedV1) return 0;
+            /* ★ 数据还没就绪（项目未加载 / 记录为空）就先别设闸门 —— 否则这次「空跑」
+               会把闸门永久关掉，等真数据到达时迁移一辈子不再执行。
+               （实测踩过：localStorage 里项目键不是当前项目时 state.records 是样本数据。） */
+            if (!Array.isArray(state.records) || state.records.length === 0) return 0;
+            state.entFixedV1 = true;
+            var n = 0;
+            var PLAIN = ['kpQuickRaw', 'problemSolving', 'memoryNetwork', 'aiQA', 'notes', 'assessmentReason'];
+            (state.records || []).forEach(function (r) {
+                if (!r) return;
+                var touched = false;
+                PLAIN.forEach(function (k) {
+                    var v = r[k];
+                    if (typeof v !== 'string' || v.indexOf('&') < 0) return;
+                    var nv = migEnt(v);
+                    if (nv !== v) { r[k] = nv; touched = true; }
+                });
+                if (Array.isArray(r.knowledgePoints)) {
+                    r.knowledgePoints.forEach(function (k) {
+                        if (!k || typeof k.text !== 'string' || k.text.indexOf('&') < 0) return;
+                        var nv = migEntLoose(k.text);
+                        if (nv !== k.text) { k.text = nv; touched = true; }
+                    });
+                }
+                if (r.kpRich && typeof r.kpRich === 'object') {
+                    Object.keys(r.kpRich).forEach(function (kk) {
+                        var e = r.kpRich[kk];
+                        if (!e || typeof e.t !== 'string' || e.t.indexOf('&') < 0) return;
+                        var nv = migEnt(e.t);
+                        if (nv !== e.t) { e.t = nv; touched = true; }
+                    });
+                }
+                if (touched) n++;
+            });
+            if (n && typeof saveData === 'function') { try { saveData(); } catch (e1) {} }
+            return n;
+        }
         function migrateKpQuickRaw() {
             if (state.kpMigrated) return 0;
             let n = 0;
@@ -6178,7 +6283,10 @@
                 tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
                 progressMode: (state.progressMode === 'tomato' ? 'tomato' : 'hours'),
                 kpMigrated: state.kpMigrated === true,
-                tierV2: state.tierV2 === true
+                tierV2: state.tierV2 === true,
+                /* ★ 2026-09-22（第十二轮）：HTML 实体迁移的幂等闸门 ——
+                   saveData 是白名单序列化，不在这里登记就永远写不进 localStorage。 */
+                entFixedV1: state.entFixedV1 === true
             };
             try {
                 localStorage.setItem(getStorageKey(), JSON.stringify(data));
@@ -7494,6 +7602,21 @@
 
             // 表单提交
             document.getElementById('recordForm').addEventListener('submit', handleFormSubmit);
+            /* ★ 2026-09-22（第十二轮）：保存按钮在非「知识点记录」页签是 hidden 的，
+               但**隐藏的 submit 按钮照样响应表单的隐式提交**（在 input / select 里按 Enter
+               就会走 submit）。那会绕过「只有知识点记录才保存」的约定 —— 在记录信息页
+               填完日期一回车就直接存了。这里把非 kp 页签的 Enter 改成「跳到知识点记录」，
+               与页签流程一致。contenteditable / textarea 不拦（那是速记自己的换行语义）。 */
+            document.getElementById('recordForm').addEventListener('keydown', function (ev) {
+                if (ev.key !== 'Enter' || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+                var t = ev.target;
+                if (!t || t.tagName === 'TEXTAREA' || t.isContentEditable) return;
+                if (document.querySelector('#recTabs .rec-tab.active[data-rec="kp"]')) return;
+                ev.preventDefault();
+                try {
+                    if (window.CpaKpEditor && typeof window.CpaKpEditor.setTab === 'function') window.CpaKpEditor.setTab('kp');
+                } catch (e0) {}
+            });
             document.getElementById('recordForm').addEventListener('reset', () => {
                 setTimeout(() => {
                     selectedStar = 0;
@@ -8029,6 +8152,17 @@
             if (problems.length) {
                 alert('还差 ' + problems.length + ' 项就能保存：\n\n' + problems.map((p, i) => (i + 1) + '. ' + p).join('\n') +
                     '\n\n（已用红框标出对应输入框）');
+                /* ★ 2026-09-22（第十二轮）：六项必填（日期 / 章 / 节 / 时长 / 理解程度 / 自评）
+                   全在「📋 记录信息」页签里。保存按钮虽只在「📌 知识点记录」出现，
+                   但用户在那里点保存时就可能缺这些必填 —— 若仍停在知识点页，
+                   下面那句 scrollIntoView 打在一个 hidden 容器里的元素上，
+                   什么都不会发生：用户只看到弹窗，红框和字段一个都看不到。
+                   先切回记录信息页再定位（幂等；CpaKpEditor 未就绪时静默跳过）。 */
+                try {
+                    if (window.CpaKpEditor && typeof window.CpaKpEditor.setTab === 'function') {
+                        window.CpaKpEditor.setTab('info');
+                    }
+                } catch (e0) {}
                 const order = ['fDate', 'fChapter', 'fSection', 'fDurationHours', 'fUnderstanding', 'fSelfAssessment'];
                 const firstBad = order.find(id => document.getElementById(id)?.classList.contains('field-error'));
                 if (firstBad) {
@@ -21596,8 +21730,22 @@ if (document.readyState === 'loading') {
 
         /* ================= Tab 切换 ================= */
         var TAB_PANES = { info: 'recPaneInfo', kp: 'recPaneKp', other: 'recPaneOther', tmpl: 'recPaneTmpl' };
+        /* ★ 2026-09-22（第十二轮）：底部动作条按当前页签同步。
+           「✅ 保存记录」只在「📌 知识点记录」出现；其余页签显示「跳知识点记录」；
+           知识点记录页另给「← 返回 📋 记录信息」—— 两个 tab 双向可达，
+           呼应 Tom「两个 tab 本来就是一体」的定性。 */
+        function syncFormActions() {
+            var kp = (curTab === 'kp'), info = (curTab === 'info');
+            var gk = el('gotoKpBtn'), gi = el('gotoInfoBtn'), sv = el('saveRecBtn');
+            if (gk) {
+                gk.hidden = kp;
+                gk.textContent = info ? '下一步 · 📌 知识点记录 →' : '前往 📌 知识点记录（保存）→';
+            }
+            if (gi) gi.hidden = !kp;
+            if (sv) sv.hidden = !kp;
+        }
         function setTab(t) {
-            curTab = TAB_PANES[t] ? t : 'kp';
+            curTab = TAB_PANES[t] ? t : 'info';
             eachNode('#recTabs .rec-tab', function (b) {
                 var on = b.getAttribute('data-rec') === curTab;
                 b.classList.toggle('active', on);
@@ -21608,6 +21756,7 @@ if (document.readyState === 'loading') {
                 if (e) e.hidden = (curTab !== k);
             });
             store(REC_TAB_KEY, curTab);
+            syncFormActions();
             growAll();
         }
 
@@ -22182,6 +22331,15 @@ if (document.readyState === 'loading') {
             eachNode('#recTabs .rec-tab', function (b) {
                 b.addEventListener('click', function () { setTab(b.getAttribute('data-rec')); });
             });
+            /* ★ 2026-09-22（第十二轮）：动作条里两个跳转按钮 —— 与点页签同一路径，
+               保证 active 态、aria、localStorage、动作条同步四件事一次做完。 */
+            ['gotoInfoBtn', 'gotoKpBtn'].forEach(function (id) {
+                var b = el(id);
+                if (!b) return;
+                b.addEventListener('click', function () {
+                    setTab(id === 'gotoInfoBtn' ? 'info' : 'kp');
+                });
+            });
             ['fKpQuick', 'fKpOutline', 'fKpMd'].forEach(function (id) {
                 var e = el(id);
                 if (e) e.addEventListener('input', onTextInput);
@@ -22510,7 +22668,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922f</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922g</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -23535,6 +23693,9 @@ html.embedded #buildTag{display:none}
     // 样式白名单：只放「格式条会产出」的那几条，且不允许 url()/expression
     var STYLE_OK = { 'color': 1, 'background-color': 1, 'font-weight': 1, 'font-style': 1, 'text-decoration': 1, 'text-decoration-line': 1 };
     var RE_MARKUP = /<\/?(b|strong|i|em|u|s|strike|del|mark|span|br|div|p)\b/i;
+    /* ★ 2026-09-22（第十二轮）：HTML 实体引用（命名 / 十进制 / 十六进制）。
+       用途见 toText 的短路判据 —— 只含实体、不含任何标签的串也必须走完整解析。 */
+    var RE_ENTITY = /&(?:[a-zA-Z][a-zA-Z0-9]{1,31}|#\d{1,7}|#[xX][0-9a-fA-F]{1,6});/;
 
     function looksMarkup(h) { return RE_MARKUP.test(String(h == null ? '' : h)); }
 
@@ -23586,7 +23747,14 @@ html.embedded #buildTag{display:none}
     // HTML → 纯文本。br / 块级边界折成换行，与 textarea 的观感对齐
     function toText(h) {
         var s = String(h == null ? '' : h);
-        if (!looksMarkup(s)) return s;
+        /* ★ 2026-09-22（第十二轮，Tom：速记里的 C++ 代码显示成「&lt;cstdio&gt;」）：
+           原来这里是 `if (!looksMarkup(s)) return s;` —— 而 RE_MARKUP 只认
+           </b|</span|</div… 这类**标签**；调用方 kpPlain 传进来的是 e.innerHTML，
+           DOM 里的文本「<cstdio>」被序列化成「&lt;cstdio&gt;」，整串里一个「<」都没有
+           ⇒ 判定「不是标记」直接原样返回：实体**没被解码**，于是粘贴进来的 C++ 代码
+           以 &lt; 形态落进 kpQuickRaw，下次渲染再转义一次，用户看到的就是字面实体。
+           判据补一条：含实体引用 → 必须走下面「剥标签 + innerHTML 解码」的完整路径。 */
+        if (!looksMarkup(s) && !RE_ENTITY.test(s)) return s;
         // ★ 2026-09-21：先捞「软换行」的 br（→ SOFT，不参与 parse 拆行），
         //   剩下的 <br> 才是知识点之间的换行。
         s = s.replace(RE_SOFTBR, SOFT)
