@@ -844,6 +844,21 @@
         .tomato-controls button.primary:hover {
             background: var(--primary-dark);
         }
+        /* ★ 2026-09-22：「提前完成」按钮 —— 非专注计时中置灰不可点 */
+        .tomato-controls button#tomatoDoneBtn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+        .tomato-controls button#tomatoDoneBtn:disabled:hover {
+            background: var(--bg);
+            color: var(--text-secondary);
+            border-color: var(--border);
+        }
+        .tomato-controls button#tomatoDoneBtn:not(:disabled) {
+            background: var(--primary-bg);
+            color: var(--primary);
+            border-color: var(--primary-light);
+        }
         .tomato-controls button.danger {
             background: var(--red);
             color: #FAF7F1;
@@ -4166,6 +4181,7 @@
                     <button class="primary" id="tomatoStartBtn">▶ 开始</button>
                     <button id="tomatoPauseBtn">⏸ 暂停</button>
                     <button id="tomatoResetBtn">⏹ 重置</button>
+                    <button id="tomatoDoneBtn" title="提前完成当前番茄：立刻结算这一个，并进入休息">✅ 提前完成</button>
                     <button id="tomatoSettingsBtn" title="番茄设置：专注/休息时长、自动休息、各科目建议学时">⚙ 设置</button>
                     <span class="tomato-count">累计 <span class="num" id="tomatoCount">0</span> 🍅</span>
                 </div>
@@ -9133,6 +9149,12 @@
             const n = (t.session && t.session.pomodoros) || 0;
             if (sessEl) sessEl.style.display = n > 0 ? '' : 'none';
             if (sessCnt) sessCnt.textContent = n;
+            // ★ 2026-09-22：「提前完成」只在专注计时进行中 / 暂停中可用
+            const doneBtn = document.getElementById('tomatoDoneBtn');
+            if (doneBtn) {
+                const usable = (t.mode === 'focus') && (t.isRunning || t.isPaused);
+                doneBtn.disabled = !usable;
+            }
         }
         function startTomatoTimer() {
             const t = state.tomato;
@@ -9167,33 +9189,67 @@
                 }
             }
             if (t.timeLeft > 0) return;
+            stopTomatoClock();
+            if (t.mode === 'focus') { completeTomatoFocus(); return; }
+            // ---- 休息结束 → 下一轮专注 ----
+            beep();
+            showToast('☕ 休息结束，开始下一轮专注');
+            t.mode = 'focus';
+            t.timeLeft = t.cfg.focusMin * 60;
+            if (t.cfg.autoFocus) { renderTomatoDisplay(); startTomatoTimer(); return; }
+            renderTomatoDisplay();
+        }
+        // ★ 2026-09-22 需求：番茄钟「✅ 提前完成」。
+        //   把「一个番茄完成」的结算从自然到点的路径里抽出来 —— 自然到点与手动提前完成
+        //   走的是同一个函数，口径不可能分叉（累计个数 / 本次会话 / 结束时间 / 时长 / 落盘）。
+        function stopTomatoClock() {
+            const t = state.tomato;
             clearInterval(t.timerId);
             t.timerId = null;
             t.isRunning = false;
+        }
+        function completeTomatoFocus(autoBreak) {
+            const t = state.tomato;
             const now = hmNow();
-            if (t.mode === 'focus') {
-                // 一个番茄完成：累计个数 + 结束时间 + 自动算时长
-                t.count++;
-                t.round++;
-                if (!t.session || !t.session.active) t.session = { active: true, start: now, pomodoros: 0 };
-                t.session.pomodoros++;
-                if (window.CPATomatoLink) window.CPATomatoLink.tick(now, t.session.pomodoros);
-                saveData();
-                beep();
-                showToast('🍅 第 ' + t.session.pomodoros + ' 个番茄完成（' + now + '）· 本次累计 ' +
-                    t.session.pomodoros + ' 个，已填入结束时间并算出时长');
-                const isLong = t.cfg.longEvery > 0 && (t.round % t.cfg.longEvery === 0);
-                t.mode = 'break';
-                t.timeLeft = (isLong ? t.cfg.longBreakMin : t.cfg.breakMin) * 60;
-                if (t.cfg.autoBreak) { renderTomatoDisplay(); startTomatoTimer(); return; }
-            } else {
-                beep();
-                showToast('☕ 休息结束，开始下一轮专注');
-                t.mode = 'focus';
-                t.timeLeft = t.cfg.focusMin * 60;
-                if (t.cfg.autoFocus) { renderTomatoDisplay(); startTomatoTimer(); return; }
-            }
+            const auto = (autoBreak === undefined) ? t.cfg.autoBreak : !!autoBreak;
+            // 一个番茄完成：累计个数 + 结束时间 + 自动算时长
+            t.count++;
+            t.round++;
+            if (!t.session || !t.session.active) t.session = { active: true, start: now, pomodoros: 0 };
+            t.session.pomodoros++;
+            if (window.CPATomatoLink) window.CPATomatoLink.tick(now, t.session.pomodoros);
+            saveData();
+            beep();
+            showToast('🍅 第 ' + t.session.pomodoros + ' 个番茄完成（' + now + '）· 本次累计 ' +
+                t.session.pomodoros + ' 个，已填入结束时间并算出时长');
+            const isLong = t.cfg.longEvery > 0 && (t.round % t.cfg.longEvery === 0);
+            t.mode = 'break';
+            t.timeLeft = (isLong ? t.cfg.longBreakMin : t.cfg.breakMin) * 60;
+            if (auto) { renderTomatoDisplay(); startTomatoTimer(); return; }
+            t.isPaused = false;
             renderTomatoDisplay();
+        }
+        /* 手动「提前完成」：专注计时进行中 / 已暂停都能用。
+           未开始 → 先点开始；正处于休息计时 → 用「重置」或等它走完，这里只给说明不结算。
+           ★ 不满 1 分钟不结算：起止时间会落在同一分钟，calcDurationInfo 直接返回 null，
+             表单会亮红字「开始时间与结束时间不能相同」—— 那是无效记录，堵在入口。 */
+        function finishTomatoEarly() {
+            const t = state.tomato;
+            if (t.mode !== 'focus') {
+                showToast('现在是☕休息计时 —— 等它结束，或用「⏹ 重置」回到专注');
+                return;
+            }
+            if (!t.isRunning && !t.isPaused) {
+                showToast('番茄尚未开始 —— 先点「▶ 开始」再计时');
+                return;
+            }
+            if (t.session && t.session.start && t.session.start === hmNow()) {
+                showToast('这次专注还不满 1 分钟 · 再等一会儿，或用「⏹ 重置」取消');
+                return;
+            }
+            stopTomatoClock();
+            t.isPaused = false;
+            completeTomatoFocus(t.cfg.autoBreak);
         }
         function pauseTomatoTimer() {
             const t = state.tomato;
@@ -9225,9 +9281,11 @@
             const pauseBtn = document.getElementById('tomatoPauseBtn');
             const resetBtn = document.getElementById('tomatoResetBtn');
             const setBtn = document.getElementById('tomatoSettingsBtn');
+            const doneBtn = document.getElementById('tomatoDoneBtn');
             if (startBtn) startBtn.addEventListener('click', startTomatoTimer);
             if (pauseBtn) pauseBtn.addEventListener('click', pauseTomatoTimer);
             if (resetBtn) resetBtn.addEventListener('click', resetTomatoTimer);
+            if (doneBtn) doneBtn.addEventListener('click', finishTomatoEarly);
             if (setBtn) setBtn.addEventListener('click', openTomatoSettings);
             const t = state.tomato;
             if (!t.isRunning) {
@@ -22668,7 +22726,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922g</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922h</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
