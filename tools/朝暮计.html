@@ -10,50 +10,6 @@
     <meta data-page-node-id="XOzUm6TgKlxz1h9hbpU0LD" content="0" http-equiv="Expires">
     <title data-page-node-id="awzQ45vUlczVJCMH2vTAUl" data-pnid-children="VbpnWdqQXnZenvxdnlMzGJ">朝暮计 · 完善侧边栏</title>
     <style data-page-node-id="PXCX22hwwJKQp2KgvtyYe3" data-pnid-children="T50C0kazWISuirO7Op6zVg">
-/* ===== v54 · 粘贴生成（清单 / 计划 / 阶段 / 习惯）===== */
-.pg-sheet{width:min(620px,95vw);max-height:88vh;overflow:auto;border-radius:16px;padding:16px 16px 14px}
-.pg-h{border:none;font-size:14px;padding:0 0 6px;margin:0;display:flex;align-items:center;gap:6px}
-.pg-h .x{margin-left:auto;color:#bbb;cursor:pointer;font-size:13px;padding:0 2px}
-.pg-hint{font-size:11px;line-height:1.7;color:#8a8a95;background:#faf8f4;border:1px solid #ece7de;border-radius:8px;padding:7px 9px;margin-bottom:10px}
-.pg-hint code{font:600 10.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#efe9df;color:#6b5b45;border-radius:4px;padding:2px 4px;margin:0 1px}
-.pg-sec{font-size:11px;font-weight:700;color:#9a8c74;letter-spacing:.4px;margin:10px 0 6px}
-.pg-sum{font-weight:400;color:#b3a58c;margin-left:4px}
-.pg-tpls{display:flex;flex-wrap:wrap;gap:5px}
-.pg-tpl{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:4px 8px;border-radius:999px;border:1px solid #e3ddd2;background:#fff;color:#6b6257;cursor:pointer;user-select:none}
-.pg-tpl:hover{background:#faf7f1;border-color:#d6cbb9}
-.pg-tpl b{font-size:11px;font-weight:400}
-.pg-tpl.user{background:#fdfaf3;border-color:#e8dcc4}
-.pg-tpl i{font-style:normal;color:#c8bda8;font-size:10px;padding:0 1px}
-.pg-tpl i:hover{color:#c0392b}
-.pg-text{width:100%;box-sizing:border-box;font:12px/1.75 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    border:1px solid #e3ddd2;border-radius:10px;padding:9px 10px;resize:vertical;background:#fffdfa;color:#3f3a33;outline:none;tab-size:4}
-.pg-text:focus{border-color:#c9bda6;box-shadow:0 0 0 3px rgba(180,160,120,.12)}
-.pg-modes{margin-bottom:8px}
-.pg-row2{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:6px;font-size:11px;color:#6b6257}
-.pg-row2 label{display:inline-flex;align-items:center;gap:5px}
-.pg-row2 input[type=date],.pg-row2 input[type=number],.pg-row2 input[type=text]{
-    font-size:11px;padding:4px 6px;border:1px solid #e3ddd2;border-radius:7px;background:#fffdfa;color:#3f3a33;outline:none;min-width:0}
-.pg-row2 input[type=number]{width:54px}
-.pg-row2 input[type=text]{width:92px}
-.pg-chk input{accent-color:#8a7358}
-.pg-preview{border:1px solid #eee8de;border-radius:10px;background:#fffdfa;padding:7px 9px;max-height:200px;overflow:auto}
-.pg-row{display:flex;align-items:center;gap:6px;font-size:11.5px;line-height:1.95;color:#3f3a33;white-space:nowrap}
-.pg-role{flex:0 0 auto;font-size:9.5px;padding:1px 5px;border-radius:4px;background:#f0ece4;color:#a1947c}
-.pg-role.lv0{background:#efe4cf;color:#8a6f3f}
-.pg-role.sub{background:#eef3ef;color:#7d9a84}
-.pg-title{color:#3f3a33}
-.pg-b{font-style:normal;font-size:9.5px;padding:1px 5px;border-radius:4px;background:#f2f4f7;color:#7d8794}
-.pg-b.dur{background:#eef4fa;color:#5b7f9e}
-.pg-b.date{background:#f0f6ef;color:#5f8a63}
-.pg-b.rec{background:#f6f0fa;color:#8464a0}
-.pg-empty{font-size:11px;color:#b8b0a4;padding:6px 2px}
-.pg-foot{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
-.pg-foot .btn{margin:0}
-@media (max-width:520px){
-    .pg-sheet{width:94vw;padding:13px}
-    .pg-row2 input[type=text]{width:74px}
-    .pg-preview{max-height:150px}
-}
         /* ===== 全局重置 & 变量 ===== */
         :root {
             --p1: #e74c3c;
@@ -5129,60 +5085,6 @@
     </div>
 </div>
 
-<!-- ===== 模态框：粘贴生成清单 / 计划 / 习惯（v54） ===== -->
-<div class="modal" id="mPasteGen" style="align-items:center">
-    <div class="sheet pg-sheet">
-        <h3 class="pg-h">📥 粘贴生成 <span class="x" onclick="closeM('mPasteGen')">✕</span></h3>
-        <div class="pg-hint">
-            每行一个条目，<b>缩进</b>就是层级。行尾可加：
-            <code>[1.5h]</code> 预估时长 ·
-            <code>@9/22</code> / <code>@9/22-9/26</code> 日期 ·
-            <code>@每天</code> / <code>@每周一,三,五</code> / <code>@工作日</code> 重复。
-        </div>
-
-        <div class="pg-sec">① 选个模板（可选）</div>
-        <div class="pg-tpls" id="pgTpls"></div>
-
-        <div class="pg-sec">② 粘贴内容</div>
-        <textarea id="pgText" class="pg-text" rows="9" spellcheck="false"
-placeholder="第1章 总论
-    第1节 会计概述 [1h]
-    第2节 会计要素 [1.5h] @9/23"
-oninput="pgRefresh()"></textarea>
-
-        <div class="pg-sec">③ 生成方式</div>
-        <div class="pg-modes seg" id="pgModes">
-            <span data-m="flat" onclick="pgPickMode('flat')">只清单</span>
-            <span data-m="dated" onclick="pgPickMode('dated')">带日期</span>
-            <span data-m="stage" onclick="pgPickMode('stage')">阶段+任务</span>
-            <span data-m="habit" onclick="pgPickMode('habit')">习惯</span>
-        </div>
-
-        <div class="pg-row2" id="pgSchedRow">
-            <label>起始日 <input type="date" id="pgStartDate"></label>
-            <label>每天 <input type="number" id="pgPerDay" min="1" max="20" value="3"> 条</label>
-            <label>时长上限 <input type="number" id="pgMaxMin" min="0" max="720" step="30" value="180"> 分</label>
-            <label class="pg-chk"><input type="checkbox" id="pgSkipWknd"> 跳过周末</label>
-        </div>
-
-        <div class="pg-row2" id="pgCatRow">
-            <label class="pg-chk"><input type="checkbox" id="pgAsCat" checked> 一级标题作分类</label>
-            <label>分类 <input type="text" id="pgCat" placeholder="留空=不分类"></label>
-            <label>标签 <input type="text" id="pgTags" placeholder="逗号分隔"></label>
-        </div>
-
-        <div class="pg-sec">④ 解析预览 <span class="pg-sum" id="pgSum"></span></div>
-        <div class="pg-preview" id="pgPreview"></div>
-
-        <div class="pg-foot">
-            <button class="btn gray" onclick="pgClearText()">清空</button>
-            <button class="btn gray" onclick="pgSaveTpl()">存为模板</button>
-            <button class="btn gray" onclick="closeM('mPasteGen')">取消</button>
-            <button class="btn" onclick="pgGenerate()">生成</button>
-        </div>
-    </div>
-</div>
-
 <!--pnid:fjTI3OHE5Q6r8vqxMT3jGC--><!--pnid:zmjFut0--><!--pnid:j3MENoFqHRXXNQeP5HJonA--><!-- ===== 模态框：未来倒计时 ===== -->
 <div data-page-node-id="zmjFut01" class="modal" id="mFuture" style="align-items:center">
     <div data-page-node-id="zmjFut02" class="sheet" style="border-radius:16px; padding:16px; max-height:82vh; overflow:auto">
@@ -5802,7 +5704,21 @@ oninput="pgRefresh()"></textarea>
                    : (t.dates && t.dates.length) ? t.dates.slice().sort()[0]
                    : null;
         if (!seed) return [];
-        const start = seed, end = to;
+        const start = seed;
+        // ★ 任务自身的截止边界：显式「到期」日，以及「跨天 / 自选多日」那串日期的收尾日，
+        //   取两者中更早的那个。
+        //   原写法 end 恒等于调用方给的窗口上界（今天 + 365 天），从不看任务自己的结束日 ——
+        //   于是「跨天 09-21~09-30 + 每天」会一路展开到明年：显示层读 dates 首尾说「到 09-30
+        //   截止」，判定层却看不到头，09-30 之后没打卡照样算逾期，显示与判定口径分裂。
+        //   跨天与自选多日的 dates 都是「有头有尾的一串」，显示层也只显示首尾，所以两种模式
+        //   一视同仁地封顶，避免同一个概念有两套口径。单日模式没有显式终点，开放式重复不变。
+        const _bounds = [];
+        if (t.due) _bounds.push(String(t.due).slice(0, 10));
+        if ((t.mode === 'cross' || t.mode === 'multi') && t.dates && t.dates.length) {
+            _bounds.push(t.dates.slice().sort().pop());
+        }
+        const _spanEnd = _bounds.length ? _bounds.sort()[0] : null;
+        const end = (_spanEnd && _spanEnd < to) ? _spanEnd : to;
         const set = new Set();
         const MAX = 200;
         const push = d => { if (d >= from && d <= to) set.add(d); };
@@ -6557,7 +6473,6 @@ oninput="pgRefresh()"></textarea>
             <div class="s-item" onclick="closeSidebar();openTaskFromFocus()">新建任务<span class="arrow">›</span></div>
             <div class="s-item" onclick="closeSidebar();openHabitFromFocus()">新建习惯<span class="arrow">›</span></div>
             <div class="s-item" onclick="closeSidebar();openImportFocus()">一键导入<span class="arrow">›</span></div>
-            <div class="s-item" onclick="closeSidebar();openPasteImport()">粘贴生成<span class="arrow">›</span></div>
 
             <div class="s-section">计时辅助</div>
             <div class="s-item" onclick="closeSidebar();openFutureM()">倒计时<span class="arrow">›</span></div>
@@ -6673,12 +6588,6 @@ oninput="pgRefresh()"></textarea>
             <div class="s-item" onclick="goArchived()">
                 已完成清单
                 <span class="count" id="sArchivedCount">0</span>
-                <span class="arrow">›</span>
-            </div>
-
-            <div class="s-section">生成</div>
-            <div class="s-item" onclick="closeSidebar();openPasteImport()">
-                粘贴生成清单 / 计划
                 <span class="arrow">›</span>
             </div>
 
@@ -8155,12 +8064,6 @@ oninput="pgRefresh()"></textarea>
             menu.innerHTML = `
                 <div class="m-label">视图</div>
                 ${noteMenuHTML()}
-                <div class="m-label">生成</div>
-                <div class="m-item" onclick="closeMenu();openPasteImport()">
-                    <span class="ico">📥</span> 粘贴生成清单 / 计划
-                    <span style="margin-left:auto;color:#c5c5cf;font-size:13px">›</span>
-                </div>
-                <div class="m-divider"></div>
                 <div class="m-item" onclick="toggleCompact()">
                     <span class="ico">📐</span> 精简模式
                     <span class="sw-sm" id="menuCompact"></span>
@@ -10225,8 +10128,13 @@ oninput="pgRefresh()"></textarea>
         if (mode === 'single') { date = fDate; if (!date) return notify('请选择日期') }
         if (mode === 'cross') { if (fDates.length !== 2) return notify('跨天需选择起止日期');
             dates = [];
+            // ★ 日期串一律按「本地日期」生成（fmtDLocal）。
+            //   原写法把起点解析成本地零点，却按 UTC 取前 10 位 —— UTC+8 下本地零点等于
+            //   前一天 16:00Z，整串日期于是整体前移一天：用户选「今天~09-30」会存成
+            //   「昨天~09-30」。而重复任务的种子取 dates 里最早那天，那个被回退的昨天就
+            //   成了一个「漏掉的实例」，被判逾期 1 天并在清单里画出橙色叉号。
             let d = new Date(fDates[0] + 'T00:00');
-            while (d.toISOString().slice(0, 10) <= fDates[1]) { dates.push(d.toISOString().slice(0, 10));
+            while (fmtDLocal(d) <= fDates[1]) { dates.push(fmtDLocal(d));
                 d.setDate(d.getDate() + 1) } }
         if (mode === 'multi') { if (!fDates.length) return notify('请选择日期');
             dates = [...fDates] }
@@ -13285,8 +13193,10 @@ oninput="pgRefresh()"></textarea>
         const isHabitMulti = c.kind === 'habit' && c.goal && c.goal.mode === 'multi' && (c.goal.total || 0) > 1;
         let rowsHTML = `<div class="fcd-row"><span>发起</span><span>${sd}</span></div>`;
         if (isHabitMulti) {
-            const today = new Date().toISOString().slice(0, 10);
-            const recToday = (S.focusDateMap && S.focusDateMap[c.id] && S.focusDateMap[c.id][today]) || 0;
+            // ★ 今日键按本地日期取；顺手不再用局部常量遮蔽全局的 today() 函数
+            //   （原写法在同一作用域里声明 const today，按 UTC 取值，凌晨会取到昨天那格）。
+            const tds = today();
+            const recToday = (S.focusDateMap && S.focusDateMap[c.id] && S.focusDateMap[c.id][tds]) || 0;
             const done = +recToday || 0;
             const total = c.goal.total || 1;
             const pct = Math.max(0, Math.min(1, done / total));
@@ -14299,7 +14209,9 @@ oninput="pgRefresh()"></textarea>
         let heat = '';
         for (let i = 363; i >= 0; i--) { const dt = new Date();
             dt.setDate(dt.getDate() - i);
-            const ds = dt.toISOString().slice(0, 10);
+            // ★ 格子日期必须按本地日期取。dt 是「当前时刻」而非本地零点，按 UTC 取值时
+            //   本地 00:00–07:59 打开页面会让整张 365 格热力图整体错位一天（UTC+8）。
+            const ds = fmtDLocal(dt);
             const m = daily[ds] || 0;
             heat += `<i class="${m>120?'l3':m>60?'l2':m>0?'l1':''}" title="${ds} ${m}min"></i>` }
         return `<div class="card" style="margin-top:12px"><b style="font-size:12px">📊 统计</b>
@@ -20887,505 +20799,6 @@ oninput="pgRefresh()"></textarea>
     try { scheduleDailyReminders(); } catch (e) {}   // v27：复盘 / 习惯 / 专注目标 每日例行提醒
     /* v28：空闲时预热存储配额探测。v48：背景图已迁到 IndexedDB，
        不再需要为它探测 localStorage 的剩余空间；这里只在降级模式下才预热。 */
-    /* ============================================================
-       v54 · 粘贴生成（清单 / 计划 / 阶段 / 习惯）
-       ------------------------------------------------------------
-       输入：缩进纯文本 —— 每行一个条目，缩进宽度表层级。
-       行尾注解（都可用，顺序任意，最多剥 4 层）：
-         [1h] [90m] [1.5h] [1小时30分]      预估时长
-         @9/22 @2026-09-22 @9/22-9/26       日期 / 起止日期（- ~ 至 都行）
-         @每天 @工作日 @每周一,三,五        重复规则
-       行首的 - * • · ▪ ▫ ‣ – — 会被当项目符号剥掉。
-       生成方式：
-         flat  叶子逐条 → 任务（无日期）
-         dated 叶子逐条 → 带日期任务（注解优先，缺省按 起始日/每天 N 条/时长上限 自动排期）
-         stage 顶层 → 「阶段」任务（日期 = 子项并集，落成 cross → 甘特一条长条）+ 下级铺成子任务
-         habit 顶层逐条 → 习惯（按 @每周X 定打卡日，缺省每天）
-       ============================================================ */
-    const PG_KEY = 'chaomuji_web_v27_paste_tpl';
-    const PG_WD_CN = '一二三四五六日';   // recur 编码：0=周日 1=周一 … 6=周六
-
-    const PG_TPL = [
-        { id: 'study', name: '学习计划', icon: '📚', mode: 'stage', text:
-`第1章 总论
-    第1节 会计概述 [1h]
-    第2节 会计要素 [1.5h]
-第2章 存货
-    第1节 存货取得 [1h]
-    第2节 存货发出 [1.5h]
-第3章 固定资产
-    第1节 初始计量 [1.5h]
-    第2节 后续计量 [1.5h]` },
-        { id: 'proj', name: '项目推进', icon: '🚀', mode: 'stage', text:
-`需求梳理 @9/22-9/26
-    竞品调研 [2h]
-    需求文档 [3h]
-开发实现 @9/29-10/10
-    前端页面 [8h]
-    后端接口 [8h]
-联调上线 @10/13-10/17
-    联调测试 [4h]
-    上线检查 [2h]` },
-        { id: 'review', name: '复习周', icon: '🔁', mode: 'dated', text:
-`复习周
-    复盘上周 [1h]
-    错题重做 [1h]
-    章节自测 [1h]
-    知识串联 [1h]
-    真题演练 [1.5h]
-    弱项补漏 [2h]
-    整理笔记 [1h]` },
-        { id: 'rhythm', name: '每日节奏', icon: '⏱', mode: 'flat', text:
-`每日节奏
-    读文字教程 [1h] @每天
-    动手敲代码 [1.5h] @每天
-    输出与提交 [0.5h] @每天` },
-        { id: 'habit', name: '习惯养成', icon: '🌱', mode: 'habit', text:
-`早起 @每周一,二,三,四,五
-晨读 @每天
-复盘 @每天
-早睡 @每周一,二,三,四,五,六,日` },
-        { id: 'trip', name: '旅行清单', icon: '🧳', mode: 'flat', text:
-`出发前
-    订票订房
-    证件与现金
-    充电器 / 转接头
-行李
-    换洗衣物
-    洗漱包
-    常用药
-行程
-    第一天 抵达 + 市区
-    第二天 主要景点
-    第三天 返程` }
-    ];
-
-    let pgMode = 'dated';
-
-    /* ---------- 我的模板 ---------- */
-    function pgUserTpls() {
-        try { const a = JSON.parse(localStorage.getItem(PG_KEY) || '[]'); return Array.isArray(a) ? a : []; }
-        catch (e) { return []; }
-    }
-    function pgSetUserTpls(a) { try { localStorage.setItem(PG_KEY, JSON.stringify(a)); } catch (e) {} }
-
-    /* ---------- 行尾注解解析 ---------- */
-    function pgDurOf(str) {
-        const s = String(str || '').toLowerCase().replace(/\s+/g, '');
-        if (!s) return null;
-        let min = 0, hit = false, m;
-        m = s.match(/(\d+(?:\.\d+)?)(?:小时|hour|hr|h|时)/);
-        if (m) { min += parseFloat(m[1]) * 60; hit = true; }
-        m = s.match(/(\d+)(?:分钟|min|m|分)/);
-        if (m) { min += parseInt(m[1], 10); hit = true; }
-        if (!hit) { m = s.match(/^(\d+(?:\.\d+)?)$/); if (m) { min = parseFloat(m[1]) * 60; hit = true; } }
-        return hit ? Math.max(1, Math.round(min)) : null;
-    }
-    function pgMinText(m) {
-        if (!m) return '';
-        if (m % 60 === 0) return (m / 60) + 'h';
-        if (m < 60) return m + 'm';
-        return Math.floor(m / 60) + 'h' + (m % 60) + 'm';
-    }
-    function pgDateOf(str) {
-        const s = String(str || '').trim();
-        if (!s) return null;
-        const T = today();
-        const rel = { '今天': 0, '今日': 0, '明天': 1, '明日': 1, '后天': 2, '大后天': 3 };
-        if (rel[s] !== undefined) { const d = addDays(T, rel[s]); return { from: d, to: d }; }
-        const one = x => {
-            let m = x.match(/^(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})日?$/);
-            if (m) return `${m[1]}-${_p2(+m[2])}-${_p2(+m[3])}`;
-            m = x.match(/^(\d{1,2})[-/.月](\d{1,2})日?$/);
-            if (m) {
-                const y = +T.slice(0, 4);
-                let c = `${y}-${_p2(+m[1])}-${_p2(+m[2])}`;
-                if (c < addDays(T, -180)) c = `${y + 1}-${_p2(+m[1])}-${_p2(+m[2])}`;
-                return c;
-            }
-            m = x.match(/^(\d{1,2})日?$/);
-            if (m) return `${T.slice(0, 7)}-${_p2(+m[1])}`;
-            return null;
-        };
-        const a = one(s);
-        if (a) return { from: a, to: a };
-        const parts = s.split(/[-~～至到]/).map(x => x.trim()).filter(Boolean);
-        if (parts.length >= 2) {
-            const f = one(parts[0]), t2 = one(parts[parts.length - 1]);
-            if (f && t2) return { from: f, to: t2 >= f ? t2 : f };
-        }
-        return null;
-    }
-    function pgRecurOf(str) {
-        const s = String(str || '').trim();
-        if (!s) return null;
-        if (/^(每天|每日|daily)$/i.test(s)) return { mode: 'daily', interval: 1, skipHoliday: false };
-        if (/^(工作日|法定工作日|workday)$/i.test(s)) return { mode: 'workdays', skipHoliday: false };
-        if (/^(周一至周五|周一-周五|weekday)$/i.test(s)) return { mode: 'weekdays', skipHoliday: false };
-        let m = s.match(/^每?周([一二三四五六日天,，、\s]+)$/);
-        if (m) {
-            const set = [];
-            (m[1].match(/[一二三四五六日天]/g) || []).forEach(c => {
-                const d = c === '天' ? 0 : (PG_WD_CN.indexOf(c) + 1) % 7;
-                if (d >= 0 && set.indexOf(d) < 0) set.push(d);
-            });
-            if (set.length) return { mode: 'weekly', weeklyDow: set.sort((a, b) => a - b) };
-        }
-        m = s.match(/^每(\d+)(天|周|月|年)$/);
-        if (m) return { mode: 'custom', unit: { '天': 'day', '周': 'week', '月': 'month', '年': 'year' }[m[2]], interval: Math.max(1, +m[1]), skipHoliday: false };
-        return null;
-    }
-    function pgRecurText(r) {
-        if (!r || !r.mode) return '';
-        if (r.mode === 'daily') return '每天';
-        if (r.mode === 'workdays') return '法定工作日';
-        if (r.mode === 'weekdays') return '周一至周五';
-        if (r.mode === 'weekly') return '每周' + (r.weeklyDow || []).map(d => '日一二三四五六'[d]).join('、');
-        if (r.mode === 'custom') return `每${r.interval}${({ day: '天', week: '周', month: '月', year: '年' })[r.unit] || '天'}`;
-        return '';
-    }
-
-    /* ---------- 缩进树解析 ---------- */
-    function pgParse(text) {
-        const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
-        const rows = [];
-        lines.forEach(line => {
-            if (!line.trim()) return;
-            const ind = (line.match(/^[ \t]*/) || [''])[0];
-            const w = ind.replace(/\t/g, '    ').length;
-            let body = line.slice(ind.length).replace(/\s+$/, '');
-            body = body.replace(/^[-*•·▪▫‣–—]+\s+/, '');
-            let dur = null, dt = null, rec = null;
-            for (let g = 0; g < 5; g++) {
-                let m = body.match(/\s*@([^\s@\[\]]{1,40})\s*$/);
-                if (m) {
-                    const d = (dt == null) ? pgDateOf(m[1]) : null;
-                    if (d) { dt = d; body = body.slice(0, m.index).replace(/\s+$/, ''); continue; }
-                    const r = (rec == null) ? pgRecurOf(m[1]) : null;
-                    if (r) { rec = r; body = body.slice(0, m.index).replace(/\s+$/, ''); continue; }
-                }
-                m = body.match(/\s*\[([^\]]{1,30})\]\s*$/);
-                if (m && dur == null) {
-                    const d2 = pgDurOf(m[1]);
-                    if (d2 != null) { dur = d2; body = body.slice(0, m.index).replace(/\s+$/, ''); continue; }
-                }
-                break;
-            }
-            body = body.trim();
-            if (!body) return;
-            rows.push({ w, title: body, dur, dt, rec });
-        });
-        /* 缩进宽度 → 深度（栈式，容错任意缩进量） */
-        const st = [];
-        rows.forEach(r => {
-            while (st.length && r.w <= st[st.length - 1]) st.pop();
-            st.push(r.w);
-            r.depth = st.length - 1;
-        });
-        /* 组树 */
-        const roots = [], stack = [];
-        rows.forEach(r => {
-            const n = { title: r.title, dur: r.dur, dt: r.dt, rec: r.rec, depth: r.depth, children: [] };
-            while (stack.length && stack[stack.length - 1].depth >= n.depth) stack.pop();
-            if (stack.length) { const p = stack[stack.length - 1]; p.children.push(n); n.parent = p; n.top = p.top; }
-            else { roots.push(n); n.top = n.title; }
-            stack.push(n);
-        });
-        return { rows: rows, roots: roots };
-    }
-    function pgLeaves(node, out) {
-        out = out || [];
-        if (!node.children.length) { out.push(node); return out; }
-        node.children.forEach(c => pgLeaves(c, out));
-        return out;
-    }
-    function pgRange(a, b) {
-        const out = []; let d = a, g = 0;
-        while (d <= b && g++ < 400) { out.push(d); d = addDays(d, 1); }
-        return out.length ? out : [a];
-    }
-    /* 自动排期：显式日期为准，其余按「每天 N 条 / 每天时长上限 / 跳过周末」投放 */
-    function pgSchedule(leaves, startDate, perDay, maxMin, skipWknd) {
-        let cur = startDate || today(), cnt = 0, sum = 0;
-        const roll = () => {
-            cur = addDays(cur, 1);
-            if (skipWknd) { let g = 0; while (g++ < 7) { const wd = new Date(cur + 'T00:00').getDay(); if (wd !== 0 && wd !== 6) break; cur = addDays(cur, 1); } }
-            cnt = 0; sum = 0;
-        };
-        leaves.forEach(l => {
-            if (l.dt) { if (l.dt.to > cur) { cur = l.dt.to; cnt = 0; sum = 0; } return; }
-            const need = l.dur || 0;
-            if (cnt > 0 && (cnt >= perDay || (maxMin > 0 && sum + need > maxMin))) roll();
-            l.auto = cur;
-            cnt++; sum += need;
-        });
-    }
-    function pgDatesOf(node) {
-        if (node.dt) return pgRange(node.dt.from, node.dt.to);
-        if (node.auto) return [node.auto];
-        return [];
-    }
-    /* stage 模式的排期口径与 dated 不同：以「阶段」为单位分配窗口，
-       而不是把全部叶子混在一起按天投放（否则跨阶段的任务会挤到同一天）。
-       · 阶段带显式 @日期  → 窗口 = 该区间，游标顺延到区间之后
-       · 阶段无日期        → 按「子项数 / 每天 N 条」与「总时长 / 每天上限」取大者给天数 */
-    function pgStageSpans(roots, startDate, perDay, maxMin, skipWknd) {
-        let cur = startDate || today();
-        const roll = () => {
-            cur = addDays(cur, 1);
-            if (skipWknd) { let g = 0; while (g++ < 7) { const wd = new Date(cur + 'T00:00').getDay(); if (wd !== 0 && wd !== 6) break; cur = addDays(cur, 1); } }
-        };
-        return roots.map(r => {
-            if (r.dt) {
-                const sp = { from: r.dt.from, to: r.dt.to };
-                if (r.dt.to >= cur) cur = addDays(r.dt.to, 1);
-                return sp;
-            }
-            const lv = pgLeaves(r, []);
-            const byCount = Math.ceil(Math.max(1, lv.length) / Math.max(1, perDay));
-            const totalMin = lv.reduce((s, l) => s + (l.dur || 0), 0);
-            const byMin = (maxMin > 0 && totalMin > 0) ? Math.ceil(totalMin / maxMin) : 0;
-            const days = Math.max(1, byCount, byMin);
-            const from = cur;
-            for (let i = 1; i < days; i++) roll();
-            const to = cur;
-            roll();
-            return { from: from, to: to };
-        });
-    }
-
-    /* ---------- 造对象 ---------- */
-    function pgNoteOf(node) {
-        const bits = [];
-        if (node.dur) bits.push('预估 ' + pgMinText(node.dur));
-        if (node.rec) bits.push(pgRecurText(node.rec));
-        return bits.join(' · ');
-    }
-    function pgBuildTask(o) {
-        const t = {
-            id: uid(), title: o.title, priority: 'follow',
-            mode: 'none', date: null, dates: null,
-            category: o.category || '', tags: (o.tags || []).slice(),
-            subs: o.subs || [], done: false, failed: false, pinned: false,
-            createdAt: new Date().toISOString(), due: null, note: o.note || '',
-            timeType: 'none', time: '', endTime: '',
-            recur: o.recur || null,
-            timerCfg: { mode: 'none', inFocus: false, dur: 25, num: 1, short: 5, long: 15, interval: 4, auto: true, order: 0 }
-        };
-        const ds = o.dates || [];
-        if (o.recur) {
-            /* 重复任务必须有种子日期（expandRecur 只认 mode==='single' 的 date） */
-            t.mode = 'single';
-            t.date = ds.length ? ds[0] : (o.seed || today());
-            t.dates = null;
-        } else if (ds.length === 1) { t.mode = 'single'; t.date = ds[0]; }
-        else if (ds.length > 1) { t.mode = 'cross'; t.dates = ds.slice(); }
-        return t;
-    }
-    function pgBuildHabit(o) {
-        const colors = ['#e74c3c', '#f39c12', '#27ae60', '#3498db', '#6c5ce7'];
-        const days = (o.days && o.days.length) ? o.days.slice().sort((a, b) => a - b) : [1, 2, 3, 4, 5, 6, 7];
-        return {
-            id: uid(), name: o.title, icon: o.icon || '🌻',
-            color: colors[(S.habits || []).length % colors.length],
-            period: { type: 'fixed', days: days },
-            goal: { mode: 'once', unit: '次', total: 1, step: 1, punchMode: 'auto' },
-            ctx: o.ctx || '全天',
-            records: {}, noteOn: true, note: o.note || '',
-            startDate: o.startDate || today(), due: null, reminders: [],
-            status: 'active',
-            timerCfg: { mode: 'none', inFocus: false, dur: 25, num: 1, short: 5, long: 15, interval: 4, auto: true, order: 0 }
-        };
-    }
-    /* 习惯打卡日：顶层自身或首个带 @每周X 的后代；缺省每天 */
-    function pgHabitDays(root) {
-        let src = root.rec;
-        if (!src || src.mode !== 'weekly') {
-            const lv = pgLeaves(root, []);
-            for (let i = 0; i < lv.length; i++) if (lv[i].rec && lv[i].rec.mode === 'weekly') { src = lv[i].rec; break; }
-        }
-        if (src && src.mode === 'weekly' && src.weeklyDow && src.weeklyDow.length) {
-            return src.weeklyDow.map(d => d === 0 ? 7 : d);
-        }
-        return [1, 2, 3, 4, 5, 6, 7];
-    }
-    function pgCatFor(asCat, topTitle, cat) {
-        const want = (asCat ? (topTitle || '') : (cat || '')).trim();
-        if (!want) return '';
-        if (!Array.isArray(S.cats)) S.cats = [];
-        if (S.cats.indexOf(want) < 0) S.cats.push(want);
-        return want;
-    }
-
-    /* ---------- UI ---------- */
-    function pgRenderTpls() {
-        const host = document.getElementById('pgTpls');
-        if (!host) return;
-        const user = pgUserTpls();
-        host.innerHTML = PG_TPL.map((t, i) =>
-            `<span class="pg-tpl" onclick="pgPickTpl(${i})"><b>${t.icon}</b>${esc(t.name)}</span>`
-        ).join('') + user.map((t, i) =>
-            `<span class="pg-tpl user" onclick="pgPickTplU(${i})"><b>⭐</b>${esc(t.name)}<i onclick="event.stopPropagation();pgDelTpl(${i})">✕</i></span>`
-        ).join('');
-    }
-    function pgSyncModeUI() {
-        const box = document.querySelectorAll('#pgModes span');
-        for (let i = 0; i < box.length; i++) box[i].classList.toggle('on', box[i].dataset.m === pgMode);
-        const row = document.getElementById('pgSchedRow');
-        if (row) row.style.display = (pgMode === 'dated' || pgMode === 'stage') ? '' : 'none';
-        const catRow = document.getElementById('pgCatRow');
-        if (catRow) catRow.style.display = (pgMode === 'habit') ? 'none' : '';
-    }
-    function pgPickMode(m) { pgMode = m; pgSyncModeUI(); pgRefresh(); }
-    function pgPickTpl(i) {
-        const t = PG_TPL[i];
-        if (!t) return;
-        const box = document.getElementById('pgText');
-        if (box) box.value = t.text;
-        pgMode = t.mode || 'dated';
-        pgSyncModeUI(); pgRefresh();
-    }
-    function pgPickTplU(i) {
-        const t = pgUserTpls()[i];
-        if (!t) return;
-        const box = document.getElementById('pgText');
-        if (box) box.value = t.text || '';
-        if (t.mode) pgMode = t.mode;
-        pgSyncModeUI(); pgRefresh();
-    }
-    function pgClearText() { const b = document.getElementById('pgText'); if (b) b.value = ''; pgRefresh(); }
-    function pgSaveTpl() {
-        const b = document.getElementById('pgText');
-        const txt = b ? b.value.trim() : '';
-        if (!txt) return notify('请先粘贴内容');
-        const first = (txt.split('\n').find(l => l.trim()) || '未命名').replace(/^[-*•·▪▫‣–—]+\s*/, '').trim().slice(0, 16);
-        const name = first || '未命名';
-        const a = pgUserTpls();
-        let hit = -1;
-        for (let i = 0; i < a.length; i++) if (a[i].name === name) { hit = i; break; }
-        if (hit >= 0) a[hit] = { name: name, text: txt, mode: pgMode };
-        else a.push({ name: name, text: txt, mode: pgMode });
-        pgSetUserTpls(a); pgRenderTpls();
-        showToast('已存为模板「' + name + '」');
-    }
-    function pgDelTpl(i) {
-        const a = pgUserTpls();
-        if (!a[i]) return;
-        askConfirm(`删除模板「${a[i].name}」？`, function () {
-            a.splice(i, 1); pgSetUserTpls(a); pgRenderTpls();
-        }, { danger: true, okText: '删除' });
-    }
-    function pgRefresh() {
-        const ta = document.getElementById('pgText');
-        const P = pgParse(ta ? ta.value : '');
-        const host = document.getElementById('pgPreview');
-        const sum = document.getElementById('pgSum');
-        if (!host) return;
-        if (!P.roots.length) {
-            host.innerHTML = '<div class="pg-empty">粘贴后这里会显示解析结果</div>';
-            if (sum) sum.textContent = '';
-            return;
-        }
-        const allLeaves = [];
-        P.roots.forEach(r => pgLeaves(r, allLeaves));
-        const flat = [];
-        const walk = (n, dep) => { flat.push({ n: n, dep: dep }); n.children.forEach(c => walk(c, dep + 1)); };
-        P.roots.forEach(r => walk(r, 0));
-        const isStage = pgMode === 'stage', isHabit = pgMode === 'habit';
-        host.innerHTML = flat.map(({ n, dep }) => {
-            const role = isHabit ? (dep === 0 ? '习惯' : '—')
-                : isStage ? (dep === 0 ? '阶段' : '子任务')
-                    : (n.children.length ? '分组' : '任务');
-            const b = [];
-            if (n.dur) b.push(`<i class="pg-b dur">⏱ ${pgMinText(n.dur)}</i>`);
-            if (n.dt) b.push(`<i class="pg-b date">📅 ${n.dt.from}${n.dt.to !== n.dt.from ? '~' + n.dt.to : ''}</i>`);
-            if (n.rec) b.push(`<i class="pg-b rec">🔁 ${pgRecurText(n.rec)}</i>`);
-            return `<div class="pg-row" style="padding-left:${dep * 14}px">` +
-                `<span class="pg-role ${role === '阶段' || role === '习惯' ? 'lv0' : (role === '子任务' ? 'sub' : '')}">${role}</span>` +
-                `<span class="pg-title">${esc(n.title)}</span>${b.join('')}</div>`;
-        }).join('');
-        if (sum) {
-            sum.textContent = isHabit ? `将生成 ${P.roots.length} 个习惯`
-                : isStage ? `将生成 ${P.roots.length} 个阶段 + ${allLeaves.length} 条子任务`
-                    : `将生成 ${allLeaves.length} 项任务`;
-        }
-    }
-
-    /* ---------- 入口 / 生成 ---------- */
-    function openPasteImport() {
-        const ta = document.getElementById('pgText');
-        if (ta && !ta.value.trim()) ta.value = PG_TPL[0].text;
-        const sd = document.getElementById('pgStartDate');
-        if (sd && !sd.value) sd.value = today();
-        pgMode = 'dated';
-        pgSyncModeUI(); pgRenderTpls(); pgRefresh();
-        openM('mPasteGen');
-    }
-    function pgGenerate() {
-        const ta = document.getElementById('pgText');
-        const P = pgParse(ta ? ta.value : '');
-        if (!P.roots.length) return notify('没有解析到条目，请检查粘贴内容');
-        const val = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-        const chk = id => { const el = document.getElementById(id); return !!(el && el.checked); };
-        const startDate = val('pgStartDate') || today();
-        const perDay = Math.max(1, Math.min(20, +val('pgPerDay') || 3));
-        const maxMin = Math.max(0, +val('pgMaxMin') || 0);
-        const skipWknd = chk('pgSkipWknd');
-        const asCat = chk('pgAsCat');
-        const cat = val('pgCat').trim();
-        const tagStr = val('pgTags').trim();
-        const tags = tagStr ? tagStr.split(/[,，\s]+/).filter(Boolean) : [];
-
-        const allLeaves = [];
-        P.roots.forEach(r => pgLeaves(r, allLeaves));
-        if (pgMode === 'dated') pgSchedule(allLeaves, startDate, perDay, maxMin, skipWknd);
-
-        let made = 0;
-        if (pgMode === 'habit') {
-            if (!Array.isArray(S.habits)) S.habits = [];
-            P.roots.forEach(r => {
-                S.habits.push(pgBuildHabit({
-                    title: r.title, days: pgHabitDays(r), startDate: startDate, note: pgNoteOf(r)
-                }));
-                made++;
-            });
-        } else if (pgMode === 'stage') {
-            const spans = pgStageSpans(P.roots, startDate, perDay, maxMin, skipWknd);
-            P.roots.forEach((r, ri) => {
-                const lv = pgLeaves(r, []);
-                const sp = spans[ri];
-                S.tasks.push(pgBuildTask({
-                    title: r.title,
-                    dates: pgRange(sp.from, sp.to),
-                    category: pgCatFor(asCat, r.title, cat),
-                    tags: tags,
-                    subs: lv.map(l => ({ id: uid(), title: l.title, done: false, pinned: false, failed: false })),
-                    note: pgNoteOf(r)
-                }));
-                made++;
-            });
-        } else {
-            allLeaves.forEach(l => {
-                S.tasks.push(pgBuildTask({
-                    title: l.title,
-                    dates: (pgMode === 'dated') ? pgDatesOf(l) : [],
-                    category: pgCatFor(asCat, l.top, cat),
-                    tags: tags,
-                    recur: l.rec || null,
-                    seed: startDate,
-                    note: pgNoteOf(l)
-                }));
-                made++;
-            });
-        }
-        save();
-        try { commitSave(true); } catch (e) {}
-        closeM('mPasteGen');
-        render();
-        const unit = pgMode === 'habit' ? ' 个习惯' : (pgMode === 'stage' ? ' 个阶段' : ' 项任务');
-        showToast('已生成 ' + made + unit + (pgMode === 'stage' ? `（含 ${allLeaves.length} 条子任务）` : ''));
-    }
-
     try {
         const warm = () => { if (!ZMIMG.ok()) { try { lsTotalQuota(); } catch (e) {} } };
         if (window.requestIdleCallback) requestIdleCallback(warm, { timeout: 3000 });
