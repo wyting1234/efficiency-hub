@@ -3639,6 +3639,267 @@
             .kp-mnode::before, .kp-mnode::after { left: 5px; }
             .kp-mnode::after { width: 6px; }
         }
+
+/* #### CPA_G_CSS_BEGIN #### */
+/* ============================================================
+   CPA 端新增样式（第 4 个 <style> 块 / 追加在 3637 行之前）
+   全部用既有令牌，不引入新配色体系。
+   ============================================================ */
+
+/* ---------- A. 项目对话框：大纲解析模式切换 + 示例模板 ---------- */
+.og-modes {
+    display: flex;
+    gap: 6px;
+    margin: 2px 0 8px;
+}
+.og-modes button {
+    flex: 1 1 0;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+.og-modes button:hover { border-color: var(--primary-light); color: var(--text); }
+.og-modes button.on {
+    background: var(--primary-bg);
+    border-color: var(--primary);
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+.og-tpls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 8px;
+}
+.og-tpl {
+    padding: 5px 10px;
+    font-size: 12px;
+    color: var(--primary-dark);
+    background: var(--primary-bg);
+    border: 1px dashed var(--primary-light);
+    border-radius: 999px;
+    transition: var(--transition);
+}
+.og-tpl:hover { background: #E9E0CF; border-style: solid; }
+
+/* ---------- B. 设置页「重难点补充」面板 ---------- */
+.kp3-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 10px;
+}
+.kp3-tools select {
+    padding: 6px 10px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--card-bg);
+    color: var(--text);
+    height: 32px;
+}
+.kp3-stat {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+.kp3-btn {
+    padding: 7px 14px;
+    font-size: 13px;
+    border-radius: var(--radius-sm);
+    background: var(--primary-bg);
+    color: var(--primary-dark);
+    border: 1px solid var(--primary-light);
+    transition: var(--transition);
+}
+.kp3-btn:hover { background: #E9E0CF; }
+.kp3-btn.primary {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary-dark);
+}
+.kp3-btn.primary:hover { background: var(--primary-dark); }
+
+.kp3-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 460px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+.kp3-row {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 9px 11px;
+}
+.kp3-row.is-done { border-left-color: var(--green); }
+.kp3-loc {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+}
+.kp3-course {
+    background: var(--primary-bg);
+    color: var(--primary-dark);
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-weight: 600;
+}
+.kp3-path { color: var(--text-secondary); }
+.kp3-tag {
+    margin-left: auto;
+    font-size: 11.5px;
+    color: var(--green);
+    border: 1px solid var(--green);
+    border-radius: 999px;
+    padding: 1px 8px;
+}
+.kp3-tag.todo { color: var(--orange); border-color: var(--orange); }
+.kp3-ta {
+    width: 100%;
+    resize: vertical;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+}
+.kp3-ta:focus { border-color: var(--primary); }
+.kp3-empty {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    padding: 14px;
+    background: var(--primary-bg);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+}
+.kp3-bulk {
+    width: 100%;
+    margin-top: 8px;
+    font-size: 12.5px;
+    font-family: ui-monospace, Consolas, monospace;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+    resize: vertical;
+}
+.kp3-saved {
+    font-size: 12.5px;
+    color: var(--green);
+    opacity: 0;
+    transition: opacity .2s;
+}
+.kp3-saved.on { opacity: 1; }
+
+/* ---------- C. 学习指南卡片：迁入「学习记录」后的形态 + 学习材料推荐 ---------- */
+/* 迁位后作为记录区的一块卡片，与上下留出间距 */
+#view-study .guide-panel.in-records {
+    margin: 0 0 14px;
+}
+.gm-item { grid-column: 1 / -1; }
+/* .value 的 contenteditable 观感（cursor:text / hover 底色）不适用于结构化的材料区 */
+.guide-panel .guide-body .item .value.gm-box {
+    cursor: default;
+    padding: 0;
+    min-height: 0;
+    background: none;
+}
+.guide-panel .guide-body .item .value.gm-box:hover { background: none; }
+.gm-box { display: flex; flex-direction: column; gap: 6px; }
+#guidePanel .guide-header .gp-saved { margin-left: 10px; align-self: center; }
+.gp-saved {
+    font-size: 12.5px;
+    color: var(--green);
+    opacity: 0;
+    transition: opacity .2s;
+}
+.gp-saved.on { opacity: 1; }
+.gm-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.gm-icon { flex: 0 0 auto; font-size: 15px; }
+.gm-row input,
+.gm-row select {
+    font-size: 12.5px;
+    padding: 6px 9px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text);
+}
+.gm-src { flex: 1 1 150px; min-width: 120px; }
+.gm-scope { flex: 1 1 130px; min-width: 105px; }
+.gm-mode { flex: 0 0 76px; }
+.gm-note { flex: 1 1 130px; min-width: 105px; }
+.gm-del {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #FDF4F2;
+    color: var(--red);
+    border: 1px solid #E8CFC9;
+    font-size: 12px;
+    line-height: 1;
+}
+.gm-del:hover { background: #F7E4E0; }
+.gm-empty {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    padding: 7px 9px;
+    background: var(--primary-bg);
+    border-radius: 8px;
+    line-height: 1.65;
+}
+.gm-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+}
+.gm-add, .gm-save {
+    padding: 5px 12px;
+    font-size: 12.5px;
+    border-radius: 8px;
+    background: var(--primary-bg);
+    color: var(--primary-dark);
+    border: 1px solid var(--primary-light);
+}
+.gm-add:hover, .gm-save:hover { background: #E9E0CF; }
+.gm-save { background: var(--primary); color: #fff; border-color: var(--primary-dark); }
+.gm-save:hover { background: var(--primary-dark); }
+
+/* ---------- 窄屏：材料行折成一列 ---------- */
+@media (max-width: 900px) {
+    .gm-row { flex-direction: column; align-items: stretch; }
+    .gm-row input, .gm-row select { flex: 1 1 auto; width: 100%; }
+    /* 折成竖排后行首图标会单独占一行、成为一个孤立色块（真机截图里像坏字），
+       且它表达的信息与「载体」下拉完全重复 —— 窄屏隐藏。 */
+    .gm-icon { display: none; }
+    .gm-del { align-self: flex-end; }
+    .kp3-stat { margin-left: 0; width: 100%; }
+}
+/* #### CPA_G_CSS_END #### */
     </style>
 </head>
 <body>
@@ -4157,19 +4418,10 @@
             </div>
         </div>
 
-        <!-- ===== 学习指南面板 ===== -->
-        <div class="guide-panel" id="guidePanel">
-            <div class="guide-header">
-                <h4 id="guideTitle">📖 学习指南</h4>
-                <span class="badge-duration" id="guideDuration">建议时长：-</span>
-            </div>
-            <div class="guide-body" id="guideBody">
-                <div class="item"><span class="label">学习目标</span><span class="value" id="guideObjective" contenteditable="true">-</span></div>
-                <div class="item"><span class="label">重点难点</span><span class="value" id="guideKeypoints" contenteditable="true">-</span></div>
-                <div class="item" style="grid-column:1 / -1;"><span class="label">掌握程度</span><span class="value" id="guideMastery" contenteditable="true">-</span></div>
-            </div>
-            <div class="guide-empty" id="guideEmpty" style="display:none;"><span data-lv-prefix="该" data-lv="chapter" data-lv-suffix="暂无详细指南，请参考教材。">该章节暂无详细指南，请参考教材。</span></div>
-        </div>
+        <!-- ===== 学习指南面板 =====
+             需求 C：整张卡片已迁入下方「📋 学习记录」区块内。
+             原位置 = 记录表单与鼓励横幅之间，现改为记录标题栏之后 —— 因为卡片讲的是
+             「这一节要学什么」，与它下面的记录列表是同一件事的两面。 -->
 
         <!-- ===== 鼓励话语横幅 ===== -->
         <div class="encouragement-banner">
@@ -4227,6 +4479,21 @@
                 <button type="button" class="rec-exp-btn" id="printRecBtn">🖨️ 一键打印</button>
             </div>
             </div>
+        <!-- ===== 学习指南面板（需求 C：迁入学习记录区）===== -->
+        <div class="guide-panel in-records" id="guidePanel">
+            <div class="guide-header">
+                <h4 id="guideTitle">📖 学习指南</h4>
+                <span class="badge-duration" id="guideDuration">建议时长：-</span>
+                <span class="gp-saved" id="gpSaved"></span>
+            </div>
+            <div class="guide-body" id="guideBody">
+                <div class="item"><span class="label">学习目标</span><span class="value" id="guideObjective" contenteditable="true">-</span></div>
+                <div class="item"><span class="label">重点难点</span><span class="value" id="guideKeypoints" contenteditable="true">-</span></div>
+                <div class="item" style="grid-column:1 / -1;"><span class="label">掌握程度</span><span class="value" id="guideMastery" contenteditable="true">-</span></div>
+                <div class="item gm-item"><span class="label">学习材料推荐</span><div class="value gm-box" id="guideMaterials"></div></div>
+            </div>
+            <div class="guide-empty" id="guideEmpty" style="display:none;"><span data-lv-prefix="该" data-lv="chapter" data-lv-suffix="暂无详细指南，请参考教材。">该章节暂无详细指南，请参考教材。</span></div>
+        </div>
         <div class="rec-display-bar" id="recDisplayBar">
             <span class="filter-label">👁 展示内容</span>
             <div class="rec-chips" id="recShowChips">
@@ -4500,6 +4767,47 @@
                         <br>其中 <code>项目</code> 列填了值 → 导入到该指定项目（结构从该列后面的<code>科目</code>开始建）；<code>项目</code> 列留空 → 导入到当前项目。<code><span data-lv="chapter">章</span>名称</code> 填写后会覆盖系统内置<span data-lv="chapter">章</span>名。
                         <br><b>注意</b>：科目设计只建到<b>节</b>（第 1–3 级）。知识点请在学习记录的「📝 知识点速记」里写 —— 那部分自动占第 4–7 级。
                     </div>
+                </div>
+            </div>
+
+            <!-- ===== 重难点补充（需求 B）=====
+                 现状：重点难点只能走「导出模板 → Excel 填 → 导入文件」。
+                 这里给一个直接可编辑、直接落盘的入口 —— 写的是同一份数据
+                 （targetOverrides['科目|章|节'].keypoints，即指南卡片的正文真源）。 -->
+            <div class="goal-panel">
+                <div class="goal-head">
+                    <h3><span class="icon">🎯</span> 重难点补充</h3>
+                </div>
+                <div class="goal-body">
+                    <p class="goal-tip">
+                        这里是<b>逐节填「重点难点」的快捷入口</b> —— 写入的就是学习指南卡片里的「重点难点」，
+                        与「导出模板 → 填写 → 导入文件」<b>同一份数据</b>，不是第二份。改完点「保存全部」立即生效，
+                        不必每次都走 Excel。适合「学到哪、发现哪节难，就地记一条」。
+                    </p>
+                    <div class="kp3-tools">
+                        <select id="kp3Course" title="按科目筛选"><option value="all">全部科目</option></select>
+                        <select id="kp3State" title="按填写状态筛选">
+                            <option value="all">全部状态</option>
+                            <option value="todo">只看待补充</option>
+                            <option value="done">只看已填</option>
+                        </select>
+                        <button type="button" class="kp3-btn primary" id="kp3SaveAll">💾 保存全部</button>
+                        <span class="kp3-stat" id="kp3Stat"></span>
+                    </div>
+                    <div class="kp3-list" id="kp3List"></div>
+                    <details style="margin-top:12px;">
+                        <summary style="cursor:pointer;font-size:13px;color:var(--text-secondary);">📥 批量粘贴（可选）</summary>
+                        <div class="goal-tip" style="margin-top:8px;">
+                            每行一条：<code>科目 | 章 | 节 = 重点难点</code><br>
+                            例如 <code>会计 | 2 | 1 = 存货跌价准备的转回与结转容易混</code>
+                        </div>
+                        <textarea class="kp3-bulk" id="kp3Bulk" rows="3"
+                            placeholder="会计 | 2 | 1 = 存货跌价准备的转回与结转容易混&#10;审计 | 1 | 3 = 重要性水平的确定要记三层口径"></textarea>
+                        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+                            <button type="button" class="kp3-btn" id="kp3AddTpl">📥 批量写入</button>
+                            <span class="kp3-saved" id="kp3Saved"></span>
+                        </div>
+                    </details>
                 </div>
             </div>
 
@@ -5301,6 +5609,12 @@
                     objective: val.objective !== undefined && val.objective !== '' ? val.objective : (prev.objective || '待补充'),
                     keypoints: val.keypoints !== undefined && val.keypoints !== '' ? val.keypoints : (prev.keypoints || '待补充'),
                     mastery: val.mastery !== undefined && val.mastery !== '' ? val.mastery : (prev.mastery || '掌握'),
+                    /* ★ 需求 C：学习材料推荐。
+                       必须在这里显式登记 —— 本函数是**逐字段重建** section 对象，
+                       没列出来的字段会被静默丢掉（本文件同一坑踩过两次：marks / kpH），
+                       表现就是「填了材料、关掉页面再回来就没了」，且不报错。 */
+                    materials: (Array.isArray(prev.materials) && prev.materials.length) ? prev.materials
+                             : ((Array.isArray(val.materials) && val.materials.length) ? val.materials : []),
                     kp: (prev.kp && prev.kp.length) ? prev.kp : ((project.kpTree && project.kpTree[course] && project.kpTree[course][ch] && project.kpTree[course][ch][sec]) ? project.kpTree[course][ch][sec] : []),
                     chapterTotalHours: prev.chapterTotalHours || 0
                 };
@@ -6948,6 +7262,8 @@
                 emptyEl.style.display = 'block';
                 document.querySelector('.guide-body').style.display = 'none';
             }
+            // 需求 C：材料区随章节 / 阶段一起刷新
+            try { gpRefreshMaterials(course, chapter, section); } catch (e) {}
         }
 
         // ---------- 表单初始化 ----------
@@ -8912,6 +9228,792 @@
             return { courses: courses, chapterNames: chapterNames, sectionNames: sectionNames, kpTree: kpTree };
         }
 
+/* #### CPA_G_JS_BEGIN #### */
+/* ============================================================
+   CPA 端三项需求（需求 A / B / C）
+     A 大纲解析两种模式：大纲模式（科目→章→节→知识点）/ 抽象模式（Plan→Stage→Task+产出）
+     B 设置页「重难点补充」集中编辑面板
+     C 学习指南卡片迁入「学习记录」+ 新增「学习材料推荐」+ 真实落盘
+   ------------------------------------------------------------
+   插入位置：主业务 <script>（block 1，原 4783–18968）内。
+   ⚠️ 本段全部用**函数声明**（有提升），不依赖插入点先后。
+   ⚠️ 不覆盖任何既有全局名：所有新名以 og / gp / kp3 / gm 前缀隔离。
+   ⚠️ 只读既有只读依赖：getCurrentProject / saveProjects / applyProject /
+      updateGuide / GUIDE_DATA / currentProjectId / L / stripOutlineNo。
+   ============================================================ */
+
+/* ---------- A-0. 公共词法：缩进 → 条目 ---------- */
+/* 与既有 parseOutline 同一口径：缩进宽度即层级（tab 折 4 空格）；
+   行首 - * • · ▪ ◦ 剥掉；空行跳过。                                */
+function ogLex(text) {
+    const items = [];
+    String(text || '').split(/\r?\n/).forEach(function (l) {
+        const m = l.match(/^(\s*)(\S.*)$/);
+        if (!m) return;
+        const ind = m[1].replace(/\t/g, '    ').length;
+        const name = m[2].trim().replace(/^[-*•·▪◦]\s*/, '');
+        if (name) items.push({ ind: ind, name: name });
+    });
+    return items;
+}
+
+/* ---------- A-1. 产出注解（抽象模式专用） ----------
+   支持：任务名 [产出: X] / [产出：X] / 任务名 → X / 任务名 -> 产出: X        */
+function ogSplitProd(raw) {
+    let t = String(raw == null ? '' : raw).trim();
+    let prod = '';
+    let m = t.match(/^(.*?)\s*\[\s*产出\s*[:：]\s*([^\]]+)\]\s*$/);
+    if (m) { t = m[1].trim(); prod = m[2].trim(); }
+    else {
+        m = t.match(/^(.*?)\s*(?:→|->)\s*(?:产出\s*[:：]\s*)?(.+)$/);
+        if (m) { t = m[1].trim(); prod = m[2].trim(); }
+    }
+    return { name: t, prod: prod };
+}
+
+/* ---------- A-1b. 抽象模式的行首编号（阶段 / 任务） ----------
+   既有的 stripOutlineNo 只认「第X章 / 节 / 讲 / 课 / 部 / 单元 / 篇」，抽象模式的
+   行首却是「第X阶段」「第X任务」。UI 有 20+ 处按 `'第' + n + L('chapter')` 拼层级
+   文案（L('chapter') = '阶段'、L('section') = '任务'），不剥就会渲染成
+   「第1阶段 第一阶段 打基础」—— 与 stripOutlineNo 注释里警告的
+   「第1章 第1章 基础语法」是同一类重复。
+
+   单独实现而**不改 stripOutlineNo**：后者是既有函数，大纲模式下仍在用，
+   且静态体检断言它的函数体逐字不变。                                      */
+function ogStripLvNo(v) {
+    let t = stripOutlineNo(v);          // 先走既有口径（章 / 节 / 讲 …）
+    const cut = function (re) {
+        const r = t.replace(re, '').trim();
+        if (r.length && r !== t) t = r;
+    };
+    cut(/^第\s*[0-9一二三四五六七八九十百零]+\s*(?:阶段|期|模块|任务)\s*[.、:：\-]?\s*/);
+    cut(/^(?:阶段|模块|任务)\s*[0-9一二三四五六七八九十百零]+\s*[.、:：\-]?\s*/);
+    cut(/^(?:stage|task)\s*[0-9]+\s*[.、:：\-]?\s*/i);
+    return t;
+}
+
+/* ---------- A-2. 大纲模式：科目 → 章 → 节 → 知识点（第 4–7 级） ----------
+   相对既有 parseOutline 的唯一增强：**不再忽略更深层级**，改为把第 4 层起的
+   层级递归成知识点树，落进 kpTree。
+
+   kpTree 既有格式（文件内 14283 行附近注释）：
+       project.kpTree[科目][章][节] = [ {name, children:[…]} ]              */
+function parseOutlineFull(text) {
+    const items = ogLex(text);
+    if (!items.length) return null;
+
+    const levels = Array.from(new Set(items.map(function (i) { return i.ind; })))
+        .sort(function (a, b) { return a - b; }).slice(0, 6);
+
+    const courses = [], chapterNames = {}, sectionNames = {}, kpTree = {};
+    let cur = null, curCh = 0, curSec = 0;
+    let kpStack = [];          // kpStack[tier] = 该层刚建的知识点节点
+
+    items.forEach(function (it) {
+        const tier = levels.indexOf(it.ind);
+        if (tier < 0) return;                       // 比第 6 层更深 → 忽略
+
+        let name = it.name;
+        if (tier >= 1) name = stripOutlineNo(name); // 章/节/知识点剥行首编号
+        if (!name) return;
+
+        if (tier === 0) {
+            cur = name;
+            courses.push(cur);
+            chapterNames[cur] = {}; sectionNames[cur] = {}; kpTree[cur] = {};
+            curCh = 0; curSec = 0; kpStack = [];
+        } else if (tier === 1 && cur) {
+            curCh++;
+            chapterNames[cur][curCh] = name;
+            sectionNames[cur][curCh] = [];
+            kpTree[cur][curCh] = {};
+            curSec = 0; kpStack = [];
+        } else if (tier === 2 && cur && curCh) {
+            curSec++;
+            sectionNames[cur][curCh].push(name);
+            kpTree[cur][curCh][curSec] = [];
+            kpStack = [];
+        } else if (tier >= 3 && cur && curCh && curSec) {
+            const node = { name: name, children: [] };
+            const parent = kpStack[tier - 1];
+            if (parent) parent.children.push(node);
+            else kpTree[cur][curCh][curSec].push(node);
+            kpStack[tier] = node;
+            kpStack.length = tier + 1;              // 截断更深层的残留
+        }
+    });
+
+    if (!courses.length) return null;
+    return { courses: courses, chapterNames: chapterNames, sectionNames: sectionNames, kpTree: kpTree };
+}
+
+/* ---------- A-3. 抽象模式：Plan → Stage → Task（+ 产出） ----------
+   选型（2026-09-22）：Plan 落**科目位**、Stage 落**章位**、Task 落**节位**；
+   每个 Task 的「产出」写进该节的学习目标（objective）。
+   这样进度条 / 热力图 / 记忆曲线 / 复习清单**全部零改动复用** ——
+   视图层只认层级位，不认叫法。                                            */
+function parseOutlineAbstract(text) {
+    const items = ogLex(text);
+    if (!items.length) return null;
+
+    const levels = Array.from(new Set(items.map(function (i) { return i.ind; })))
+        .sort(function (a, b) { return a - b; }).slice(0, 3);
+
+    const courses = [], chapterNames = {}, sectionNames = {}, kpTree = {}, objectives = {};
+    let cur = null, curCh = 0, curSec = 0;
+
+    items.forEach(function (it) {
+        const tier = levels.indexOf(it.ind);
+        if (tier < 0) return;
+
+        let name = it.name, prod = '';
+        if (tier === 2) { const sp = ogSplitProd(it.name); name = ogStripLvNo(sp.name); prod = sp.prod; }
+        else if (tier === 1) name = ogStripLvNo(name);
+        if (!name) return;
+
+        if (tier === 0) {
+            cur = name;
+            courses.push(cur);
+            chapterNames[cur] = {}; sectionNames[cur] = {}; kpTree[cur] = {};
+            curCh = 0; curSec = 0;
+        } else if (tier === 1 && cur) {
+            curCh++;
+            chapterNames[cur][curCh] = name;
+            sectionNames[cur][curCh] = [];
+            kpTree[cur][curCh] = {};
+            curSec = 0;
+        } else if (tier === 2 && cur && curCh) {
+            curSec++;
+            sectionNames[cur][curCh].push(name);
+            kpTree[cur][curCh][curSec] = [];
+            if (prod) objectives[cur + '|' + curCh + '|' + curSec] = prod;
+        }
+    });
+
+    if (!courses.length) return null;
+    return {
+        courses: courses, chapterNames: chapterNames, sectionNames: sectionNames,
+        kpTree: kpTree, objectives: objectives,
+        levelLabels: { course: '计划', chapter: '阶段', section: '任务' }
+    };
+}
+
+/* ---------- A-4. 模式选择器与示例模板 ---------- */
+function ogModeOf(box) {
+    const b = (box && box.querySelector) ? box.querySelector('#pdOutlineMode button.on') : null;
+    return (b && b.getAttribute('data-ogmode')) || 'outline';
+}
+
+const OG_HINT = {
+    outline: {
+        label: '大纲结构（科目 → 章 → 节 → 知识点）',
+        ph: '会计\n  第一章 总论\n    第1节 会计概述\n      会计的定义与职能\n        基本职能\n    第2节 会计要素与会计等式',
+        hint: '缩进表示层级：不缩进=<b>科目</b>，缩进 1=<b>章</b>，缩进 2=<b>节</b>，缩进 3 及更深=<b>知识点</b>（1–4 级，递归成树写进知识树）。章 / 节 / 知识点的行首编号会自动剥掉。留空则保留现有结构。'
+    },
+    abstract: {
+        label: '计划结构（Plan → Stage → Task + 产出）',
+        ph: '零基础量化\n  第一阶段 打基础\n    装好环境并跑通第一段代码 [产出: 一份可运行脚本]\n    理解变量与函数 [产出: 20 道练习题]\n  第二阶段 数据与回测\n    读取行情数据 [产出: 一张数据概览图]',
+        hint: '缩进表示层级：不缩进=<b>计划(Plan)</b>，缩进 1=<b>阶段(Stage)</b>，缩进 2=<b>任务(Task)</b>。任务行尾可写产出：<code>[产出: 内容]</code> 或 <code>→ 内容</code>，会写进该任务的「学习目标」。<b>保存后会把这个项目的层级叫法改为 计划 / 阶段 / 任务</b>，进度、热力图、记忆曲线照常可用。'
+    }
+};
+
+function ogApplyModeUI(box) {
+    if (!box) return;
+    const mode = ogModeOf(box);
+    const cfg = OG_HINT[mode] || OG_HINT.outline;
+    const btns = box.querySelectorAll('#pdOutlineMode button');
+    Array.prototype.forEach.call(btns, function (b) {
+        if (b.getAttribute('data-ogmode') === mode) b.classList.add('on');
+        else b.classList.remove('on');
+    });
+    const lab = box.querySelector('#pdOutlineLabel');
+    const ta = box.querySelector('#pdOutline');
+    const hint = box.querySelector('#pdOutlineHint');
+    if (lab) lab.innerHTML = cfg.label;
+    if (ta) ta.setAttribute('placeholder', cfg.ph);
+    if (hint) hint.innerHTML = cfg.hint;
+    // 模板按钮跟着模式换
+    const tps = box.querySelector('#pdOutlineTpls');
+    if (tps) {
+        const arr = OG_TPL[mode] || [];
+        tps.innerHTML = arr.map(function (t, i) {
+            return '<button type="button" class="og-tpl" data-oi="' + i + '">' + kp3Esc(t.n) + '</button>';
+        }).join('');
+    }
+}
+
+const OG_TPL = {
+    outline: [
+        { n: 'CPA 会计 · 前两章', t: '会计\n  第一章 总论\n    第1节 会计概述\n      会计的定义与职能\n      会计基本假设\n    第2节 会计要素与会计等式\n      资产的定义与确认条件\n      负债与所有者权益\n  第二章 存货\n    第1节 存货的确认和初始计量\n    第2节 存货的期末计量' },
+        { n: 'GESP 一级 · C++ 入门', t: 'C++语言\n  第一章 计算机基础\n    第1节 计算机的组成\n    第2节 进制转换\n  第二章 变量与运算\n    第1节 变量的定义\n      整型变量\n      浮点型变量\n    第2节 算术运算' }
+    ],
+    abstract: [
+        { n: '零基础量化 · 10 个月', t: '零基础量化\n  第一阶段 打基础\n    装好环境并跑通第一段代码 [产出: 一份可运行脚本]\n    理解变量 / 循环 / 函数 [产出: 20 道练习题]\n  第二阶段 数据与回测\n    读取行情数据 [产出: 一张数据概览图]\n    写第一个均线回测 [产出: 回测结果截图与结论]\n  第三阶段 策略与实盘\n    多因子打分 [产出: 因子暴露表]' },
+        { n: '自学 Python · 项目式', t: 'Python 自学\n  阶段一 语法热身\n    写一个猜数字游戏 → 可运行的小游戏\n  阶段二 数据处理\n    用 pandas 清洗一份脏数据 → 清洗前后的对比表\n  阶段三 自动化\n    批量重命名本地文件 → 一个带日志的脚本' }
+    ]
+};
+
+/* ---------- A-5. 把解析结果写进项目（两种模式共用出口） ---------- */
+function ogApplyOutline(target, outline, mode) {
+    if (!outline || !outline.courses || !outline.courses.length) return 0;
+    if (typeof dettachBuiltinStructure === 'function') dettachBuiltinStructure(target);
+    if (!Array.isArray(target.courses)) target.courses = [];
+    target.chapterNames = target.chapterNames || {};
+    target.sectionNames = target.sectionNames || {};
+    target.kpTree = target.kpTree || {};
+
+    // 按科目逐个合并：大纲只写了部分科目时不抹掉其余科目的结构
+    outline.courses.forEach(function (c) {
+        if (target.courses.indexOf(c) < 0) target.courses.push(c);
+        if (outline.chapterNames && outline.chapterNames[c]) target.chapterNames[c] = outline.chapterNames[c];
+        if (outline.sectionNames && outline.sectionNames[c]) target.sectionNames[c] = outline.sectionNames[c];
+        if (outline.kpTree && outline.kpTree[c] && Object.keys(outline.kpTree[c]).length) target.kpTree[c] = outline.kpTree[c];
+    });
+    outline.courses.forEach(function (c) {
+        if (typeof ensureCourseStructure === 'function') ensureCourseStructure(target, c);
+    });
+
+    // 抽象模式：产出写进该节的 objective；并把层级叫法改成 计划/阶段/任务
+    if (mode === 'abstract') {
+        target.targetOverrides = target.targetOverrides || {};
+        Object.keys(outline.objectives || {}).forEach(function (k) {
+            const o = target.targetOverrides[k] || {};
+            o.objective = '产出：' + outline.objectives[k];
+            target.targetOverrides[k] = o;
+        });
+        const base = (typeof DEFAULT_LEVEL_LABELS === 'object') ? DEFAULT_LEVEL_LABELS : {};
+        target.levelLabels = Object.assign({}, base, target.levelLabels || {}, outline.levelLabels || {});
+    }
+    return outline.courses.length;
+}
+
+/* ---------- B. 设置页「重难点补充」集中编辑面板 ----------
+   现状：重点难点只能走「导出模板 → Excel 填 → 导入文件」。
+   这里给一个直接可编辑、直接落盘的入口，写回同一份数据
+   （targetOverrides['科目|章|节'].keypoints = 指南正文真源），不是第二份。   */
+
+function kp3Key(course, ch, sec) { return course + '|' + ch + '|' + sec; }
+
+function kp3Collect() {
+    const proj = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+    if (!proj) return [];
+    const rows = [];
+    const seen = {};
+    const ov = proj.targetOverrides || {};
+    const subs = Array.isArray(proj.courses) ? proj.courses : [];
+    subs.forEach(function (course) {
+        const sn = (proj.sectionNames && proj.sectionNames[course]) || {};
+        const cn = (proj.chapterNames && proj.chapterNames[course]) || {};
+        Object.keys(sn).map(Number).filter(function (n) { return !isNaN(n); })
+            .sort(function (a, b) { return a - b; }).forEach(function (ch) {
+                const list = sn[ch] || [];
+                list.forEach(function (name, i) {
+                    const sec = i + 1;
+                    const k = kp3Key(course, ch, sec);
+                    const o = ov[k] || {};
+                    seen[k] = 1;
+                    rows.push({
+                        key: k, course: course, ch: ch, sec: sec,
+                        chName: cn[ch] || '', secName: name || '',
+                        kp: o.keypoints || ''
+                    });
+                });
+            });
+        // targetOverrides 里有、但 sectionNames 未列出的节 —— 也要能编辑（否则配了就再也看不到）
+        Object.keys(ov).forEach(function (k) {
+            if (seen[k]) return;
+            const p = k.split('|');
+            if (p.length !== 3 || p[0] !== course) return;
+            const ch = parseInt(p[1], 10), sec = parseInt(p[2], 10);
+            if (isNaN(ch) || isNaN(sec)) return;
+            const o = ov[k] || {};
+            rows.push({
+                key: k, course: course, ch: ch, sec: sec,
+                chName: cn[ch] || '', secName: o.name || '',
+                kp: o.keypoints || ''
+            });
+        });
+    });
+    return rows;
+}
+
+function kp3Esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function kp3Filled(v) { return !!(v && String(v).trim() && String(v).trim() !== '待补充'); }
+
+function kp3Render() {
+    const box = document.getElementById('kp3List');
+    if (!box) return;
+    const all = kp3Collect();
+    const st = document.getElementById('kp3Stat');
+
+    if (!all.length) {
+        box.innerHTML = '<div class="kp3-empty">当前项目的结构还是空的 —— 先在项目对话框的「大纲结构」里建好' +
+            '科目 / 章 / 节（或用「导出模板 → 填写 → 导入文件」），这里就会出现可编辑的清单。</div>';
+        if (st) st.textContent = '';
+        return;
+    }
+
+    // 科目筛选下拉：重建选项但保留当前选择
+    const sel = document.getElementById('kp3Course');
+    if (sel) {
+        const cur = sel.value || 'all';
+        const courses = [];
+        all.forEach(function (r) { if (courses.indexOf(r.course) < 0) courses.push(r.course); });
+        sel.innerHTML = '<option value="all">全部' + (L('course') || '科目') + '</option>' +
+            courses.map(function (c) { return '<option value="' + kp3Esc(c) + '">' + kp3Esc(c) + '</option>'; }).join('');
+        sel.value = (cur === 'all' || courses.indexOf(cur) >= 0) ? cur : 'all';
+    }
+    const selEl = document.getElementById('kp3Course');
+    const stEl = document.getElementById('kp3State');
+    const fc = (selEl && selEl.value) || 'all';
+    const fs = (stEl && stEl.value) || 'all';
+
+    const rows = all.filter(function (r) {
+        if (fc !== 'all' && r.course !== fc) return false;
+        const f = kp3Filled(r.kp);
+        if (fs === 'todo' && f) return false;
+        if (fs === 'done' && !f) return false;
+        return true;
+    });
+
+    const filledN = all.filter(function (r) { return kp3Filled(r.kp); }).length;
+    if (st) {
+        st.textContent = '已填 ' + filledN + ' / 共 ' + all.length + ' 个' + (L('section') || '节') +
+            (rows.length !== all.length ? '（当前筛选出 ' + rows.length + ' 条）' : '');
+    }
+
+    box.innerHTML = rows.map(function (r) {
+        const f = kp3Filled(r.kp);
+        return '<div class="kp3-row' + (f ? ' is-done' : '') + '">' +
+            '<div class="kp3-loc">' +
+                '<span class="kp3-course">' + kp3Esc(r.course) + '</span>' +
+                '<span class="kp3-path">第' + r.ch + (L('chapter') || '章') + (r.chName ? ' ' + kp3Esc(r.chName) : '') +
+                    ' · 第' + r.sec + (L('section') || '节') + (r.secName ? ' ' + kp3Esc(r.secName) : '') + '</span>' +
+                (f ? '<span class="kp3-tag">已填</span>' : '<span class="kp3-tag todo">待补充</span>') +
+            '</div>' +
+            '<textarea class="kp3-ta" data-kpkey="' + kp3Esc(r.key) + '" rows="2" ' +
+                'placeholder="这一节的难点在哪？如：存货跌价准备的转回与结转容易混">' +
+                kp3Esc(f ? r.kp : '') + '</textarea>' +
+            '</div>';
+    }).join('') || '<div class="kp3-empty">没有符合当前筛选条件的' + (L('section') || '节') + '。</div>';
+}
+
+function kp3SaveAll() {
+    const proj = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+    if (!proj) return { n: 0 };
+    proj.targetOverrides = proj.targetOverrides || {};
+    let n = 0;
+    const tas = document.querySelectorAll('#kp3List textarea[data-kpkey]');
+    Array.prototype.forEach.call(tas, function (ta) {
+        const k = ta.getAttribute('data-kpkey');
+        const v = (ta.value || '').trim();
+        const o = proj.targetOverrides[k] || {};
+        const cur = o.keypoints || '';
+        if (v === cur) return;
+        if (v) o.keypoints = v; else delete o.keypoints;
+        if (!Object.keys(o).length) delete proj.targetOverrides[k];
+        else proj.targetOverrides[k] = o;
+        n++;
+    });
+    if (n) {
+        if (typeof saveProjects === 'function') saveProjects();
+        if (typeof applyProject === 'function') applyProject(currentProjectId);
+        try {
+            const c = (document.getElementById('fCourse') || {}).value;
+            const ch = parseInt((document.getElementById('fChapter') || {}).value, 10);
+            const se = parseInt((document.getElementById('fSection') || {}).value, 10);
+            if (c && !isNaN(ch) && !isNaN(se) && typeof updateGuide === 'function') updateGuide(c, ch, se);
+        } catch (e) {}
+    }
+    kp3Render();
+    return { n: n };
+}
+
+/* ---------- C-1. 学习指南：真实落盘 ----------
+   原实现三个 contenteditable 字段**没有任何写入路径**（全文件只有定义与读取各一处
+   引用），改完失焦即丢、不报错、不提示。这里补上写入路径。                     */
+function gpKeyOf(course, chapter, section) { return course + '|' + chapter + '|' + section; }
+
+function gpFieldOf(el) {
+    const id = el && el.id;
+    if (id === 'guideObjective') return 'objective';
+    if (id === 'guideKeypoints') return 'keypoints';
+    if (id === 'guideMastery') return 'mastery';
+    return '';
+}
+
+function gpCurrentLoc() {
+    const cEl = document.getElementById('fCourse');
+    const chEl = document.getElementById('fChapter');
+    const sEl = document.getElementById('fSection');
+    if (!cEl || !chEl || !sEl) return null;
+    const c = cEl.value;
+    const ch = parseInt(chEl.value, 10);
+    const se = parseInt(sEl.value, 10);
+    if (!c || isNaN(ch) || isNaN(se)) return null;
+    return { course: c, chapter: ch, section: se, key: gpKeyOf(c, ch, se) };
+}
+
+function gpPersistField(el) {
+    const f = gpFieldOf(el);
+    if (!f) return;
+    const loc = gpCurrentLoc();
+    if (!loc) return;
+    const proj = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+    if (!proj) return;
+
+    // 掌握程度以徽标呈现 —— 取徽标里的文字，不是整格的 HTML
+    const badge = (el.querySelector ? el.querySelector('.mastery-badge') : null);
+    const val = badge ? (badge.textContent || '').trim() : (el.textContent || '').trim();
+    if (val === '待补充' || val === '-') return;      // 别把占位写成真值
+
+    proj.targetOverrides = proj.targetOverrides || {};
+    const o = proj.targetOverrides[loc.key] || {};
+    const cur = o[f] || '';
+    if (val === cur) return;
+    if (val) o[f] = val; else delete o[f];
+    if (!Object.keys(o).length) delete proj.targetOverrides[loc.key];
+    else proj.targetOverrides[loc.key] = o;
+
+    if (typeof saveProjects === 'function') saveProjects();
+    if (typeof applyProject === 'function') applyProject(currentProjectId);
+
+    // 就地刷新 GUIDE_DATA，避免「改了但卡片还是旧值」
+    try {
+        if (typeof GUIDE_DATA !== 'undefined' && GUIDE_DATA[loc.course] &&
+            GUIDE_DATA[loc.course].chapters[loc.chapter] &&
+            GUIDE_DATA[loc.course].chapters[loc.chapter].sections[loc.section]) {
+            const sec = GUIDE_DATA[loc.course].chapters[loc.chapter].sections[loc.section];
+            sec[f] = val ? val : (f === 'mastery' ? '掌握' : '待补充');
+        }
+    } catch (e) {}
+    gpFlash('已保存');
+}
+
+let gpFlashT = null;
+function gpFlash(msg) {
+    const el = document.getElementById('gpSaved');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('on');
+    if (gpFlashT) clearTimeout(gpFlashT);
+    gpFlashT = setTimeout(function () { el.classList.remove('on'); }, 1600);
+}
+
+function gpBindEditable() {
+    const body = document.getElementById('guideBody');
+    if (!body || body.__gpBound) return;
+    body.__gpBound = true;
+    ['guideObjective', 'guideKeypoints', 'guideMastery'].forEach(function (id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('blur', function () { gpPersistField(el); });
+        el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); }
+        });
+    });
+}
+
+/* ---------- C-2. 学习材料推荐 ----------
+   每条 = { src 书名/来源, scope 内容范围, mode 载体, note 备注 }；
+   载体枚举：精读 / 视频 / 笔记 / 软件。
+   落盘 targetOverrides[key].materials —— ⚠️ 必须同时在 buildGuideData 里显式登记，
+   否则被「逐字段重建」静默丢掉（本文件同一坑踩过两次：marks / kpH）。          */
+const GM_MODES = ['精读', '视频', '笔记', '软件'];
+const GM_MODE_ICON = { '精读': '📖', '视频': '🎬', '笔记': '✍️', '软件': '💻' };
+
+function gmListOf(course, chapter, section) {
+    const proj = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+    if (!proj) return [];
+    const o = (proj.targetOverrides || {})[gpKeyOf(course, chapter, section)];
+    return (o && Array.isArray(o.materials)) ? o.materials : [];
+}
+
+function gmRender(course, chapter, section) {
+    const box = document.getElementById('guideMaterials');
+    if (!box) return;
+    const list = gmListOf(course, chapter, section);
+    const head = list.map(function (m, i) {
+        const mode = (GM_MODES.indexOf(m.mode) >= 0) ? m.mode : '精读';
+        return '<div class="gm-row" data-gmi="' + i + '">' +
+            '<span class="gm-icon">' + (GM_MODE_ICON[mode] || '📖') + '</span>' +
+            '<input class="gm-src" value="' + kp3Esc(m.src || '') + '" placeholder="书名 / 来源，如《会计》教材">' +
+            '<input class="gm-scope" value="' + kp3Esc(m.scope || '') + '" placeholder="内容范围，如第3章 P78-P96">' +
+            '<select class="gm-mode">' + GM_MODES.map(function (x) {
+                return '<option value="' + x + '"' + (x === mode ? ' selected' : '') + '>' + x + '</option>';
+            }).join('') + '</select>' +
+            '<input class="gm-note" value="' + kp3Esc(m.note || '') + '" placeholder="备注，如课后题必做">' +
+            '<button type="button" class="gm-del" title="删除这条材料">✕</button>' +
+            '</div>';
+    }).join('');
+    const empty = list.length ? '' :
+        '<div class="gm-empty">这一' + (L('section') || '节') + '还没有推荐材料 —— 点「＋ 添加材料」写清楚用什么书、看哪部分、用笔记还是看视频。</div>';
+    box.innerHTML = empty + head +
+        '<div class="gm-actions">' +
+        '<button type="button" class="gm-add" id="gmAdd">＋ 添加材料</button>' +
+        '<button type="button" class="gm-save" id="gmSave">💾 保存材料</button>' +
+        '<span class="gp-saved" id="gpSaved"></span>' +
+        '</div>';
+}
+
+function gmWriteList(loc, list, msg) {
+    const proj = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+    if (!proj) return;
+    proj.targetOverrides = proj.targetOverrides || {};
+    const o = proj.targetOverrides[loc.key] || {};
+    if (list.length) o.materials = list; else delete o.materials;
+    if (!Object.keys(o).length) delete proj.targetOverrides[loc.key];
+    else proj.targetOverrides[loc.key] = o;
+    if (typeof saveProjects === 'function') saveProjects();
+    try {
+        if (typeof GUIDE_DATA !== 'undefined' && GUIDE_DATA[loc.course] &&
+            GUIDE_DATA[loc.course].chapters[loc.chapter] &&
+            GUIDE_DATA[loc.course].chapters[loc.chapter].sections[loc.section]) {
+            const sec = GUIDE_DATA[loc.course].chapters[loc.chapter].sections[loc.section];
+            if (list.length) sec.materials = list; else delete sec.materials;
+        }
+    } catch (e) {}
+    if (msg) gpFlash(msg);
+}
+
+function gmSaveFromDom() {
+    const loc = gpCurrentLoc();
+    if (!loc) return 0;
+    const rows = document.querySelectorAll('#guideMaterials .gm-row');
+    const list = [];
+    Array.prototype.forEach.call(rows, function (r) {
+        const src = ((r.querySelector('.gm-src') || {}).value || '').trim();
+        const scope = ((r.querySelector('.gm-scope') || {}).value || '').trim();
+        const mode = ((r.querySelector('.gm-mode') || {}).value || '精读');
+        const note = ((r.querySelector('.gm-note') || {}).value || '').trim();
+        if (!src && !scope && !note) return;             // 全空的整行丢掉
+        list.push({ src: src, scope: scope, mode: mode, note: note });
+    });
+    gmWriteList(loc, list, '材料已保存');
+    return list.length;
+}
+
+function gmAfterChange() {
+    const loc = gpCurrentLoc();
+    if (!loc) return;
+    gmRender(loc.course, loc.chapter, loc.section);
+    gmBind();
+    gpBindEditable();
+}
+
+function gmBind() {
+    const box = document.getElementById('guideMaterials');
+    if (!box || box.__gmBound) return;
+    box.__gmBound = true;
+    box.addEventListener('click', function (e) {
+        const t = e.target;
+        if (!t) return;
+        if (t.id === 'gmAdd') {
+            const loc = gpCurrentLoc();
+            if (!loc) return;
+            const list = gmListOf(loc.course, loc.chapter, loc.section).slice();
+            list.push({ src: '', scope: '', mode: '精读', note: '' });
+            gmWriteList(loc, list, '');
+            gmAfterChange();
+            const rows = document.querySelectorAll('#guideMaterials .gm-row');
+            const last = rows[rows.length - 1];
+            if (last) { const i = last.querySelector('.gm-src'); if (i) i.focus(); }
+            return;
+        }
+        if (t.id === 'gmSave') { gmSaveFromDom(); gmAfterChange(); return; }
+        if (t.classList && t.classList.contains('gm-del')) {
+            const loc = gpCurrentLoc();
+            if (!loc) return;
+            const row = t.closest ? t.closest('.gm-row') : null;
+            const idx = row ? parseInt(row.getAttribute('data-gmi'), 10) : -1;
+            const list = gmListOf(loc.course, loc.chapter, loc.section).slice();
+            if (idx >= 0) list.splice(idx, 1);
+            gmWriteList(loc, list, '已删除');
+            gmAfterChange();
+            return;
+        }
+    });
+    // 改完点「保存材料」才写盘：避免每敲一个字就写 localStorage
+}
+
+/* 由 updateGuide 调用：只刷新材料区，其余字段 updateGuide 自己处理 */
+function gpRefreshMaterials(course, chapter, section) {
+    try { gmRender(course, chapter, section); gmBind(); gpBindEditable(); } catch (e) {}
+}
+
+/* 设置页通用提示（重难点面板内） */
+function kp3Flash(msg) {
+    const el = document.getElementById('kp3Saved');
+    if (!el) { return; }
+    el.textContent = msg;
+    el.classList.add('on');
+    setTimeout(function () { el.classList.remove('on'); }, 1800);
+}
+
+/* ---------- D. 初始化（幂等） ---------- */
+function ogInitAll() {
+    if (window.__ogInited) return;
+    window.__ogInited = true;
+
+    // ① 项目对话框：模式切换 + 示例模板（对话框是动态 innerHTML，用事件委托）
+    document.addEventListener('click', function (e) {
+        const t = e.target;
+        if (!t || !t.closest) return;
+
+        const mBtn = t.closest('#pdOutlineMode button[data-ogmode]');
+        if (mBtn) {
+            const box = mBtn.closest('#projDialog');
+            const btns = box ? box.querySelectorAll('#pdOutlineMode button') : [];
+            Array.prototype.forEach.call(btns, function (b) { b.classList.remove('on'); });
+            mBtn.classList.add('on');
+            ogApplyModeUI(box);
+            return;
+        }
+        const tp = t.closest('#pdOutlineTpls .og-tpl');
+        if (tp) {
+            const box = tp.closest('#projDialog');
+            const mode = ogModeOf(box);
+            const i = parseInt(tp.getAttribute('data-oi'), 10);
+            const tpl = (OG_TPL[mode] || [])[i];
+            if (tpl && box) {
+                const ta = box.querySelector('#pdOutline');
+                if (ta) { ta.value = tpl.t; ta.focus(); }
+            }
+            return;
+        }
+        // 视图切换：进入设置刷新重难点面板；进入学习进度刷新材料区
+        if (t.closest('[data-view="goal"]')) {
+            setTimeout(function () { try { kp3Render(); } catch (er) {} }, 40);
+        }
+        if (t.closest('[data-view="study"]')) {
+            setTimeout(function () {
+                try { const q = gpCurrentLoc(); if (q) gpRefreshMaterials(q.course, q.chapter, q.section); } catch (er) {}
+            }, 40);
+        }
+    });
+
+    // ② 重难点补充面板
+    const kc = document.getElementById('kp3Course');
+    if (kc) kc.addEventListener('change', kp3Render);
+    const ks = document.getElementById('kp3State');
+    if (ks) ks.addEventListener('change', kp3Render);
+    const kb = document.getElementById('kp3SaveAll');
+    if (kb) kb.addEventListener('click', function () {
+        const r = kp3SaveAll();
+        kp3Flash(r.n ? ('已保存 ' + r.n + ' 处改动') : '没有改动需要保存');
+    });
+    const ka = document.getElementById('kp3AddTpl');
+    if (ka) ka.addEventListener('click', function () {
+        const ta = document.getElementById('kp3Bulk');
+        if (!ta) return;
+        const proj = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+        if (!proj) return;
+        proj.targetOverrides = proj.targetOverrides || {};
+        let hit = 0, miss = 0;
+        String(ta.value || '').split(/\r?\n/).forEach(function (ln) {
+            if (!ln.trim()) return;
+            const m = ln.match(/^\s*([^|｜]+)\s*[|｜]\s*([^|｜]+)\s*[|｜]\s*([^|｜=＝:：]+)\s*[=＝:：]\s*(.+)$/);
+            if (!m) { miss++; return; }
+            const course = m[1].trim(), ch = parseInt(m[2], 10), sec = parseInt(m[3], 10), txt = m[4].trim();
+            if (!course || isNaN(ch) || isNaN(sec) || !txt) { miss++; return; }
+            const k = kp3Key(course, ch, sec);
+            const o = proj.targetOverrides[k] || {};
+            o.keypoints = txt;
+            proj.targetOverrides[k] = o;
+            hit++;
+        });
+        if (hit) {
+            if (typeof saveProjects === 'function') saveProjects();
+            if (typeof applyProject === 'function') applyProject(currentProjectId);
+        }
+        ta.value = '';
+        kp3Render();
+        kp3Flash('批量写入 ' + hit + ' 条' + (miss ? '，' + miss + ' 行格式不符已跳过' : ''));
+    });
+
+    // ③ 指南卡片绑定 + 材料区首渲
+    gpBindEditable();
+    (function () {
+        const q = gpCurrentLoc();
+        if (q) gpRefreshMaterials(q.course, q.chapter, q.section);
+    })();
+    try { kp3Render(); } catch (e) {}
+
+    /* ④ 项目对话框的模板 chip 兜底补齐
+       openProjectDialog 每次整块重写 innerHTML，而 ogApplyModeUI 只在用户**点模式按钮**
+       时才跑 —— 于是首开对话框时 #pdOutlineTpls 是空的（真机回归第 6 节抓到：期望 2 个
+       模板 chip，实得 0）。这里用 MutationObserver 兜底：只要 #pdOutlineTpls 在文档里
+       且为空，就补一次模式 UI。**幂等** —— ogApplyModeUI 填完 chip 后 children 非空，
+       再触发即为 no-op；对话框未打开时 getElementById 直接返回 null，开销可忽略。 */
+    function ogSyncDialog() {
+        const box = document.getElementById('projDialog');
+        if (!box) return;
+        const tps = box.querySelector('#pdOutlineTpls');
+        if (!tps || tps.children.length) return;
+        ogApplyModeUI(box);
+    }
+    try {
+        new MutationObserver(function () { ogSyncDialog(); })
+            .observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
+    // 双击点开路径的即时兜底（MutationObserver 是异步的，这里让首帧就有 chip）
+    document.addEventListener('click', function (e) {
+        const b = e.target && e.target.closest
+            ? e.target.closest('#addProjectBtn, #renameProjectBtn') : null;
+        if (b) setTimeout(ogSyncDialog, 0);
+    });
+}
+
+/* ---------- E. 透出接口 ----------
+   本文件既有惯例：CpaRich / CpaChain / CpaKpEditor 都挂 window，
+   注释写明「透出给其它 <script> 块 / 测试（单一实现，别处不再写第二份）」。
+   这里照做 —— 否则 jsdom 无法探到 IIFE 内的函数（win.eval 也进不来）。   */
+try {
+    window.CpaGuide = {
+        version: 'cpa-guide-1',
+        ogLex: ogLex,
+        ogSplitProd: ogSplitProd,
+        ogStripLvNo: ogStripLvNo,
+        parseOutlineFull: parseOutlineFull,
+        parseOutlineAbstract: parseOutlineAbstract,
+        ogApplyOutline: ogApplyOutline,
+        ogModeOf: ogModeOf,
+        ogApplyModeUI: ogApplyModeUI,
+        OG_TPL: OG_TPL,
+        kp3Key: kp3Key,
+        kp3Collect: kp3Collect,
+        kp3Render: kp3Render,
+        kp3SaveAll: kp3SaveAll,
+        gpKeyOf: gpKeyOf,
+        gpCurrentLoc: gpCurrentLoc,
+        gpPersistField: gpPersistField,
+        gmListOf: gmListOf,
+        gmRender: gmRender,
+        gmBind: gmBind,
+        gmWriteList: gmWriteList,
+        gmSaveFromDom: gmSaveFromDom,
+        GM_MODES: GM_MODES,
+        proj: function () { return (typeof getCurrentProject === 'function') ? getCurrentProject() : null; },
+        guide: function () { return (typeof GUIDE_DATA !== 'undefined') ? GUIDE_DATA : null; },
+        projects: function () { return (typeof projects !== 'undefined') ? projects : null; },
+        saveProjects: function () { if (typeof saveProjects === 'function') saveProjects(); },
+        applyProject: function (id) { if (typeof applyProject === 'function') applyProject(id); },
+        updateGuide: function (c, ch, se) { if (typeof updateGuide === 'function') updateGuide(c, ch, se); },
+        curProjectId: function () { return (typeof currentProjectId !== 'undefined') ? currentProjectId : null; }
+    };
+} catch (e) {}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(ogInitAll, 0); });
+} else {
+    setTimeout(ogInitAll, 0);
+}
+/* #### CPA_G_JS_END #### */
+
         // ---------- 「内容模块」章 / 节 重难疑点预配置（需求1，2026-09-18） ----------
         /* 这个区解决的是一件具体的事：知识树上的 ★▲？ 原先只有「📝 学习记录里勾过」
            一个来源，于是「我**打算**把第 3 章当重点」根本没有地方放 —— 要么等学完再补
@@ -9121,7 +10223,7 @@
                 '<div class="pf"><label>类型</label><select id="pdType">' +
                 '<option value="exam">考试型（有考期，显示倒计时）</option>' +
                 '<option value="skill">技能型（无固定考期）</option></select></div>' +
-                '<div class="pf-hint" style="background:#f6f1e8;border:1px dashed #d8c9ad;padding:8px 10px;border-radius:8px;line-height:1.7;">科目设计只到<b>第 3 级（科目 → 章 → 节）</b>。下方「大纲结构」一次性填好这三层；知识点在<b>学习记录 → 知识点速记</b>里写，那部分自动占第 4–7 级。</div>' +
+                '<div class="pf-hint" style="background:#f6f1e8;border:1px dashed #d8c9ad;padding:8px 10px;border-radius:8px;line-height:1.7;">下方「大纲结构」支持两种解析：<b>大纲模式</b>按 科目 → 章 → 节 → 知识点（1–4 级）落盘；<b>抽象模式</b>按 计划(Plan) → 阶段(Stage) → 任务(Task) 落盘，并把层级叫法改为「计划 / 阶段 / 任务」。两种模式的进度、热力图、记忆曲线均可直接使用。</div>' +
                 '<div class="pf"><label>默认每节计划学时 (h，可留空)</label><input id="pdPlan" type="number" min="0" step="0.5" placeholder="如 2.5（留空则按知识点数自动估算）"></div>' +
                 '<div class="pf"><label>考试 / 目标日期（可留空）</label><input id="pdExam" type="date"></div>' +
                 '<div class="pf"><label>' + (ll.course || '科目') + '清单（一行一个，可留空）</label>' +
@@ -9129,9 +10231,14 @@
                 '<div class="pf-hint"><b>保存后以本框为准</b>：框里留什么就存什么，删掉的行会移除该' + (ll.course || '科目') + '（学习记录不会删，重新加回同名即可恢复）；改写一行等于改名，想让记录跟着走请写「旧名=>新名」。留空 = 不动现有' + (ll.course || '科目') + '。若下方填了「大纲结构」，大纲里出现的' + (ll.course || '科目') + '会一并保留。</div></div>' +
                 '<div class="pf"><label>复习间隔（天，逗号分隔）</label><input id="pdIv" type="text" placeholder="1,2,4,7,15">' +
                 '<div class="pf-hint">考试型建议 1,2,4,7,15；技能型建议 1,3,7,14,30</div></div>' +
-                '<div class="pf"><label>大纲结构（只填 科目 / 章 / 节 三层）</label>' +
-                '<textarea id="pdOutline" rows="8" placeholder="财管&#10;  第一章 存货&#10;    第1节 存货的确认&#10;    第2节 存货的计量&#10;  第二章 固定资产&#10;    第1节 初始计量"></textarea>' +
-                '<div class="pf-hint">缩进表示层级：不缩进=科目，缩进1=章，缩进2=节。<b>再深的缩进会被忽略</b>（知识点不属于科目设计，请在「学习记录 → 知识点速记」里写，那里占第 4–7 级）。留空则保留现有结构。</div></div>' +
+                '<div class="pf"><label id="pdOutlineLabel">大纲结构（科目 → 章 → 节 → 知识点）</label>' +
+                '<div class="og-modes" id="pdOutlineMode">' +
+                    '<button type="button" data-ogmode="outline" class="on">📚 大纲模式</button>' +
+                    '<button type="button" data-ogmode="abstract">🧩 抽象模式</button>' +
+                '</div>' +
+                '<div class="og-tpls" id="pdOutlineTpls"></div>' +
+                '<textarea id="pdOutline" rows="9" placeholder="会计&#10;  第一章 总论&#10;    第1节 会计概述&#10;      会计的定义与职能&#10;    第2节 会计要素"></textarea>' +
+                '<div class="pf-hint" id="pdOutlineHint">缩进表示层级：不缩进=<b>科目</b>，缩进 1=<b>章</b>，缩进 2=<b>节</b>，缩进 3 及更深=<b>知识点</b>（1–4 级，递归成树写进知识树）。章 / 节 / 知识点的行首编号会自动剥掉。留空则保留现有结构。</div></div>' +
                 /* ★ 需求1（2026-09-18）：内容模块 —— 章 / 节 重难疑点的**提前配置**。
                    放在「大纲结构」下面，因为它配的就是大纲里那两层。 */
                 '<div class="pf"><label>内容模块 · 科目 / 章 / 节 重难疑点预配置</label>' +
@@ -9272,7 +10379,10 @@
                 const iv = (box.querySelector('#pdIv').value || '').split(/[,，、\s]+/)
                     .map(function (s) { return parseInt(s, 10); })
                     .filter(function (n) { return !isNaN(n) && n > 0; });
-                const outline = parseOutline(box.querySelector('#pdOutline').value);
+                const _ogMode = ogModeOf(box);
+                const outline = (_ogMode === 'abstract')
+                    ? parseOutlineAbstract(box.querySelector('#pdOutline').value)
+                    : parseOutlineFull(box.querySelector('#pdOutline').value);
                 const subjectEdits = parseSubjectList(String(box.querySelector('#pdSubjects').value || '').split(/\r?\n/));
 
                 let target = editing;
@@ -9291,23 +10401,8 @@
                 target.examDate = box.querySelector('#pdExam').value || '';
                 target.reviewIntervals = iv.length ? iv : DEFAULT_REVIEW_INTERVALS.slice();
                 target.defaultPlanHours = (function () { const v = parseFloat(box.querySelector('#pdPlan').value); return (!isNaN(v) && v > 0) ? v : 0; })();
-                if (outline && outline.courses.length) {
-                    dettachBuiltinStructure(target);
-                    if (!Array.isArray(target.courses)) target.courses = [];
-                    target.chapterNames = target.chapterNames || {};
-                    target.sectionNames = target.sectionNames || {};
-                    target.kpTree = target.kpTree || {};
-                    // 按科目逐个合并：大纲只写了部分科目时，不抹掉其余科目已有的章/节/知识点结构
-                    // （旧实现对 chapterNames / sectionNames / kpTree 做事整棵替换，粘贴单科目大纲会误伤其他科目）
-                    (outline.courses || []).forEach(function (c) {
-                        if (target.courses.indexOf(c) < 0) target.courses.push(c);
-                        if (outline.chapterNames && outline.chapterNames[c]) target.chapterNames[c] = outline.chapterNames[c];
-                        if (outline.sectionNames && outline.sectionNames[c]) target.sectionNames[c] = outline.sectionNames[c];
-                        if (outline.kpTree && outline.kpTree[c] && Object.keys(outline.kpTree[c]).length) target.kpTree[c] = outline.kpTree[c];
-                    });
-                    // 大纲里没写章节的科目，兜底补「第1章 / 第1节」
-                    (outline.courses || []).forEach(function (c) { ensureCourseStructure(target, c); });
-                }
+                // 需求 A：写入口径统一收到 ogApplyOutline 里（含抽象模式的产出与层级叫法）
+                if (outline && outline.courses.length) ogApplyOutline(target, outline, _ogMode);
                 // 科目清单 = 权威列表：改名 → 删除 → 新增 → 保序（大纲里出现的科目强制保留）
                 const subjRes = applySubjectList(target, subjectEdits, (outline && outline.courses) ? outline.courses : []);
                 /* ★ 需求1：把「内容模块」的预配置写回项目。
@@ -21415,7 +22510,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922e</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922f</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
