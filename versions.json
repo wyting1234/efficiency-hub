@@ -2,17 +2,17 @@
   "scheme": "V<YYYYMMDD><letters>",
   "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
   "day": "20260923",
-  "seq": 5,
-  "latest": "V20260923e",
-  "updatedAt": "2026-09-23T13:30:47+08:00",
-  "note2": "集思录 · 目标管理三条需求上线：① 目标设定后可一键生成「母子任务清单」或「习惯打卡」（按下级目标生成，幂等 —— 已生成过会先确认再清旧重建，并回写 goal.taskIds / habitIds）；② 目标进度改为按已完成的任务清单数量自动估算（子任务 done/总数；导入目标按打卡天数/目标次数），无关联时回退手填值、不改存储；③ 手工输入的目标与之前批量导入的目标分成两个来源分别管理（顶部分段条切换；导入来源只读、隐藏新建卡、列表改为「去习惯页」）。",
+  "seq": 6,
+  "latest": "V20260923f",
+  "updatedAt": "2026-09-23T13:47:34+08:00",
+  "note2": "**生活工作台 · 收纳盒并入为「收纳盒」Tab（V20260923f）。**\n\n① 是什么：原独立工具 `tools/王鑫迪的收纳盒.html` 不再作为导航站独立入口，其全部功能（物品 / 资料收纳与检索）以 **iframe + srcdoc** 形式内嵌进 `tools/life-workbench.html` 的「收纳盒」标签页；原文件已删除。\n② 为什么用 iframe：收纳盒自带完整 CSS/JS（含 .btn/.modal/.header 等通用类名），直接并入会与生活工作台样式冲突；iframe 天然隔离。收纳盒此前已内置 `window.self!==window.top` 检测，内嵌时自动隐藏自身 buildTag，避免与导航徽标叠字。\n③ 数据零丢失：iframe 启用 `allow-same-origin`，与父页同源，localStorage 键 `organizer_items_v2` / `organizer_theme` / `storage_categories` 不变，用户历史数据无缝保留；这些键已并入「生活工作台」的备份 / 同步分组。\n④ 删除：导航站 TOOLS 表中 `box` 入口移除（原文件删除后避免 404）。\n⑤ 数据层：无新字段、无迁移；收纳盒数据域独立，不影响 `wb_life_v1`。",
   "files": {
-    "index.html": "V20260923e",
+    "index.html": "V20260923f",
     "sync-github.js": "V20260918d",
     "tools/CPA会计掌握度系统.html": "V20260917i",
     "tools/code-previewer.html": "V20260917i",
     "tools/cpa学习工具1.html": "V20260922i",
-    "tools/life-workbench.html": "V20260917i",
+    "tools/life-workbench.html": "V20260923f",
     "tools/人积极交往.html": "V20260918h",
     "tools/健康管理.html": "V20260917i",
     "tools/偶像学习.html": "V20260917i",
@@ -26,7 +26,6 @@
     "tools/时间统计2.html": "V20260917i",
     "tools/朝暮计.html": "V20260923d",
     "tools/消息获取.html": "V20260917i",
-    "tools/王鑫迪的收纳盒.html": "V20260917i",
     "tools/阅读 (2).html": "V20260917i",
     "tools/social/record.html": "V20260918h",
     "tools/social/model.html": "V20260918h",
@@ -37,5 +36,6 @@
     "tools/social/action.html": "V20260918h",
     "tools/social/wisdom.html": "V20260918h",
     "tools/backup-hub.js": "V20260918n"
-  }
+  },
+  "note2_prev": "集思录 · 目标管理三条需求上线：① 目标设定后可一键生成「母子任务清单」或「习惯打卡」（按下级目标生成，幂等 —— 已生成过会先确认再清旧重建，并回写 goal.taskIds / habitIds）；② 目标进度改为按已完成的任务清单数量自动估算（子任务 done/总数；导入目标按打卡天数/目标次数），无关联时回退手填值、不改存储；③ 手工输入的目标与之前批量导入的目标分成两个来源分别管理（顶部分段条切换；导入来源只读、隐藏新建卡、列表改为「去习惯页」）。"
 }
