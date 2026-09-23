@@ -717,6 +717,13 @@
             justify-content: center;
         }
 
+        /* ==== v60：四象限 Ⅳ 格的「今日习惯」（Tom：习惯自动同步到不重要不紧急）==== */
+        .qtoday-h.hb { color: #3f8a5c; border-top: 1px dashed rgba(63, 138, 92, .45); }
+        .qtask.hbq .qt .sub-prog.hb-pct { color: #3f8a5c; font-weight: 600; }
+        .qtask.hbq.hb-done { opacity: .74; }
+        .qtask.hbq.hb-done .qt { color: #4a7f61; }
+        .qtask.hbq .chk.hb-multi { font-size: 8px; letter-spacing: -.5px; }
+
         /* ===== 任务卡片 ===== */
         .qtask {
             position: relative;
@@ -9375,9 +9382,15 @@ oninput="pgRefresh()"></textarea>
                         (rest.length ? rest.map(t => qTaskHTML(t)).join('')
                                      : (tds.length ? '' : '<div class="qempty">点击 ＋ 添加</div>'));
                 } else {
-                    tasksHtml = items.length ? items.map(t => qTaskHTML(t)).join('') :
-                        '<div class="qempty">点击 ＋ 添加</div>';
+                    tasksHtml = items.length ? items.map(t => qTaskHTML(t)).join('') : '';
                 }
+                /* v60：Ⅳ 格自动带上「今日习惯」。习惯不是任务、不参与 priority 分组，
+                   按自己的排期决定今天出不出现（quadHabitDue）。
+                   已完成清单（archived）与搜索态不掺进来，避免与任务口径打架。 */
+                if (q.p === 4 && filter !== 'archived' && !searchQuery.trim()) {
+                    tasksHtml += quadHabitRowsHTML();
+                }
+                if (!tasksHtml) tasksHtml = '<div class="qempty">点击 ＋ 添加</div>';
                 return `<div class="quad ${q.cls}">
                     <div class="qhd"><b>${q.name}</b><span class="qtip">${q.tip}</span>
                         <span class="qadd" onclick="openQuadAdd(${q.p})">＋</span></div>
@@ -9454,6 +9467,116 @@ oninput="pgRefresh()"></textarea>
         const ds = (o.dates || []).slice().sort();
         if (!ds.length) return '';
         return ds.length === 1 ? fmtShort(ds[0]) : `${fmtShort(ds[0])}~${fmtShort(ds[ds.length-1])}`;
+    }
+
+    /* ================= v60-jisi-quad ② —— 四象限 Ⅳ 格的「今日习惯」 =================
+       Tom 需求原话：「日暮计的习惯我希望能自动同步到清单的不重要不紧急的象限，
+                     且点击和完成的方法和习惯一致」。
+
+       ★「和习惯一致」= 打卡**直接调 punchHabit(id, ds)**，不另写一套增量逻辑。
+         于是三种形态自动就是习惯页的行为：
+           · 单次习惯   → 勾一次完成（✓），再点一次取消
+           · 一日多次   → 每点一次 +step；标题行显示「已完成/总数 · 百分比」
+                          （如 8 次里完成 1 次 = 12.5%）；达成后 ✓，再点清空当日
+           · 周期习惯   → 见下面 quadHabitDue 的排期规则
+
+       ★ 哪些日子出现在 Ⅳ 格（quadHabitDue）：
+           fixed 固定星期  → 只在该星期几出现（这就是「相应的当日」的最直接形态）
+           weekly 每周N天  → 本自然周已完成天数 < N 时出现；做满 N 天后**当天仍保留**
+                             （刚打过卡，立刻消失会让人以为没生效），次日起不再出现
+           monthly 每月N天 → 同上，窗口换成自然月
+           interval 每隔N天→ 按 startDate 推算，相隔天数是 N 的倍数那天出现
+           已结束 / 已暂停 / 未到 startDate 的习惯不出现（与习惯页状态口径一致）
+       ★ 不参与「勾完即移入已完成清单」：习惯是周期性的，当天勾完仍留在格子里显示完成态。
+
+       为什么不能按「目标」口径把这些习惯筛掉：批量导入目标的判据是
+       `goal.mode==='multi' && total>1`，而「喝水 8 杯」这类**一日多次的习惯**用的是
+       同一个 mode ⇒ 按那个口径筛会把「一日多次」这种正主要的情形一起筛掉。故此处不筛。 */
+    const HABIT_PERIOD_FALLBACK = { type: 'fixed', days: [1, 2, 3, 4, 5, 6, 7] };
+
+    /* 本周期内（**不含 ds 当天**）已完成的天数 */
+    function quadPeriodDone(h, ds, type) {
+        const d = parseD(ds);
+        let from, to;
+        if (type === 'monthly') {
+            from = new Date(d.getFullYear(), d.getMonth(), 1);
+            to = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        } else {
+            const wd = (d.getDay() + 6) % 7;                       // 周一 = 0
+            from = new Date(d.getFullYear(), d.getMonth(), d.getDate() - wd);
+            to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6);
+        }
+        const a = fmtDLocal(from), b = fmtDLocal(to);
+        return Object.keys(h.records || {})
+            .filter(k => k >= a && k <= b && k !== ds && habitDone(h, k)).length;
+    }
+
+    function quadHabitDue(h, ds) {
+        if (!h) return false;
+        const st = habitStatus(h);
+        if (st === 'archived' || st === 'paused') return false;
+        if (h.startDate && String(h.startDate) > String(ds)) return false;
+        const p = h.period || HABIT_PERIOD_FALLBACK;
+        const done = habitDone(h, ds);
+        if (p.type === 'fixed') {
+            const wd = ((parseD(ds).getDay() + 6) % 7) + 1;
+            return (p.days || HABIT_PERIOD_FALLBACK.days).indexOf(wd) >= 0 || done;
+        }
+        if (p.type === 'interval') {
+            const n = Math.max(1, +p.n || 1);
+            const base = parseD(h.startDate || fmtDLocal(new Date()));
+            const gap = Math.round((parseD(ds) - base) / 86400000);
+            return (gap >= 0 && gap % n === 0) || done;
+        }
+        if (p.type === 'weekly' || p.type === 'monthly') {
+            if (done) return true;
+            return quadPeriodDone(h, ds, p.type) < Math.max(1, +p.n || 1);
+        }
+        return true;
+    }
+
+    /* 今天要出现在 Ⅳ 格的习惯（保持 S.habits 原顺序，与习惯页分组顺序一致） */
+    function quadHabitsToday(ds) {
+        return (S.habits || []).filter(h => quadHabitDue(h, ds));
+    }
+
+    /* 打卡入口：唯一的动作就是转交 punchHabit —— 这是「和习惯一致」的保证。
+       punchHabit 自己会 save() + render() + 还原 main.scrollTop，这里不再重复。 */
+    function quadHabitPunch(id) {
+        punchHabit(id, today());
+    }
+
+    function quadHabitRowsHTML() {
+        const ds = today();
+        const hs = quadHabitsToday(ds);
+        if (!hs.length) return '';
+        const rows = hs.map(h => {
+            const isMulti = !!(h.goal && h.goal.mode === 'multi');
+            const goal = habitGoal(h), rec = habitVal(h, ds), done = habitDone(h, ds);
+            const pct = isMulti
+                ? Math.min(100, Math.round(rec / Math.max(1, goal) * 1000) / 10)
+                : (done ? 100 : 0);
+            const unit = (h.goal && h.goal.unit) || '次';
+            const prog = isMulti
+                ? `<span class="sub-prog${done ? ' hb-pct' : ''}">${rec}/${goal} · ${pct}%</span>`
+                : (done ? '<span class="sub-prog hb-pct">已完成</span>' : '');
+            const meta = ['<span class="chip">🔁 ' + esc(periodText(h)) + '</span>'];
+            if (isMulti) meta.push('<span class="chip">每次 +' + (h.goal.step || 1) + esc(unit) + '</span>');
+            if (done) meta.push('<span class="chip">✅ 今日已完成</span>');
+            return `<div class="qtask hbq${done ? ' hb-done' : ''}" data-hid="${h.id}">
+                <div class="qface">
+                    <div class="chk c4${done ? ' done' : ''}${isMulti ? ' hb-multi' : ''}"
+                         title="${done ? '再点一次清空当日打卡' : (isMulti ? '点一次 +' + (h.goal.step || 1) + esc(unit) : '打卡')}"
+                         onclick="event.stopPropagation();quadHabitPunch('${h.id}')">${done ? '✓' : ''}</div>
+                    <div class="qbody" onclick="goHabitDetail('${h.id}')">
+                        <div class="qt">${h.icon || '✨'} ${esc(h.name || '（未命名）')}${prog}</div>
+                        <div class="qmeta">${meta.join('')}</div>
+                    </div>
+                    <span class="tg-dot" onclick="event.stopPropagation();openHabitCardMenu('${h.id}')">⋯</span>
+                </div>
+            </div>`;
+        }).join('');
+        return `<div class="qtoday-h hb">🔁 今日习惯 · ${hs.length} 项</div>${rows}`;
     }
 
     function qTaskHTML(t) {
@@ -12644,6 +12767,9 @@ oninput="pgRefresh()"></textarea>
     }
 
     function periodText(h) {
+        /* v60-jisi-quad：四象限会渲染**全部**习惯（含旧数据 / 批量导入造的半成品），
+           缺 period 时原来的 p.type 会抛 TypeError 并连带整页渲染失败，故加兜底。 */
+        if (!h || !h.period) return '每天';
         const p = h.period;
         if (p.type === 'fixed') return '固定：' + (p.days.length ? p.days.map(d => '周' + ['一', '二', '三', '四', '五', '六',
                 '七'
@@ -17886,25 +18012,126 @@ oninput="pgRefresh()"></textarea>
         save(); render(); showToast('已删除');
     }
 
-    /* 导出为 TXT（原样备份 / 打印前留档） */
+    /* v60-jisi-quad ① —— 集思录导出补全（5 个页签）。
+       晨间日记的 16 个字段 → 中文标签（文案与集思录骨架里的 <label> 一字不差，
+       避免导出文件里出现「success」这种英文键名）。 */
+    const DM_DIARY_FIELDS = [
+        { k: 'success', label: '成功三事' },
+        { k: 'plan', label: '今日计划 (6点优先)' },
+        { k: 'dream', label: '梦想·人生' },
+        { k: 'improve', label: '值得改善' },
+        { k: 'health', label: '健康·饮食·锻炼' },
+        { k: 'growth', label: '成长·资讯·阅读' },
+        { k: 'work', label: '工作·事业' },
+        { k: 'relation', label: '人际 (5件小事)' },
+        { k: 'weather', label: '天气' },
+        { k: 'mood', label: '心情' },
+        { k: 'anniversary', label: '纪念日' },
+        { k: 'sleep', label: '睡眠时间' },
+        { k: 'habit', label: '习惯执行' },
+        { k: 'invest', label: '投资·理财·金钱' },
+        { k: 'income', label: '收入' },
+        { k: 'expense', label: '支出' }
+    ];
+
+    /* 导出为 TXT（原样备份 / 打印前留档）
+       ★ v60 补齐：老版本只导出「事件与感悟 + 关系三栏」，集思录另外三个页签
+         （目标管理 / 晨间日记 / 计划视图）**在文件里根本不存在** —— 用户反馈
+         「导出信息不全面」就是指这个。
+       现在覆盖 5 个页签：事件与感悟 · 关系三栏 · 目标管理 · 晨间日记；
+       计划视图与目标管理**同源**（同一份 dm.goals 的另一种呈现：卡片 + 层级 + 进度），
+       它的全部信息已由目标节给出，故不再单列，避免同一批数据在文件里出现两遍。 */
     function jisiExportTxt() {
         const s = jisiData();
+        const evs = jsByDateDesc(s.events);
+        const relArr = JISI_REL_CATS.map(c => ({ c: c, arr: jsByDateDesc(s.rel[c.k] || []) }));
+        const relN = relArr.reduce((a, x) => a + x.arr.length, 0);
+        const dm = (typeof dmStore === 'function') ? dmStore() : null;
+        const goals = (dm && Array.isArray(dm.goals)) ? dm.goals : [];
+        const diaries = (dm && dm.diaries && typeof dm.diaries === 'object') ? dm.diaries : {};
+        /* 只有「至少一个字段有内容」的日期才算一天日记 —— 打开过但没填的空壳不算 */
+        const diaryDates = Object.keys(diaries).filter(d => {
+            const r = diaries[d] || {};
+            return DM_DIARY_FIELDS.some(f => String(r[f.k] == null ? '' : r[f.k]).trim());
+        }).sort().reverse();
+
         const L = ['# 集思录导出  ' + today(), ''];
-        L.push('## 事件与感悟（' + s.events.length + ' 条）');
-        jsByDateDesc(s.events).forEach(e => L.push(
-            '- [' + (e.date || '') + '] ' + (e.title ? e.title + ' · ' : '') + String(e.text).replace(/\n/g, '\n  ')));
-        JISI_REL_CATS.forEach(c => {
-            const arr = s.rel[c.k] || [];
-            L.push('', '## ' + c.label + '（' + arr.length + ' 条）');
-            jsByDateDesc(arr).forEach(e => L.push('- [' + (e.date || '') + '] ' + String(e.text).replace(/\n/g, '\n  ')));
+        L.push('· 事件与感悟 ' + evs.length + ' 条');
+        L.push('· 关系 ' + relN + ' 条（' +
+            relArr.map(x => x.c.label + ' ' + x.arr.length).join(' / ') + '）');
+        L.push('· 目标 ' + goals.length + ' 条');
+        L.push('· 晨间日记 ' + diaryDates.length + ' 天');
+        L.push('· 计划视图：与「目标管理」同源，见该节的层级与进度');
+
+        L.push('', '## 事件与感悟（' + evs.length + ' 条）');
+        if (!evs.length) L.push('（暂无记录）');
+        evs.forEach(e => L.push('- [' + (e.date || '') + '] ' +
+            (e.title ? e.title + ' · ' : '') +
+            String(e.text == null ? '' : e.text).replace(/\n/g, '\n  ')));
+
+        relArr.forEach(x => {
+            L.push('', '## ' + x.c.label + '（' + x.arr.length + ' 条）');
+            if (!x.arr.length) L.push('（暂无记录）');
+            x.arr.forEach(e => L.push('- [' + (e.date || '') + '] ' +
+                String(e.text == null ? '' : e.text).replace(/\n/g, '\n  ')));
         });
+
+        L.push('', '## 目标管理（' + goals.length + ' 条）');
+        if (!goals.length) {
+            L.push('（暂无目标）');
+        } else {
+            const byParent = {};
+            goals.forEach(g => {
+                const k = String(g.parentId == null ? '' : g.parentId);
+                (byParent[k] = byParent[k] || []).push(g);
+            });
+            const seen = {};
+            const pctOf = g => {
+                try { return (typeof dmGoalPct === 'function') ? dmGoalPct(g) : { pct: +g.progress || 0 }; }
+                catch (e) { return { pct: +g.progress || 0 }; }
+            };
+            const line = (g, depth) => {
+                const pi = pctOf(g);
+                const marks = [];
+                if (Array.isArray(g.taskIds) && g.taskIds.length) marks.push('关联任务 ' + g.taskIds.length);
+                if (Array.isArray(g.habitIds) && g.habitIds.length) marks.push('关联习惯 ' + g.habitIds.length);
+                return '  '.repeat(depth) + '- ' + (g.number ? g.number + ' ' : '') +
+                    (g.title || '（未命名）') + '  [' + (g.level || '未设层级') + ']' +
+                    '  进度 ' + (pi.pct || 0) + '%' + (pi.auto ? '（自动）' : '') +
+                    (marks.length ? '  ' + marks.join(' · ') : '');
+            };
+            const walk = (pid, depth) => {
+                (byParent[pid] || []).forEach(g => {
+                    if (seen[g.id]) return;          // 防成环 / 防重复
+                    seen[g.id] = 1;
+                    L.push(line(g, depth));
+                    walk(g.id, depth + 1);
+                });
+            };
+            walk('', 0);
+            /* 父级索引不到的（脏数据 parentId 指向不存在节点）也要补出来，别静默丢内容 */
+            goals.forEach(g => { if (!seen[g.id]) { seen[g.id] = 1; L.push(line(g, 0)); } });
+        }
+
+        L.push('', '## 晨间日记（' + diaryDates.length + ' 天）');
+        if (!diaryDates.length) L.push('（暂无日记）');
+        diaryDates.forEach(d => {
+            L.push('', '### ' + d);
+            const r = diaries[d] || {};
+            DM_DIARY_FIELDS.forEach(f => {
+                const v = String(r[f.k] == null ? '' : r[f.k]).trim();
+                if (v) L.push('- ' + f.label + '：' + v.replace(/\n/g, '\n  '));
+            });
+        });
+        L.push('');
+
         const blob = new Blob([L.join('\n')], { type: 'text/plain;charset=utf-8' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = '集思录-' + today() + '.txt';
         document.body.appendChild(a); a.click();
         setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1200);
-        showToast('已导出集思录');
+        showToast('已导出集思录（事件·关系·目标·日记）');
     }
 
     /* 需求 4：集思录的文本要同步进复盘。
@@ -24158,7 +24385,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260923d</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260923l</div>
 <!-- build-tag:end -->
 <!-- v57: 集思录 · 梦想成真迁移骨架（晨间日记 / 目标管理 / 计划视图 + 右栏目标树 + 编辑弹窗）
      用 <template> 承载：内容不在文档树里，不参与主站的 id / 类匹配，
