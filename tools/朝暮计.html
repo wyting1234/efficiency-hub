@@ -23876,7 +23876,264 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260923a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260923b</div>
 <!-- build-tag:end -->
+<!-- v57: 集思录 · 梦想成真迁移骨架（晨间日记 / 目标管理 / 计划视图 + 右栏目标树 + 编辑弹窗）
+     用 <template> 承载：内容不在文档树里，不参与主站的 id / 类匹配，
+     由 rJisi() 每次渲染时取 innerHTML 注入 #main。 -->
+<template id="dmTpl">
+<div class="dm-page">
+    <div class="tab-nav" id="dmTabNav">
+        <button class="tab-btn" data-tab="tab-diary"><i class="fas fa-sun"></i> 晨间日记</button>
+        <button class="tab-btn" data-tab="tab-goals"><i class="fas fa-bullseye"></i> 目标管理</button>
+        <button class="tab-btn" data-tab="tab-plans"><i class="fas fa-layer-group"></i> 计划视图</button>
+        <button class="tab-btn" data-tab="tab-jievents"><i class="fas fa-tasks"></i> 事件与感悟</button>
+        <button class="tab-btn" data-tab="tab-jirel"><i class="fas fa-users"></i> 关系</button>
+    </div>
+    <div class="app-wrapper">
+        <div class="main-content">
+            <div class="tab-content" id="tab-diary">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-pen-fancy"></i> 晨间日记 · <span id="diaryDateLabel">今日</span></h3>
+                        <div class="flex">
+                            <input type="date" id="diaryDate" style="padding:6px 12px;border:1.5px solid #e3e4f0;border-radius:8px;font-size:13px;">
+                            <button class="btn btn-sm btn-outline" onclick="loadDiary()"><i class="fas fa-sync"></i> 加载</button>
+                        </div>
+                    </div>
+                    <form id="diaryForm">
+                        <div class="diary-grid">
+                            <!-- 主要字段 全宽 -->
+                            <div class="diary-item full-width">
+                                <label><i class="fas fa-star"></i> 成功三事</label>
+                                <textarea id="d_success" rows="3" placeholder="今天成功的三件事..."></textarea>
+                            </div>
+                            <div class="diary-item full-width">
+                                <label><i class="fas fa-tasks"></i> 今日计划 (6点优先)</label>
+                                <textarea id="d_plan" rows="3" placeholder="今日最重要的6件事..."></textarea>
+                            </div>
+                            <div class="diary-item full-width">
+                                <label><i class="fas fa-rocket"></i> 梦想·人生</label>
+                                <textarea id="d_dream" rows="2" placeholder="前行的方向..."></textarea>
+                            </div>
+                            <div class="diary-item full-width">
+                                <label><i class="fas fa-tools"></i> 值得改善</label>
+                                <textarea id="d_improve" rows="2" placeholder="需要改进的地方..."></textarea>
+                            </div>
+                            <div class="diary-item full-width">
+                                <label><i class="fas fa-apple-alt"></i> 健康·饮食·锻炼</label>
+                                <textarea id="d_health" rows="2" placeholder="饮食、运动记录..."></textarea>
+                            </div>
+                            <div class="diary-item full-width">
+                                <label><i class="fas fa-book-open"></i> 成长·资讯·阅读</label>
+                                <textarea id="d_growth" rows="2" placeholder="阅读2小时..."></textarea>
+                            </div>
+                            <div class="diary-item full-width">
+                                <label><i class="fas fa-briefcase"></i> 工作·事业</label>
+                                <textarea id="d_work" rows="2" placeholder="工作进展..."></textarea>
+                            </div>
+                            <div class="diary-item full-width">
+                                <label><i class="fas fa-users"></i> 人际 (5件小事)</label>
+                                <textarea id="d_relation" rows="2" placeholder="家人·友人·同事..."></textarea>
+                            </div>
+                            <!-- 短字段 两列 -->
+                            <div class="diary-item">
+                                <label><i class="fas fa-cloud-sun"></i> 天气</label>
+                                <input type="text" id="d_weather" placeholder="天气状况">
+                            </div>
+                            <div class="diary-item">
+                                <label><i class="fas fa-smile"></i> 心情</label>
+                                <input type="text" id="d_mood" placeholder="今日心情">
+                            </div>
+                            <div class="diary-item">
+                                <label><i class="fas fa-gift"></i> 纪念日</label>
+                                <input type="text" id="d_anniversary" placeholder="特殊日子">
+                            </div>
+                            <div class="diary-item">
+                                <label><i class="fas fa-moon"></i> 睡眠时间</label>
+                                <input type="text" id="d_sleep" placeholder="如: 7.5h">
+                            </div>
+                            <div class="diary-item">
+                                <label><i class="fas fa-check-double"></i> 习惯执行</label>
+                                <input type="text" id="d_habit" placeholder="习惯完成情况">
+                            </div>
+                            <div class="diary-item">
+                                <label><i class="fas fa-coins"></i> 投资·理财·金钱</label>
+                                <textarea id="d_invest" rows="1" placeholder="理财记录..."></textarea>
+                            </div>
+                            <div class="diary-item">
+                                <label><i class="fas fa-arrow-up"></i> 收入</label>
+                                <input type="text" id="d_income" placeholder="今日收入">
+                            </div>
+                            <div class="diary-item">
+                                <label><i class="fas fa-arrow-down"></i> 支出</label>
+                                <input type="text" id="d_expense" placeholder="今日支出">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存日记</button>
+                            <button type="button" class="btn btn-outline" onclick="clearDiaryForm()"><i class="fas fa-undo"></i> 清空</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="text-muted" style="font-size:13px;padding:0 4px;">
+                    <i class="fas fa-info-circle"></i> 每天记录，让梦想更清晰。日期切换可查看历史日记。
+                </div>
+            </div>
+            <div class="tab-content" id="tab-goals">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-plus-circle"></i> 新建目标</h3>
+                    </div>
+                    <form id="goalForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>目标标题 <span class="required">*</span></label>
+                                <input type="text" id="goalTitle" placeholder="输入目标" required>
+                            </div>
+                            <div class="form-group">
+                                <label>层级类型</label>
+                                <select id="goalLevel">
+                                    <option value="终极">终极</option>
+                                    <option value="10年">10年</option>
+                                    <option value="5年">5年</option>
+                                    <option value="3年">3年</option>
+                                    <option value="1年">1年</option>
+                                    <option value="季度">季度</option>
+                                    <option value="月">月</option>
+                                    <option value="周">周</option>
+                                    <option value="日">日</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>上级目标</label>
+                                <select id="goalParent">
+                                    <option value="">无 (顶级)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>进度 (%)</label>
+                                <input type="number" id="goalProgress" min="0" max="100" value="0">
+                            </div>
+                            <div class="form-group full-width">
+                                <label>方法和措施</label>
+                                <textarea id="goalMethods" rows="2" placeholder="实现目标的方法和措施..."></textarea>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>备注 / 描述</label>
+                                <textarea id="goalDesc" rows="2" placeholder="补充说明..."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> 创建目标</button>
+                            <button type="reset" class="btn btn-outline"><i class="fas fa-undo"></i> 重置</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-list-ul"></i> 所有目标</h3>
+                        <button class="btn btn-sm btn-danger" onclick="dmClearGoals()">
+                            <i class="fas fa-trash-alt"></i> 清空全部
+                        </button>
+                    </div>
+                    <div class="goal-table-wrap">
+                        <table>
+                            <thead>
+                                <tr><th>编号</th><th>标题</th><th>层级</th><th>上级</th><th>进度</th><th style="width:100px;">操作</th></tr>
+                            </thead>
+                            <tbody id="goalTableBody">
+                                <tr class="empty-row"><td colspan="6">暂无目标，开始创建你的第一个梦想吧！</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-plans">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-layer-group"></i> 按层级查看目标</h3>
+                        <select id="planLevelFilter" style="padding:6px 14px;border:1.5px solid #e3e4f0;border-radius:10px;">
+                            <option value="all">全部</option>
+                            <option value="终极">终极</option>
+                            <option value="10年">10年</option>
+                            <option value="5年">5年</option>
+                            <option value="3年">3年</option>
+                            <option value="1年">1年</option>
+                            <option value="季度">季度</option>
+                            <option value="月">月</option>
+                            <option value="周">周</option>
+                            <option value="日">日</option>
+                        </select>
+                    </div>
+                    <div id="planViewContainer">
+                        <div class="text-muted" style="padding:20px 0;text-align:center;">选择层级查看对应的目标列表</div>
+                    </div>
+                </div>
+            </div>
+            <!-- 自建页签容器（内容由 rJisi() 填充） -->
+            <div class="tab-content" id="tab-jievents"></div>
+            <div class="tab-content" id="tab-jirel"></div>
+        </div>
+        <div class="right-panel">
+            <div class="panel-header">
+                <h2><i class="fas fa-sitemap"></i> 目标层级</h2>
+                <span class="badge-count" id="goalCountBadge">0</span>
+            </div>
+            <div class="goal-tree" id="goalTree">
+                <div class="tree-empty">
+                    <i class="fas fa-tree"></i>
+                    <p>暂无目标，开始创建吧</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-box">
+            <div class="modal-title"><i class="fas fa-edit"></i> 编辑目标</div>
+            <form id="editGoalForm">
+                <input type="hidden" id="editGoalId">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>标题</label>
+                        <input type="text" id="editTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label>层级</label>
+                        <select id="editLevel">
+                            <option value="终极">终极</option>
+                            <option value="10年">10年</option>
+                            <option value="5年">5年</option>
+                            <option value="3年">3年</option>
+                            <option value="1年">1年</option>
+                            <option value="季度">季度</option>
+                            <option value="月">月</option>
+                            <option value="周">周</option>
+                            <option value="日">日</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>进度 (%)</label>
+                        <input type="number" id="editProgress" min="0" max="100">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>方法和措施</label>
+                        <textarea id="editMethods" rows="2"></textarea>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>备注</label>
+                        <textarea id="editDesc" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeEditModal()">取消</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</template>
 </body>
 </html>
