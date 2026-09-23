@@ -5215,6 +5215,37 @@
         }
         button.dim-wide:hover { background: #f2f0ff; }
         html[data-view="mobile"] .dim-row .dim-a button { padding: 6px 8px; font-size: 11px; }
+
+        /* ===================== v59：目标管理 三条需求（#36/#37/#38） =====================
+           来源分段（手工目标 / 批量导入）+ 一键生成（任务清单 / 习惯打卡）+ 进度自动估算。 */
+        .dm-page .dm-srcbar {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            padding: 2px 0 10px;
+        }
+        .dm-page .dm-srcbar .dm-src {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 999px; cursor: pointer;
+            background: #f0f1f8; color: #6b6b80;
+            font-size: 12px; font-weight: 600; user-select: none;
+            transition: background .18s, color .18s;
+        }
+        .dm-page .dm-srcbar .dm-src:hover { background: #e9e9f4; }
+        .dm-page .dm-srcbar .dm-src.on { background: var(--main); color: #fff; }
+        .dm-page .dm-srcbar .dm-src b {
+            font-size: 11px; font-weight: 700; padding: 0 6px; border-radius: 999px;
+            background: rgba(0,0,0,.08); min-width: 18px; text-align: center;
+        }
+        .dm-page .dm-srcbar .dm-src.on b { background: rgba(255,255,255,.25); }
+        .dm-page .dm-srcbar .dm-src-tip { font-size: 11px; color: #9a9ab0; margin-left: auto; }
+        .dm-page .node-progress .dm-auto,
+        .dm-page .dm-auto {
+            font-style: normal; font-size: 10px; padding: 0 5px; border-radius: 5px;
+            background: #efecfd; color: var(--main); margin-left: 3px;
+        }
+        .dm-page .dm-gen-cell { display: flex; gap: 4px; justify-content: flex-end; }
+        .dm-page .btn-gen { background: #efecfd; color: var(--main); border: 1px solid #ddd6ff; }
+        .dm-page .btn-gen:hover { background: #e4dfff; }
+        .dm-page .dm-imp-row code { background: #f0f1f8; padding: 2px 10px; border-radius: 6px; font-size: 12px; }
     </style>
     <!-- v33: 提前应用 手动视图模式，避免首屏闪烁；手机强制电脑版时把视口按桌面宽度渲染 -->
     <script>
@@ -18042,8 +18073,12 @@ oninput="pgRefresh()"></textarea>
         // =================================================================
         function renderGoalTree() {
             const container = document.getElementById('goalTree');
-            const goals = getGoals();
+            const goals = dmSourceGoals();
             const numbered = getNumberedGoals(goals);
+            /* getNumberedGoals 返回的是**扁平子集**（无 taskIds / habitIds）⇒
+               要算 #37 的自动进度必须回原数组取全量对象。 */
+            const _gmap = {};
+            goals.forEach(x => _gmap[x.id] = x);
 
             document.getElementById('goalCountBadge').textContent = goals.length;
 
@@ -18062,13 +18097,15 @@ oninput="pgRefresh()"></textarea>
             });
 
             let html = `<ul class="tree-node">`;
-            levelOrder.forEach(level => {
+            const _orders = levelOrder.concat(Object.keys(grouped).filter(k => levelOrder.indexOf(k) < 0));
+            _orders.forEach(level => {
                 const items = grouped[level] || [];
                 if (items.length === 0) return;
                 // 按编号排序
                 items.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
                 items.forEach(g => {
-                    const pct = g.progress || 0;
+                    const _pi = dmGoalPct(_gmap[g.id] || g);
+                    const pct = _pi.pct;
                     html += `
                             <li class="node-item">
                                 <div class="node-content">
@@ -18077,7 +18114,7 @@ oninput="pgRefresh()"></textarea>
                                     <span class="node-type">${g.level}</span>
                                     <span class="node-progress">
                                         <span class="mini-progress"><span class="fill" style="width:${pct}%;"></span></span>
-                                        ${pct}%
+                                        ${pct}%${_pi.auto ? '<i class="dm-auto" title="按已完成的关联任务 / 习惯数量自动估算">自动</i>' : ''}
                                     </span>
                                 </div>
                             </li>
@@ -18093,6 +18130,44 @@ oninput="pgRefresh()"></textarea>
         // =================================================================
         function renderGoalTable() {
             const tbody = document.getElementById('goalTableBody');
+            const imp = (dmGoalSrc === 'imported');
+
+            /* ---- 导入来源：只读列出批量导入目标 ----
+               口径与树/计划**同源**：走 importedGoals() + dmGoalPct()，
+               不在这里再复制一遍 filter（否则将来改口径要改两处）。 */
+            if (imp) {
+                const rows = importedGoals();
+                if (!rows.length) {
+                    tbody.innerHTML = `<tr class="empty-row"><td colspan="6">还没有批量导入的目标 —— 在「清单」页用批量导入生成，或到「习惯」页新建多目标习惯</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = rows.map(r => {
+                    const hb = (S.habits || []).find(x => x.id === r._habitId) || {};
+                    const _pi = dmGoalPct(r);
+                    const tot = Math.max(1, +(hb.goal && hb.goal.total) || 1);
+                    const unit = (hb.goal && hb.goal.unit) || '次';
+                    return `
+                        <tr class="dm-imp-row">
+                            <td><code>—</code></td>
+                            <td><strong>${r.title}</strong></td>
+                            <td><span class="tag" style="background:#efecfd;color:var(--main);padding:2px 12px;border-radius:12px;font-size:12px;">${r.level}</span></td>
+                            <td>多目标习惯</td>
+                            <td>
+                                <span class="mini-progress" style="width:60px;"><span class="fill" style="width:${_pi.pct}%;"></span></span>
+                                ${_pi.done || 0}/${tot} ${unit}
+                            </td>
+                            <td>
+                                <div class="dm-gen-cell">
+                                    <button class="btn btn-sm btn-outline" onclick="go('habit')" title="到习惯页管理这个目标">去习惯页</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+                return;
+            }
+
+            /* ---- 手工来源：可编辑 + 一键生成 ---- */
             const goals = getGoals();
             const numbered = getNumberedGoals(goals);
             const map = {};
@@ -18103,25 +18178,34 @@ oninput="pgRefresh()"></textarea>
                 return;
             }
 
-            // 按编号排序
             numbered.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
 
             tbody.innerHTML = numbered.map(g => {
-                const parent = g.parentId ? (map[g.parentId]?.title || '已删除') : '—';
-                const pct = g.progress || 0;
+                const full = map[g.id] || {};
+                const parent = g.parentId ? ((map[g.parentId] || {}).title || '已删除') : '—';
+                const _pi = dmGoalPct(full);
+                const pct = _pi.pct;
+                const linked = (full.taskIds || []).length + (full.habitIds || []).length;
+                const tip = _pi.auto
+                    ? `按关联的 ${linked} 项任务 / 习惯自动估算（已完成 ${_pi.done}/${_pi.total}）`
+                    : '未关联任务或习惯，显示手填进度';
                 return `
                         <tr>
                             <td><code style="background:#f0f1f8;padding:2px 10px;border-radius:6px;font-size:13px;">${g.number}</code></td>
                             <td><strong>${g.title}</strong></td>
                             <td><span class="tag" style="background:#efecfd;color:var(--main);padding:2px 12px;border-radius:12px;font-size:12px;">${g.level}</span></td>
                             <td>${parent}</td>
-                            <td>
+                            <td title="${tip}">
                                 <span class="mini-progress" style="width:60px;"><span class="fill" style="width:${pct}%;"></span></span>
-                                ${pct}%
+                                ${pct}%${_pi.auto ? '<i class="dm-auto">自动</i>' : ''}
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-primary" onclick="editGoal('${g.id}')"><i class="fas fa-edit"></i></button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteGoal('${g.id}')"><i class="fas fa-trash"></i></button>
+                                <div class="dm-gen-cell">
+                                    <button class="btn btn-sm btn-primary" onclick="editGoal('${g.id}')" title="编辑目标">✏️</button>
+                                    <button class="btn btn-sm btn-gen" onclick="dmGenTasks('${g.id}')" title="一键生成母子任务清单（按下级目标）">⚡任务</button>
+                                    <button class="btn btn-sm btn-gen" onclick="dmGenHabits('${g.id}')" title="一键生成习惯打卡（每个下级目标一个）">⚡习惯</button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteGoal('${g.id}')" title="删除目标">🗑</button>
+                                </div>
                             </td>
                         </tr>
                     `;
@@ -18224,7 +18308,7 @@ oninput="pgRefresh()"></textarea>
         function renderPlanView() {
             const filter = document.getElementById('planLevelFilter').value;
             const container = document.getElementById('planViewContainer');
-            const goals = getGoals();
+            const goals = dmSourceGoals();
             const numbered = getNumberedGoals(goals);
 
             let filtered = numbered;
@@ -18234,7 +18318,7 @@ oninput="pgRefresh()"></textarea>
 
             if (filtered.length === 0) {
                 container.innerHTML =
-                    `<div class="text-muted" style="padding:30px 0;text-align:center;">没有找到 ${filter === 'all' ? '' : filter} 层级的目标</div>`;
+                    `<div class="text-muted" style="padding:30px 0;text-align:center;">没有找到 ${filter === 'all' ? (dmGoalSrc === 'imported' ? '批量导入' : '') : filter} 层级的目标</div>`;
                 return;
             }
 
@@ -18242,8 +18326,11 @@ oninput="pgRefresh()"></textarea>
             filtered.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
 
             let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">`;
+            const _map = {};
+            goals.forEach(x => _map[x.id] = x);
             filtered.forEach(g => {
-                const pct = g.progress || 0;
+                const _pi = dmGoalPct(_map[g.id] || g);
+                const pct = _pi.pct;
                 html += `
                         <div style="background:#fafbff;border-radius:12px;padding:14px 16px;border:1px solid #ececf4;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -18253,7 +18340,7 @@ oninput="pgRefresh()"></textarea>
                             <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${g.title}</div>
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <span class="mini-progress" style="flex:1;height:6px;"><span class="fill" style="width:${pct}%;"></span></span>
-                                <span style="font-size:12px;color:#5f6070;">${pct}%</span>
+                                <span style="font-size:12px;color:#5f6070;">${pct}%${_pi.auto ? '<i class="dm-auto">自动</i>' : ''}</span>
                             </div>
                         </div>
                     `;
@@ -18274,6 +18361,7 @@ oninput="pgRefresh()"></textarea>
         function dmRenderAll() {
             dmImportLegacy();
             dmBindForms();
+            try { dmSyncSrcBar(); } catch (e) {}
             try { renderGoalTree(); } catch (e) {}
             try { renderGoalTable(); } catch (e) {}
             try { refreshParentSelect(); } catch (e) {}
@@ -18334,6 +18422,200 @@ oninput="pgRefresh()"></textarea>
             save();
             dmRenderAll();
             showToast('已清空全部目标');
+        }
+
+        /* ===================== v59：目标管理 三条需求 =====================
+           #38 来源分段 · #37 进度按完成任务数估算 · #36 一键生成任务清单 / 习惯打卡 */
+
+        /* 当前查看的目标来源：'manual' = 手工输入（S.jisi.dm.goals）；
+           'imported' = 之前批量导入的（S.habits 里的 multi，与专注页「目标卡」同口径）。 */
+        let dmGoalSrc = 'manual';
+
+        /* 批量导入的目标 —— 口径与专注页 goalCards 完全一致：
+           h.goal.mode === 'multi' && (h.goal.total || 1) > 1 */
+        function importedGoals() {
+            return (S.habits || [])
+                .filter(h => h.goal && h.goal.mode === 'multi' && (+h.goal.total || 1) > 1)
+                .map(h => ({
+                    id: 'imp:' + h.id,
+                    _habitId: h.id,
+                    title: h.name || '（未命名）',
+                    level: h.ctx || '全天',
+                    parentId: null,
+                    progress: 0,                 // 展示时另算，见 renderGoalTable 的导入分支
+                    methods: '', desc: h.note || ''
+                }));
+        }
+        /* 当前来源下的目标数组（树/表/计划视图统一用它取数） */
+        function dmSourceGoals() {
+            return dmGoalSrc === 'imported' ? importedGoals() : getGoals();
+        }
+
+        /* ---- #37 进度估算 ----
+           有关联任务/习惯 ⇒ 「已完成 / 关联总数」；没有任何关联 ⇒ 返回 null（调用方回退手填值）。
+           ⚠️ 只影响**显示**，不动 goal.progress 存储 —— 旧数据零影响。 */
+        function dmHabitHitOnce(h) {
+            try { return habitDoneDays(h) > 0; } catch (e) { return false; }
+        }
+        function dmGoalProgress(g) {
+            /* 批量导入的目标（importedGoals 造的虚拟对象）：进度 = 该习惯已打卡天数 / 目标次数 */
+            if (g && g._habitId) {
+                const hb = (S.habits || []).find(x => x.id === g._habitId);
+                if (!hb) return null;
+                let days = 0; try { days = habitDoneDays(hb); } catch (e) {}
+                const tot = Math.max(1, +(hb.goal && hb.goal.total) || 1);
+                return { pct: Math.min(100, Math.round(days / tot * 100)), done: Math.min(days, tot), total: tot };
+            }
+            const recs = [];
+            (g.taskIds || []).forEach(id => {
+                const tk = (S.tasks || []).find(x => x.id === id);
+                if (!tk) return;
+                if (Array.isArray(tk.subs) && tk.subs.length) {
+                    /* 需求 2 的「任务清单数量」= 子任务条数 */
+                    recs.push({ done: tk.subs.filter(s => s.done).length, total: tk.subs.length });
+                } else {
+                    recs.push({ done: tk.done ? 1 : 0, total: 1 });
+                }
+            });
+            (g.habitIds || []).forEach(id => {
+                const hb = (S.habits || []).find(x => x.id === id);
+                if (!hb) return;
+                recs.push({ done: dmHabitHitOnce(hb) ? 1 : 0, total: 1 });
+            });
+            const total = recs.reduce((a, r) => a + r.total, 0);
+            if (!total) return null;
+            const done = recs.reduce((a, r) => a + r.done, 0);
+            return { pct: Math.round(done / total * 100), done, total };
+        }
+        /* 渲染入口：拿「显示的百分比 + 是否自动估算」 */
+        function dmGoalPct(g) {
+            const p = dmGoalProgress(g);
+            if (p) return { pct: p.pct, auto: true, done: p.done, total: p.total };
+            return { pct: Math.max(0, Math.min(100, +g.progress || 0)), auto: false };
+        }
+
+        /* ---- #36 一键生成 ---- */
+        /* 该目标 + 其全部后代（深度优先） */
+        function dmGoalWithDescendants(id) {
+            const all = getGoals();
+            const out = [];
+            const root = all.find(g => g.id === id);
+            if (!root) return out;
+            out.push(root);
+            (function walk(pid) {
+                all.filter(g => g.parentId === pid).forEach(c => { out.push(c); walk(c.id); });
+            })(id);
+            return out;
+        }
+        function dmNewTaskTimerCfg() {
+            return { mode: 'none', inFocus: false, dur: 25, num: 1, short: 5, long: 15, interval: 4, auto: true, order: 0 };
+        }
+        /* ⚡ 生成母子任务清单：父任务 = 目标本身，子任务 = 它的每个后代目标 */
+        function dmGenTasks(goalId) {
+            const all = getGoals();
+            const g = all.find(x => x.id === goalId);
+            if (!g) return;
+            const fam = dmGoalWithDescendants(goalId);
+            const kids = fam.slice(1);
+            if (!kids.length) { showToast('该目标还没有下级目标，先加一个下级再生成'); return; }
+
+            const old = (g.taskIds || []).filter(id => (S.tasks || []).some(x => x.id === id));
+            if (old.length && !confirm('该目标已生成过任务清单（' + old.length + ' 条）。\n重新生成会先删除这些旧任务及其勾选记录，确定继续吗？')) return;
+            if (old.length) S.tasks = S.tasks.filter(x => old.indexOf(x.id) < 0);
+
+            const subs = kids.map(k => ({ id: uid(), title: k.title, done: false, pinned: false, failed: false }));
+            const task = {
+                id: uid(), title: g.title, priority: 2,
+                mode: 'none', date: null, dates: null,
+                category: '', tags: [],
+                subs: subs, done: false, failed: false, pinned: false,
+                createdAt: new Date().toISOString(), due: null,
+                note: '由集思录目标「' + g.title + '」一键生成',
+                timeType: 'none', time: '', endTime: '', recur: null,
+                timerCfg: dmNewTaskTimerCfg()
+            };
+            if (!Array.isArray(S.tasks)) S.tasks = [];
+            S.tasks.push(task);
+            const idx = all.findIndex(x => x.id === goalId);
+            all[idx].taskIds = [task.id];
+            setGoals(all);
+            dmRenderAll();
+            showToast('已生成 1 个父任务 + ' + subs.length + ' 个子任务');
+        }
+        /* ⚡ 生成习惯打卡：每个后代目标一个习惯（打一次卡即算完成） */
+        function dmGenHabits(goalId) {
+            const all = getGoals();
+            const g = all.find(x => x.id === goalId);
+            if (!g) return;
+            const fam = dmGoalWithDescendants(goalId);
+            const kids = fam.slice(1);
+            if (!kids.length) { showToast('该目标还没有下级目标，先加一个下级再生成'); return; }
+
+            const old = (g.habitIds || []).filter(id => (S.habits || []).some(x => x.id === id));
+            if (old.length && !confirm('该目标已生成过习惯打卡（' + old.length + ' 个）。\n重新生成会先删除这些旧习惯及打卡记录，确定继续吗？')) return;
+            if (old.length) S.habits = S.habits.filter(x => old.indexOf(x.id) < 0);
+
+            const colors = ['#e74c3c', '#f39c12', '#27ae60', '#3498db', '#6c5ce7'];
+            const ids = [];
+            kids.forEach(k => {
+                const hb = {
+                    id: uid(), name: k.title, icon: '🎯',
+                    color: colors[(S.habits || []).length % colors.length],
+                    period: { type: 'fixed', days: [1, 2, 3, 4, 5, 6, 7] },
+                    goal: { mode: 'once', unit: '次', total: 1, step: 1, punchMode: 'auto' },
+                    ctx: '全天', records: {}, noteOn: true,
+                    note: '由集思录目标「' + g.title + '」一键生成',
+                    startDate: today(), due: null, reminders: [], status: 'active',
+                    timerCfg: dmNewTaskTimerCfg()
+                };
+                ids.push(hb.id);
+                if (!Array.isArray(S.habits)) S.habits = [];
+                S.habits.push(hb);
+            });
+            const idx = all.findIndex(x => x.id === goalId);
+            all[idx].habitIds = ids;
+            setGoals(all);
+            dmRenderAll();
+            showToast('已生成 ' + ids.length + ' 个习惯打卡');
+        }
+
+        /* 来源切换（#38） */
+        function dmSetGoalSrc(s) {
+            dmGoalSrc = (s === 'imported') ? 'imported' : 'manual';
+            dmSyncSrcBar();
+            /* 层级筛选是写死的 9 个层级，对导入来源无意义 ⇒ 切来源时归位「全部」 */
+            try { const pf = document.getElementById('planLevelFilter'); if (pf) pf.value = 'all'; } catch (e) {}
+            try { renderGoalTree(); } catch (e) {}
+            try { renderGoalTable(); } catch (e) {}
+            try { renderPlanView(); } catch (e) {}
+        }
+        function dmSyncSrcBar() {
+            const bar = document.getElementById('dmSrcBar');
+            if (bar) {
+                const btns = bar.querySelectorAll('.dm-src');
+                for (let i = 0; i < btns.length; i++) {
+                    btns[i].classList.toggle('on', btns[i].dataset.src === dmGoalSrc);
+                }
+            }
+            const n1 = document.getElementById('dmSrcN_manual');
+            const n2 = document.getElementById('dmSrcN_imported');
+            if (n1) n1.textContent = getGoals().length;
+            if (n2) n2.textContent = importedGoals().length;
+            const imp = (dmGoalSrc === 'imported');
+            const card = document.getElementById('goalFormCard');
+            if (card) card.style.display = imp ? 'none' : '';
+            const title = document.getElementById('goalListTitle');
+            if (title) title.textContent = imp ? '批量导入的目标（来自习惯页）' : '所有目标';
+            const tip = document.getElementById('dmSrcTip');
+            if (tip) tip.textContent = imp ? '导入目标在「习惯」页维护，这里只读' : '';
+            const thOp = document.getElementById('goalOpTh');
+            if (thOp) thOp.textContent = imp ? '管理' : '操作';
+            const thLv = document.getElementById('goalColLevel');
+            if (thLv) thLv.textContent = imp ? '情境' : '层级';
+            const thPa = document.getElementById('goalColParent');
+            if (thPa) thPa.textContent = imp ? '类型' : '上级';
+            const thPc = document.getElementById('goalColPct');
+            if (thPc) thPc.textContent = imp ? '打卡进度' : '进度';
         }
         /* 表单/筛选器监听：由 rJisi 渲染完成后调用
            （原为脚本顶层绑定，见生成脚本 T8 说明）。
@@ -23876,7 +24158,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260923b</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260923d</div>
 <!-- build-tag:end -->
 <!-- v57: 集思录 · 梦想成真迁移骨架（晨间日记 / 目标管理 / 计划视图 + 右栏目标树 + 编辑弹窗）
      用 <template> 承载：内容不在文档树里，不参与主站的 id / 类匹配，
@@ -23981,7 +24263,13 @@ html.embedded #buildTag{display:none}
                 </div>
             </div>
             <div class="tab-content" id="tab-goals">
-                <div class="card">
+                <!-- v59（需求 3）：手工目标与批量导入目标分别管理 -->
+                <div class="dm-srcbar" id="dmSrcBar">
+                    <span class="dm-src on" data-src="manual" onclick="dmSetGoalSrc('manual')">✍️ 手工目标 <b id="dmSrcN_manual">0</b></span>
+                    <span class="dm-src" data-src="imported" onclick="dmSetGoalSrc('imported')">📥 批量导入 <b id="dmSrcN_imported">0</b></span>
+                    <span class="dm-src-tip" id="dmSrcTip"></span>
+                </div>
+                <div class="card" id="goalFormCard">
                     <div class="card-header">
                         <h3><i class="fas fa-plus-circle"></i> 新建目标</h3>
                     </div>
@@ -24033,7 +24321,7 @@ html.embedded #buildTag{display:none}
 
                 <div class="card">
                     <div class="card-header">
-                        <h3><i class="fas fa-list-ul"></i> 所有目标</h3>
+                        <h3><i class="fas fa-list-ul"></i> <span id="goalListTitle">所有目标</span></h3>
                         <button class="btn btn-sm btn-danger" onclick="dmClearGoals()">
                             <i class="fas fa-trash-alt"></i> 清空全部
                         </button>
@@ -24041,7 +24329,7 @@ html.embedded #buildTag{display:none}
                     <div class="goal-table-wrap">
                         <table>
                             <thead>
-                                <tr><th>编号</th><th>标题</th><th>层级</th><th>上级</th><th>进度</th><th style="width:100px;">操作</th></tr>
+                                <tr><th>编号</th><th>标题</th><th id="goalColLevel">层级</th><th id="goalColParent">上级</th><th id="goalColPct">进度</th><th id="goalOpTh" style="width:186px;">操作</th></tr>
                             </thead>
                             <tbody id="goalTableBody">
                                 <tr class="empty-row"><td colspan="6">暂无目标，开始创建你的第一个梦想吧！</td></tr>
