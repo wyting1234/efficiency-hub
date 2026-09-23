@@ -2,13 +2,13 @@
   "scheme": "V<YYYYMMDD><letters>",
   "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
   "day": "20260923",
-  "seq": 9,
-  "latest": "V20260923i",
-  "updatedAt": "2026-09-23T14:53:39+08:00",
-  "note2": "云同步覆盖面修复：① 备份中心此前只排除 __hub_* 与埋点前缀，导致 GitHub/Gitee 令牌明文被写进导出文件与快照（实测确认）—— 现补排除凭据、同步技术键、bg 三大键与 zmv_bg_、朝暮计自带快照仓、>30KB 的纯 dataURL；② 云同步补排 6 个「本机记录」键（提醒去重/每日提醒/配额探测/农历缓存/版本缓存/补丁标记），其中提醒两个键此前会跨设备吞提醒；③ hub_text_v1 等 4 个全站设置键加入自动同步例外（改主题不再需要等下一次业务变更）；④ 导航注册表补登记 chaomuji_diary_tags_v1（此前动日记标签会全刷所有工具页）；⑤ HUB_KEYS 补齐设置类键（清空数据不再删掉装饰/色板/自定义模块等）；⑥ 备份 MANIFEST 删掉已废弃的 dream 与已并入 life 的 box。",
+  "seq": 10,
+  "latest": "V20260923j",
+  "updatedAt": "2026-09-23T15:05:17+08:00",
+  "note2": "云同步覆盖面修复：① 备份中心此前只排除 __hub_* 与埋点前缀，导致 GitHub/Gitee 令牌明文被写进导出文件与快照（实测确认）—— 现补排除凭据、同步技术键、bg 三大键与 zmv_bg_、朝暮计自带快照仓、>30KB 的纯 dataURL；② 云同步补排 6 个「本机记录」键（提醒去重/每日提醒/配额探测/农历缓存/版本缓存/补丁标记），其中提醒两个键此前会跨设备吞提醒；③ hub_text_v1 等 4 个全站设置键加入自动同步例外（改主题不再需要等下一次业务变更）；④ 导航注册表补登记 chaomuji_diary_tags_v1（此前动日记标签会全刷所有工具页）；⑤ HUB_KEYS 补齐设置类键（清空数据不再删掉装饰/色板/自定义模块等）；⑥ 备份 MANIFEST 删掉已废弃的 dream 与已并入 life 的 box。⑦ 附带：把 tools/sync-diff.html 首次推上仓库（此前只存在于本地，导致 verify_syncdiff_live.js L1 长期真红）；其 FALLBACK_EXCLUDE_KEYS 兜底副本已与内核新增的 6 键对齐。",
   "note2_prev": "云同步覆盖面修复：① 备份中心此前只排除 __hub_* 与埋点前缀，导致 GitHub/Gitee 令牌明文被写进导出文件与快照（实测确认）—— 现补排除凭据、同步技术键、bg 三大键与 zmv_bg_、朝暮计自带快照仓、>30KB 的纯 dataURL；② 云同步补排 6 个「本机记录」键（提醒去重/每日提醒/配额探测/农历缓存/版本缓存/补丁标记），其中提醒两个键此前会跨设备吞提醒；③ hub_text_v1 等 4 个全站设置键加入自动同步例外（改主题不再需要等下一次业务变更）；④ 导航注册表补登记 chaomuji_diary_tags_v1（此前动日记标签会全刷所有工具页）；⑤ HUB_KEYS 补齐设置类键（清空数据不再删掉装饰/色板/自定义模块等）；⑥ 备份 MANIFEST 删掉已废弃的 dream 与已并入 life 的 box。",
   "files": {
-    "index.html": "V20260923i",
+    "index.html": "V20260923j",
     "sync-github.js": "V20260923h",
     "tools/CPA会计掌握度系统.html": "V20260917i",
     "tools/code-previewer.html": "V20260917i",
@@ -36,6 +36,7 @@
     "tools/social/path.html": "V20260918h",
     "tools/social/action.html": "V20260918h",
     "tools/social/wisdom.html": "V20260918h",
-    "tools/backup-hub.js": "V20260923h"
+    "tools/backup-hub.js": "V20260923h",
+    "tools/sync-diff.html": "V20260923j"
   }
 }
