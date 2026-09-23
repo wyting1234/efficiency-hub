@@ -4384,6 +4384,837 @@
             html:not([data-view="mobile"]) .modal { align-items: center; }
             html:not([data-view="mobile"]) .sheet { border-radius: 16px; max-width: 640px; box-shadow: 0 18px 50px rgba(25,25,55,.28); }
         }
+
+        /* ===== v56: 集思录（jisi）=====
+           底栏第 7 页，与「复盘」并列。三个并列窗口（人际关系 / 夫妻 / 子女）
+           在宽屏三列、<=720px 自动堆叠为单列。
+           类名一律 js- / jisi- 前缀 —— 主站已占用 .card / .btn / .active / .title
+           四个通用类，直接复用会互相覆盖（这是梦想成真迁移时的既定约束）。 */
+        .jisi-page { padding: 10px 12px calc(var(--nav-height) + 14px); }
+        .js-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px;
+                   border-bottom: 1px solid #ececf4; }
+        .js-tabs::-webkit-scrollbar { display: none; }
+        .js-tab { flex: 0 0 auto; padding: 6px 12px; border-radius: 999px; font-size: 12px;
+                  background: #f0f1f8; color: #6b6b80; cursor: pointer; user-select: none;
+                  white-space: nowrap; transition: background .18s, color .18s; }
+        .js-tab.on { background: var(--main); color: #fff; }
+        .js-sec { margin-bottom: 14px; }
+        .js-sec-hd { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
+                     color: var(--txt); margin-bottom: 8px; }
+        .js-sec-hd .js-cnt { font-weight: 400; font-size: 11px; color: #9a9ab0; }
+        /* 三个并列窗口：宽屏 3 列，窄屏 1 列 */
+        .js-rel-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        @media (max-width: 720px) { .js-rel-grid { grid-template-columns: 1fr; } }
+        .js-rel-col { background: var(--card); border: 1px solid #ececf4; border-radius: 12px;
+                      padding: 10px; display: flex; flex-direction: column; min-height: 150px; }
+        .js-rel-col-hd { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; margin-bottom: 3px; }
+        .js-rel-col-hd .js-rel-n { margin-left: auto; font-weight: 400; font-size: 11px; color: #9a9ab0; }
+        .js-rel-hint { font-size: 10.5px; color: #a8a8bc; line-height: 1.5; margin-bottom: 7px; }
+        .js-rel-list { flex: 1; overflow-y: auto; max-height: 220px; margin-bottom: 7px; }
+        .js-item { border-left: 2px solid #e3e4f0; padding: 5px 0 5px 8px; margin-bottom: 6px; }
+        .js-item-d { font-size: 10px; color: #9a9ab0; }
+        .js-item-t { font-size: 12px; color: var(--txt); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+        .js-item-x { float: right; font-size: 11px; color: #c9c9d6; cursor: pointer; }
+        .js-item-x:hover { color: #e74c3c; }
+        .js-empty { font-size: 11px; color: #b4b4c6; text-align: center; padding: 14px 0; }
+        .js-input, .js-area { width: 100%; border: 1px solid #e3e4f0; border-radius: 8px; background: #fafbff;
+                              padding: 6px 8px; font-size: 12px; font-family: inherit; color: var(--txt);
+                              outline: none; resize: vertical; line-height: 1.6; }
+        .js-input:focus, .js-area:focus { border-color: var(--main); background: #fff; }
+        .js-area { min-height: 54px; }
+        .js-add { margin-top: 6px; width: 100%; padding: 6px 0; border: none; border-radius: 8px;
+                  background: var(--main); color: #fff; font-size: 12px; font-weight: 600;
+                  font-family: inherit; cursor: pointer; }
+        .js-add:active { opacity: .82; }
+        .js-ev-form { background: var(--card); border: 1px solid #ececf4; border-radius: 12px; padding: 10px; }
+        .js-row { display: flex; gap: 6px; margin-bottom: 6px; }
+        .js-row .js-input:first-child { flex: 0 0 136px; }
+        .js-ev-list { margin-top: 10px; }
+        .js-ev-card { background: var(--card); border: 1px solid #ececf4; border-radius: 10px;
+                      padding: 8px 10px; margin-bottom: 7px; }
+        .js-ev-hd { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+        .js-ev-hd b { font-size: 12.5px; }
+        /* ===== v57: 集思录 · 梦想成真迁移层（CSS）=====
+           由 _gen23_dream.py 生成，勿手工编辑 —— 改样式请改生成脚本后重跑。
+           内容 = 作用域化原样 CSS + 配色映射 + 图标 shim + 布局覆盖 + 风格统一。 */
+        /* ===== Tab 导航 ===== */
+        .dm-page .tab-nav {
+            display: flex;
+            background: #ffffff;
+            padding: 0 28px;
+            border-bottom: 1px solid #ececf4;
+            gap: 4px;
+            flex-shrink: 0;
+            overflow-x: auto;
+        }
+        .dm-page .tab-nav .tab-btn {
+            padding: 14px 20px;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b6b80;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dm-page .tab-nav .tab-btn:hover {
+            color: var(--txt);
+            background: #fafbff;
+        }
+        .dm-page .tab-nav .tab-btn.active {
+            color: var(--main);
+            border-bottom-color: var(--main);
+            background: #fafbff;
+        }
+        .dm-page .tab-nav .tab-btn i {
+            font-size: 15px;
+        }
+        /* ===== Tab 内容 ===== */
+        .dm-page .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 28px 32px;
+            display: none;
+            animation: dmFadeIn 0.25s ease;
+        }
+        .dm-page .tab-content.active {
+            display: block;
+        }
+        @keyframes dmFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .dm-page .right-panel .panel-header {
+            padding: 18px 20px 12px;
+            border-bottom: 1px solid #ececf4;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .dm-page .right-panel .panel-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--txt);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dm-page .right-panel .panel-header h2 i {
+            color: var(--main);
+        }
+        .dm-page .right-panel .panel-header .badge-count {
+            background: #efecfd;
+            color: var(--main);
+            padding: 1px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .dm-page .right-panel .goal-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px 20px;
+        }
+        .dm-page .right-panel .goal-tree .tree-empty {
+            text-align: center;
+            color: #9a9ab0;
+            padding: 40px 0;
+            font-size: 14px;
+        }
+        .dm-page .right-panel .goal-tree .tree-empty i {
+            font-size: 40px;
+            color: #d8d9e6;
+            display: block;
+            margin-bottom: 12px;
+        }
+        /* ===== 树形节点 ===== */
+        .dm-page .tree-node {
+            padding-left: 0;
+            list-style: none;
+        }
+        .dm-page .tree-node .node-item {
+            padding: 6px 0 6px 8px;
+            border-left: 2px solid transparent;
+            transition: all 0.15s;
+            border-radius: 4px;
+            cursor: default;
+            position: relative;
+        }
+        .dm-page .tree-node .node-item:hover {
+            background: #f0f1f8;
+            border-left-color: var(--main);
+        }
+        .dm-page .tree-node .node-item .node-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 2px 4px;
+            font-size: 13px;
+        }
+        .dm-page .tree-node .node-item .node-content .node-number {
+            color: #9a9ab0;
+            font-weight: 500;
+            min-width: 28px;
+            font-size: 12px;
+            font-family: 'Consolas', monospace;
+        }
+        .dm-page .tree-node .node-item .node-content .node-title {
+            flex: 1;
+            color: var(--txt);
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .dm-page .tree-node .node-item .node-content .node-progress {
+            font-size: 11px;
+            color: #6b6b80;
+            min-width: 36px;
+            text-align: right;
+        }
+        .dm-page .tree-node .node-item .node-content .node-type {
+            font-size: 10px;
+            padding: 1px 10px;
+            border-radius: 12px;
+            background: #efecfd;
+            color: var(--main);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .dm-page .tree-node .node-children {
+            padding-left: 20px;
+            list-style: none;
+        }
+        .dm-page .tree-node .node-children .node-item {
+            border-left: 2px solid #ececf4;
+        }
+        .dm-page .tree-node .node-children .node-item:hover {
+            border-left-color: var(--main);
+        }
+        /* 进度条 (小) */
+        .dm-page .mini-progress {
+            width: 48px;
+            height: 4px;
+            background: #ececf4;
+            border-radius: 4px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .dm-page .mini-progress .fill {
+            height: 100%;
+            background: var(--main);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        /* ===== 卡片 ===== */
+        .dm-page .card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #ececf4;
+            padding: 22px 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        }
+        .dm-page .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .dm-page .card-header h3 {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--txt);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dm-page .card-header h3 i {
+            color: var(--main);
+        }
+        /* ===== 表单 ===== */
+        .dm-page .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px 20px;
+        }
+        .dm-page .form-grid .full-width {
+            grid-column: 1 / -1;
+        }
+        .dm-page .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .dm-page .form-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #4a4b5c;
+        }
+        .dm-page .form-group label .required {
+            color: #e74c5e;
+        }
+        .dm-page .form-group input, .dm-page .form-group select, .dm-page .form-group textarea {
+            padding: 8px 14px;
+            border: 1.5px solid #e3e4f0;
+            border-radius: 10px;
+            font-size: 14px;
+            background: #fafbff;
+            transition: border 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+            color: var(--txt);
+        }
+        .dm-page .form-group input:focus, .dm-page .form-group select:focus, .dm-page .form-group textarea:focus {
+            outline: none;
+            border-color: var(--main);
+            box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.08);
+            background: #ffffff;
+        }
+        .dm-page .form-group textarea {
+            resize: vertical;
+            min-height: 52px;
+        }
+        .dm-page .form-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #f0f1f8;
+        }
+        /* ===== 按钮 ===== */
+        .dm-page .btn {
+            padding: 8px 22px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        .dm-page .btn-primary {
+            background: var(--main);
+            color: #fff;
+        }
+        .dm-page .btn-primary:hover {
+            background: #5b4bd6;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(108, 92, 231, 0.30);
+        }
+        .dm-page .btn-success {
+            background: #1ea97b;
+            color: #fff;
+        }
+        .dm-page .btn-success:hover {
+            background: #178e66;
+            transform: translateY(-1px);
+        }
+        .dm-page .btn-danger {
+            background: #e74c5e;
+            color: #fff;
+        }
+        .dm-page .btn-danger:hover {
+            background: #c0392b;
+        }
+        .dm-page .btn-outline {
+            background: transparent;
+            color: #6b6b80;
+            border: 1.5px solid #e3e4f0;
+        }
+        .dm-page .btn-outline:hover {
+            background: #f0f1f8;
+            border-color: #c2c3d2;
+        }
+        .dm-page .btn-sm {
+            padding: 4px 14px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+        .dm-page .btn-xs {
+            padding: 2px 10px;
+            font-size: 11px;
+            border-radius: 6px;
+        }
+        /* ===== 晨间日记 ===== */
+        .dm-page .diary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px 20px;
+        }
+        .dm-page .diary-grid .diary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .dm-page .diary-grid .diary-item.full-width {
+            grid-column: 1 / -1;
+        }
+        .dm-page .diary-grid .diary-item label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a4b5c;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dm-page .diary-grid .diary-item label i {
+            color: var(--main);
+            width: 18px;
+        }
+        .dm-page .diary-grid .diary-item input, .dm-page .diary-grid .diary-item textarea {
+            padding: 8px 14px;
+            border: 1.5px solid #e3e4f0;
+            border-radius: 10px;
+            font-size: 14px;
+            background: #fafbff;
+            transition: border 0.2s;
+            font-family: inherit;
+            color: var(--txt);
+            width: 100%;
+        }
+        .dm-page .diary-grid .diary-item input:focus, .dm-page .diary-grid .diary-item textarea:focus {
+            outline: none;
+            border-color: var(--main);
+            box-shadow: 0 0 0 4px rgba(108, 92, 231, 0.06);
+        }
+        .dm-page .diary-grid .diary-item textarea {
+            min-height: 72px;
+            resize: vertical;
+        }
+        .dm-page .diary-grid .diary-item input {
+            height: 42px;
+        }
+        .dm-page .diary-grid .diary-item.short-input input {
+            height: 38px;
+        }
+        /* ===== 目标管理表格 ===== */
+        .dm-page .goal-table-wrap {
+            overflow-x: auto;
+        }
+        .dm-page .goal-table-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .dm-page .goal-table-wrap table th {
+            background: #fafbff;
+            color: #5f6070;
+            font-weight: 600;
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 2px solid #ececf4;
+            white-space: nowrap;
+        }
+        .dm-page .goal-table-wrap table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f0f1f8;
+            vertical-align: middle;
+        }
+        .dm-page .goal-table-wrap table tr:hover td {
+            background: #fafbff;
+        }
+        .dm-page .goal-table-wrap .empty-row td {
+            text-align: center;
+            color: #9a9ab0;
+            padding: 30px 14px;
+        }
+        /* ===== 通用 ===== */
+        .dm-page .text-muted {
+            color: #9a9ab0;
+        }
+        .dm-page .mt-2 {
+            margin-top: 12px;
+        }
+        .dm-page .mb-2 {
+            margin-bottom: 12px;
+        }
+        .dm-page .flex {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .dm-page .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .dm-page .gap-1 {
+            gap: 6px;
+        }
+        .dm-page .w-full {
+            width: 100%;
+        }
+        /* ===== 模态框 ===== */
+        .dm-page .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 20px;
+        }
+        .dm-page .modal-overlay.show {
+            display: flex;
+        }
+        .dm-page .modal-box {
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 28px 32px;
+            max-width: 580px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.20);
+            animation: dmFadeIn 0.25s ease;
+        }
+        .dm-page .modal-box .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dm-page .modal-box .modal-title i {
+            color: var(--main);
+        }
+        .dm-page .modal-box .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: flex-end;
+            border-top: 1px solid #f0f1f8;
+            padding-top: 18px;
+        }
+        /* 标签 */
+        .dm-page .tag {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* 图标 shim：朝暮计为 100% 自包含（0 外部引用），不引入 FontAwesome CDN；
+           保留 <i class="fas fa-x"> 标记不变，仅用本地 CSS 补 emoji 字形。 */
+        .dm-page i.fas, .dm-page i.far { font-style: normal; }
+        .dm-page i.fas::before, .dm-page i.far::before { font-family: inherit; }
+        .dm-page .fa-sun::before { content: "☀️"; }
+        .dm-page .fa-bullseye::before { content: "🎯"; }
+        .dm-page .fa-check-circle::before { content: "✅"; }
+        .dm-page .fa-layer-group::before { content: "🗂️"; }
+        .dm-page .fa-pen-fancy::before { content: "✍️"; }
+        .dm-page .fa-star::before { content: "⭐"; }
+        .dm-page .fa-tasks::before { content: "📋"; }
+        .dm-page .fa-rocket::before { content: "🚀"; }
+        .dm-page .fa-tools::before { content: "🛠️"; }
+        .dm-page .fa-apple-alt::before { content: "🍎"; }
+        .dm-page .fa-book-open::before { content: "📖"; }
+        .dm-page .fa-briefcase::before { content: "💼"; }
+        .dm-page .fa-users::before { content: "👥"; }
+        .dm-page .fa-cloud-sun::before { content: "⛅"; }
+        .dm-page .fa-smile::before { content: "😊"; }
+        .dm-page .fa-gift::before { content: "🎁"; }
+        .dm-page .fa-moon::before { content: "🌙"; }
+        .dm-page .fa-check-double::before { content: "✔️"; }
+        .dm-page .fa-coins::before { content: "💰"; }
+        .dm-page .fa-arrow-up::before { content: "⬆️"; }
+        .dm-page .fa-arrow-down::before { content: "⬇️"; }
+        .dm-page .fa-info-circle::before { content: "ℹ️"; }
+        .dm-page .fa-list-ul::before { content: "📃"; }
+        .dm-page .fa-trash-alt::before { content: "🗑️"; }
+        .dm-page .fa-sitemap::before { content: "🗂️"; }
+        .dm-page .fa-tree::before { content: "🌳"; }
+        .dm-page .fa-edit::before { content: "✏️"; }
+        .dm-page .fa-save::before { content: "💾"; }
+        .dm-page .fa-undo::before { content: "↩️"; }
+        .dm-page .fa-plus::before { content: "＋"; }
+        .dm-page .fa-plus-circle::before { content: "➕"; }
+        .dm-page .fa-calendar-alt::before { content: "📅"; }
+        .dm-page .fa-sync::before { content: "🔄"; }
+        .dm-page .fa-trash::before { content: "🗑️"; }
+        .dm-page .fa-check::before { content: "✔️"; }
+        .dm-page .fa-circle::before { content: "⚪"; }
+
+        /* ===== 迁移层：把梦想成真的「视口锁定」布局改成可嵌入 iframe 的流式布局 =====
+           原 .app-wrapper / .main-content / .right-panel 都把尺寸绑在视口上
+           （整屏高、整屏宽、overflow:hidden），直接搬进来会把朝暮计的内容区撑爆。
+           这几个容器已在生成时整条丢弃，这里**显式重建**；其余（卡片 / 表单 /
+           目标树 / 表格 / 弹窗）全部沿用上方的原样样式。 */
+        .dm-page .app-wrapper {
+            display: flex; flex-direction: column;
+            height: auto; width: auto; overflow: visible;
+            gap: 12px; align-items: stretch;
+        }
+        .dm-page .main-content {
+            display: block; flex: none;
+            background: transparent; min-width: 0;
+        }
+        .dm-page .right-panel {
+            width: 100%; min-width: 0; height: auto; overflow: visible;
+            background: var(--card); border: 1px solid #ececf4; border-radius: 12px;
+            display: flex; flex-direction: column;
+        }
+        .dm-page .right-panel .goal-tree { flex: none; max-height: 320px; }
+        /* 宽屏才恢复「左内容 + 右目标树」的并排原样 */
+        @media (min-width: 820px) {
+            .dm-page .app-wrapper { flex-direction: row; align-items: flex-start; }
+            .dm-page .main-content { flex: 1; }
+            .dm-page .right-panel { width: 320px; min-width: 320px; }
+        }
+        @media (max-width: 820px) {
+            .dm-page .tab-nav { padding: 0 8px; }
+            .dm-page .tab-content { padding: 12px; }
+            .dm-page .diary-grid { grid-template-columns: 1fr; }
+            .dm-page .diary-grid .diary-item.full-width { grid-column: 1; }
+        }
+        @media (max-width: 480px) {
+            .dm-page .form-grid { grid-template-columns: 1fr; }
+        }
+        /* 5 个页签共用同一套显隐规则；外观（胶囊 / 间距）统一交给下方「风格统一层」 */
+        .dm-page .tab-content.active { display: block; }
+
+
+        /* ===== 迁移层 · 风格统一（层 B：结构）=====
+           上方层 A 已把整个模块的配色换到朝暮计令牌（紫 --main / --bg / --card / --txt，
+           中性灰对齐集思录既有的 #ececf4 / #9a9ab0 / #6b6b80）。
+           这一段只处理「尺寸语言」差异：页签形态、卡片/按钮/表单控件的字号与圆角、
+           右侧目标树与弹窗的密度。对齐基准 = 主站 .card（12px 圆角 / padding 10~12px）
+           + 集思录 .js-tab（胶囊 / 12px / 999px 圆角）。
+           ⚠️ 必须排在所有原样规则之后 —— 靠源顺序而非特异性取胜。 */
+
+        /* --- 页签：下划线式 → 胶囊式（对齐 .js-tabs / .js-tab） --- */
+        .dm-page .tab-nav {
+            display: flex; gap: 6px; flex-shrink: 0;
+            padding: 0 0 8px; margin-bottom: 10px;
+            background: transparent; border-bottom: 1px solid #ececf4;
+            overflow-x: auto;
+        }
+        .dm-page .tab-nav::-webkit-scrollbar { display: none; }
+        .dm-page .tab-nav .tab-btn {
+            padding: 6px 12px; border: none; border-radius: 999px;
+            font-size: 12px; font-weight: 500; font-family: inherit;
+            color: #6b6b80; background: #f0f1f8;
+            display: flex; align-items: center; gap: 5px;
+            transition: background .18s, color .18s; white-space: nowrap;
+        }
+        .dm-page .tab-nav .tab-btn i { font-size: 12.5px; }
+        .dm-page .tab-nav .tab-btn:hover { color: var(--main); background: #eeecfb; }
+        .dm-page .tab-nav .tab-btn.active {
+            color: #fff; background: var(--main); border-bottom-color: transparent;
+        }
+        /* --- 内容区：原 padding 24px 28px 32px → 朝暮计尺度 --- */
+        .dm-page .tab-content { padding: 12px 0 16px; overflow: visible; }
+
+        /* --- 卡片 --- */
+        .dm-page .card {
+            background: var(--card); border: 1px solid #ececf4; border-radius: 12px;
+            padding: 12px; margin-bottom: 10px;
+        }
+        .dm-page .card-header { margin-bottom: 10px; gap: 8px; }
+        .dm-page .card-header h3 { font-size: 13px; font-weight: 700; color: var(--txt); }
+        .dm-page .card-header h3 i { color: var(--main); }
+
+        /* --- 表单与晨间日记字段：14px / 10px 圆角 → 12px / 8px 圆角（对齐 .js-input） --- */
+        .dm-page .form-grid { gap: 10px 12px; }
+        .dm-page .diary-grid { gap: 10px 12px; }
+        .dm-page .form-group label,
+        .dm-page .diary-grid .diary-item label {
+            font-size: 12px; font-weight: 600; color: #5f6070; letter-spacing: 0;
+        }
+        .dm-page .diary-grid .diary-item label i { color: var(--main); width: 16px; font-size: 12px; }
+        .dm-page .form-group input,
+        .dm-page .form-group select,
+        .dm-page .form-group textarea,
+        .dm-page .diary-grid .diary-item input,
+        .dm-page .diary-grid .diary-item textarea {
+            padding: 6px 9px; border: 1px solid #e3e4f0; border-radius: 8px;
+            font-size: 12px; background: #fafbff; color: var(--txt);
+            font-family: inherit; line-height: 1.6;
+        }
+        .dm-page .form-group input:focus,
+        .dm-page .form-group select:focus,
+        .dm-page .form-group textarea:focus,
+        .dm-page .diary-grid .diary-item input:focus,
+        .dm-page .diary-grid .diary-item textarea:focus {
+            border-color: var(--main); background: #fff; box-shadow: none;
+        }
+        .dm-page .form-group textarea { min-height: 46px; }
+        .dm-page .diary-grid .diary-item textarea { min-height: 60px; }
+        .dm-page .diary-grid .diary-item input { height: 34px; }
+        .dm-page .diary-grid .diary-item.short-input input { height: 30px; }
+
+        /* --- 按钮：对齐主站 .btn（13px / 10px 圆角），并去掉位移式 hover ---
+           ⚠️ 必须重设 display / width / margin-top：主站的 `.btn` 是**裸类选择器**
+           （`display:block; width:100%; margin-top:5px`，给全宽主按钮用的），
+           会命中 .dm-page 内的同名元素，把「保存 / 清空 / 小尺寸」按钮全撑成全宽块级。
+           实测迁移 HTML 与主站 CSS 的类名交集**只有 .btn 与 .card**（.active / .title
+           等虽同名，但全部带祖先限定，不会越界命中）—— 这两条就是全部的污染面。 */
+        .dm-page .btn {
+            display: inline-block; width: auto; margin-top: 0;
+            padding: 7px 14px; border: none; border-radius: 8px;
+            font-size: 12px; font-weight: 600; font-family: inherit;
+            transition: background .18s, opacity .18s;
+        }
+        .dm-page .btn.w-full { width: 100%; }
+        .dm-page .btn-primary { background: var(--main); color: #fff; }
+        .dm-page .btn-primary:hover { background: #5b4bd6; transform: none; box-shadow: none; }
+        .dm-page .btn-success { background: #2fa07a; color: #fff; }
+        .dm-page .btn-success:hover { background: #268a68; transform: none; }
+        .dm-page .btn-danger { background: #e74c5e; color: #fff; }
+        .dm-page .btn-danger:hover { background: #cc3d4e; transform: none; }
+        .dm-page .btn-outline { background: transparent; color: #6b6b80; border: 1px solid #e3e4f0; }
+        .dm-page .btn-outline:hover { background: #f0f1f8; border-color: #d8d9e6; }
+        .dm-page .btn-sm { padding: 4px 11px; font-size: 11.5px; border-radius: 7px; }
+        .dm-page .btn-xs { padding: 3px 9px; font-size: 11px; border-radius: 6px; }
+        .dm-page .form-actions {
+            gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f1f8;
+        }
+
+        /* --- 右侧目标树面板 --- */
+        .dm-page .right-panel .panel-header {
+            padding: 10px 12px 8px; border-bottom: 1px solid #ececf4;
+        }
+        .dm-page .right-panel .panel-header h2 { font-size: 13px; font-weight: 700; gap: 6px; }
+        .dm-page .right-panel .panel-header h2 i { color: var(--main); }
+        .dm-page .right-panel .panel-header .badge-count {
+            padding: 1px 9px; border-radius: 999px; font-size: 11px;
+            background: #efecfd; color: var(--main); font-weight: 600;
+        }
+        .dm-page .right-panel .goal-tree { padding: 8px 10px 12px; }
+        .dm-page .right-panel .goal-tree .tree-empty { color: #b4b4c6; padding: 26px 0; font-size: 12px; }
+        .dm-page .right-panel .goal-tree .tree-empty i {
+            font-size: 28px; color: #d8d9e6; margin-bottom: 8px;
+        }
+
+        /* --- 目标树节点 --- */
+        .dm-page .tree-node .node-item { padding: 5px 0 5px 8px; border-radius: 6px; }
+        .dm-page .tree-node .node-item:hover { background: #f6f6fb; border-left-color: var(--main); }
+        .dm-page .tree-node .node-item .node-content { font-size: 12px; gap: 6px; }
+        .dm-page .tree-node .node-item .node-content .node-number {
+            font-size: 11px; color: #9a9ab0; min-width: 24px;
+        }
+        .dm-page .tree-node .node-item .node-content .node-title { font-size: 12px; color: var(--txt); }
+        .dm-page .tree-node .node-item .node-content .node-progress { font-size: 10.5px; color: #9a9ab0; }
+        .dm-page .tree-node .node-item .node-content .node-type {
+            font-size: 10px; padding: 1px 7px; border-radius: 999px;
+            background: #efecfd; color: var(--main);
+        }
+        .dm-page .tree-node .node-children { padding-left: 16px; }
+        .dm-page .tree-node .node-children .node-item { border-left: 1px solid #ececf4; }
+        .dm-page .tree-node .node-children .node-item:hover { border-left-color: var(--main); }
+        .dm-page .mini-progress { width: 44px; background: #ececf4; }
+        .dm-page .mini-progress .fill { background: var(--main); }
+
+        /* --- 表格 --- */
+        .dm-page .goal-table-wrap table { font-size: 12px; }
+        .dm-page .goal-table-wrap table th {
+            background: #fafbff; color: #5f6070; font-weight: 600;
+            padding: 8px 10px; border-bottom: 1px solid #ececf4;
+        }
+        .dm-page .goal-table-wrap table td { padding: 8px 10px; border-bottom: 1px solid #f0f1f8; }
+        .dm-page .goal-table-wrap table tr:hover td { background: #fafbff; }
+        .dm-page .goal-table-wrap .empty-row td { color: #b4b4c6; padding: 20px 10px; }
+        .dm-page .text-muted { color: #9a9ab0; }
+        .dm-page .tag { padding: 1px 9px; border-radius: 999px; font-size: 11px; }
+
+        /* --- 弹窗 --- */
+        .dm-page .modal-box { border-radius: 14px; padding: 16px 18px; }
+        .dm-page .modal-box .modal-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; gap: 8px; }
+        .dm-page .modal-box .modal-title i { color: var(--main); }
+        .dm-page .modal-box .modal-actions {
+            gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0f1f8;
+        }
+
+        /* 备注：HTML 里有两处**内联 style**（#diaryDate 日期选择、#planLevelFilter 层级筛选）。
+           内联样式优先级高于任何外部规则，除非 !important 否则盖不住。这里按「原样迁移」
+           原则保留 —— 它们本就走的是 border-radius 8px / 10px、font-size 13px，与朝暮计
+           尺度差异很小（≤1px 圆角、1px 字号），为不引入 !important 而刻意不收口。 */
+        /* ===================== v58：一键总结全屏页 =====================
+           需求 4~7：复盘页「一键生成」之后再加一个「一键总结」——
+           跳到独立的整屏输入框，把朝暮计相关的全部完成情况汇总进去并附评估结果，
+           可编辑 / 可保存 / 可打印 · PDF · 长图 · HTML 导出。
+           外壳刻意复用日记本（main.diary-mode + .diary-page + .dp-head/.dp-foot/.dp-btn），
+           只新增正文编辑区，视觉与其它子模块零偏差。 */
+        .sum-page .sum-tools {
+            display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+            flex-shrink: 0; padding: 6px 2px 8px;
+        }
+        .sum-page .sum-tools button {
+            border: 1px solid #e5e5ef; background: #fff; color: #6b6b80;
+            border-radius: 8px; padding: 6px 10px; font-size: 12px;
+            cursor: pointer; min-height: 32px;
+        }
+        .sum-page .sum-tools button:hover { border-color: #ddd6ff; color: var(--main); background: #faf9ff; }
+        .sum-page .sum-tools .sum-sp { flex: 1; }
+        .sum-page .sum-tools .sum-tip { font-size: 11px; color: #b3b3c0; }
+        .sum-page .sum-editor {
+            flex: 1; min-height: 140px; width: 100%; box-sizing: border-box;
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-size: 14px; line-height: 1.8; color: #333;
+            padding: 12px 14px;
+            border: 1px solid #eeeef5; border-radius: 10px; background: #fff;
+            resize: none; outline: none; -webkit-overflow-scrolling: touch;
+        }
+        .sum-page .sum-editor:focus { border-color: #ddd6ff; box-shadow: 0 0 0 3px rgba(108,92,231,.08); }
+        html[data-view="mobile"] .sum-page .sum-editor { font-size: 15px; padding: 11px 12px; }
+        /* ===================== v58：导入到日记（需求 8 / 9） =====================
+           「完成信息」= 数字概览，「内容」= 明细文本；同一模块两个按钮分别插入。
+           视觉沿用主站的卡片/胶囊语言（12px 圆角、主色紫、浅灰分隔）。 */
+        .dim-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 2px; border-bottom: 1px solid #f4f4f8;
+        }
+        .dim-row .dim-l { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; }
+        .dim-row .dim-ico { font-size: 14px; }
+        .dim-row .dim-t { font-size: 13px; color: var(--txt); font-weight: 600; }
+        .dim-row .dim-tag {
+            font-size: 10px; color: #9a9ab0; background: #f0f1f8;
+            border-radius: 6px; padding: 1px 6px; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; max-width: 130px;
+        }
+        .dim-row .dim-a { display: flex; gap: 6px; flex-shrink: 0; }
+        .dim-row .dim-a button {
+            border: 1px solid #e5e5ef; background: #fff; color: #6b6b80;
+            border-radius: 8px; padding: 5px 9px; font-size: 11px; cursor: pointer;
+            white-space: nowrap;
+        }
+        .dim-row .dim-a button:hover { border-color: #ddd6ff; color: var(--main); background: #faf9ff; }
+        .dim-row .dim-a button.pri { background: var(--main); border-color: var(--main); color: #fff; font-weight: 600; }
+        .dim-row .dim-a button.pri:hover { opacity: .9; color: #fff; }
+        .dim-row.dim-last { border-bottom: 0; }
+        button.dim-wide {
+            width: 100%; border: 1px dashed #ddd6ff; background: #faf9ff; color: var(--main);
+            border-radius: 10px; padding: 10px; font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+        button.dim-wide:hover { background: #f2f0ff; }
+        html[data-view="mobile"] .dim-row .dim-a button { padding: 6px 8px; font-size: 11px; }
     </style>
     <!-- v33: 提前应用 手动视图模式，避免首屏闪烁；手机强制电脑版时把视口按桌面宽度渲染 -->
     <script>
@@ -5006,6 +5837,17 @@
     </div>
 </div>
 
+<!-- ===== v58: 模态框 · 导入到日记（完成信息 / 内容 分别导入，需求 8/9） ===== -->
+<div class="modal" id="mDiaryImport" style="align-items:center">
+    <div class="sheet" style="border-radius:16px; padding:16px; width:calc(100% - 32px); max-width:520px; max-height:88vh; overflow:auto">
+        <h3 style="border:none; font-size:14px; padding:0 0 8px; display:flex; justify-content:space-between; align-items:center">
+            <span>📥 导入到日记</span>
+            <span class="x" onclick="closeM('mDiaryImport')">✕</span>
+        </h3>
+        <div id="mDiaryImportBody"></div>
+    </div>
+</div>
+
 <!--pnid:gAc3r7W3PdDcip1GjO814g--><!-- ===== 模态框：背景图 ===== -->
 <div data-page-node-id="uuOIsteaOa6WNiiBGSWyJL" class="modal" id="mBg">
     <div data-page-node-id="2Hn4l0gbQy9DXNH2TjVdW9" class="sheet">
@@ -5511,6 +6353,16 @@ oninput="pgRefresh()"></textarea>
     /* v11: 番茄个数默认 1 */
     const DEF_TC = () => ({ mode: 'none', inFocus: false, dur: 25, num: 1, short: 5, long: 15, interval: 4, auto: true, order: 0 });
     const _normTC = o => Object.assign(DEF_TC(), (o && typeof o === 'object') ? o : {}, { order: (o && +o.order) || 0 });
+    /* ===== v56 集思录（jisi）关系分类 —— 需求3 的三个并列窗口 =====
+       声明位置有硬约束：normalizeTimerCfgs() 在本函数下方**立即被调用**，
+       而本文件另一批 const（esc / uid / today）要到更后面才定义。
+       若把本常量放到那里，函数体引用它会踩 TDZ
+       （ReferenceError: Cannot access 'JISI_REL_CATS' before initialization）。 */
+    const JISI_REL_CATS = [
+        { k: 'social', label: '人际关系', icon: '🤝', hint: '与朋友、同事、师长、伙伴的往来与感受' },
+        { k: 'spouse', label: '夫妻',     icon: '💞', hint: '与伴侣之间的相处、约定与体谅' },
+        { k: 'child',  label: '子女',     icon: '🧒', hint: '孩子的成长、对话与教养心得' }
+    ];
     function normalizeTimerCfgs() {
         if (!Array.isArray(S.insights)) S.insights = [];
         if (!Array.isArray(S.tasks)) S.tasks = [];
@@ -5522,6 +6374,11 @@ oninput="pgRefresh()"></textarea>
         S.habits.forEach(h => { h.timerCfg = _normTC(h.timerCfg); });
         if (!S.settings.focusDailyGoal) S.settings.focusDailyGoal = 60;
         if (!Array.isArray(S.futures)) S.futures = [];
+        /* v56 集思录兜底 —— 幂等，旧数据自动补全，无需单独迁移脚本 */
+        if (!S.jisi || typeof S.jisi !== 'object') S.jisi = {};
+        if (!Array.isArray(S.jisi.events)) S.jisi.events = [];
+        if (!S.jisi.rel || typeof S.jisi.rel !== 'object') S.jisi.rel = {};
+        JISI_REL_CATS.forEach(c => { if (!Array.isArray(S.jisi.rel[c.k])) S.jisi.rel[c.k] = []; });
     }
     normalizeTimerCfgs();
 
@@ -5650,11 +6507,12 @@ oninput="pgRefresh()"></textarea>
         ['habit', '🪐', '习惯'],
         ['focus', '👽', '专注'],
         ['review', '📓', '复盘'],
+        ['jisi', '💭', '集思录'],
         ['me', '🔭', '我的']
     ];
-    const PGT = { list: '清单', view: '视图', habit: '习惯', focus: '专注', review: '复盘', me: '我的', stats: '清单统计', habitStats: '习惯统计', allHabits: '全部习惯', habitCtxPage: '习惯情境', habitDetail: '习惯详情', habitLog: '打卡日志', diary: '日记本' };
+    const PGT = { list: '清单', view: '视图', habit: '习惯', focus: '专注', review: '复盘', jisi: '集思录', me: '我的', stats: '清单统计', habitStats: '习惯统计', allHabits: '全部习惯', habitCtxPage: '习惯情境', habitDetail: '习惯详情', habitLog: '打卡日志', diary: '日记本', summary: '一键总结' };
     /* v24: 次级（子）页面 —— 不进底栏导航、不写 prevPage、左上角显示返回箭头 */
-    const SUB_PAGES = ['stats', 'habitStats', 'allHabits', 'habitCtxPage', 'habitDetail', 'habitLog', 'diary'];
+    const SUB_PAGES = ['stats', 'habitStats', 'allHabits', 'habitCtxPage', 'habitDetail', 'habitLog', 'diary', 'summary'];
     const FILTERS = [
         ['all', '全部'],
         ['today', '今日'],
@@ -6295,7 +7153,7 @@ oninput="pgRefresh()"></textarea>
 
     function onLeftClick() {
         if (page === 'focus' && (focusView === 'timer' || focusView === 'stats')) { backToCards(); return; }
-        if (page === 'diary') go('review');            // v24: 日记本全屏页 → 回复盘
+        if (page === 'diary' || page === 'summary') go('review');   // v24/v58: 日记本 / 一键总结 全屏页 → 回复盘
         else if (page === 'stats' || page === 'habitStats') go(prevPage || 'list');
         else if (page === 'habitLog') go('habitDetail');
         else if (page === 'allHabits' || page === 'habitCtxPage' || page === 'habitDetail') go('habit');
@@ -6320,6 +7178,15 @@ oninput="pgRefresh()"></textarea>
         // （旧写法在 page=p 之后判断新页，等于进页面时保存，此时旧编辑器 DOM 已失效，等于没保存）
         if ((page === 'review' || page === 'diary') && typeof reviewBeforeLeave === 'function') {
             try { reviewBeforeLeave(); } catch(e){}
+        }
+        /* v57：离开集思录前把晨间日记落盘。口径与复盘页 / 日记页一致 ——
+           不清的话，切到别的页面会整页重建 #main，用户写的 16 个字段直接丢。 */
+        if (page === 'jisi' && typeof dmBeforeLeave === 'function') {
+            try { dmBeforeLeave(); } catch (e) {}
+        }
+        /* v58：离开一键总结前把编辑区落盘（与日记页同一条「不丢字」原则，静默不打扰） */
+        if (page === 'summary' && typeof summaryBeforeLeave === 'function') {
+            try { summaryBeforeLeave(); } catch (e) {}
         }
         // 从导航/其它页回到专注 → 回到卡片列表（计时进行中除外，否则计时 DOM 会消失）
         if (p === 'focus' && !_goKeepFocusView && fState !== 'run') { focusView = 'cards'; focusCard = null; }
@@ -6381,6 +7248,7 @@ oninput="pgRefresh()"></textarea>
             habit: rHabit,
             focus: rFocus,
             review: rReview,
+            jisi: rJisi,
             me: rMe,
             stats: rStats,
             habitStats: rHabitStats,
@@ -6388,7 +7256,8 @@ oninput="pgRefresh()"></textarea>
             habitCtxPage: rHabitCtxPage,
             habitDetail: rHabitDetail,
             habitLog: rHabitLog,
-            diary: rDiary
+            diary: rDiary,
+            summary: rSummary
         })[page]();
         applyAccentVars();
         // 渲染后挂背景图：象限 grid 是在 rList 里动态生成的
@@ -6581,6 +7450,12 @@ oninput="pgRefresh()"></textarea>
             if (searchBox) searchBox.style.display = 'none';
             if (foot) foot.textContent = 'v23 · 专注面板';
             menu.innerHTML = sidebarFocusHTML();
+        } else if (page === 'summary') {
+            if (h2) h2.textContent = '一键总结';
+            if (sub) sub.textContent = '汇总 · 评估 · 输出';
+            if (searchBox) searchBox.style.display = 'none';
+            if (foot) foot.textContent = 'v58 · 一键总结';
+            menu.innerHTML = sidebarSummaryHTML();
         } else if (page === 'review' || page === 'diary') {
             /* v27：复盘页 ☰ 汉堡 = 统计入口 / 范围 / 打印导出 / 数据 */
             if (h2) h2.textContent = '复盘';
@@ -7162,6 +8037,9 @@ oninput="pgRefresh()"></textarea>
             <div class="s-item" onclick="closeSidebar();reviewGenerate()">
                 <span class="s-ico">⚡</span>一键生成复盘<span class="arrow">›</span>
             </div>
+            <div class="s-item" onclick="closeSidebar();openSummaryPage()">
+                <span class="s-ico">📝</span>一键总结（汇总 + 评估）<span class="arrow">›</span>
+            </div>
         `;
     }
     /* 复盘侧栏：平滑滚动到指定统计卡 */
@@ -7318,6 +8196,7 @@ oninput="pgRefresh()"></textarea>
         <h2>🎯 目标完成进度 <span class="tag">${data.goals.length} 项</span></h2>
         <table><thead><tr><th>目标</th><th class="c" style="width:90px">进度</th><th class="r" style="width:60px">完成率</th><th class="r" style="width:60px">投入(分)</th><th class="c" style="width:60px">状态</th></tr></thead>
         <tbody>${goalRows}</tbody></table>
+        ${jisiReportHTML(range)}
         <h2>📈 每日得分趋势</h2>
         ${trendChart}
         <h2>☐ 剩余待办（未完成）</h2>
@@ -8092,6 +8971,10 @@ oninput="pgRefresh()"></textarea>
                     <span class="ico">📔</span> 打开日记本
                     <span style="margin-left:auto;color:#c5c5cf;font-size:13px">全屏 ›</span>
                 </div>
+                <div class="m-item" onclick="closeMenu();diaryImportFromReview()">
+                    <span class="ico">📥</span> 导入到日记（完成信息 / 内容）
+                    <span style="margin-left:auto;color:#c5c5cf;font-size:13px">›</span>
+                </div>
                 <div class="m-divider"></div>
                 <div class="m-label">复盘视图</div>
                 <div class="m-item" onclick="closeMenu();toggleReviewFrame12Format()">
@@ -8100,6 +8983,10 @@ oninput="pgRefresh()"></textarea>
                 </div>
                 <div class="m-divider"></div>
                 <div class="m-label">输出</div>
+                <div class="m-item" onclick="closeMenu();openSummaryPage()">
+                    <span class="ico">📝</span> 一键总结（汇总 + 评估）
+                    <span style="margin-left:auto;color:#c5c5cf;font-size:13px">全屏 ›</span>
+                </div>
                 <div class="m-item" onclick="closeMenu();reviewPrint()">
                     <span class="ico">🖨️</span> A4 打印 / 存为 PDF
                     <span style="margin-left:auto;color:#c5c5cf;font-size:13px">›</span>
@@ -8139,6 +9026,15 @@ oninput="pgRefresh()"></textarea>
                     <span class="ico">🏷</span> 标签统计与管理
                     <span style="margin-left:auto;color:#c5c5cf;font-size:13px">›</span>
                 </div>
+                <div class="m-divider"></div>
+                <div class="m-label">导入</div>
+                <div class="m-item" onclick="closeMenu();diaryInsertSummary()">
+                    <span class="ico">📝</span> 导入「一键总结」
+                </div>
+                <div class="m-item" onclick="closeMenu();diaryImportModal()">
+                    <span class="ico">📥</span> 按模块导入（完成信息 / 内容）
+                    <span style="margin-left:auto;color:#c5c5cf;font-size:13px">›</span>
+                </div>
                 <div class="m-item" onclick="closeMenu();go('review')">
                     <span class="ico">📓</span> 返回复盘
                 </div>
@@ -8176,6 +9072,69 @@ oninput="pgRefresh()"></textarea>
                                 <div class="m-item" onclick="closeMenu();exportData()">
                     <span class="ico">📤</span> 导出数据 (JSON)
                     <span style="margin-left:auto;color:#c5c5cf;font-size:13px">›</span>
+                </div>
+                <div class="m-divider"></div>
+                <div class="m-item" onclick="closeMenu();openBgScope()">
+                    <span class="ico">🖼</span> 背景与图片
+                </div>
+                <div class="m-item" onclick="closeMenu();openInk()">
+                    <span class="ico">✒️</span> 边线与字浮
+                    <span style="margin-left:auto;color:#c5c5cf;font-size:13px">${INK.on ? '已开启' : ''}</span>
+                </div>
+                <div class="m-divider"></div>
+                <div class="m-item" onclick="closeMenu()" style="color:#999;font-size:11px">关闭</div>
+            `;
+        } else if (page === 'jisi') {
+            /* v56：集思录三点菜单。注意 renderMenu 没有总兜底分支 —— 未登记的页面
+               不会重写 menu.innerHTML，会残留上一页的菜单项，故必须显式登记。 */
+            menu.innerHTML = `
+                <div class="m-label">显示</div>
+                ${noteMenuHTML()}
+                <div class="m-divider"></div>
+                <div class="m-label">集思录</div>
+                <div class="m-item" onclick="closeMenu();jisiExportTxt()">
+                    <span class="ico">📤</span> 导出集思录 (TXT)
+                </div>
+                <div class="m-divider"></div>
+                <div class="m-item" onclick="closeMenu();openBgScope()">
+                    <span class="ico">🖼</span> 背景与图片
+                </div>
+                <div class="m-item" onclick="closeMenu();openInk()">
+                    <span class="ico">✒️</span> 边线与字浮
+                    <span style="margin-left:auto;color:#c5c5cf;font-size:13px">${INK.on ? '已开启' : ''}</span>
+                </div>
+                <div class="m-divider"></div>
+                <div class="m-item" onclick="closeMenu()" style="color:#999;font-size:11px">关闭</div>
+            `;
+        } else if (page === 'summary') {
+            /* v58：一键总结三点菜单。renderMenu **没有总兜底分支** —— 未登记会残留上一页菜单。 */
+            menu.innerHTML = `
+                <div class="m-label">显示</div>
+                ${noteMenuHTML()}
+                <div class="m-divider"></div>
+                <div class="m-label">总结</div>
+                <div class="m-item" onclick="closeMenu();summaryRegenerate()">
+                    <span class="ico">⚡</span> 重新汇总
+                </div>
+                <div class="m-item" onclick="closeMenu();summarySave()">
+                    <span class="ico">💾</span> 保存总结
+                </div>
+                <div class="m-item" onclick="closeMenu();summaryClear()">
+                    <span class="ico">🧹</span> 清空本条
+                </div>
+                <div class="m-divider"></div>
+                <div class="m-label">输出</div>
+                <div class="m-item" onclick="closeMenu();summaryPrint()">
+                    <span class="ico">🖨️</span> A4 打印 / 导出 PDF
+                </div>
+                <div class="m-item" onclick="closeMenu();summaryExportImage()">
+                    <span class="ico">🖼️</span> 导出长图
+                </div>
+                <div class="m-item" onclick="closeMenu();summaryExportHTML()">
+                    <span class="ico">📤</span> 导出 HTML 文件
+                </div>
+                <div class="m-item" onclick="closeMenu();go('review')">
+                    <span class="ico">📓</span> 返回复盘
                 </div>
                 <div class="m-divider"></div>
                 <div class="m-item" onclick="closeMenu();openBgScope()">
@@ -14786,6 +15745,7 @@ oninput="pgRefresh()"></textarea>
                     </span>
                     <button class="rv-print" onclick="reviewPrint()" title="A4 打印 / 存为 PDF">🖨️</button>
                     <button class="rv-gen" onclick="reviewGenerate()">⚡ 一键生成</button>
+                    <button class="rv-gen" onclick="openSummaryPage()" title="汇总本期全部完成情况与评估结果，可编辑与导出">📝 一键总结</button>
                 </div>
             </div>
 
@@ -14811,6 +15771,17 @@ oninput="pgRefresh()"></textarea>
                 <div class="rv-frame-body" id="rv-frame-2-body">
                     ${rvFrame2Empty()}
                 </div>
+            </div>
+
+            <!-- v57 集思录栏：把「事件与感悟 / 关系」的文本同步进复盘（需求 3）。
+                 位置按要求放在「待办 / 习惯 / 目标 · 剩余进度」之后。 -->
+            <div class="rv-frame" id="rv-frame-jisi">
+                <div class="rv-frame-h">
+                    <span class="tico">💭</span>
+                    <span class="ttl">集思录 · 事件与感悟 / 关系</span>
+                    <span class="rv-meta" id="rv-frame-jisi-meta"></span>
+                </div>
+                <div class="rv-frame-body" id="rv-frame-jisi-body"></div>
             </div>
 
             <!-- v27 第四栏：每日得分趋势 -->
@@ -14924,6 +15895,8 @@ oninput="pgRefresh()"></textarea>
             const ed = document.getElementById('rvDiary');
             if (ed && reviewDiaryDirty) saveDiaryDraft(ed, true);
         } catch(e) {}
+        /* v58：切日期同理（一键总结按：范围+|锚点：存） */
+        try { if (typeof summaryBeforeLeave === 'function') summaryBeforeLeave(); } catch (e) {}
         reviewAnchor = v;
         render();
     }
@@ -14963,6 +15936,8 @@ oninput="pgRefresh()"></textarea>
             <button data-cmd="insertUnorderedList" onclick="diaryExec('insertUnorderedList')" title="无序列表">•</button>
             <button onclick="diaryInsertDate()" title="插入今天日期">📅 日期</button>
             <button onclick="diaryInsertOverview()" title="插入当前日期的完成概览（联动清单/习惯/专注数据）">📊 概览</button>
+            <button onclick="diaryInsertSummary()" title="把「一键总结」整篇导入日记（需求 8）">📝 总结</button>
+            <button onclick="diaryImportModal()" title="按模块单独导入「完成信息」或「内容」（需求 9）">📥 导入</button>
             <span class="sep"></span>
             <select onchange="diaryFont(this.value)" title="字体">
                 <option value="">字体</option>
@@ -15380,6 +16355,8 @@ oninput="pgRefresh()"></textarea>
             const ed = document.getElementById('rvDiary');
             if (ed && reviewDiaryDirty) saveDiaryDraft(ed, true);
         } catch(e) {}
+        /* v58：切范围会重算一键总结的存储键，先把编辑区落盘再重渲染 */
+        try { if (typeof summaryBeforeLeave === 'function') summaryBeforeLeave(); } catch (e) {}
         reviewRange = k;
         S.settings.reviewRange = k;
         save();
@@ -15391,11 +16368,523 @@ oninput="pgRefresh()"></textarea>
         else reviewAnchor = todayStr;
         render();
     }
+    /* ===== v57 集思录栏：把集思录的文本同步进复盘（需求 3）=====
+       位置按需求放在「待办 / 习惯 / 目标 · 剩余进度」之后。
+       正文**复用 jisiTextHTML(range)** —— 与「一键总结」共用同一口径，两处不会走样；
+       range 直接吃复盘自己的范围（日 / 周 / 月 / 年），与上下各栏完全一致。 */
+    function rvRenderJisi() {
+        const body = document.getElementById('rv-frame-jisi-body');
+        const metaEl = document.getElementById('rv-frame-jisi-meta');
+        if (!body) return;
+        const range = rvComputeRange(reviewRange, reviewAnchor || today());
+        const n = (typeof jisiCountIn === 'function') ? jisiCountIn(range) : 0;
+        if (metaEl) metaEl.textContent = n ? (range.label + ' · ' + n + ' 条') : (range.label + ' · 暂无');
+        const inner = (typeof jisiTextHTML === 'function') ? jisiTextHTML(range) : '';
+        body.innerHTML =
+            '<div style="font-size:12px;line-height:1.6">' + inner + '</div>' +
+            '<div style="margin-top:8px;text-align:right">' +
+            '<span style="color:var(--main);font-size:11px;cursor:pointer" onclick="go(\'jisi\')">打开集思录 ›</span>' +
+            '</div>';
+    }
+    /* v57：复盘报告里的「集思录」节。
+       复盘页的打印 / 导出 HTML / 导出长图三处共用 reviewPrintHTML() 这一份文档，
+       所以只要挂在这里，三种导出**同时**带上集思录。无内容时整节不出现。 */
+    function jisiReportHTML(range) {
+        const n = (typeof jisiCountIn === 'function') ? jisiCountIn(range) : 0;
+        if (!n) return '';
+        const inner = (typeof jisiTextHTML === 'function') ? jisiTextHTML(range) : '';
+        return '<h2>💭 集思录 · 事件与感悟 / 关系 <span class="tag">共 ' + n + ' 条</span></h2>' +
+               '<div class="diary" style="border-style:solid;border-color:#dde0ea">' + inner + '</div>';
+    }
+
+
+    /* ===================== v58：一键总结（需求 4~7） =====================
+       入口：复盘页头部「📝 一键总结」/ 复盘 ⋯ 菜单 / 复盘 ☰ 侧栏。
+       形态：子页面 page='summary'（进 SUB_PAGES），整屏一个 textarea。
+       存储：S.summary['<范围>|<锚点>'] = { text, range, anchor, updatedAt }
+             —— 挂在 S 上，自动进云同步与备份，无需新增同步键。
+       取数：全部复用复盘既有口径，不另起一套指标（否则两处数字会打架）。 */
+    let summaryTouched = false;      /* 本页会话内编辑区是否被改过（决定离开时要不要落盘） */
+
+    function openSummaryPage() { go('summary'); }
+
+    function summaryKey() { return (reviewRange || 'day') + '|' + (reviewAnchor || today()); }
+    function summaryStore() {
+        if (!S.summary || typeof S.summary !== 'object') S.summary = {};
+        return S.summary;
+    }
+    function summaryRec() {
+        const r = summaryStore()[summaryKey()];
+        return (r && typeof r.text === 'string') ? r : null;
+    }
+    const summaryClock = () => {
+        const d = new Date();
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    };
+    function summaryStamp() {
+        const d = new Date();
+        const p = n => String(n).padStart(2, '0');
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+    const summaryHM = m => (m >= 60 ? (Math.round(m / 6) / 10) + ' 小时' : m + ' 分钟');
+    function summaryHint(t) { const el = document.getElementById('sumSaveHint'); if (el) el.textContent = t; }
+
+    /* 集思录纯文本版 —— 与 jisiTextHTML **同口径**（同样的 JISI_REL_CATS 顺序、
+       jsByDateDesc 倒序、同样的日期范围过滤 `inR`），只是输出成 textarea 可编辑的纯文本。 */
+    const jsPlain = s => String(s == null ? '' : s).replace(/\s*\n+\s*/g, ' ').trim();
+    function jisiTextPlain(range) {
+        const s = jisiData();
+        const inR = d => !range || (String(d || '') >= range.from && String(d || '') <= range.to);
+        const L = [];
+        JISI_REL_CATS.forEach(c => {
+            const arr = jsByDateDesc((s.rel[c.k] || []).filter(e => inR(e.date)));
+            if (!arr.length) return;
+            L.push(c.icon + ' ' + c.label);
+            arr.forEach(e => L.push('  · [' + (e.date || '') + '] ' + jsPlain(e.text)));
+        });
+        const evs = jsByDateDesc(s.events.filter(e => inR(e.date)));
+        if (evs.length) {
+            L.push('📋 事件与感悟');
+            evs.forEach(e => L.push('  · [' + (e.date || '') + '] ' + (e.title ? e.title + ' ' : '') + jsPlain(e.text)));
+        }
+        return L;
+    }
+
+    /* 日记摘录 —— 口径与 reviewPrintHTML 里那段完全一致（本范围第一篇） */
+    function summaryDiaryText() {
+        try {
+            const key = reviewDiaryAnchor();
+            const allDiary = JSON.parse(localStorage.getItem(DIARY_KEY) || '{}') || {};
+            const rec = allDiary[key];
+            if (rec && rec.html) {
+                return rec.html.replace(/<br\s*\/?>/gi, ' ').replace(/<\/p>/gi, ' ')
+                    .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+            }
+        } catch (e) {}
+        return '';
+    }
+
+    /* 评估结果（需求 6）：只由 computeDayScore 的四个分项推导，不引入新指标。
+       有数据就说数据，没有短板时给的是「保持 + 微调」而不是套话。 */
+    function summaryEvalLines(score, data, range, remain) {
+        const p = score.parts;
+        const items = [['任务完成', p.task], ['习惯打卡', p.habit], ['目标推进', p.goal], ['专注投入', p.minutes]];
+        const sorted = items.slice().sort((a, b) => b[1] - a[1]);
+        const best = sorted[0], worst = sorted[sorted.length - 1];
+        const grade = score.value >= 85 ? '优秀' : score.value >= 70 ? '良好'
+            : score.value >= 60 ? '合格' : score.value >= 40 ? '偏弱' : '不足';
+        const doneCount = data.tasks.length;
+        const habitSum = data.habits.reduce((a, h) => a + (+h.count || 0), 0);
+        const habitTarget = data.habits.reduce((a, h) => a + (+h.target || 0), 0);
+        const focusMin = data.tasks.reduce((a, t) => a + (+t.minutes || 0), 0);
+        const L = [];
+        L.push('综合评级：' + grade + '（' + score.value + ' 分 · ' + score.label + '）');
+        L.push('亮点：' + best[0] + '最突出（' + best[1] + '%）。');
+        L.push('短板：' + worst[0] + '相对最弱（' + worst[1] + '%）。');
+        L.push('完成量：任务 / 子任务 ' + doneCount + ' 条 · 习惯打卡 ' + habitSum + ' 次 · 多步目标 ' + data.goals.length + ' 项。');
+        if (habitTarget) {
+            L.push('习惯达标：' + (data.habitRate >= 80 ? '达标 ✓' : '未达标') + '（本期总完成率 ' + data.habitRate + '%，达标线 80%）。');
+        }
+        L.push('专注强度：累计 ' + focusMin + ' 分钟 · 日均 ' + Math.round(focusMin / Math.max(1, range.days)) + ' 分钟。');
+        const left = (remain && !remain.empty && remain.data) ? remain.data : null;
+        if (left) {
+            const overdue = left.todos.filter(t => rvDaysLeft(t.dueDate) !== null && rvDaysLeft(t.dueDate) < 0).length;
+            L.push('剩余待办：范围内 ' + left.todos.length + ' 项未完成' + (overdue ? '，其中已逾期 ' + overdue + ' 项' : '') + '。');
+        }
+        const tips = [];
+        if (p.task < 60) tips.push('任务完成度偏低：把大任务拆成可勾选的子任务，先把「已完成事项」堆起来。');
+        if (p.habit < 60) tips.push('习惯打卡不达标：下调单日目标或减少同时培养的习惯数量，先保住连续天数。');
+        if (p.goal < 60) tips.push('目标推进慢：给目标补一份母子任务清单，让进度按完成任务数自然上涨。');
+        if (p.minutes < 60) tips.push('专注投入不足：每天先安排 1 个 25 分钟的专注番茄，把启动成本降下来。');
+        if (!tips.length) {
+            /* 四块都在及格线以上：短板若仍明显（<80%）就给针对它的建议，
+               不要一句「表现均衡」把 67% 的目标推进糊过去。 */
+            if (worst[1] < 80) tips.push(worst[0] + '是四块里相对最弱的一块（' + worst[1] + '%）：给它单独排一个固定时段，先抬到 80% 以上。');
+            else tips.push('四块表现均衡，保持当前节奏即可；可尝试把专注时长再提 10%，给目标推进留余量。');
+        }
+        L.push('改进建议：');
+        tips.slice(0, 3).forEach((t, i) => L.push('  ' + (i + 1) + '. ' + t));
+        return L;
+    }
+
+    /* 汇总正文 —— 纯文本，直接喂给 textarea */
+    function summaryBuildText() {
+        const range = rvComputeRange(reviewRange || 'day', reviewAnchor || today());
+        const data = rvCollectStats(range);
+        const score = computeDayScore(data, range);
+        let remain = null;
+        try { remain = rvComputeRemain(range); } catch (e) {}
+        const L = [];
+        L.push('【朝暮计 · ' + reviewRangeLabel() + '总结】');
+        L.push('范围：' + (range.label || '') + '（共 ' + range.days + ' 天） · 生成于 ' + summaryStamp());
+        L.push('');
+        L.push('一、综合评分');
+        L.push('  ' + score.value + ' 分 · ' + score.label);
+        L.push('  分项：任务 ' + score.parts.task + '% · 习惯 ' + score.parts.habit + '% · 目标 ' + score.parts.goal + '% · 专注 ' + score.parts.minutes + '%');
+        L.push('');
+        L.push('二、任务 / 子任务完成（' + data.tasks.length + ' 条）');
+        if (data.tasks.length) {
+            data.tasks.forEach(t => {
+                L.push('  · [' + t.date + '] ' + (t.kind === 'sub' ? '子任务' : (t.kind === 'focus' ? '专注' : '任务')) +
+                    ' · ' + (t.title || '') +
+                    (t.category && t.category !== '—' ? '（' + t.category + '）' : '') +
+                    (t.minutes ? ' · ' + t.minutes + ' 分钟' : ''));
+            });
+        } else L.push('  （本期没有完成记录）');
+        L.push('');
+        const habitSum = data.habits.reduce((a, h) => a + (+h.count || 0), 0);
+        L.push('三、习惯打卡（' + data.habits.length + ' 项 · 共 ' + habitSum + ' 次）');
+        if (data.habits.length) {
+            data.habits.forEach(h => {
+                const rate = h.target ? Math.round(h.count / h.target * 100) : null;
+                L.push('  · ' + h.name + (h.ctx ? '（' + h.ctx + '）' : '') + '：' + h.count + ' / ' + (h.target || '—') + (rate != null ? ' · ' + rate + '%' : ''));
+            });
+        } else L.push('  （本期没有打卡）');
+        L.push('');
+        L.push('四、目标进度（' + data.goals.length + ' 项）');
+        if (data.goals.length) {
+            data.goals.forEach(g => L.push('  · ' + g.name + '：' + g.done + '/' + g.total + (g.unit ? ' ' + g.unit : '') +
+                ' · ' + g.percent + '% · 投入 ' + (g.minutes || 0) + ' 分钟'));
+        } else L.push('  （还没有多步目标）');
+        L.push('');
+        const focusAll = (S.focus || []).filter(f => f.date >= range.from && f.date <= range.to);
+        const focusMin = focusAll.reduce((a, f) => a + (+f.minutes || 0), 0);
+        const focusDays = new Set(focusAll.map(f => f.date)).size;
+        L.push('五、专注投入');
+        L.push('  累计 ' + focusMin + ' 分钟（' + summaryHM(focusMin) + '） · ' + focusDays + ' 天有记录 · 日均 ' + Math.round(focusMin / Math.max(1, range.days)) + ' 分钟');
+        const byTask = {};
+        focusAll.forEach(f => { const k = f.task || '未关联'; byTask[k] = (byTask[k] || 0) + (+f.minutes || 0); });
+        const top3 = Object.keys(byTask).sort((a, b) => byTask[b] - byTask[a]).slice(0, 3);
+        if (top3.length) L.push('  投入最多：' + top3.map(k => k + ' ' + summaryHM(byTask[k])).join('、'));
+        L.push('');
+        const jisiLines = jisiTextPlain(range);
+        L.push('六、集思录（' + (typeof jisiCountIn === 'function' ? jisiCountIn(range) : 0) + ' 条）');
+        if (jisiLines.length) jisiLines.forEach(x => L.push('  ' + x));
+        else L.push('  （本期集思录暂无内容）');
+        L.push('');
+        const dtext = summaryDiaryText();
+        L.push('七、日记摘录');
+        L.push(dtext ? '  ' + dtext : '  （本期还没写日记）');
+        L.push('');
+        L.push('八、剩余待办（未完成）');
+        const left = (remain && !remain.empty && remain.data) ? remain.data : null;
+        if (left && left.todos.length) {
+            const sorted = left.todos.slice().sort((a, b) => {
+                const da = rvDaysLeft(a.dueDate), db = rvDaysLeft(b.dueDate);
+                if (da === null && db === null) return 0;
+                if (da === null) return 1; if (db === null) return -1;
+                return da - db;
+            });
+            sorted.forEach(t => L.push('  ☐ ' + (t.title || '') + ' · ' + rvDaysText(t.dueDate)));
+        } else L.push('  （范围内没有未完成待办）');
+        L.push('');
+        L.push('九、评估结果');
+        summaryEvalLines(score, data, range, remain).forEach(x => L.push('  ' + x));
+        return L.join('\n');
+    }
+
+    /* ---------- 页面 ---------- */
+    function rSummary() {
+        if (!reviewAnchor) reviewAnchor = today();
+        const r = reviewRange;
+        const main = document.getElementById('main');
+        main.className = 'diary-mode';       // 复用日记本的「main 锁滚动 + 编辑区自己滚」
+        const rec = summaryRec();
+        main.innerHTML = `
+        <div class="diary-page sum-page">
+            <div class="dp-head">
+                <span class="dp-t">📝 一键总结</span>
+                <span class="rv-seg rv-seg-sm" id="rvRangeSeg">
+                    ${['day','week','month','year'].map(k => `<span data-r="${k}" class="${k===r?'on':''}" onclick="setReviewRange('${k}')">${({day:'日',week:'周',month:'月',year:'年'})[k]}</span>`).join('')}
+                </span>
+                ${rvDateInputHTML(r)}
+                <span class="dp-stat" id="sumStatBar"></span>
+                <span class="rv-di-hint" id="sumSaveHint">${rec ? '已保存' : '未保存'}</span>
+            </div>
+            <div class="sum-tools">
+                <button onclick="summaryRegenerate()" title="按当前范围重新汇总（会覆盖编辑区）">⚡ 重新生成</button>
+                <button onclick="summarySave()" title="保存到本机（随朝暮计一起云同步）">💾 保存</button>
+                <button onclick="summaryClear()" title="删除当前范围的总结">🧹 清空</button>
+                <span class="sum-sp"></span>
+                <span class="sum-tip">可编辑 · 可导出</span>
+                <button onclick="summaryPrint()" title="A4 打印 / 另存为 PDF">🖨️ PDF</button>
+                <button onclick="summaryExportImage()" title="导出 PNG 长图">🖼️ 长图</button>
+                <button onclick="summaryExportHTML()" title="导出可打印的 HTML 文件">📤 HTML</button>
+            </div>
+            <textarea class="sum-editor" id="sumEditor" spellcheck="false"
+                placeholder="点「⚡ 重新生成」，按当前范围汇总朝暮计的全部完成情况与评估结果，然后在这里修改…"
+                oninput="summaryOnInput()"></textarea>
+            <div class="dp-foot">
+                <button class="dp-btn ghost" onclick="go('review')">‹ 返回复盘</button>
+                <span class="dp-count" id="sumCount"></span>
+                <button class="dp-btn primary" onclick="summarySave()">💾 保存总结</button>
+            </div>
+        </div>`;
+        const ta = document.getElementById('sumEditor');
+        if (ta) ta.value = rec ? String(rec.text || '') : summaryBuildText();
+        summaryTouched = false;              // 自动填充不算改动：不编辑就不会凭空存一份
+        summaryRefreshStat();
+    }
+
+    function summaryOnInput() {
+        const ta = document.getElementById('sumEditor');
+        if (!ta) return;
+        summaryTouched = true;
+        const st = summaryStore();
+        st[summaryKey()] = { text: ta.value || '', range: reviewRange, anchor: reviewAnchor || today(), updatedAt: Date.now() };
+        save();                              // 只标记有未保存更改；真正落盘在保存/离开时
+        summaryRefreshStat();
+        summaryHint('有改动 · 待保存');
+    }
+
+    function summaryRefreshStat() {
+        const ta = document.getElementById('sumEditor');
+        const c = document.getElementById('sumCount');
+        if (c) c.textContent = ta ? ((ta.value || '').length + ' 字') : '';
+        const bar = document.getElementById('sumStatBar');
+        if (!bar) return;
+        let html = '';
+        try {
+            const range = rvComputeRange(reviewRange || 'day', reviewAnchor || today());
+            const s = computeDayScore(rvCollectStats(range), range);
+            html = '<span class="dp-st">综合 <b>' + s.value + '</b><i>分</i></span>' +
+                '<span class="dp-st">' + esc(s.label) + '</span>' +
+                '<span class="dp-st">共 ' + range.days + ' 天</span>';
+        } catch (e) {}
+        bar.innerHTML = html;
+    }
+
+    function summarySave(silent) {
+        const ta = document.getElementById('sumEditor');
+        if (!ta) { if (!silent) showToast('总结编辑区不存在'); return; }
+        const st = summaryStore();
+        const text = ta.value || '';
+        const k = summaryKey();
+        if (!text.trim()) {
+            if (st[k]) { delete st[k]; save(); commitSave(true); }
+            summaryTouched = false;
+            summaryHint('已清空');
+            if (!silent) showToast('总结已清空');
+            return;
+        }
+        st[k] = { text: text, range: reviewRange, anchor: reviewAnchor || today(), updatedAt: Date.now() };
+        summaryTouched = false;
+        save();
+        commitSave(true);
+        summaryHint('已保存 ' + summaryClock());
+        if (!silent) showToast('总结已保存 ✓');
+    }
+
+    /* 离开一键总结页前静默落盘 —— 与日记页同一条「不丢字」原则。
+       切范围 / 切日期（setReviewRange / setDiaryAnchor）也会先调它，否则重渲染就丢了。 */
+    function summaryBeforeLeave() {
+        if (!summaryTouched) return;
+        try { summarySave(true); } catch (e) {}
+    }
+
+    function summaryRegenerate() {
+        const ta = document.getElementById('sumEditor');
+        const has = ta && String(ta.value || '').trim();
+        if (has && !confirm('重新生成会覆盖当前编辑区内容（含已保存的总结），继续？')) return;
+        const t = summaryBuildText();
+        if (ta) ta.value = t;
+        summaryTouched = true;
+        summaryRefreshStat();
+        summaryHint('已重新生成 · 待保存');
+        showToast('已按当前范围重新汇总');
+    }
+
+    function summaryClear() {
+        if (!confirm('清空当前范围（' + reviewRangeLabel() + '）的一键总结？其它范围不受影响。')) return;
+        const st = summaryStore();
+        const k = summaryKey();
+        if (st[k]) { delete st[k]; save(); commitSave(true); }
+        const ta = document.getElementById('sumEditor');
+        if (ta) ta.value = '';
+        summaryTouched = false;
+        summaryRefreshStat();
+        summaryHint('已清空');
+        showToast('已清空本条总结');
+    }
+
+    /* ---------- 导出：打印/PDF · 长图 · HTML ----------
+       三路共用同一份 A4 文档 summaryPrintHTML()；
+       rvDocPrint / rvDocDownload / rvDocToImage 与复盘那三个导出同构，
+       但刻意**不动**已验证的 reviewPrint / reviewExportHTML / reviewExportImage。 */
+    function rvDocPrint(doc, tip) {
+        let f = document.getElementById('printFrame');
+        if (!f) {
+            f = document.createElement('iframe');
+            f.id = 'printFrame';
+            f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+            document.body.appendChild(f);
+        }
+        f.srcdoc = doc;
+        showToast(tip || '正在打开打印预览…');
+        setTimeout(() => {
+            try { const w = f.contentWindow; w.focus(); w.print(); }
+            catch (e) { showToast('打印失败：' + e.message); }
+        }, 350);
+    }
+    function rvDocDownload(doc, name, tip) {
+        const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+        if (tip) showToast(tip);
+    }
+    function rvDocToImage(doc, name, okTip) {
+        showToast('正在生成长图…');
+        const f = document.createElement('iframe');
+        f.style.cssText = 'position:fixed;right:0;bottom:0;width:794px;height:900px;border:0;visibility:hidden';
+        document.body.appendChild(f);
+        const cleanup = () => { try { f.remove(); } catch (e) {} };
+        const fail = msg => { cleanup(); showToast('导出失败：' + msg); };
+        f.srcdoc = doc;
+        f.onload = () => {
+            setTimeout(() => {
+                try {
+                    const w = f.contentWindow, d = f.contentDocument;
+                    if (!w || !d || !d.body) { fail('报告渲染异常'); return; }
+                    const s = d.createElement('script');
+                    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                    s.onload = () => {
+                        try {
+                            w.html2canvas(d.body, { scale: 2, backgroundColor: '#ffffff', logging: false })
+                                .then(canvas => {
+                                    try {
+                                        const a = document.createElement('a');
+                                        a.href = canvas.toDataURL('image/png');
+                                        a.download = name;
+                                        document.body.appendChild(a); a.click();
+                                        setTimeout(() => a.remove(), 400);
+                                        showToast(okTip || '✅ 长图已导出，可直接分享');
+                                    } catch (e) { fail(e.message || '图片生成异常'); }
+                                    cleanup();
+                                })
+                                .catch(e => fail(e.message || '渲染失败'));
+                        } catch (e) { fail(e.message || '渲染异常'); }
+                    };
+                    s.onerror = () => fail('组件加载失败（导出长图需联网，可改用「打印 / PDF」）');
+                    (d.head || d.documentElement).appendChild(s);
+                } catch (e) { fail(e.message || '未知错误'); }
+            }, 350);
+        };
+    }
+
+    /* 一键总结的 A4 文档 —— 正文是用户可编辑的纯文本，按行分类给轻量层级：
+       「【…】」当大标题、「一、二、…」当小节标题，其余按原样保留缩进与换行。 */
+    function summaryPrintHTML() {
+        const ta = document.getElementById('sumEditor');
+        const rec = summaryRec();
+        const text = ta ? String(ta.value || '') : (rec ? String(rec.text || '') : summaryBuildText());
+        const range = rvComputeRange(reviewRange || 'day', reviewAnchor || today());
+        let score = null;
+        try { score = computeDayScore(rvCollectStats(range), range); } catch (e) {}
+        const body = String(text).split('\n').map(l => {
+            const t = l.replace(/\s+$/, '');
+            if (/^【/.test(t)) return '<div class="doc-t">' + esc(t) + '</div>';
+            if (/^[一二三四五六七八九十]+、/.test(t)) return '<div class="doc-h">' + esc(t) + '</div>';
+            if (!t.trim()) return '<div class="doc-g"></div>';
+            return '<div class="doc-l">' + esc(t) + '</div>';
+        }).join('');
+        const css = `@page { size: A4; margin: 11mm 12mm; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f2430; margin: 0; font-size: 10.5pt; line-height: 1.65; }
+        .head { display: flex; align-items: baseline; border-bottom: 2.5px solid #6c5ce7; padding-bottom: 7px; margin-bottom: 10px; }
+        .head .t { font-size: 17pt; font-weight: 800; color: #6c5ce7; letter-spacing: .5px; }
+        .head .sub { margin-left: auto; font-size: 9pt; color: #888; text-align: right; }
+        .head .t { white-space: nowrap; }
+        .scoreline { display: flex; align-items: center; gap: 14px; background: #faf9ff; border: 1px solid #e6e4f5; border-radius: 8px; padding: 8px 12px; margin: 4px 0 8px; }
+        .scoreline .n { font-size: 26pt; font-weight: 800; line-height: 1; }
+        .scoreline .l { font-size: 10pt; color: #666; }
+        .scoreline .parts { margin-left: auto; text-align: right; font-size: 9pt; color: #555; white-space: nowrap; }
+        .doc-t { font-size: 15pt; font-weight: 800; color: #6c5ce7; margin: 4px 0 6px; }
+        .doc-h { font-size: 11.5pt; font-weight: 700; color: #4a4b5c; margin: 12px 0 4px; padding-left: 7px; border-left: 4px solid #6c5ce7; }
+        .doc-l { white-space: pre-wrap; word-break: break-word; }
+        .doc-g { height: 6px; }
+        .foot { margin-top: 16px; padding-top: 6px; border-top: 1px solid #eee; color: #aaa; font-size: 8.5pt; text-align: center; }
+        .no-print { display: none; }
+        @media print { .no-print { display: none !important; } }
+        @media screen { .no-print { display: block; text-align: right; margin-bottom: 8px; } .no-print button { background: #6c5ce7; color: #fff; border: none; padding: 8px 18px; border-radius: 8px; font-size: 13px; cursor: pointer; } }`;
+        const doc = `<div class="no-print"><button onclick="window.print()">🖨️ 打印 / 另存为 PDF</button></div>
+        <div class="head">
+            <div class="t">朝暮计 · 一键总结</div>
+            <div class="sub">${esc(String(range.label || '').replace(/-/g, '/'))}<br>共 ${range.days} 天 · 导出于 ${esc(summaryStamp())}</div>
+        </div>
+        ${score ? '<div class="scoreline"><span class="n" style="color:' + score.color + '">' + score.value +
+            '</span><span class="l">' + esc(score.label) + '<br>综合评分</span><span class="parts">任务 ' +
+            score.parts.task + '% · 习惯 ' + score.parts.habit + '% · 目标 ' + score.parts.goal +
+            '% · 专注 ' + score.parts.minutes + '%</span></div>' : ''}
+        <div class="doc">${body}</div>
+        <div class="foot">朝暮计 · 一键总结（${esc(String(range.label || ''))}）· 数据保存在本机浏览器 localStorage</div>`;
+        return '<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>朝暮计 · 一键总结</title><style>' + css + '</style></head><body>' + doc + '</body></html>';
+    }
+    function summaryPrint() {
+        closeMenu(); closeSidebar();
+        rvDocPrint(summaryPrintHTML(), '正在打开打印预览…');
+    }
+    function summaryExportHTML() {
+        closeMenu(); closeSidebar();
+        rvDocDownload(summaryPrintHTML(), '朝暮计-总结-' + (reviewAnchor || today()).replace(/-/g, '') + '.html', '已导出 HTML，可随时打开打印');
+    }
+    function summaryExportImage() {
+        closeMenu(); closeSidebar();
+        rvDocToImage(summaryPrintHTML(), '朝暮计-总结-' + (reviewAnchor || today()).replace(/-/g, '') + '.png');
+    }
+
+    /* 一键总结页 ☰ 侧栏 —— 与复盘侧栏同构 */
+    function sidebarSummaryHTML() {
+        const r = reviewRange;
+        const rl = { day: '日', week: '周', month: '月', year: '年' };
+        return `
+            <div class="s-section">总结</div>
+            <div class="s-item" onclick="closeSidebar();summaryRegenerate()">
+                <span class="s-ico">⚡</span>重新汇总<span class="arrow">›</span>
+            </div>
+            <div class="s-item" onclick="closeSidebar();summarySave()">
+                <span class="s-ico">💾</span>保存总结<span class="arrow">›</span>
+            </div>
+            <div class="s-item" onclick="closeSidebar();summaryClear()">
+                <span class="s-ico">🧹</span>清空本条<span class="arrow">›</span>
+            </div>
+
+            <div class="s-section">统计范围</div>
+            <div class="s-item" style="gap:4px">
+                ${['day','week','month','year'].map(k =>
+                    `<span class="sb-mini ${k===r?'on':''}" onclick="closeSidebar();setReviewRange('${k}')">${rl[k]}</span>`).join('')}
+            </div>
+
+            <div class="s-section">输出</div>
+            <div class="s-item" onclick="closeSidebar();summaryPrint()">
+                <span class="s-ico">🖨️</span>A4 打印 / 导出 PDF<span class="arrow">›</span>
+            </div>
+            <div class="s-item" onclick="closeSidebar();summaryExportImage()">
+                <span class="s-ico">🖼️</span>导出长图（分享）<span class="arrow">›</span>
+            </div>
+            <div class="s-item" onclick="closeSidebar();summaryExportHTML()">
+                <span class="s-ico">📤</span>导出为 HTML 文件<span class="arrow">›</span>
+            </div>
+
+            <div class="s-section">其它</div>
+            <div class="s-item" onclick="closeSidebar();go('review')">
+                <span class="s-ico">📓</span>返回复盘<span class="arrow">›</span>
+            </div>
+            <div class="s-item" onclick="closeSidebar();openBgScope()">
+                <span class="s-ico">🖼</span>背景与图片<span class="arrow">›</span>
+            </div>
+        `;
+    }
+
     /* ===== 一键生成 ===== */
     function reviewGenerate() {
         reviewLastRenderedAt = Date.now();
         rvRenderFrame1();
         rvRenderFrame2();
+        rvRenderJisi();         // v57：集思录（事件 / 关系）同步进复盘
         rvRenderScoreTrend();   // v27：每日得分趋势
         rvRenderInsights();     // v28：专注感悟（模块联动）
         // 第三栏只刷新 meta（内容由用户自己写）
@@ -16042,6 +17531,185 @@ oninput="pgRefresh()"></textarea>
         // 选中态已写入 data-mood，render 后由 restoreDiaryHead 恢复
         diaryHeadChanged();
     }
+
+    /* ===================== v58：导入到日记（需求 8 / 9） =====================
+       需求 8「日记本界面增加总结导入」 → 工具条「📝 总结」把整篇一键总结按段落导进来；
+       需求 9「增加子界面，完成信息和内容单独导入」 → 模态框 mDiaryImport：
+         一行一个模块，左键「完成信息」（数字概览）、右键「内容」（明细文本），
+         两者分别插入、互不绑定。
+       所有片段复用复盘既有口径（rvComputeRange / rvCollectStats / computeDayScore /
+       rvComputeRemain / rvDaysText / jisiCountIn / jisiTextPlain），
+       保证日记、复盘页、一键总结三处数字完全一致。 */
+    function diaryImportItems() {
+        const a = reviewAnchor || today();
+        const range = rvComputeRange(reviewRange || 'day', a);
+        const d = rvCollectStats(range);
+        const score = computeDayScore(d, range);
+        let remain = null;
+        try { remain = rvComputeRemain(range); } catch (e) {}
+        const focusAll = (S.focus || []).filter(f => f.date >= range.from && f.date <= range.to);
+        const focusMin = focusAll.reduce((x, f) => x + (+f.minutes || 0), 0);
+        const focusDays = new Set(focusAll.map(f => f.date)).size;
+        const habitSum = d.habits.reduce((x, h) => x + (+h.count || 0), 0);
+        const taskMin = d.tasks.reduce((x, t) => x + (+t.minutes || 0), 0);
+        const left = (remain && !remain.empty && remain.data) ? remain.data : null;
+        const bullet = (arr, f) => arr.length ? arr.map(x => '· ' + f(x)).join('<br>') : '（本期没有）';
+        const noData = '（本期没有）';
+        const items = [];
+
+        /* ① 本期总览 —— 一行数字，写日记时最常用 */
+        items.push({
+            k: 'all', icon: '📊', name: '本期总览', tag: range.label,
+            brief: '📊 <b>' + esc(range.label) + '</b> · 综合得分 <b>' + score.value + '</b>（' + esc(score.label) + '）',
+            detail: '综合得分 <b>' + score.value + '</b> · 任务 ' + score.parts.task + '% · 习惯 ' +
+                score.parts.habit + '% · 目标 ' + score.parts.goal + '% · 专注 ' + score.parts.minutes + '%'
+        });
+
+        /* ② 任务 / 子任务 */
+        items.push({
+            k: 'tasks', icon: '✅', name: '任务 / 子任务', tag: d.tasks.length + ' 条',
+            brief: '✅ 完成事项 <b>' + d.tasks.length + '</b> 条 · 用时 <b>' + taskMin + '</b> 分钟',
+            detail: bullet(d.tasks, t => '[' + t.date + '] ' + esc(t.title || '') +
+                (t.kind === 'sub' ? '（子任务）' : (t.kind === 'focus' ? '（专注）' : '')) +
+                (t.minutes ? ' · ' + t.minutes + ' 分钟' : ''))
+        });
+
+        /* ③ 习惯打卡 */
+        items.push({
+            k: 'habits', icon: '🌱', name: '习惯打卡', tag: d.habits.length + ' 项',
+            brief: '🌱 习惯打卡 <b>' + habitSum + '</b> 次' +
+                (d.habits.length ? ' · 完成率 <b>' + d.habitRate + '%</b>' : ''),
+            detail: bullet(d.habits, h => esc(h.name) + (h.ctx ? '（' + esc(h.ctx) + '）' : '') +
+                '：' + h.count + ' / ' + (h.target || '—') +
+                (h.target ? ' · ' + Math.round(h.count / h.target * 100) + '%' : ''))
+        });
+
+        /* ④ 目标进度 */
+        items.push({
+            k: 'goals', icon: '🎯', name: '目标进度', tag: d.goals.length + ' 项',
+            brief: '🎯 多步目标 <b>' + d.goals.length + '</b> 项' +
+                (d.goals.length ? ' · 平均完成率 <b>' + d.goalRate + '%</b>' : ''),
+            detail: bullet(d.goals, g => esc(g.name) + '：' + g.done + '/' + g.total +
+                (g.unit ? ' ' + esc(g.unit) : '') + ' · ' + g.percent + '% · 投入 ' + (g.minutes || 0) + ' 分钟')
+        });
+
+        /* ⑤ 专注投入 */
+        const byTask = {};
+        focusAll.forEach(f => { const k = f.task || '未关联'; byTask[k] = (byTask[k] || 0) + (+f.minutes || 0); });
+        const top3 = Object.keys(byTask).sort((x, y) => byTask[y] - byTask[x]).slice(0, 3);
+        items.push({
+            k: 'focus', icon: '⏱', name: '专注投入', tag: focusMin + ' 分钟',
+            brief: '⏱ 专注 <b>' + focusMin + '</b> 分钟 · <b>' + focusDays + '</b> 天有记录 · 日均 <b>' +
+                Math.round(focusMin / Math.max(1, range.days)) + '</b> 分钟',
+            detail: focusAll.length ? (top3.length
+                ? bullet(top3, k => esc(k) + ' ' + summaryHM(byTask[k]))
+                : noData) : noData
+        });
+
+        /* ⑥ 集思录 */
+        const jisiLines = (typeof jisiTextPlain === 'function') ? jisiTextPlain(range) : [];
+        items.push({
+            k: 'jisi', icon: '💭', name: '集思录', tag: (typeof jisiCountIn === 'function' ? jisiCountIn(range) : 0) + ' 条',
+            brief: '💭 集思录 <b>' + (typeof jisiCountIn === 'function' ? jisiCountIn(range) : 0) + '</b> 条（事件与感悟 / 关系）',
+            detail: jisiLines.length ? jisiLines.map(x => esc(x)).join('<br>') : '（本期集思录暂无内容）'
+        });
+
+        /* ⑦ 剩余待办 */
+        const todos = left ? left.todos : [];
+        items.push({
+            k: 'remain', icon: '☐', name: '剩余待办', tag: todos.length + ' 项',
+            brief: '☐ 剩余待办 <b>' + todos.length + '</b> 项未完成',
+            detail: bullet(todos, t => esc(t.title || '') + ' · ' + esc(rvDaysText(t.dueDate)))
+        });
+
+        /* ⑧ 评估结果（来自一键总结） */
+        let evalBrief = '（还没有一键总结）', evalDetail = '（还没有一键总结）';
+        try {
+            if (typeof summaryEvalLines === 'function') {
+                const el = summaryEvalLines(score, d, range, remain);
+                evalBrief = '📝 ' + esc(el[0] || '');
+                evalDetail = el.map(x => esc(x)).join('<br>');
+            }
+        } catch (e) {}
+        items.push({
+            k: 'eval', icon: '📝', name: '评估结果', tag: '来自一键总结',
+            brief: evalBrief, detail: evalDetail
+        });
+
+        return items;
+    }
+
+    /* 统一插入口径：光标处插入 HTML 并补一个空行块，保证与前后文自然分段 */
+    function diaryInsertHTML(html) {
+        const ed = document.getElementById('rvDiary');
+        if (!ed) { showToast('先打开日记本再导入'); return false; }
+        ed.focus();
+        document.execCommand('insertHTML', false, '<div>' + html + '</div><div><br></div>');
+        reviewDiaryDirty = true;
+        diarySaveHint();
+        updateDiaryCount();
+        return true;
+    }
+
+    function diaryImportInsert(k, mode) {
+        const it = diaryImportItems().filter(x => x.k === k)[0];
+        if (!it) { showToast('没有这一项'); return; }
+        const html = (mode === 'brief') ? it.brief : it.detail;
+        if (!String(html || '').trim()) { showToast('这一项当前没有可导入的内容'); return; }
+        const ok = diaryInsertHTML(html);
+        if (ok) showToast('已导入「' + it.name + ' · ' + (mode === 'brief' ? '完成信息' : '内容') + '」');
+    }
+
+    function renderDiaryImport() {
+        const body = document.getElementById('mDiaryImportBody');
+        if (!body) return;
+        const items = diaryImportItems();
+        const a = reviewAnchor || today();
+        const head = '<div style="font-size:11px;color:#aaa;padding:0 2px 8px;line-height:1.7">' +
+            '目标范围：<b style="color:var(--main)">' + esc(reviewRangeLabel()) + '</b> · ' + esc(a) + '<br>' +
+            '「完成信息」是数字概览，「内容」是明细文本 —— 分别插入，互不绑定。</div>';
+        const rows = items.map((it, i) =>
+            '<div class="dim-row' + (i === items.length - 1 ? ' dim-last' : '') + '">' +
+            '<div class="dim-l"><span class="dim-ico">' + it.icon + '</span>' +
+            '<span class="dim-t">' + esc(it.name) + '</span>' +
+            (it.tag ? '<span class="dim-tag">' + esc(it.tag) + '</span>' : '') + '</div>' +
+            '<div class="dim-a">' +
+            '<button onclick="diaryImportInsert(\'' + it.k + '\',\'brief\')">完成信息</button>' +
+            '<button class="pri" onclick="diaryImportInsert(\'' + it.k + '\',\'detail\')">内容</button>' +
+            '</div></div>').join('');
+        body.innerHTML = head + rows +
+            '<div style="padding:12px 0 0">' +
+            '<button class="dim-wide" onclick="diaryInsertSummary();closeM(\'mDiaryImport\')">📝 导入整篇「一键总结」</button>' +
+            '</div>';
+    }
+
+    function diaryImportModal() { renderDiaryImport(); openM('mDiaryImport'); }
+    /* 从复盘页 ⋯ 菜单进来：先跳到日记页，等 DOM 就绪再开弹窗（否则 #rvDiary 还不存在） */
+    function diaryImportFromReview() {
+        go('diary');
+        setTimeout(() => { try { diaryImportModal(); } catch (e) {} }, 80);
+    }
+
+    /* 需求 8：把整篇「一键总结」按段落导入日记（有存稿用存稿，没有就现算一份，不落盘） */
+    function diaryInsertSummary() {
+        let text = '';
+        try {
+            const rec = (typeof summaryRec === 'function') ? summaryRec() : null;
+            text = rec ? String(rec.text || '')
+                : (typeof summaryBuildText === 'function' ? summaryBuildText() : '');
+        } catch (e) {}
+        if (!String(text).trim()) { showToast('还没有可导入的一键总结'); return; }
+        const html = String(text).split('\n').map(l => {
+            const t = l.replace(/\s+$/, '');
+            if (/^【/.test(t)) return '<div><b>' + esc(t) + '</b></div>';
+            if (/^[一二三四五六七八九十]+、/.test(t)) return '<div><b>' + esc(t) + '</b></div>';
+            if (!t.trim()) return '<div><br></div>';
+            const lead = (t.match(/^[ \t]*/) || [''])[0].length;
+            return '<div>' + new Array(lead + 1).join('&nbsp;') + esc(t.slice(lead)) + '</div>';
+        }).join('');
+        if (diaryInsertHTML(html)) showToast('已导入「一键总结」');
+    }
+
     function diaryExec(cmd) {
         const ed = document.getElementById('rvDiary');
         if (!ed) return;
@@ -16132,6 +17800,717 @@ oninput="pgRefresh()"></textarea>
             const btn = document.querySelector(`#rvDiTools [data-cmd="${cmd}"]`);
             if (btn) btn.classList.toggle('on', !!document.queryCommandState(cmd));
         });
+    }
+
+    /* ================= v56: 集思录（jisi）=================
+       需求映射：
+         ① 记录事件与感悟                       -> 页签「事件与感悟」
+         ③ 三个并列窗口（人际关系 / 夫妻 / 子女）-> 页签「关系」
+         ② 迁移梦想成真的三个子模块              -> 见 v56b（页签在本函数内追加）
+       数据挂在 S.jisi 上 —— S 持久化到 chaomuji_web_v27，该键已在导航页注册表
+       的 keys 里，故集思录**自动**进入云同步与备份，无需新增同步键。 */
+    let jisiTab = 'tab-jievents';   /* v57：存的由「模块名」改为「页签 id」 */
+
+    /* 唯一取数入口：任何路径进来都先补全结构，避免读写到 undefined */
+    function jisiData() {
+        if (!S.jisi || typeof S.jisi !== 'object') S.jisi = {};
+        if (!Array.isArray(S.jisi.events)) S.jisi.events = [];
+        if (!S.jisi.rel || typeof S.jisi.rel !== 'object') S.jisi.rel = {};
+        JISI_REL_CATS.forEach(c => { if (!Array.isArray(S.jisi.rel[c.k])) S.jisi.rel[c.k] = []; });
+        return S.jisi;
+    }
+    function jisiSetTab(k) { dmTabOn(k); }
+    /* 转义 + 保留换行：文本域里的回车在展示时转成 <br>。
+       必须先 esc 再换 <br>，否则用户输入的尖括号会直接进 DOM。 */
+    const jsTxt = s => esc(String(s == null ? '' : s)).replace(/\n/g, '<br>');
+    const jsByDateDesc = arr => arr.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+    function jisiAddEvent() {
+        const d = document.getElementById('jsEvDate');
+        const t = document.getElementById('jsEvTitle');
+        const x = document.getElementById('jsEvText');
+        const text = (x && x.value || '').trim();
+        if (!text) { showToast('先写点什么再记录'); if (x) x.focus(); return; }
+        jisiData().events.push({
+            id: uid(), date: (d && d.value) || today(),
+            title: ((t && t.value) || '').trim(), text, ts: Date.now()
+        });
+        save(); render(); showToast('已记入集思录');
+    }
+    function jisiDelEvent(id) {
+        const s = jisiData();
+        s.events = s.events.filter(e => e.id !== id);
+        save(); render(); showToast('已删除');
+    }
+    function jisiAddRel(k) {
+        const el = document.getElementById('jsRelIn-' + k);
+        const text = (el && el.value || '').trim();
+        if (!text) { showToast('先写点什么再记录'); if (el) el.focus(); return; }
+        jisiData().rel[k].push({ id: uid(), date: today(), text, ts: Date.now() });
+        save(); render(); showToast('已记录');
+    }
+    function jisiDelRel(k, id) {
+        const s = jisiData();
+        s.rel[k] = (s.rel[k] || []).filter(e => e.id !== id);
+        save(); render(); showToast('已删除');
+    }
+
+    /* 导出为 TXT（原样备份 / 打印前留档） */
+    function jisiExportTxt() {
+        const s = jisiData();
+        const L = ['# 集思录导出  ' + today(), ''];
+        L.push('## 事件与感悟（' + s.events.length + ' 条）');
+        jsByDateDesc(s.events).forEach(e => L.push(
+            '- [' + (e.date || '') + '] ' + (e.title ? e.title + ' · ' : '') + String(e.text).replace(/\n/g, '\n  ')));
+        JISI_REL_CATS.forEach(c => {
+            const arr = s.rel[c.k] || [];
+            L.push('', '## ' + c.label + '（' + arr.length + ' 条）');
+            jsByDateDesc(arr).forEach(e => L.push('- [' + (e.date || '') + '] ' + String(e.text).replace(/\n/g, '\n  ')));
+        });
+        const blob = new Blob([L.join('\n')], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '集思录-' + today() + '.txt';
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1200);
+        showToast('已导出集思录');
+    }
+
+    /* 需求 4：集思录的文本要同步进复盘。
+       复盘栏与「一键总结」共用本函数 —— 口径唯一，避免两处各写一遍而后走样。
+       range 为 null 时不过滤（全量）。 */
+    function jisiTextHTML(range) {
+        const s = jisiData();
+        const inR = d => !range || (String(d || '') >= range.from && String(d || '') <= range.to);
+        const out = [];
+        const relHtml = JISI_REL_CATS.map(c => {
+            const arr = jsByDateDesc((s.rel[c.k] || []).filter(e => inR(e.date)));
+            if (!arr.length) return '';
+            return '<div style="margin:4px 0 8px 0"><b>' + c.icon + ' ' + esc(c.label) + '</b>' +
+                arr.map(e => '<div style="padding:2px 0 2px 10px;font-size:12px">· [' + esc(e.date || '') + '] ' + jsTxt(e.text) + '</div>').join('') +
+                '</div>';
+        }).filter(Boolean).join('');
+        if (relHtml) out.push('<div style="margin-bottom:8px"><b>👨‍👩‍👧 关系</b>' + relHtml + '</div>');
+        const evs = jsByDateDesc(s.events.filter(e => inR(e.date)));
+        if (evs.length) out.push('<div><b>📋 事件与感悟</b>' + evs.map(e =>
+            '<div style="padding:2px 0 2px 10px;font-size:12px">· [' + esc(e.date || '') + '] ' +
+            (e.title ? '<b>' + esc(e.title) + '</b> ' : '') + jsTxt(e.text) + '</div>').join('') + '</div>');
+        if (!out.length) return '<div style="font-size:12px;color:#9a9ab0">（本期集思录暂无内容）</div>';
+        return out.join('');
+    }
+    /* 该范围内的集思录条数（复盘栏标题旁边显示） */
+    function jisiCountIn(range) {
+        const s = jisiData();
+        const inR = d => !range || (String(d || '') >= range.from && String(d || '') <= range.to);
+        let n = s.events.filter(e => inR(e.date)).length;
+        JISI_REL_CATS.forEach(c => { n += (s.rel[c.k] || []).filter(e => inR(e.date)).length; });
+        return n;
+    }
+
+    /* ================= v57 迁移层：梦想成真（晨间日记 / 目标管理 / 计划视图）=================
+       来源 tools/梦想成真.html（**该工具已于 v58 从库删除**，归档在 _work/deleted/），
+       **不含习惯培养**。
+       数据挂 S.jisi.dm —— S 持久化到 chaomuji_web_v27，该键已登记在导航页注册表，
+       故迁移来的目标与日记**自动**进入云同步与备份，无需新增同步键。
+       与主站的隔离手段：
+         ① CSS 全部 .dm-page 前缀作用域化（原样 HTML 类名一字未改）；
+         ② FontAwesome 不引 CDN（本文件 0 外部引用的不变量），改用本地 CSS
+            给 .fa-x::before 补 emoji 字形，<i class="fas fa-x"> 标记原样保留；
+         ③ 表单监听不再于脚本顶层绑定（那些元素只在集思录页存在，
+            顶层绑定 = 加载瞬间对 null 取属性 = 打断整合朝暮计脚本）。 */
+        // =================================================================
+        //  数据层
+        // =================================================================
+
+        // ----- 工具 -----
+        /* v58 修正：原实现用 toISOString() 按 **UTC** 取日期（再截前 10 位），
+           UTC+8 下本地 00:00–08:00 会返回「昨天」—— 晨间日记的默认日期会写到前一天的键上。
+           这是本项目明令禁止的写法（verify_cmj_tz.js A1 的判据：
+           源码里不得出现「toISOString 后截日期」这种取法，须 0 处）。
+           改走主站同一口径 fmtDLocal（与本文件其它日期串生成完全一致）。 */
+        function getToday() {
+            return fmtDLocal(new Date());
+        }
+
+        function formatDate(d) {
+            if (!d) return '-';
+            return d;
+        }
+
+        function generateId() {
+            return 'g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        }
+
+        /* ----- 存储：改挂 S.jisi.dm（原为 localStorage 'dreamGoals' / 'dreamDiaries'）-----
+           S 持久化到 chaomuji_web_v27，该键已在导航页注册表的 keys 里 ⇒
+           迁进来的数据**自动**进入云同步与备份，无需新增同步键。 */
+        function dmStore() {
+            if (!S.jisi || typeof S.jisi !== 'object') S.jisi = {};
+            if (!S.jisi.dm || typeof S.jisi.dm !== 'object') S.jisi.dm = {};
+            if (!Array.isArray(S.jisi.dm.goals)) S.jisi.dm.goals = [];
+            if (!S.jisi.dm.diaries || typeof S.jisi.dm.diaries !== 'object') S.jisi.dm.diaries = {};
+            return S.jisi.dm;
+        }
+        /* 一次性把旧 localStorage 里的梦想成真数据搬进来，之后置闸门不再跑。
+           只搬「当前为空」的分片，绝不覆盖已有数据。 */
+        function dmImportLegacy() {
+            const d = dmStore();
+            if (d.legacyImported) return;
+            try {
+                if (!d.goals.length) {
+                    const raw = localStorage.getItem('dreamGoals');
+                    if (raw) { const g = JSON.parse(raw); if (Array.isArray(g) && g.length) d.goals = g; }
+                }
+                if (!Object.keys(d.diaries).length) {
+                    const raw2 = localStorage.getItem('dreamDiaries');
+                    if (raw2) { const x = JSON.parse(raw2); if (x && typeof x === 'object' && x) d.diaries = x; }
+                }
+            } catch (e) {}
+            d.legacyImported = true;
+            save();
+        }
+        function getGoals() { return dmStore().goals; }
+        function setGoals(g) { dmStore().goals = Array.isArray(g) ? g : []; save(); }
+        function getDiaries() { return dmStore().diaries; }
+        function setDiaries(d) { dmStore().diaries = (d && typeof d === 'object' && d) ? d : {}; save(); }
+        /* 晨间日记的 16 个字段 → 对象。抽出来是为了「保存」与「离开页面前自动落盘」共用同一口径。 */
+        function dmGrabDiary() {
+            const v = id => { const el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
+            return {
+                success: v('d_success'), plan: v('d_plan'), dream: v('d_dream'),
+                improve: v('d_improve'), health: v('d_health'), growth: v('d_growth'),
+                weather: v('d_weather'), mood: v('d_mood'), anniversary: v('d_anniversary'),
+                sleep: v('d_sleep'), habit: v('d_habit'), invest: v('d_invest'),
+                work: v('d_work'), relation: v('d_relation'),
+                income: v('d_income'), expense: v('d_expense'),
+                updatedAt: new Date().toISOString()
+            };
+        }
+        // =================================================================
+        //  目标编号生成 (树形)
+        // =================================================================
+        function buildGoalTree(goals) {
+            // 构建父子关系
+            const map = {};
+            goals.forEach(g => map[g.id] = { ...g, children: [] });
+            const roots = [];
+            goals.forEach(g => {
+                if (g.parentId && map[g.parentId]) {
+                    map[g.parentId].children.push(map[g.id]);
+                } else {
+                    roots.push(map[g.id]);
+                }
+            });
+            // 排序：按创建时间或标题
+            roots.sort((a, b) => a.title.localeCompare(b.title));
+            return roots;
+        }
+
+        function assignNumbers(nodes, prefix) {
+            let result = [];
+            nodes.forEach((node, idx) => {
+                const num = prefix ? `${prefix}.${idx + 1}` : `${idx + 1}`;
+                const copy = { ...node, number: num };
+                if (node.children && node.children.length > 0) {
+                    copy.children = assignNumbers(node.children, num);
+                } else {
+                    copy.children = [];
+                }
+                result.push(copy);
+            });
+            return result;
+        }
+
+        function getNumberedGoals(goals) {
+            const tree = buildGoalTree(goals);
+            const numbered = assignNumbers(tree, '');
+            // 扁平化
+            const flat = [];
+            function flatten(nodes) {
+                nodes.forEach(n => {
+                    flat.push({ id: n.id, number: n.number, title: n.title, level: n.level, progress: n.progress,
+                        parentId: n.parentId });
+                    if (n.children && n.children.length) flatten(n.children);
+                });
+            }
+            flatten(numbered);
+            return flat;
+        }
+
+        // =================================================================
+        //  渲染：右侧目标树
+        // =================================================================
+        function renderGoalTree() {
+            const container = document.getElementById('goalTree');
+            const goals = getGoals();
+            const numbered = getNumberedGoals(goals);
+
+            document.getElementById('goalCountBadge').textContent = goals.length;
+
+            if (goals.length === 0) {
+                container.innerHTML = `<div class="tree-empty"><i class="fas fa-tree"></i><p>暂无目标，开始创建吧</p></div>`;
+                return;
+            }
+
+            // 按层级分组显示 (终极、10年、5年、3年、1年、季度、月、周、日)
+            const levelOrder = ['终极', '10年', '5年', '3年', '1年', '季度', '月', '周', '日'];
+            const grouped = {};
+            numbered.forEach(g => {
+                const key = g.level || '其他';
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(g);
+            });
+
+            let html = `<ul class="tree-node">`;
+            levelOrder.forEach(level => {
+                const items = grouped[level] || [];
+                if (items.length === 0) return;
+                // 按编号排序
+                items.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+                items.forEach(g => {
+                    const pct = g.progress || 0;
+                    html += `
+                            <li class="node-item">
+                                <div class="node-content">
+                                    <span class="node-number">${g.number}</span>
+                                    <span class="node-title" title="${g.title}">${g.title}</span>
+                                    <span class="node-type">${g.level}</span>
+                                    <span class="node-progress">
+                                        <span class="mini-progress"><span class="fill" style="width:${pct}%;"></span></span>
+                                        ${pct}%
+                                    </span>
+                                </div>
+                            </li>
+                        `;
+                });
+            });
+            html += `</ul>`;
+            container.innerHTML = html;
+        }
+
+        // =================================================================
+        //  渲染：目标表格 (管理)
+        // =================================================================
+        function renderGoalTable() {
+            const tbody = document.getElementById('goalTableBody');
+            const goals = getGoals();
+            const numbered = getNumberedGoals(goals);
+            const map = {};
+            goals.forEach(g => map[g.id] = g);
+
+            if (goals.length === 0) {
+                tbody.innerHTML = `<tr class="empty-row"><td colspan="6">暂无目标，开始创建你的第一个梦想吧！</td></tr>`;
+                return;
+            }
+
+            // 按编号排序
+            numbered.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+
+            tbody.innerHTML = numbered.map(g => {
+                const parent = g.parentId ? (map[g.parentId]?.title || '已删除') : '—';
+                const pct = g.progress || 0;
+                return `
+                        <tr>
+                            <td><code style="background:#f0f1f8;padding:2px 10px;border-radius:6px;font-size:13px;">${g.number}</code></td>
+                            <td><strong>${g.title}</strong></td>
+                            <td><span class="tag" style="background:#efecfd;color:var(--main);padding:2px 12px;border-radius:12px;font-size:12px;">${g.level}</span></td>
+                            <td>${parent}</td>
+                            <td>
+                                <span class="mini-progress" style="width:60px;"><span class="fill" style="width:${pct}%;"></span></span>
+                                ${pct}%
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="editGoal('${g.id}')"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteGoal('${g.id}')"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+            }).join('');
+        }
+
+        // =================================================================
+        //  目标 CRUD
+        // =================================================================
+        function refreshParentSelect() {
+            const sel = document.getElementById('goalParent');
+            const goals = getGoals();
+            sel.innerHTML = `<option value="">无 (顶级)</option>`;
+            goals.forEach(g => {
+                const opt = document.createElement('option');
+                opt.value = g.id;
+                opt.textContent = g.title + ' (' + g.level + ')';
+                sel.appendChild(opt);
+            });
+        }
+
+
+        function deleteGoal(id) {
+            if (!confirm('确定删除此目标吗？')) return;
+            let goals = getGoals();
+            // 同时删除子目标 (可选: 也可以只删除自身，子目标变为顶级)
+            const toDelete = new Set();
+            function collectChildren(parentId) {
+                goals.forEach(g => {
+                    if (g.parentId === parentId) {
+                        toDelete.add(g.id);
+                        collectChildren(g.id);
+                    }
+                });
+            }
+            toDelete.add(id);
+            collectChildren(id);
+            goals = goals.filter(g => !toDelete.has(g.id));
+            setGoals(goals);
+            dmRenderAll();
+            refreshParentSelect();
+        }
+
+        function editGoal(id) {
+            const goals = getGoals();
+            const g = goals.find(x => x.id === id);
+            if (!g) return;
+            document.getElementById('editGoalId').value = id;
+            document.getElementById('editTitle').value = g.title || '';
+            document.getElementById('editLevel').value = g.level || '终极';
+            document.getElementById('editProgress').value = g.progress || 0;
+            document.getElementById('editMethods').value = g.methods || '';
+            document.getElementById('editDesc').value = g.desc || '';
+            document.getElementById('editModal').classList.add('show');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('show');
+        }
+
+
+        // 点击模态框外部关闭
+
+        // =================================================================
+        //  晨间日记
+        // =================================================================
+        function loadDiary() {
+            const date = document.getElementById('diaryDate').value || getToday();
+            document.getElementById('diaryDateLabel').textContent = date === getToday() ? '今日' : date;
+            const diaries = getDiaries();
+            const data = diaries[date] || {};
+            document.getElementById('d_success').value = data.success || '';
+            document.getElementById('d_plan').value = data.plan || '';
+            document.getElementById('d_dream').value = data.dream || '';
+            document.getElementById('d_improve').value = data.improve || '';
+            document.getElementById('d_health').value = data.health || '';
+            document.getElementById('d_growth').value = data.growth || '';
+            document.getElementById('d_weather').value = data.weather || '';
+            document.getElementById('d_mood').value = data.mood || '';
+            document.getElementById('d_anniversary').value = data.anniversary || '';
+            document.getElementById('d_sleep').value = data.sleep || '';
+            document.getElementById('d_habit').value = data.habit || '';
+            document.getElementById('d_invest').value = data.invest || '';
+            document.getElementById('d_work').value = data.work || '';
+            document.getElementById('d_relation').value = data.relation || '';
+            document.getElementById('d_income').value = data.income || '';
+            document.getElementById('d_expense').value = data.expense || '';
+        }
+
+
+        function clearDiaryForm() {
+            document.querySelectorAll('#diaryForm textarea, #diaryForm input').forEach(el => {
+                if (el.id !== 'diaryDate') el.value = '';
+            });
+        }
+
+        // =================================================================
+        //  计划视图
+        // =================================================================
+        function renderPlanView() {
+            const filter = document.getElementById('planLevelFilter').value;
+            const container = document.getElementById('planViewContainer');
+            const goals = getGoals();
+            const numbered = getNumberedGoals(goals);
+
+            let filtered = numbered;
+            if (filter !== 'all') {
+                filtered = numbered.filter(g => g.level === filter);
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML =
+                    `<div class="text-muted" style="padding:30px 0;text-align:center;">没有找到 ${filter === 'all' ? '' : filter} 层级的目标</div>`;
+                return;
+            }
+
+            // 按编号排序
+            filtered.sort((a, b) => a.number.localeCompare(b.number, undefined, { numeric: true }));
+
+            let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">`;
+            filtered.forEach(g => {
+                const pct = g.progress || 0;
+                html += `
+                        <div style="background:#fafbff;border-radius:12px;padding:14px 16px;border:1px solid #ececf4;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                <code style="background:#efecfd;padding:1px 10px;border-radius:6px;font-size:12px;color:var(--main);">${g.number}</code>
+                                <span style="font-size:11px;background:#ececf4;padding:1px 10px;border-radius:12px;">${g.level}</span>
+                            </div>
+                            <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${g.title}</div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span class="mini-progress" style="flex:1;height:6px;"><span class="fill" style="width:${pct}%;"></span></span>
+                                <span style="font-size:12px;color:#5f6070;">${pct}%</span>
+                            </div>
+                        </div>
+                    `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+
+        // =================================================================
+        //  统一渲染
+        // =================================================================
+    
+        /* ================= v57 迁移层：面板初始化 / 页签刷新 / 离开前落盘 ================= */
+        /* 进入集思录时把三块面板都渲染一遍 —— 三个面板始终在 DOM 里（与原工具一致），
+           因此 renderGoalTree / renderPlanView / loadDiary 在任何页签下都不会拿到 null。
+           必须先 dmBindForms()：表单监听在渲染完成后才存在。 */
+        function dmRenderAll() {
+            dmImportLegacy();
+            dmBindForms();
+            try { renderGoalTree(); } catch (e) {}
+            try { renderGoalTable(); } catch (e) {}
+            try { refreshParentSelect(); } catch (e) {}
+            try { renderPlanView(); } catch (e) {}
+            try { loadDiary(); } catch (e) {}
+        }
+        /* 切到某个页签时只刷新那一块（不整页重建，保住另一页签里正在输入的内容） */
+        function dmRefreshTab(k) {
+            if (k === 'goals') { try { renderGoalTree(); renderGoalTable(); refreshParentSelect(); } catch (e) {} }
+            else if (k === 'plans') { try { renderPlanView(); } catch (e) {} }
+            else if (k === 'diary') { try { loadDiary(); } catch (e) {} }
+        }
+        /* 离开集思录前把晨间日记落盘 —— 对齐本仓「复盘页 / 日记页」的 reviewBeforeLeave 约定：
+           原工具切页签只切 .active，输入不会丢；但**切到朝暮计别的页面**会整页重建，
+           不落盘就会丢字。这里主动存一次。 */
+        function dmBeforeLeave() {
+            try {
+                const f = document.getElementById('diaryForm');
+                if (!f) return;
+                const dv = document.getElementById('diaryDate');
+                const date = (dv && dv.value) || getToday();
+                const d = getDiaries();
+                d[date] = dmGrabDiary();
+                setDiaries(d);
+            } catch (e) {}
+        }
+        /* 五个页签 id（顺序与 tab-nav 一致）。jisiTab 存的即这里的某个值。 */
+        const JISI_TAB_IDS = ['tab-diary', 'tab-goals', 'tab-plans', 'tab-jievents', 'tab-jirel'];
+        /* 集思录页签统一切换。
+           silent=true 表示「由 rJisi 渲染后主动归位」：不落盘、不二次刷新。
+           ★ 切到两个自建页签时**绝不能调 render()** —— rJisi 会调 dmTabOn，
+             dmTabOn 再调 render 就是无限递归（首次搭框架时就写错过这条）。 */
+        function dmTabOn(k, silent) {
+            if (!silent && jisiTab !== k) dmBeforeLeave();
+            jisiTab = k;
+            const nav = document.getElementById('dmTabNav');
+            if (nav) {
+                const btns = nav.querySelectorAll('.tab-btn');
+                for (let i = 0; i < btns.length; i++) {
+                    btns[i].classList.toggle('active', btns[i].dataset.tab === k);
+                }
+            }
+            for (let i = 0; i < JISI_TAB_IDS.length; i++) {
+                const el = document.getElementById(JISI_TAB_IDS[i]);
+                if (el) el.classList.toggle('active', JISI_TAB_IDS[i] === k);
+            }
+            if (silent) return;
+            if (k === 'tab-diary') dmRefreshTab('diary');
+            else if (k === 'tab-goals') dmRefreshTab('goals');
+            else if (k === 'tab-plans') dmRefreshTab('plans');
+        }
+        /* 清空全部目标。HTML 里这个按钮原本内联写死「删 dreamGoals 键 + 调 renderAll」——
+           迁进来后两者都失效：存储已改挂 S.jisi.dm（删旧键等于什么都没删），
+           renderAll 也已随习惯培养一起移除。生成脚本 T13 已把那段 onclick 改指到这里。 */
+        function dmClearGoals() {
+            if (!confirm('确定删除所有目标？')) return;
+            dmStore().goals = [];
+            save();
+            dmRenderAll();
+            showToast('已清空全部目标');
+        }
+        /* 表单/筛选器监听：由 rJisi 渲染完成后调用
+           （原为脚本顶层绑定，见生成脚本 T8 说明）。
+           每个元素用 __dmBound 自幂等 —— 元素每次 render 都是新的，所以能重新绑上且不会重复挂。 */
+        function dmBindForms() {
+            (function () {
+                const _el = document.getElementById('goalForm');
+                if (!_el || _el.__dmBound) return;
+                _el.__dmBound = 1;
+                _el.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const title = document.getElementById('goalTitle').value.trim();
+            const level = document.getElementById('goalLevel').value;
+            const parentId = document.getElementById('goalParent').value || null;
+            const progress = parseInt(document.getElementById('goalProgress').value) || 0;
+            const methods = document.getElementById('goalMethods').value.trim();
+            const desc = document.getElementById('goalDesc').value.trim();
+
+            if (!title) { showToast('请输入目标标题'); return; }
+
+            const goals = getGoals();
+            // 检查重名 (可选)
+            goals.push({
+                id: generateId(),
+                title,
+                level,
+                parentId,
+                progress: Math.min(100, Math.max(0, progress)),
+                methods,
+                desc,
+                createdAt: new Date().toISOString()
+            });
+            setGoals(goals);
+            this.reset();
+            document.getElementById('goalProgress').value = 0;
+            dmRenderAll();
+            refreshParentSelect();
+            showToast('✅ 目标已创建！');
+        });
+            })();
+            (function () {
+                const _el = document.getElementById('editGoalForm');
+                if (!_el || _el.__dmBound) return;
+                _el.__dmBound = 1;
+                _el.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = document.getElementById('editGoalId').value;
+            const title = document.getElementById('editTitle').value.trim();
+            const level = document.getElementById('editLevel').value;
+            const progress = parseInt(document.getElementById('editProgress').value) || 0;
+            const methods = document.getElementById('editMethods').value.trim();
+            const desc = document.getElementById('editDesc').value.trim();
+
+            if (!title) { showToast('请输入标题'); return; }
+
+            let goals = getGoals();
+            const idx = goals.findIndex(g => g.id === id);
+            if (idx === -1) return;
+            goals[idx].title = title;
+            goals[idx].level = level;
+            goals[idx].progress = Math.min(100, Math.max(0, progress));
+            goals[idx].methods = methods;
+            goals[idx].desc = desc;
+            setGoals(goals);
+            closeEditModal();
+            dmRenderAll();
+            refreshParentSelect();
+            showToast('✅ 目标已更新');
+        });
+            })();
+            (function () {
+                const _el = document.getElementById('editModal');
+                if (!_el || _el.__dmBound) return;
+                _el.__dmBound = 1;
+                _el.addEventListener('click', function(e) {
+            if (e.target === this) closeEditModal();
+        });
+            })();
+            (function () {
+                const _el = document.getElementById('diaryForm');
+                if (!_el || _el.__dmBound) return;
+                _el.__dmBound = 1;
+                _el.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const date = document.getElementById('diaryDate').value || getToday();
+            const diaries = getDiaries();
+            diaries[date] = dmGrabDiary();
+            setDiaries(diaries);
+            showToast('✅ 日记已保存！');
+        });
+            })();
+            (function () {
+                const _el = document.getElementById('planLevelFilter');
+                if (!_el || _el.__dmBound) return;
+                _el.__dmBound = 1;
+                _el.addEventListener('change', renderPlanView);
+            })();
+            /* 页签点击（事件委托）：点按钮或它里面的图标都能命中 */
+            (function () {
+                const _nav = document.getElementById('dmTabNav');
+                if (!_nav || _nav.__dmBound) return;
+                _nav.__dmBound = 1;
+                _nav.addEventListener('click', function (e) {
+                    let b = e.target;
+                    while (b && b !== _nav && !(b.dataset && b.dataset.tab)) b = b.parentNode;
+                    if (b && b !== _nav && b.dataset && b.dataset.tab) dmTabOn(b.dataset.tab);
+                });
+            })();
+        }
+
+    /* 事件与感悟面板（v56 自建）—— 原为 rJisi 内的模板字符串，
+       v57 拆成独立函数：rJisi 现在要同时装配 5 个页签，留在函数体里太长。
+       口径不变：新记录排在最前，删除按钮走 jisiDelEvent。 */
+    function jisiEventsHTML(s) {
+        return `<div class="js-sec">
+            <div class="js-sec-hd">📋 事件与感悟<span class="js-cnt">${s.events.length} 条 · 新记录排在最前</span></div>
+            <div class="js-ev-form">
+                <div class="js-row">
+                    <input type="date" class="js-input" id="jsEvDate" value="${today()}">
+                    <input type="text" class="js-input" id="jsEvTitle" placeholder="标题（可不填）">
+                </div>
+                <textarea class="js-area" id="jsEvText" placeholder="记下发生的事，以及由此生出的感悟……"></textarea>
+                <button class="js-add" onclick="jisiAddEvent()">＋ 记入集思录</button>
+            </div>
+            <div class="js-ev-list">${s.events.length ? jsByDateDesc(s.events).map(e => `
+                <div class="js-ev-card">
+                    <div class="js-ev-hd"><b>${esc(e.title || '（无标题）')}</b>
+                        <span class="js-item-d" style="margin-left:auto">${esc(e.date || '')}</span>
+                        <span class="js-item-x" onclick="jisiDelEvent('${e.id}')" title="删除">✕</span></div>
+                    <div class="js-item-t">${jsTxt(e.text)}</div>
+                </div>`).join('') : '<div class="js-empty">还没有记录 —— 在上面写一条试试</div>'}</div>
+        </div>`;
+    }
+
+    /* 关系面板（v56 自建）：三个并列窗口（人际关系 / 夫妻 / 子女），各自独立输入框 */
+    function jisiRelHTML(s) {
+        return `<div class="js-sec">
+            <div class="js-sec-hd">👨‍👩‍👧 关系 · 三个并列窗口<span class="js-cnt">各自的编辑与输入框互相独立</span></div>
+            <div class="js-rel-grid">${JISI_REL_CATS.map(c => {
+                const arr = jsByDateDesc(s.rel[c.k] || []);
+                return `<div class="js-rel-col">
+                    <div class="js-rel-col-hd">${c.icon} ${esc(c.label)}<span class="js-rel-n">${arr.length} 条</span></div>
+                    <div class="js-rel-hint">${esc(c.hint)}</div>
+                    <div class="js-rel-list">${arr.length ? arr.map(e => `
+                        <div class="js-item"><span class="js-item-x" onclick="jisiDelRel('${c.k}','${e.id}')" title="删除">✕</span>
+                            <div class="js-item-d">${esc(e.date || '')}</div>
+                            <div class="js-item-t">${jsTxt(e.text)}</div></div>`).join('')
+                        : '<div class="js-empty">还没有记录</div>'}</div>
+                    <textarea class="js-area" id="jsRelIn-${c.k}" placeholder="记一条${esc(c.label)}……"></textarea>
+                    <button class="js-add" onclick="jisiAddRel('${c.k}')">＋ 记录</button>
+                </div>`;
+            }).join('')}</div>
+        </div>`;
+    }
+
+    /* 集思录主渲染：五个页签
+         晨间日记 / 目标管理 / 计划视图  <- 迁移（骨架在 <template id="dmTpl"> 里）
+         事件与感悟 / 关系              <- v56 自建（由上面的函数按 S.jisi 现填）
+       两个自建页签的内容每次 render 都重填，所以数据一变就能反映；
+       三个迁移页签的输入框则**只在进页面时 loadDiary() 填一次**，切页签不重填
+       （否则用户正在写的内容会被 S 里的旧值覆盖）。 */
+    function rJisi() {
+        const s = jisiData();
+        const main = document.getElementById('main');
+        main.className = '';
+        const cur = JISI_TAB_IDS.indexOf(jisiTab) >= 0 ? jisiTab : 'tab-jievents';
+
+        const tpl = document.getElementById('dmTpl');
+        main.innerHTML = '<div class="jisi-page">' + (tpl ? tpl.innerHTML : '') + '</div>';
+
+        const evEl = document.getElementById('tab-jievents');
+        if (evEl) evEl.innerHTML = jisiEventsHTML(s);
+        const relEl = document.getElementById('tab-jirel');
+        if (relEl) relEl.innerHTML = jisiRelHTML(s);
+
+        dmTabOn(cur, true);   /* silent：不落盘、不二次刷新 */
+        dmRenderAll();        /* 迁移三页签的内容 + 表单绑定（DOM 每次重建，必须重绑） */
     }
 
     function rMe() {
@@ -17671,7 +20050,7 @@ oninput="pgRefresh()"></textarea>
     function applyInk() {
         const b = document.body;
         if (!b) return;
-        const meFree = (page === 'me' || page === 'review' || page === 'diary');   // 我的页 / 复盘页 / 日记本全豁免
+        const meFree = (page === 'me' || page === 'review' || page === 'diary' || page === 'jisi' || page === 'summary');   // 我的页 / 复盘页 / 日记本 / 集思录 / 一键总结全豁免
         b.classList.toggle('ink-on', !!INK.on && !meFree);
         b.classList.toggle('ink-tx', !!INK.tx && !meFree);
         b.classList.toggle('ink-strike', !!INK.strike && !meFree);
@@ -21497,7 +23876,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922h</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260923a</div>
 <!-- build-tag:end -->
 </body>
 </html>
