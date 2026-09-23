@@ -48,12 +48,8 @@
         { id: 'time', name: '时间统计', icon: '⏱️',
           keys: ['timeRecords', 'timeTodos', 'timeCategoriesV2', 'timeTimerState',
                  'timeTimerHistory', 'timeDoneFolded'] },
-        { id: 'dream', name: '梦想成真', icon: '🌟',
-          keys: ['dreamGoals', 'dreamDiaries', 'dreamHabits', 'dreamHabitRecords'] },
         { id: 'info', name: '信息研判', icon: '📡',
           keys: ['multi_info_records', 'info_categories'] },
-        { id: 'box', name: '收纳盒', icon: '🧺',
-          keys: ['organizer_items_v2', 'organizer_theme', 'storage_categories'] },
         { id: 'reading', name: '阅读·思享', icon: '📖',
           keys: ['reading_think_system_v1'], prefixes: ['reading_think_'] },
         { id: 'life', name: '生活工作台', icon: '🏠',
@@ -88,6 +84,13 @@
           exclude: ['chaomuji_backups_v1'] },   // 旧版自带备份仓，避免体积翻倍
         { id: 'team', name: '成员管理', icon: '👥', keys: ['teamMembers_v1'] }
     ];
+    /* ★ 2026-09-23：删掉两条失效条目 ——
+       · dream（梦想成真）：工具 2026-09-23 已从库删除，留个条目只会让备份面板出现空卡片；
+       · box（收纳盒）：导航页 MODULES 已把它并入 life（生活工作台），
+         下面的并集逻辑会把 organizer_items_v2 / organizer_theme / storage_categories
+         从 MODULES.life 带过来，所以 organizer_* 现在归 life，不需要再单列。
+       team（成员管理）**保留**：工具页不在导航注册表里，但用户可能真有 teamMembers_v1 数据，
+       删掉条目会把它推进「未归类」（并集只加不减，所以留着是安全的）。 */
 
     /* ---- 与导航页 index.html 的 MODULES 对齐：消掉「两份清单漂移」 ----
        本文件要能独自在工具页里加载（那里没有 MODULES），所以自留一份 MANIFEST；
@@ -155,6 +158,50 @@
             if (k.indexOf(IGNORE_PREFIXES[i]) === 0) return true;
         }
         return false;
+    }
+    /* ---- 不纳入备份的键（2026-09-23 新增）------------------------------------
+       为什么必须有这张表：备份文件与快照是**会被搬出浏览器的** —— 界面上就引导用户
+       「导出一份 JSON 存到网盘或微信收藏」。而在此之前，这里只排除了 __hub_* 与埋点前缀，
+       实测（2026-09-23 线上探针）的结果是：
+         ★ GitHub / Gitee 令牌的明文被写进了导出文件与快照 ★
+       云同步那边早就有一张 EXCLUDE_KEYS（令牌绝不出口），备份侧只是漏了同一个决定。
+
+       两类排除：
+         ① SECRET_KEYS  —— 凭据与同步技术键：换设备/换人拿到都没有意义，反而危险；
+         ② HEAVY_*      —— 背景大图与朝暮计自带快照仓：动辄几百 KB～几 MB，
+                           备份走 IndexedDB（QUOTA = 5MB、最多留 5 份），会把额度吃光。
+
+       ⚠️ 设置类与业务数据**一律保留**（主题 / 字色 / 便签 / 各工具业务键都在其中）——
+          它们正是备份存在的意义，别顺手一起排掉。
+          判据只有一条：**这个键搬出这台机器之后，还成立吗？** 不成立才排。 */
+    var SECRET_KEYS = {
+        // 凭据：令牌 + 仓库坐标 + Gist id
+        github_token: 1, gitee_token: 1, gitee_owner: 1, gitee_repo: 1, gitee_branch: 1,
+        github_gist_id: 1, github_cloud_state: 1, cloud_backend: 1,
+        // 同步技术键：本机记录，带过去只会与另一端互相覆盖
+        sync_last_sync: 1, sync_timestamps: 1, sync_key_ts_v1: 1, ehub_autosync_v1: 1
+    };
+    var HEAVY_PREFIXES = [
+        'chaomuji_web_v27_bg',        // 朝暮计·页面背景（data:image 大图）
+        'chaomuji_web_v27_cardbg',    // 朝暮计·卡片背景
+        'chaomuji_web_v27_hcardbg',   // 朝暮计·习惯卡背景
+        'zmv_bg_'                     // 朝暮计·背景质量等设置（与背景同族，一起走）
+    ];
+    var HEAVY_KEYS = { chaomuji_backups_v1: 1 };   // 朝暮计 v27 内置快照仓（单独就 600KB+）
+    var HEAVY_MIN = 30 * 1024;                     // 超过 30KB 的内嵌图片视为背景资源
+
+    function isSecretOrHeavy(k, v) {
+        if (SECRET_KEYS[k] || HEAVY_KEYS[k]) return true;
+        for (var i = 0; i < HEAVY_PREFIXES.length; i++) {
+            if (k.indexOf(HEAVY_PREFIXES[i]) === 0) return true;
+        }
+        if (v && v.length > HEAVY_MIN && v.slice(0, 11) === 'data:image/') return true;
+        return false;
+    }
+    // 供 UI/测试复用：这个键会不会被备份排除（内部读一次值以判大图兜底）
+    function isBackupExcluded(k) {
+        var v = null; try { v = localStorage.getItem(k); } catch (e) { }
+        return !!isSecretOrHeavy(k, v);
     }
     // 纯界面偏好键：值变了不代表「你的数据还没备份」，不计入 pendingChanges。
     //
@@ -229,7 +276,11 @@
         try {
             for (var i = 0; i < localStorage.length; i++) {
                 var k = localStorage.key(i);
-                if (k && !isInternalKey(k) && !isIgnoredKey(k)) out.push(k);
+                if (!k || isInternalKey(k) || isIgnoredKey(k)) continue;
+                // 凭据 / 巨型资源不进备份（见 SECRET_KEYS 上方注释）：
+                // 这里必须带上值判断，否则 >30KB 的 data:image 兜底规则没法生效。
+                try { if (isSecretOrHeavy(k, localStorage.getItem(k))) continue; } catch (e) { }
+                out.push(k);
             }
         } catch (e) {}
         return out;
