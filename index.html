@@ -2597,7 +2597,7 @@ const MODULES = [
   {id:'learning',   name:'学习目标管理',   file:'tools/学习目标管理台.html',  icon:'🎯', desc:'WorkBuddy 学习目标管理台', keys:['wb_goal','wb_goal_seeded','wb_goal_draft','wb_ex','wb_ex_seeded']},
   {id:'previewer',  name:'代码预览器',     file:'tools/code-previewer.html',  icon:'💻', desc:'在线编辑 HTML/CSS/JS 并实时预览', keys:['previewer_html','previewer_css','previewer_js']},
   {id:'travel',     name:'旅行助手',       file:'tools/旅行助手.html',        icon:'🧭', desc:'旅游规划：城市·天气·衣/食/住/行/玩·预算·日记', keys:['roam_assistant','roam_assistant_trips','roam_assistant_active_trip','roam_last_tab']},
-  {id:'chaomu', name:'朝暮计', file:'tools/朝暮计.html', icon:'🌅', desc:'习惯打卡 · 任务清单 · 视图 · 专注计时', keys:['chaomuji_web_v27','chaomuji_web_v27_bg','chaomuji_diary_v1','zmv_view_mode','__zmq']},
+  {id:'chaomu', name:'朝暮计', file:'tools/朝暮计.html', icon:'🌅', desc:'习惯打卡 · 任务清单 · 视图 · 专注计时', keys:['chaomuji_web_v27','chaomuji_web_v27_bg','chaomuji_diary_v1','chaomuji_diary_tags_v1','zmv_view_mode','__zmq']},
 
   {id:'studybk', name:'备考学习工作台', file:'tools/备考学习工作台.html', icon:'📐', desc:'科目/章节/知识点掌握热力图 · 记忆曲线复习 · 考点与感悟', keys:['wb_bk_profile','wb_bk_subjects','wb_bk_todos','wb_bk_time','wb_bk_checks','wb_bk_reviews','wb_bk_issues','wb_bk_gains','wb_bk_kps','wb_bk_kpch','wb_bk_heat','wb_bk_stg','cpaMasteryTree_v1','cpaMasteryScore_v1','cpaMasterySub_v1','cpaTreeEditMode_v1','cpaTreeLv_v1','cpaScoreCols_v1']},
 
@@ -2612,7 +2612,17 @@ const MODULES = [
 
 // 清空数据 / 覆盖导入时要保留的「工作台自身偏好」：它们是设置，不是业务数据。
 // hub_text_v1 = ⚙️ 设置面板（主题 + 输入文本 + 标注）的全部内容；hub_site_name = 站点名。
-const HUB_KEYS = ['hub_lastModule','hub_theme','hub_text_v1','hub_site_name'];
+// ★ 2026-09-23 补齐：此前只有 4 个键，而导航页实际还会写下列**设置类**键 ——
+//   「清空全部工具数据 / 覆盖导入」会把它们一并删掉（虽然会上云、再同步能回来，
+//   但本机先丢一次，用户看到的是「我配的主题/色板/自定义模块全没了」）。设置类一律保留。
+//   ⚠️ hub_lastModule 也在保留名单里：它是「上次打开的工具」，不是数据，删了体验更差。
+const HUB_KEYS = ['hub_lastModule','hub_theme','hub_text_v1','hub_site_name',
+  // 外观与装饰
+  'hub_deco_v1','hub_swatches_v1','hub_swatch_def_v1',
+  // 模块编排（自定义模块 / 隐藏模块 / 排序）
+  'hub_custom_modules','hub_module_hidden','hub_nav_order',
+  // 布局偏好
+  'hub_sidebar_pref','hub_tools_collapsed'];
 
 
 const HUB_CUSTOM_KEY = 'hub_custom_modules';   // 自定义模块
@@ -2672,7 +2682,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260923g';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260923h';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -4001,7 +4011,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260923g';
+  var NAV_VER = 'V20260923h';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -4131,7 +4141,7 @@ document.addEventListener('pointerdown', e => {
   try { window.HubDeco = { key: DECO_KEY, apply: decoApply }; } catch (e) {}
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260923g</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260923h</div>
 </body>
 
 
