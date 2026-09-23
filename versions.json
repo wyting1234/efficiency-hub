@@ -2,17 +2,17 @@
   "scheme": "V<YYYYMMDD><letters>",
   "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
   "day": "20260923",
-  "seq": 6,
-  "latest": "V20260923f",
-  "updatedAt": "2026-09-23T13:47:34+08:00",
-  "note2": "**生活工作台 · 收纳盒并入为「收纳盒」Tab（V20260923f）。**\n\n① 是什么：原独立工具 `tools/王鑫迪的收纳盒.html` 不再作为导航站独立入口，其全部功能（物品 / 资料收纳与检索）以 **iframe + srcdoc** 形式内嵌进 `tools/life-workbench.html` 的「收纳盒」标签页；原文件已删除。\n② 为什么用 iframe：收纳盒自带完整 CSS/JS（含 .btn/.modal/.header 等通用类名），直接并入会与生活工作台样式冲突；iframe 天然隔离。收纳盒此前已内置 `window.self!==window.top` 检测，内嵌时自动隐藏自身 buildTag，避免与导航徽标叠字。\n③ 数据零丢失：iframe 启用 `allow-same-origin`，与父页同源，localStorage 键 `organizer_items_v2` / `organizer_theme` / `storage_categories` 不变，用户历史数据无缝保留；这些键已并入「生活工作台」的备份 / 同步分组。\n④ 删除：导航站 TOOLS 表中 `box` 入口移除（原文件删除后避免 404）。\n⑤ 数据层：无新字段、无迁移；收纳盒数据域独立，不影响 `wb_life_v1`。",
+  "seq": 7,
+  "latest": "V20260923g",
+  "updatedAt": "2026-09-23T13:50:22+08:00",
+  "note2": "**生活工作台 · 收纳盒 Tab 主题对齐（V20260923g）。**\n\n① 目标：内嵌的收纳盒与工作台其它子模块「同色、同字、同样式」。\n② 做法：在 `storageHTML()` 解码后、向 iframe srcdoc 的 `</head>` 前注入一段 `<style id=\"wb-theme-bridge\">`，把收纳盒自有变量映射到工作台令牌：`--primary #4A6CF7→#3E5C50`（深绿 accent）、`--primary-light`/`--primary-dark`/`--primary-bg` 同步；`--primary-bg→#E9EFEB`（accent-soft）；`--success/#3B7A56`、`--danger/#BE4536`、`--warning/#A98536`；灰阶由冷色 slate 换为暖米色（`--gray-50 #F6F4EF` … `--gray-900 #1F1D1A`，对齐 --bg/--paper/--line/--ink）；`--radius 16px→12px`、`--radius-sm 10px→8px`；`--font` 换为工作台 sans 栈；阴影换为 `--sh` 级轻阴影。\n③ 细节：`.header-left h1` 改工作台衬线体 + 主题绿（去掉蓝色渐变）；卡片底 `#fff→#FFFDFA`（paper）；标签 room/category/owner 由蓝/粉/绿换成 accent-soft/clay-soft/gold-soft；统计卡 purple/cyan/pink 左边框换为 violet/blue/clay；`html.dark` 变量中和为浅色（工作台无深色模式），并隐藏收纳盒自带的「切换主题」按钮（`#themeToggleBtn`）；iframe 底色由 #fff 改 #F6F4EF，避免加载白闪。\n④ 数据层：无改动，仍为 `organizer_*`，与本 Tab 独立。",
   "files": {
-    "index.html": "V20260923f",
+    "index.html": "V20260923g",
     "sync-github.js": "V20260918d",
     "tools/CPA会计掌握度系统.html": "V20260917i",
     "tools/code-previewer.html": "V20260917i",
     "tools/cpa学习工具1.html": "V20260922i",
-    "tools/life-workbench.html": "V20260923f",
+    "tools/life-workbench.html": "V20260923g",
     "tools/人积极交往.html": "V20260918h",
     "tools/健康管理.html": "V20260917i",
     "tools/偶像学习.html": "V20260917i",
@@ -37,5 +37,5 @@
     "tools/social/wisdom.html": "V20260918h",
     "tools/backup-hub.js": "V20260918n"
   },
-  "note2_prev": "集思录 · 目标管理三条需求上线：① 目标设定后可一键生成「母子任务清单」或「习惯打卡」（按下级目标生成，幂等 —— 已生成过会先确认再清旧重建，并回写 goal.taskIds / habitIds）；② 目标进度改为按已完成的任务清单数量自动估算（子任务 done/总数；导入目标按打卡天数/目标次数），无关联时回退手填值、不改存储；③ 手工输入的目标与之前批量导入的目标分成两个来源分别管理（顶部分段条切换；导入来源只读、隐藏新建卡、列表改为「去习惯页」）。"
+  "note2_prev": "**生活工作台 · 收纳盒并入为「收纳盒」Tab（V20260923f）。**\n\n① 是什么：原独立工具 `tools/王鑫迪的收纳盒.html` 不再作为导航站独立入口，其全部功能（物品 / 资料收纳与检索）以 **iframe + srcdoc** 形式内嵌进 `tools/life-workbench.html` 的「收纳盒」标签页；原文件已删除。\n② 为什么用 iframe：收纳盒自带完整 CSS/JS（含 .btn/.modal/.header 等通用类名），直接并入会与生活工作台样式冲突；iframe 天然隔离。收纳盒此前已内置 `window.self!==window.top` 检测，内嵌时自动隐藏自身 buildTag，避免与导航徽标叠字。\n③ 数据零丢失：iframe 启用 `allow-same-origin`，与父页同源，localStorage 键 `organizer_items_v2` / `organizer_theme` / `storage_categories` 不变，用户历史数据无缝保留；这些键已并入「生活工作台」的备份 / 同步分组。\n④ 删除：导航站 TOOLS 表中 `box` 入口移除（原文件删除后避免 404）。\n⑤ 数据层：无新字段、无迁移；收纳盒数据域独立，不影响 `wb_life_v1`。"
 }

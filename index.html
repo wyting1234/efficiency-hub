@@ -2672,7 +2672,7 @@ function getModules(){
 // 自定义模块路径归一化：返回绝对 URL（解决子路径部署时相对路径丢失前缀的问题）
 
 
-var TOOLS_CACHE_VER = '20260923f';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
+var TOOLS_CACHE_VER = '20260923g';   // 工具页缓存版本：内容更新时同步 +1，保证 iframe 拿到最新版
 function normFile(f){
 
 
@@ -4001,7 +4001,7 @@ document.addEventListener('pointerdown', e => {
    本页版本 = 项目最新推送版本（versions.json 的 latest）；**打开工具时恒量同时标出该工具自己的版本**（不再仅仅在两者不同时追加）。
    三级数据源逐级降级：versions.json → 上次缓存 → iframe 里工具页自报的版本。绝不阻塞渲染。 */
 (function(){
-  var NAV_VER = 'V20260923f';
+  var NAV_VER = 'V20260923g';
   var CACHE_KEY = 'hub_versions_cache_v1';
   var FILES = {};
   function badge(){ return document.getElementById('buildTag'); }
@@ -4131,7 +4131,7 @@ document.addEventListener('pointerdown', e => {
   try { window.HubDeco = { key: DECO_KEY, apply: decoApply }; } catch (e) {}
 })();
 </script>
-<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260923f</div>
+<div id="buildTag" title="构建版本（用于确认本设备加载的是哪一版）">V20260923g</div>
 </body>
 
 
