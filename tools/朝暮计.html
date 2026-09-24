@@ -47,6 +47,19 @@
 .pg-b.date{background:#f0f6ef;color:#5f8a63}
 .pg-b.rec{background:#f6f0fa;color:#8464a0}
 .pg-empty{font-size:11px;color:#b8b0a4;padding:6px 2px}
+.pg-req{color:#c0392b;font-weight:400}
+.pg-projs{border:1px solid #eee8de;border-radius:10px;background:#fffdfa;padding:4px 8px;max-height:132px;overflow:auto}
+.pg-proj{display:flex;align-items:center;gap:6px;font-size:11.5px;line-height:2;color:#3f3a33;border-bottom:1px dashed #f2ece2}
+.pg-proj:last-child{border-bottom:none}
+.pg-proj .pn{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-proj .pc{flex:0 0 auto;font-size:10px;color:#a1947c}
+.pg-proj .pd{flex:0 0 auto;font-size:10px;color:#c0392b;cursor:pointer;padding:0 3px}
+.pg-proj .pd:hover{text-decoration:underline}
+.pg-proj-empty{font-size:11px;color:#b8b0a4;padding:6px 2px}
+.estbar{height:3px;border-radius:999px;background:#f0ece4;overflow:hidden;margin:4px 0 2px}
+.estbar>i{display:block;height:100%;background:#8aa88f;border-radius:999px;transition:width .25s}
+.estbar.over>i{background:#c98b4b}
+.chip.est{background:#eef3ef;color:#5f8a63}
 .pg-foot{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
 .pg-foot .btn{margin:0}
 @media (max-width:520px){
@@ -6035,28 +6048,46 @@
     <div class="sheet pg-sheet">
         <h3 class="pg-h">📥 粘贴生成 <span class="x" onclick="closeM('mPasteGen')">✕</span></h3>
         <div class="pg-hint">
-            每行一个条目，<b>缩进</b>就是层级。行尾可加：
-            <code>[1.5h]</code> 预估时长 ·
+            与 CPA「项目大纲」同一套写法：<b>缩进</b>就是层级，行首可写
+            <code>第2章</code> / <code>第3节</code> 编号（会剥掉，不留在任务名里）。
+            朝暮计<b>只取章和节、不取科目名</b>（科目名请填上面的项目名称），
+            所以同一份大纲可以直接复用。行尾可加：
+            <code>[1.5h]</code> 预计时长 ·
             <code>@9/22</code> / <code>@9/22-9/26</code> 日期 ·
             <code>@每天</code> / <code>@每周一,三,五</code> / <code>@工作日</code> 重复。
         </div>
 
-        <div class="pg-sec">① 选个模板（可选）</div>
+        <div class="pg-sec">① 项目名称 <span class="pg-req">（必填）</span></div>
+        <div class="pg-row2">
+            <label style="flex:1 1 220px"><input type="text" id="pgProj" style="width:100%" placeholder="如：CPA 会计 / 复习周 / 旅行清单" oninput="pgRefresh()"></label>
+        </div>
+
+        <div class="pg-sec">② 选个模板（可选）</div>
         <div class="pg-tpls" id="pgTpls"></div>
 
-        <div class="pg-sec">② 粘贴内容</div>
+        <div class="pg-sec">③ 粘贴内容</div>
         <textarea id="pgText" class="pg-text" rows="9" spellcheck="false"
 placeholder="第1章 总论
     第1节 会计概述 [1h]
     第2节 会计要素 [1.5h] @9/23"
 oninput="pgRefresh()"></textarea>
 
-        <div class="pg-sec">③ 生成方式</div>
+        <div class="pg-sec">④ 生成方式</div>
         <div class="pg-modes seg" id="pgModes">
             <span data-m="flat" onclick="pgPickMode('flat')">只清单</span>
             <span data-m="dated" onclick="pgPickMode('dated')">带日期</span>
             <span data-m="stage" onclick="pgPickMode('stage')">阶段+任务</span>
             <span data-m="habit" onclick="pgPickMode('habit')">习惯</span>
+        </div>
+
+        <div class="pg-sec">⑤ 计时方式与每天分配</div>
+        <div class="pg-modes seg" id="pgTimers">
+            <span data-t="stopwatch" onclick="pgPickTimer('stopwatch')">正向计时</span>
+            <span data-t="pomodoro" onclick="pgPickTimer('pomodoro')">番茄时钟</span>
+        </div>
+        <div class="pg-row2" id="pgPomoRow" style="display:none">
+            <label>每日学习 <input type="number" id="pgDayMin" min="10" max="720" step="10" value="120"> 分钟</label>
+            <label>番茄时长 <input type="number" id="pgPomoMin" min="5" max="120" step="5" value="25"> 分钟</label>
         </div>
 
         <div class="pg-row2" id="pgSchedRow">
@@ -6072,8 +6103,11 @@ oninput="pgRefresh()"></textarea>
             <label>标签 <input type="text" id="pgTags" placeholder="逗号分隔"></label>
         </div>
 
-        <div class="pg-sec">④ 解析预览 <span class="pg-sum" id="pgSum"></span></div>
+        <div class="pg-sec">⑥ 解析预览 <span class="pg-sum" id="pgSum"></span></div>
         <div class="pg-preview" id="pgPreview"></div>
+
+        <div class="pg-sec">⑦ 已有项目（选中即可按项目批量删除）</div>
+        <div class="pg-projs" id="pgProjs"></div>
 
         <div class="pg-foot">
             <button class="btn gray" onclick="pgClearText()">清空</button>
@@ -9751,6 +9785,11 @@ oninput="pgRefresh()"></textarea>
                 + (t.subs || []).reduce((a, s) => a + focusMinutesOf('sub', s.id, t.title + ' › ' + s.title), 0);
             const _flb = focusMinLabel(_fmin);
             if (_flb) meta.push(`<span class="chip foc">${_flb}</span>`);
+            /* v63（需求 2）：预计时长进度 —— 到点不自动结束、不自动完成 */
+            if (+t.est > 0) {
+                const _pct = Math.min(100, Math.round(_fmin / (+t.est) * 100));
+                meta.push(`<span class="chip est">⏳ ${_fmin}/${+t.est} 分钟 · ${_pct}%</span>`);
+            }
             if (t.recur && t.recur.mode && t.recur.mode !== 'once') {
                 meta.push(`<span class="chip recur">🔁 ${esc(recurText(t.recur, dl ? (t.date||'') : ''))}</span>`);
             }
@@ -9798,6 +9837,14 @@ oninput="pgRefresh()"></textarea>
             : `<div class="chk c${t.priority} ${chkCls}" onclick="toggleTask('${t.id}')">${chkMark}</div>`;
         const bodyClick = batchMode ? `toggleBatchSel('${t.id}')` : `openEdit('${t.id}')`;
 
+        /* v63（需求 2）：预计时长进度条（累计已投入 / 预计） */
+        let estBar = '';
+        if (+t.est > 0) {
+            const _fmin2 = focusMinutesOf('task', t.id, t.title)
+                + (t.subs || []).reduce((a, s) => a + focusMinutesOf('sub', s.id, t.title + ' › ' + s.title), 0);
+            const _p2 = Math.min(100, Math.round(_fmin2 / (+t.est) * 100));
+            estBar = `<div class="estbar ${_fmin2 >= +t.est ? 'over' : ''}" title="已投入 ${_fmin2} / 预计 ${+t.est} 分钟"><i style="width:${_p2}%"></i></div>`;
+        }
         return `<div class="qtask ${picked?'picked':''} ${batchMode?'in-batch':''}" data-id="${t.id}">
             <div class="qface">
                 ${lead}
@@ -9805,6 +9852,7 @@ oninput="pgRefresh()"></textarea>
                     <div class="qt ${strikeClass}">
                         ${highlightText(t.title, hlQ)}<span class="sub-prog">${subProgress}</span>${t.pinned?' 📌':''}
                     </div>
+                    ${estBar}
                     ${meta.length?`<div class="qmeta">${meta.join('')}</div>`:''}
                 </div>
                 <span class="tg-dot" onclick="openActionSheet('${t.id}')">⋯</span>
@@ -10567,6 +10615,14 @@ oninput="pgRefresh()"></textarea>
         tags.slice(0, 2).forEach(tag =>
             out.push(`<span class="chip tag">${highlightText('#' + tag, hlQ || [])}</span>`));
         if (tags.length > 2) out.push(`<span class="chip tag">+${tags.length - 2}</span>`);
+        /* v63（需求 4）：单项任务的番茄进度（已完成个数 / 计划个数）
+           已完成个数由实际专注记录换算得来，不另存一份计数器 ⇒ 不会两处对不上 */
+        if (+s.pomo > 0) {
+            const _pm = +s.pomoMin || 25;
+            const _fm = focusMinutesOf('sub', s.id, '') || 0;
+            const _pd = Math.max(0, Math.min(+s.pomo, Math.floor(_fm / _pm)));
+            out.push(`<span class="chip est">🍅 ${_pd}/${+s.pomo}</span>`);
+        }
         const _sn = noteChip(s.note);
         if (_sn) out.push(_sn);
         return out.join('');
@@ -15439,7 +15495,10 @@ oninput="pgRefresh()"></textarea>
         S.focus.push({ id: uid(), mode, minutes: min, date: today(), task: linkTarget ? linkTarget.name : '',
             kind: linkTarget ? linkTarget.kind : '', linkId: linkTarget ? linkTarget.id : '',
             taskId: linkTarget ? (linkTarget.taskId || '') : '' });
-        if (linkTarget && S.settings.autoCheck) {
+        /* v63（需求 3）：正向计时只记录已投入时长，**不改结完成状态** ——
+           否则累计达到预计时长时会被自动打勾，与「只有主动打勾才归属完成」相反。
+           番茄 / 倒计时仍保留原有行为（只限定 stopwatch）。 */
+        if (linkTarget && S.settings.autoCheck && mode !== 'stopwatch') {
             if (linkTarget.kind === 'sub') {
                 const t = S.tasks.find(x => x.id === linkTarget.taskId);
                 const s = t && (t.subs || []).find(x => x.id === linkTarget.id);
@@ -24161,6 +24220,84 @@ oninput="pgRefresh()"></textarea>
         return '';
     }
 
+    /* ---------- v63：CPA 大纲词法（章 / 节 + 行首编号） ---------- */
+    /* 中文数字 → int（与 CPA 的 cnNum2Int 同口径） */
+    function pgCn2Int(s) {
+        const t = String(s == null ? '' : s).trim();
+        if (/^[0-9]+$/.test(t)) return parseInt(t, 10);
+        const D = { 零: 0, 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+        const U = { 十: 10, 百: 100 };
+        let total = 0, cur = 0, ok = false;
+        for (let i = 0; i < t.length; i++) {
+            const c = t.charAt(i);
+            if (D[c] !== undefined) { cur = D[c]; ok = true; }
+            else if (U[c] !== undefined) { total += (ok ? cur : 1) * U[c]; cur = 0; ok = false; }
+            else return 0;
+        }
+        if (!ok && !total) return 0;
+        return total + cur;
+    }
+    /* 行首是章号还是节号？命中时编号优先于缩进 */
+    function pgLvlOf(raw) {
+        let m = String(raw || '').match(/^第\s*([0-9一二三四五六七八九十百零]+)\s*章/);
+        if (m) return { kind: 'ch', no: pgCn2Int(m[1]) };
+        m = String(raw || '').match(/^第\s*([0-9一二三四五六七八九十百零]+)\s*节/);
+        if (m) return { kind: 'sec', no: pgCn2Int(m[1]) };
+        return { kind: '', no: 0 };
+    }
+    /* 剥掉行首编号（第N章 / 第N节 / 2、 / 3.）—— 不让编号留进任务名 */
+    function pgStripNo(t) {
+        let s = String(t == null ? '' : t).trim();
+        const cut = re => { const r = s.replace(re, '').trim(); if (r) s = r; };
+        cut(/^第\s*[0-9一二三四五六七八九十百零]+\s*(?:章|讲|课|部|单元|篇)\s*[.、:：\-]?\s*/);
+        cut(/^第\s*[0-9一二三四五六七八九十百零]+\s*节\s*[.、:：\-]?\s*/);
+        cut(/^[0-9]+\s*[.、．:：]\s*/);
+        cut(/^[-*•·▪◦]+\s*/);
+        return s;
+    }
+
+    /* ---------- v63：粘贴项目（需求 1：项目名称 + 按项目批量删除）---------- */
+    let pgTimer = 'stopwatch';      // 'stopwatch' 正向计时（默认）| 'pomodoro' 番茄时钟
+    function pgProjName() { const el = document.getElementById('pgProj'); return el ? String(el.value || '').trim() : ''; }
+    function pgPickTimer(t) { pgTimer = (t === 'pomodoro') ? 'pomodoro' : 'stopwatch'; pgSyncTimerUI(); pgRefresh(); }
+    function pgSyncTimerUI() {
+        const box = document.querySelectorAll('#pgTimers span');
+        for (let i = 0; i < box.length; i++) box[i].classList.toggle('on', box[i].dataset.t === pgTimer);
+        const row = document.getElementById('pgPomoRow');
+        if (row) row.style.display = (pgTimer === 'pomodoro') ? '' : 'none';
+    }
+    /* 已有项目汇总（任务 + 习惯同名合并） */
+    function pgProjects() {
+        const map = {};
+        const touch = n => { if (!map[n]) map[n] = { name: n, tasks: 0, habits: 0 }; return map[n]; };
+        (S.tasks || []).forEach(t => { if (t && t.proj) touch(String(t.proj)).tasks++; });
+        (S.habits || []).forEach(h => { if (h && h.proj) touch(String(h.proj)).habits++; });
+        return Object.keys(map).sort().map(k => map[k]);
+    }
+    function pgRenderProjs() {
+        const host = document.getElementById('pgProjs');
+        if (!host) return;
+        const list = pgProjects();
+        host.innerHTML = list.length
+            ? list.map(p => '<div class="pg-proj"><span class="pn">' + esc(p.name) + '</span>' +
+                '<span class="pc">任务 ' + p.tasks + ' · 习惯 ' + p.habits + '</span>' +
+                '<span class="pd" onclick="pgDelProj(' + JSON.stringify(p.name).replace(/"/g, '&quot;') + ')">删除</span></div>').join('')
+            : '<div class="pg-proj-empty">还没有任何项目 —— 填好项目名称生成一次就会出现在这里</div>';
+    }
+    function pgDelProj(name) {
+        const p = pgProjects().filter(x => x.name === name)[0];
+        if (!p) return;
+        askConfirm('删除项目「' + name + '」？\n将移除 ' + p.tasks + ' 项任务 / ' + p.habits + ' 个习惯，不可撤销。', function () {
+            S.tasks = (S.tasks || []).filter(t => String(t.proj || '') !== name);
+            S.habits = (S.habits || []).filter(h => String(h.proj || '') !== name);
+            save();
+            try { commitSave(true); } catch (e) {}
+            pgRenderProjs();
+            try { render(); } catch (e) {}
+            showToast('已删除项目「' + name + '」（' + p.tasks + ' 项任务 / ' + p.habits + ' 个习惯）');
+        }, { danger: true, okText: '删除' });
+    }
+
     /* ---------- 缩进树解析 ---------- */
     function pgParse(text) {
         const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
@@ -24191,23 +24328,49 @@ oninput="pgRefresh()"></textarea>
             if (!body) return;
             rows.push({ w, title: body, dur, dt, rec });
         });
-        /* 缩进宽度 → 深度（栈式，容错任意缩进量） */
-        const st = [];
-        rows.forEach(r => {
-            while (st.length && r.w <= st[st.length - 1]) st.pop();
-            st.push(r.w);
-            r.depth = st.length - 1;
-        });
-        /* 组树 */
-        const roots = [], stack = [];
-        rows.forEach(r => {
-            const n = { title: r.title, dur: r.dur, dt: r.dt, rec: r.rec, depth: r.depth, children: [] };
-            while (stack.length && stack[stack.length - 1].depth >= n.depth) stack.pop();
-            if (stack.length) { const p = stack[stack.length - 1]; p.children.push(n); n.parent = p; n.top = p.top; }
-            else { roots.push(n); n.top = n.title; }
-            stack.push(n);
-        });
-        return { rows: rows, roots: roots };
+        /* ===== v63（需求 1）：改用 CPA「项目大纲」口径 =====
+           同一份文本要能同时粘进 CPA 工具与朝暮计，
+           所以层级判定必须与 tools_cpa.html 的 parseGuideBulk 一致：
+             · 缩进宽度即层级（tab 折 4 空格），取最浅的 3 档
+             · 行首 - * • · ▪ ◦ 剥掉（在上方同一个 forEach 里已经剥了）
+             · 章 / 节号**优先从行首编号解析**（「第2章 存货」「2、存货」）
+             · 不缩进那档 = CPA 的「科目」行 ⇒ **不提取科目名**，直接跳过
+           自愈：若按上面口径一个「节」都得不到（这份文本没有科目行，
+           比如现成的「复习周 / 旅行清单」模板），整体回退一档重判。 */
+        const levels = Array.from(new Set(rows.map(r => r.w))).sort((a, b) => a - b).slice(0, 3);
+        const buildChSec = shift => {
+            const roots = [], flat = [];
+            let curCh = null;
+            rows.forEach(r => {
+                const lv = pgLvlOf(r.title);
+                let tier;
+                if (lv.kind === 'ch') tier = 0;                       // 编号优先
+                else if (lv.kind === 'sec') tier = 1;
+                else {
+                    const it = levels.indexOf(r.w);
+                    tier = it < 0 ? 1 : it + shift;                   // 超出 3 档 → 当最深档
+                }
+                const title = pgStripNo(r.title);
+                if (!title) return;
+                if (tier < 0) { flat.push(title); return; }           // 科目行：不提取
+                if (tier === 0) {
+                    curCh = { title: title, no: lv.no || 0, dur: r.dur, dt: r.dt, rec: r.rec, depth: 0, children: [] };
+                    curCh.top = title;
+                    roots.push(curCh);
+                } else {
+                    const n = { title: title, no: lv.no || 0, dur: r.dur, dt: r.dt, rec: r.rec, depth: tier, children: [] };
+                    if (curCh) { curCh.children.push(n); n.top = curCh.title; }
+                    else { roots.push(n); n.top = n.title; }
+                }
+            });
+            const nSec = roots.reduce((a, x) => a + x.children.length, 0);
+            return { roots: roots, courses: flat, nSec: nSec };
+        };
+        let built = buildChSec(-1);
+        /* 自愈：没得到任何「节」就说明这份文本没有科目行，回退一档 */
+        if (!built.nSec) { const alt = buildChSec(0); if (alt.nSec) built = alt; }
+        rows.forEach(r => { r.depth = 0; });
+        return { rows: rows, roots: built.roots, courses: built.courses };
     }
     function pgLeaves(node, out) {
         out = out || [];
@@ -24286,7 +24449,12 @@ oninput="pgRefresh()"></textarea>
             createdAt: new Date().toISOString(), due: null, note: o.note || '',
             timeType: 'none', time: '', endTime: '',
             recur: o.recur || null,
-            timerCfg: { mode: 'none', inFocus: false, dur: 25, num: 1, short: 5, long: 15, interval: 4, auto: true, order: 0 }
+            /* v63（需求 1/2/4）：项目归属 + 预计时长 + 番茄计划 */
+            proj: o.proj || '',
+            est: +o.est || 0,
+            pomo: +o.pomo || 0,
+            pomoMin: +o.pomoMin || 0,
+            timerCfg: pgTimerCfgFor(o)
         };
         const ds = o.dates || [];
         if (o.recur) {
@@ -24298,6 +24466,26 @@ oninput="pgRefresh()"></textarea>
         else if (ds.length > 1) { t.mode = 'cross'; t.dates = ds.slice(); }
         return t;
     }
+    /* v63（需求 2）：粘贴生成的任务默认「正向计时」，
+       番茄模式则按「节时长 / 番茄时长」算出需要几个番茄。
+       两者都不会自动完成 —— 只有打勾才归属完成（需求 3）。 */
+    function pgTimerCfgFor(o) {
+        const base = { mode: 'none', inFocus: false, dur: 25, num: 1, short: 5, long: 15, interval: 4, auto: true, order: 0 };
+        if (o && o.noTimer) return base;
+        if (pgTimer === 'pomodoro') {
+            const pm = Math.max(5, +((document.getElementById('pgPomoMin') || {}).value) || 25);
+            const need = +o.est || 0;
+            base.mode = 'pomodoro';
+            base.inFocus = true;
+            base.dur = pm;
+            base.num = Math.max(1, Math.min(20, +o.pomo || Math.ceil((need || pm) / pm)));
+            return base;
+        }
+        base.mode = 'stopwatch';
+        base.inFocus = true;
+        return base;
+    }
+
     function pgBuildHabit(o) {
         const colors = ['#e74c3c', '#f39c12', '#27ae60', '#3498db', '#6c5ce7'];
         const days = (o.days && o.days.length) ? o.days.slice().sort((a, b) => a - b) : [1, 2, 3, 4, 5, 6, 7];
@@ -24307,6 +24495,7 @@ oninput="pgRefresh()"></textarea>
             period: { type: 'fixed', days: days },
             goal: { mode: 'once', unit: '次', total: 1, step: 1, punchMode: 'auto' },
             ctx: o.ctx || '全天',
+            proj: o.proj || pgProjName(),
             records: {}, noteOn: true, note: o.note || '',
             startDate: o.startDate || today(), due: null, reminders: [],
             status: 'active',
@@ -24421,10 +24610,71 @@ oninput="pgRefresh()"></textarea>
                 `<span class="pg-title">${esc(n.title)}</span>${b.join('')}</div>`;
         }).join('');
         if (sum) {
-            sum.textContent = isHabit ? `将生成 ${P.roots.length} 个习惯`
-                : isStage ? `将生成 ${P.roots.length} 个阶段 + ${allLeaves.length} 条子任务`
-                    : `将生成 ${allLeaves.length} 项任务`;
+            if (pgTimer === 'pomodoro' && !isHabit) {
+                const val = id => { const el = document.getElementById(id); return el ? (+el.value || 0) : 0; };
+                const dayMin = Math.max(10, val('pgDayMin') || 120);
+                const pomoMin = Math.max(5, val('pgPomoMin') || 25);
+                let dn = 1, acc = 0, pmN = 0;
+                allLeaves.forEach(l => {
+                    const need = l.dur || pomoMin;
+                    pmN += Math.max(1, Math.ceil(need / pomoMin));
+                    if (acc > 0 && acc + need > dayMin) { dn++; acc = 0; }
+                    acc += need;
+                });
+                sum.textContent = `番茄模式：${allLeaves.length} 节 → ${dn} 天 · 共 ${pmN} 个番茄（每日 ${dayMin} 分 · 每个 ${pomoMin} 分）`;
+            } else {
+                sum.textContent = isHabit ? `将生成 ${P.roots.length} 个习惯`
+                    : isStage ? `将生成 ${P.roots.length} 个阶段 + ${allLeaves.length} 条子任务`
+                        : `将生成 ${allLeaves.length} 项任务`;
+            }
         }
+    }
+
+    /* v63（需求 4）：番茄时钟模式的「每天内容分配」
+       · 一节不跨天（否则会出现上午半节 / 下午半节这种无法打勾的状态）
+       · 每节番茄数 = ceil(节时长 / 番茄时长)，最少 1 个
+       · 父任务 = 「第 N 天 · M/D · k 节 · j 番茄」，子任务 = 节 */
+    function pgGeneratePomo(P, startDate) {
+        const val = id => { const el = document.getElementById(id); return el ? (+el.value || 0) : 0; };
+        const dayMin = Math.max(10, val('pgDayMin') || 120);
+        const pomoMin = Math.max(5, val('pgPomoMin') || 25);
+        const proj = pgProjName();
+        const secs = [];
+        (P.roots || []).forEach(ch => {
+            pgLeaves(ch, []).forEach(s => secs.push({ chName: ch.title, node: s }));
+        });
+        if (!secs.length) return { days: 0, tasks: 0, secs: 0, pomos: 0 };
+        const days = [];
+        let cur = null, sum = 0;
+        secs.forEach(s => {
+            const need = +s.node.dur || pomoMin;
+            if (!cur || (sum > 0 && sum + need > dayMin)) { cur = { items: [], min: 0 }; days.push(cur); sum = 0; }
+            cur.items.push({ s: s, need: need });
+            cur.min += need;
+            sum += need;
+        });
+        let made = 0, secN = 0, pomoN = 0, d = startDate || today();
+        days.forEach((day, di) => {
+            const subs = day.items.map(it => {
+                const pm = Math.max(1, Math.ceil(it.need / pomoMin));
+                secN++; pomoN += pm;
+                return { id: uid(), title: it.s.chName + ' · ' + it.s.node.title, done: false,
+                    pinned: false, failed: false, est: it.need, pomo: pm, pomoMin: pomoMin };
+            });
+            const pmSum = subs.reduce((a, x) => a + x.pomo, 0);
+            S.tasks.push(pgBuildTask({
+                title: '第 ' + (di + 1) + ' 天 · ' + d.slice(5) + ' · ' + subs.length + ' 节 · ' + pmSum + ' 番茄',
+                dates: [d],
+                subs: subs,
+                est: day.min,
+                pomo: pmSum,
+                pomoMin: pomoMin,
+                proj: proj
+            }));
+            made++;
+            d = addDays(d, 1);
+        });
+        return { days: days.length, tasks: made, secs: secN, pomos: pomoN };
     }
 
     /* ---------- 入口 / 生成 ---------- */
@@ -24434,13 +24684,15 @@ oninput="pgRefresh()"></textarea>
         const sd = document.getElementById('pgStartDate');
         if (sd && !sd.value) sd.value = today();
         pgMode = 'dated';
-        pgSyncModeUI(); pgRenderTpls(); pgRefresh();
+        pgSyncTimerUI(); pgRenderTpls(); pgRenderProjs(); pgRefresh();
         openM('mPasteGen');
     }
     function pgGenerate() {
         const ta = document.getElementById('pgText');
         const P = pgParse(ta ? ta.value : '');
         if (!P.roots.length) return notify('没有解析到条目，请检查粘贴内容');
+        /* v63（需求 1）：项目名称必填 —— 它既是归类，也是「按项目批量删除」的唯一凭据 */
+        if (!pgProjName()) { const el = document.getElementById('pgProj'); if (el) el.focus(); return notify('请先填写项目名称（用于归类与按项目批量删除）'); }
         const val = id => { const el = document.getElementById(id); return el ? el.value : ''; };
         const chk = id => { const el = document.getElementById(id); return !!(el && el.checked); };
         const startDate = val('pgStartDate') || today();
@@ -24455,6 +24707,18 @@ oninput="pgRefresh()"></textarea>
         const allLeaves = [];
         P.roots.forEach(r => pgLeaves(r, allLeaves));
         if (pgMode === 'dated') pgSchedule(allLeaves, startDate, perDay, maxMin, skipWknd);
+
+        /* v63（需求 4）：番茄时钟模式 —— 不走「每天 N 条」投放，
+           改为「按节时长分配到每天（不超每日学习时长）」，每天一个任务、节作子任务。 */
+        if (pgTimer === 'pomodoro' && pgMode !== 'habit') {
+            const r = pgGeneratePomo(P, startDate);
+            save();
+            try { commitSave(true); } catch (e) {}
+            closeM('mPasteGen');
+            render();
+            showToast('已按番茄时钟生成 ' + r.days + ' 天 · ' + r.tasks + ' 项任务 / ' + r.secs + ' 节 · 共 ' + r.pomos + ' 个番茄');
+            return;
+        }
 
         let made = 0;
         if (pgMode === 'habit') {
@@ -24476,6 +24740,8 @@ oninput="pgRefresh()"></textarea>
                     category: pgCatFor(asCat, r.title, cat),
                     tags: tags,
                     subs: lv.map(l => ({ id: uid(), title: l.title, done: false, pinned: false, failed: false })),
+                    est: lv.reduce((a, x) => a + (+x.dur || 0), 0),
+                    proj: pgProjName(),
                     note: pgNoteOf(r)
                 }));
                 made++;
@@ -24489,6 +24755,8 @@ oninput="pgRefresh()"></textarea>
                     tags: tags,
                     recur: l.rec || null,
                     seed: startDate,
+                    est: +l.dur || 0,
+                    proj: pgProjName(),
                     note: pgNoteOf(l)
                 }));
                 made++;
@@ -24531,7 +24799,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924c</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924g</div>
 <!-- build-tag:end -->
 <!-- v57: 集思录 · 梦想成真迁移骨架（晨间日记 / 目标管理 / 计划视图 + 右栏目标树 + 编辑弹窗）
      用 <template> 承载：内容不在文档树里，不参与主站的 id / 类匹配，
