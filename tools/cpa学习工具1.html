@@ -845,6 +845,100 @@
         .tomato-controls button.primary:hover {
             background: var(--primary-dark);
         }
+
+        /* ★ v47（Tom 2026-09-24 需求 6）：独立的「⏳ 学时倒计时」面板。
+           与番茄钟并列、各记各的 —— 它按「当前节建议时长」倒计时，
+           结算只写「结束时间 + 已用时长」，**不碰番茄个数**。 */
+        .study-timer-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+        }
+        .study-timer-container .tomato-display .timer {
+            font-size: 26px;
+            min-width: 84px;
+        }
+        .study-timer-container .st-basis {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .study-timer-container .st-min {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .study-timer-container .st-min input {
+            width: 66px;
+            padding: 4px 6px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font: inherit;
+            font-size: 13px;
+            text-align: right;
+            background: var(--card-bg);
+            color: var(--text);
+        }
+        .study-timer-container .st-min input:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+        }
+        .study-timer-container button#studyTimerDoneBtn:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+        .study-timer-container button#studyTimerDoneBtn:disabled:hover {
+            background: var(--bg);
+            color: var(--text-secondary);
+            border-color: var(--border);
+        }
+        .study-timer-container button#studyTimerDoneBtn:not(:disabled) {
+            background: var(--primary-bg);
+            color: var(--primary-dark);
+            border-color: var(--primary-light);
+        }
+
+        /* ★ v47（Tom 2026-09-24 需求 5）：「记录学习」表单展开时问「是否自动番茄计时」的页内小条。
+           每次都问（不写记忆）；点「▶ 开始计时」⇔ 启动番茄钟，点「先不用」收起。 */
+        .auto-tomato-ask {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 0 0 12px;
+            padding: 9px 14px;
+            background: var(--primary-bg);
+            border: 1px solid var(--primary-light);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+        }
+        .auto-tomato-ask[hidden] { display: none; }
+        .auto-tomato-ask .ata-text {
+            font-weight: 600;
+            color: var(--primary-dark);
+        }
+        .auto-tomato-ask button {
+            padding: 5px 14px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 13px;
+            font-family: inherit;
+            background: var(--card-bg);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            cursor: pointer;
+        }
+        .auto-tomato-ask button.primary {
+            background: var(--primary);
+            color: var(--card-bg);
+            border-color: var(--primary);
+        }
         /* ★ 2026-09-22：「提前完成」按钮 —— 非专注计时中置灰不可点 */
         .tomato-controls button#tomatoDoneBtn:disabled {
             opacity: .45;
@@ -4194,6 +4288,23 @@
                     <span class="tomato-count">累计 <span class="num" id="tomatoCount">0</span> 🍅</span>
                 </div>
             </div>
+            <!-- ★ v47（Tom 2026-09-24 需求 6）：独立的「⏳ 学时倒计时」面板。
+                 默认倒计时 = 当前节建议时长（取不到 → 本章合计 → 60 分钟）；
+                 结算只写「结束时间 + 已用时长」，**不碰番茄个数**。 -->
+            <div class="study-timer-container" id="studyTimerContainer">
+                <div class="tomato-display">
+                    <span class="timer" id="studyTimerClock">--:--</span>
+                    <span class="status" id="studyTimerStatus">⏸️ 未开始</span>
+                </div>
+                <div class="tomato-controls">
+                    <button class="primary" id="studyTimerStartBtn">▶ 开始</button>
+                    <button id="studyTimerPauseBtn">⏸ 暂停</button>
+                    <button id="studyTimerResetBtn">⏹ 重置</button>
+                    <button id="studyTimerDoneBtn" title="提前完成：按已用时长计入学时，不计番茄个数">✅ 提前完成</button>
+                    <label class="st-min">时长 <input id="studyTimerMin" type="number" min="1" max="600" step="1"> 分钟</label>
+                </div>
+                <span class="st-basis" id="studyTimerBasis">基准：—</span>
+            </div>
         </div>
 
         <!-- 表单 -->
@@ -4204,6 +4315,14 @@
             </div>
             <div class="form-body" id="formBody">
                 <form id="recordForm" autocomplete="off" novalidate>
+                                        <!-- ★ v47（Tom 2026-09-24 需求 5）：表单展开时问一句是否自动番茄计时。
+                                             每次都问（不写 localStorage 记忆）；若番茄钟或学时倒计时
+                                             已在计时，则不弹（见 askAutoTomato）。 -->
+                                        <div class="auto-tomato-ask" id="autoTomatoAsk" hidden>
+                                            <span class="ata-text">🍅 要不要自动开始番茄计时？</span>
+                                            <button type="button" class="primary" id="ataYes">▶ 开始计时</button>
+                                            <button type="button" id="ataNo">先不用</button>
+                                        </div>
                                         <div class="rec-draft-bar" id="recDraftBar" hidden>
                         <span id="recDraftMsg"></span>
                         <button type="button" id="recDraftDrop">丢弃草稿</button>
@@ -5857,6 +5976,19 @@
                     autoFocus: false,
                     sound: true
                 }
+            },
+            /* ★ v47（Tom 2026-09-24 需求 6）：独立「⏳ 学时倒计时」。
+               只记「用户手改过、且与建议时长不同」的分钟数；timeLeft / isRunning
+               都是运行期状态，不落盘（换台设备/重开页面应当回到建议时长基准）。 */
+            studyTimer: {
+                planMin: 0,
+                timeLeft: 0,
+                isRunning: false,
+                isPaused: false,
+                timerId: null,
+                sessionActive: false,
+                sessionStart: '',
+                cfg: { lastMin: 0 }
             }
         };
 
@@ -5943,6 +6075,12 @@
                                 if (typeof _tc[k] === 'boolean') state.tomato.cfg[k] = _tc[k];
                             });
                         }
+                    }
+                    /* ★ v47：学时倒计时的「上次手改分钟数」（老存档没有该字段 → 保持 0 = 用建议时长）。
+                       注意**不恢复 timeLeft / isRunning** —— 倒计时不是跨会话资产，重开就回到基准。 */
+                    if (data.studyTimer && data.studyTimer.cfg) {
+                        const _lm = parseFloat(data.studyTimer.cfg.lastMin);
+                        if (isFinite(_lm) && _lm > 0) state.studyTimer.cfg.lastMin = _lm;
                     }
                     state.progressMode = (data.progressMode === 'tomato') ? 'tomato' : 'hours';
                     // 一次性迁移闸门（见 migrateKpQuickRaw）。老存档没有该字段 = 还没迁移过。
@@ -6310,6 +6448,9 @@
                 resourceTypes: Array.isArray(state.resourceTypes) ? state.resourceTypes : null,
                 sources: Array.isArray(state.sources) ? state.sources : null,
                 tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
+                /* ★ v47：saveData 是**白名单序列化** —— 不在这里登记就永远写不进 localStorage。
+                   只存 cfg.lastMin（用户手改且与建议时长不同的那个值）。 */
+                studyTimer: { cfg: { lastMin: (state.studyTimer && state.studyTimer.cfg && state.studyTimer.cfg.lastMin) || 0 } },
                 progressMode: (state.progressMode === 'tomato' ? 'tomato' : 'hours'),
                 kpMigrated: state.kpMigrated === true,
                 tierV2: state.tierV2 === true,
@@ -7627,6 +7768,65 @@
                         tHintEl.style.color = 'var(--primary)';
                     }
                 },
+                /* ★ v47（Tom 2026-09-24 需求 6）：学时倒计时的表单回填 —— 与番茄那套**分开写**。
+                   差别只有两点：① 提示词是 ⏳ 不是 🍅；
+                   ② **绝不写 #fTomatoCount** ——「不计入番茄完成个数」就是靠这一条落地的。 */
+                beginStudy: function (startHM, totalMin) {
+                    if (startTime) startTime.value = startHM;
+                    if (endTime) endTime.value = '';
+                    endManual = false;
+                    tomatoLiveTick = 0;
+                    const dEl = document.getElementById('fDate');
+                    if (dEl) dEl.value = getToday();
+                    const cEl = document.getElementById('fCourse');
+                    if (cEl && state.currentCourse) cEl.value = state.currentCourse;
+                    durationManual = false;
+                    if (durationInput) { durationInput.value = ''; durationInput.readOnly = false; }
+                    if (autoHint) {
+                        autoHint.textContent = '⏳ 学时倒计时中（共 ' + totalMin + ' 分钟）—— 结束或提前完成会把「结束时间 / 时长」填进来，不计番茄个数';
+                        autoHint.style.color = 'var(--primary)';
+                        autoHint.classList.remove('is-cross');
+                    }
+                },
+                liveStudy: function (endHM) {
+                    if (endManual) return;
+                    if (endTime) endTime.value = endHM;
+                    const sv = startTime ? startTime.value : '';
+                    if (sv && sv === endHM) {
+                        if (autoHint) {
+                            autoHint.textContent = '⏳ 学时倒计时中 · 已开始（不满 1 分钟）';
+                            autoHint.style.color = 'var(--primary)';
+                            autoHint.classList.remove('is-cross');
+                        }
+                        return;
+                    }
+                    durationManual = false;
+                    autoCalcDuration();
+                    const infoNow = calcDurationInfo(sv, endHM);
+                    const shown = (infoNow && infoNow.minutes > 0) ? (infoNow.minutes + ' 分钟')
+                        : (sv ? '不足 1 分钟' : '—');
+                    if (autoHint) {
+                        autoHint.textContent = '⏳ 学时倒计时中 · 已用 ' + shown + '（结束 ' + endHM + '）';
+                        autoHint.style.color = 'var(--primary)';
+                        autoHint.classList.remove('is-cross');
+                    }
+                },
+                tickStudy: function (endHM) {
+                    if (endTime) endTime.value = endHM;
+                    durationManual = false;
+                    autoCalcDuration();
+                    if (autoHint) {
+                        autoHint.textContent = '⏳ 已按已用时长填入（结束 ' + endHM + '）—— 点「保存记录」后计入总学时，不计番茄个数';
+                        autoHint.style.color = 'var(--green)';
+                    }
+                },
+                clearStudy: function () {
+                    if (autoHint) {
+                        autoHint.textContent = '⏱️ 填写起止时间自动计算';
+                        autoHint.style.color = 'var(--primary)';
+                        autoHint.classList.remove('is-cross');
+                    }
+                },
                 clear: function () {
                     if (tCountEl) tCountEl.value = 0;
                     if (tHintEl) { tHintEl.textContent = '🍅 点番茄钟「开始」，起止时间与个数会自动填进来'; tHintEl.style.color = ''; }
@@ -7692,6 +7892,9 @@
                 if (!container.classList.contains('collapsed')) {
                     document.getElementById('fCourse').value = state.currentCourse;
                     updateChapterSelect(state.currentCourse);
+                    /* ★ v47（需求 5）：表单**展开**时问一句是否自动番茄计时 */
+                    syncStudyTimerToBase();
+                    askAutoTomato();
                 }
             });
 
@@ -7699,6 +7902,9 @@
                 container.classList.remove('collapsed');
                 document.getElementById('fCourse').value = state.currentCourse;
                 updateChapterSelect(state.currentCourse);
+                /* ★ v47（需求 5）：走「➕ 添加记录」进来同样是表单展开 —— 一并问 */
+                syncStudyTimerToBase();
+                askAutoTomato();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             });
 
@@ -9293,6 +9499,286 @@
             }
             renderTomatoDisplay();
         }
+        // ============================================================
+        //  ★ v47（Tom 2026-09-24 需求 5 / 6）
+        //   需求 5：记录学习表单**展开**时，页内小条问一句「是否自动番茄计时」。
+        //          每次都问（Tom 选定：不记忆）；点「▶ 开始计时」= 启动番茄钟。
+        //   需求 6：新增独立「⏳ 学时倒计时」面板 —— 默认倒计时 = 当前节建议时长
+        //          （取不到 → 本章合计 → 60 分钟）；结算只写「结束时间 / 已用时长」，
+        //          **不碰番茄个数**；结算完弹一句问是否休息。
+        // ============================================================
+        let studyLiveTick = 0;
+        let autoTomatoAskTimer = null;
+
+        /* ---------- 需求 6 · 基准：当前 科目 / 章 / 节 的建议时长 ---------- */
+        function durMinTxt(min) {
+            const m = Math.max(1, Math.round(min));
+            if (m < 60) return m + ' 分钟';
+            return (Math.round(m / 60 * 10) / 10) + ' 小时';
+        }
+        function studyTimerBaseMin() {
+            const cEl = document.getElementById('fCourse');
+            const chEl = document.getElementById('fChapter');
+            const sEl = document.getElementById('fSection');
+            const course = (cEl && cEl.value) || state.currentCourse || '';
+            const chapter = parseInt((chEl && chEl.value) || '0', 10) || 0;
+            const section = parseInt((sEl && sEl.value) || '0', 10) || 0;
+            if (course && chapter && section) {
+                const g = getGuide(course, chapter, section);
+                const h = g ? parseHoursTxt(g.duration) : 0;
+                if (isFinite(h) && h > 0) {
+                    return { min: Math.max(1, Math.round(h * 60)), hours: h,
+                             src: '本节建议时长 ' + durMinTxt(h * 60) };
+                }
+            }
+            if (course && chapter) {
+                const th = getChapterTotalHours(course, chapter);
+                if (isFinite(th) && th > 0) {
+                    return { min: Math.max(1, Math.round(th * 60)), hours: th,
+                             src: '本' + L('chapter') + '建议时长合计 ' + durMinTxt(th * 60) };
+                }
+            }
+            return { min: 0, hours: 0, src: '' };
+        }
+        /* 建议时长**优先**（需求 6 的字面口径）；本节没设过建议时长才退回上次手改值，再退回 60 分钟。 */
+        function studyTimerDefaultMin() {
+            const b = studyTimerBaseMin();
+            if (b.min > 0) return { min: b.min, src: b.src };
+            const last = parseFloat(state.studyTimer && state.studyTimer.cfg && state.studyTimer.cfg.lastMin);
+            if (isFinite(last) && last > 0) return { min: Math.round(last), src: '上次手动设定 ' + durMinTxt(last) };
+            return { min: 60, src: '本节未设建议时长，暂用 60 分钟' };
+        }
+
+        /* ---------- 需求 6 · 渲染 ---------- */
+        function renderStudyTimer() {
+            const t = state.studyTimer;
+            const running = !!(t.isRunning || t.isPaused);
+            /* ★ 计时中**不重算基准**：一是省掉每秒一次 getGuide / parseHoursTxt 查询，
+               二是防止用户中途改科目 / 章 / 节后，「基准」文案与实际总时长对不上
+               （planMin 在开始时已锁定，基准文案必须跟着锁）。 */
+            const d = running ? null : studyTimerDefaultMin();
+            const total = Math.max(1, Math.round(t.planMin || (d ? d.min : 60)));
+            const sec = Math.max(t.timeLeft | 0, 0);
+            const mm = Math.floor(sec / 60), ss = sec % 60;
+            const used = Math.max(0, Math.round((total * 60 - sec) / 60));
+            const clockEl = document.getElementById('studyTimerClock');
+            const stEl = document.getElementById('studyTimerStatus');
+            const basisEl = document.getElementById('studyTimerBasis');
+            const minEl = document.getElementById('studyTimerMin');
+            const doneBtn = document.getElementById('studyTimerDoneBtn');
+            if (clockEl) clockEl.textContent = ('0' + mm).slice(-2) + ':' + ('0' + ss).slice(-2);
+            if (stEl) {
+                stEl.textContent = t.isRunning
+                    ? ('⏳ 计时中 · 已用 ' + used + ' / 共 ' + total + ' 分钟')
+                    : (t.isPaused
+                        ? ('⏸️ 已暂停 · 已用 ' + used + ' / 共 ' + total + ' 分钟')
+                        : '⏸️ 未开始');
+            }
+            if (basisEl && d) basisEl.textContent = '基准：' + d.src;
+            if (minEl) {
+                minEl.disabled = running;
+                if (!running) minEl.value = total;
+            }
+            if (doneBtn) doneBtn.disabled = !running;
+        }
+
+        /* ---------- 需求 6 · 计时 ---------- */
+        function startStudyTimer() {
+            const t = state.studyTimer;
+            if (t.isRunning) return;
+            const d = studyTimerDefaultMin();
+            if (!t.planMin) t.planMin = d.min;
+            if (t.timeLeft <= 0) t.timeLeft = t.planMin * 60;
+            if (!t.sessionActive) {
+                t.sessionActive = true;
+                t.sessionStart = hmNow();
+                if (window.CPATomatoLink && window.CPATomatoLink.beginStudy) {
+                    try { window.CPATomatoLink.beginStudy(t.sessionStart, t.planMin); } catch (e) {}
+                }
+                showToast('⏳ 学时倒计时开始（' + t.planMin + ' 分钟）—— 只计学时，不计番茄个数');
+            }
+            t.isRunning = true;
+            t.isPaused = false;
+            studyLiveTick = 0;
+            t.timerId = setInterval(tickStudyTimer, 1000);
+            renderStudyTimer();
+        }
+        function tickStudyTimer() {
+            const t = state.studyTimer;
+            t.timeLeft--;
+            renderStudyTimer();
+            if (t.isRunning && t.sessionActive) {
+                studyLiveTick++;
+                if (studyLiveTick === 1 || studyLiveTick % 15 === 0) {
+                    if (window.CPATomatoLink && window.CPATomatoLink.liveStudy) {
+                        try { window.CPATomatoLink.liveStudy(hmNow()); } catch (e) {}
+                    }
+                }
+            }
+            if (t.timeLeft > 0) return;
+            completeStudyTimer(true);
+        }
+        function pauseStudyTimer() {
+            const t = state.studyTimer;
+            if (!t.isRunning) return;
+            clearInterval(t.timerId);
+            t.timerId = null;
+            t.isRunning = false;
+            t.isPaused = true;
+            renderStudyTimer();
+        }
+        function resetStudyTimer() {
+            const t = state.studyTimer;
+            clearInterval(t.timerId);
+            t.timerId = null;
+            t.isRunning = false;
+            t.isPaused = false;
+            t.sessionActive = false;
+            t.sessionStart = '';
+            const d = studyTimerDefaultMin();
+            t.planMin = d.min;
+            t.timeLeft = d.min * 60;
+            if (window.CPATomatoLink && window.CPATomatoLink.clearStudy) {
+                try { window.CPATomatoLink.clearStudy(); } catch (e) {}
+            }
+            renderStudyTimer();
+        }
+        /* 需求 6 的核心口径：结算「学时」而不结算「番茄」。
+           自然到点与提前完成**走同一个函数**（与番茄钟同款设计，免得两处口径分叉）。
+           ★ 这里不碰 state.tomato.count / session.pomodoros，也不设 mode='break'
+             ——「不计入番茄完成个数」靠的就是这两件事都没做，不是靠 toast 文案。 */
+        function completeStudyTimer(natural) {
+            const t = state.studyTimer;
+            clearInterval(t.timerId);
+            t.timerId = null;
+            const now = hmNow();
+            const total = Math.max(1, Math.round(t.planMin || studyTimerDefaultMin().min));
+            t.isRunning = false;
+            t.isPaused = false;
+            if (window.CPATomatoLink && window.CPATomatoLink.tickStudy) {
+                try { window.CPATomatoLink.tickStudy(now); } catch (e) {}
+            }
+            t.sessionActive = false;
+            t.sessionStart = '';
+            saveData();
+            beep();
+            showToast(natural
+                ? ('⏳ 学时倒计时到点（' + now + '）：结束时间与时长已填进表单 · 只计学时，不计番茄个数')
+                : ('✅ 提前完成（' + now + '）：按已用时长计入学时，不计番茄个数'));
+            t.timeLeft = total * 60;
+            renderStudyTimer();
+            askRestAfterStudy();
+        }
+        /* 手动「提前完成」。护栏与番茄钟同款：不满 1 分钟结算会落到同一分钟，
+           calcDurationInfo 返回 null ⇒ 表单亮红字「起止时间不能相同」，那是无效记录，堵在入口。 */
+        function finishStudyTimerEarly() {
+            const t = state.studyTimer;
+            if (!t.isRunning && !t.isPaused) {
+                showToast('学时倒计时尚未开始 —— 先点「▶ 开始」再计时');
+                return;
+            }
+            if (t.sessionStart && t.sessionStart === hmNow()) {
+                showToast('这次还不满 1 分钟 · 再等一会儿，或用「⏹ 重置」取消');
+                return;
+            }
+            completeStudyTimer(false);
+        }
+        /* 需求 6（Tom 选定：弹一句问「是否休息」）。
+           两种结算都走这条收尾 —— 到点休息、提前完成不休息，那才是没道理的分叉。 */
+        function askRestAfterStudy() {
+            let yes = false;
+            try {
+                yes = confirm('⏳ 本次学时已结算（按已用时长填进表单，不计番茄个数）。\n\n现在开始休息吗？\n点「确定」= 番茄钟切到休息并开始；点「取消」= 留在专注待命。');
+            } catch (e) { yes = false; }
+            if (!yes) return;
+            const t = state.tomato;
+            /* 番茄钟正在跑 / 已暂停 —— 都不去抢它的状态，只提示。
+               暂停态也算「在用」：直接改 mode 会把那一轮专注丢掉。 */
+            if (t.isRunning || t.isPaused) {
+                showToast('番茄钟还在用（计时中或已暂停）—— 要休息请用番茄钟自己的按钮');
+                return;
+            }
+            t.mode = 'break';
+            t.timeLeft = (t.cfg.breakMin || 5) * 60;
+            renderTomatoDisplay();
+            startTomatoTimer();
+        }
+        function syncStudyTimerToBase() {
+            const t = state.studyTimer;
+            if (t.isRunning || t.isPaused) return;
+            const d = studyTimerDefaultMin();
+            t.planMin = d.min;
+            t.timeLeft = d.min * 60;
+            renderStudyTimer();
+        }
+        function initStudyTimer() {
+            const sBtn = document.getElementById('studyTimerStartBtn');
+            const pBtn = document.getElementById('studyTimerPauseBtn');
+            const rBtn = document.getElementById('studyTimerResetBtn');
+            const dBtn = document.getElementById('studyTimerDoneBtn');
+            const minEl = document.getElementById('studyTimerMin');
+            if (sBtn) sBtn.addEventListener('click', startStudyTimer);
+            if (pBtn) pBtn.addEventListener('click', pauseStudyTimer);
+            if (rBtn) rBtn.addEventListener('click', resetStudyTimer);
+            if (dBtn) dBtn.addEventListener('click', finishStudyTimerEarly);
+            if (minEl) {
+                minEl.addEventListener('change', function () {
+                    const t = state.studyTimer;
+                    if (t.isRunning || t.isPaused) { renderStudyTimer(); return; }
+                    let v = parseInt(minEl.value, 10);
+                    if (!isFinite(v) || v < 1) v = 1;
+                    if (v > 600) v = 600;
+                    t.planMin = v;
+                    t.timeLeft = v * 60;
+                    /* 只在「与建议时长不同」时才记成手动值 —— 否则切章节后会被这个陈旧值粘住。 */
+                    t.cfg.lastMin = (v === studyTimerDefaultMin().min) ? 0 : v;
+                    saveData();
+                    renderStudyTimer();
+                });
+            }
+            /* 科目 / 章 / 节 一变，基准就变 ⇒ 未在跑就跟着重算（需求 6 的「基准」语义）。 */
+            ['fCourse', 'fChapter', 'fSection'].forEach(function (id) {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', syncStudyTimerToBase);
+            });
+            const t = state.studyTimer;
+            if (!t.isRunning && !t.isPaused) {
+                const d = studyTimerDefaultMin();
+                t.planMin = d.min;
+                t.timeLeft = d.min * 60;
+            }
+            renderStudyTimer();
+        }
+
+        /* ---------- 需求 5 · 表单展开时问「是否自动番茄计时」 ---------- */
+        function hideAutoTomatoAsk() {
+            const bar = document.getElementById('autoTomatoAsk');
+            if (bar) bar.hidden = true;
+            if (autoTomatoAskTimer) { clearTimeout(autoTomatoAskTimer); autoTomatoAskTimer = null; }
+        }
+        /* 每次都问（Tom 选定：不写 localStorage 记忆）。
+           但**已经在计时**时不打扰 —— 这时问了要么被误当成「要重开一轮」，
+           要么点了「开始」反而没反应。 */
+        function askAutoTomato() {
+            const bar = document.getElementById('autoTomatoAsk');
+            if (!bar) return;
+            const a = state.tomato || {};
+            const b = state.studyTimer || {};
+            if (a.isRunning || a.isPaused || b.isRunning || b.isPaused) { hideAutoTomatoAsk(); return; }
+            bar.hidden = false;
+            if (autoTomatoAskTimer) clearTimeout(autoTomatoAskTimer);
+            autoTomatoAskTimer = setTimeout(hideAutoTomatoAsk, 12000);
+        }
+        function wireAutoTomatoAsk() {
+            const yes = document.getElementById('ataYes');
+            const no = document.getElementById('ataNo');
+            if (yes) yes.addEventListener('click', function () {
+                hideAutoTomatoAsk();
+                startTomatoTimer();
+            });
+            if (no) no.addEventListener('click', hideAutoTomatoAsk);
+        }
+
         function initTomato() {
             const startBtn = document.getElementById('tomatoStartBtn');
             const pauseBtn = document.getElementById('tomatoPauseBtn');
@@ -19017,6 +19503,8 @@ if (document.readyState === 'loading') {
             bindClassifyModal();
             initFilters();
             initTomato();
+            initStudyTimer();
+            wireAutoTomatoAsk();
             initProjectSwitcher();
             initGoalPanel();
             initViewTabs();
@@ -23114,7 +23602,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924i</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924k</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
