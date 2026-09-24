@@ -1840,6 +1840,16 @@
         .hs-foot .t b { color: var(--accent-habit, var(--main)); }
         .s-ico { display: inline-flex; width: 18px; margin-right: 6px; justify-content: center; }
         #sidebar .s-item.active { background: #f0efff; color: var(--main); }
+        /* v64：侧栏「时间周期」筛选段（清单页 / 专注页各一份，状态互不影响） */
+        #sidebar .s-item[data-sf] .sf-ck {
+            display: none; margin-left: auto; color: var(--main); font-weight: 700; font-size: 12px;
+        }
+        /* 带计数时 auto 已被 .count 吃掉，✓ 只留 6px 间距，避免两个 auto 分掉空隙 */
+        #sidebar .s-item[data-sf] .count + .sf-ck { margin-left: 6px; }
+        #sidebar .s-item[data-sf].active .sf-ck { display: inline; }
+        /* 搜索态整段置灰并写明原因 —— 不让用户点了没反应（getFilteredTasks 搜索分支忽略周期） */
+        #sidebar .sf-off { opacity: .45; pointer-events: none; }
+        #sidebar .sf-note { padding: 3px 12px 7px; font-size: 10px; line-height: 1.45; color: #b9b9c8; }
 
         /* ===== 专注 ===== */
         .fmodes {
@@ -6580,6 +6590,9 @@ oninput="pgRefresh()"></textarea>
     let listView = 'quadrant';      // 'all' | 'todo' | 'quadrant' | 'category'
     let currentCategory = '全部';
     let filter = 'all';
+    /* v64：专注页的周期筛选 —— 与清单页的 filter **完全独立**（Tom 定：两页各自独立）。
+       语义与选项都走同一套 FILTERS + matchFilter，只是「当前值」分开存。 */
+    let focusFilter = 'all';
     let compactMode = S.settings.compact || false;
     let sortBy = S.settings.sortBy || 'priority';
     // 原 manual 排序入口已升级为批量编辑，旧数据回退到优先级排序
@@ -6936,28 +6949,36 @@ oninput="pgRefresh()"></textarea>
         return ds[ds.length - 1];
     }
 
-    function matchFilter(t) {
+    /* v64：第二个参数 = 用哪套周期值判定。
+       不传 = 全局 filter（清单页 / 所有既有调用，行为一字不变）；
+       传值 = 专注页用 focusFilter（两页共用同一份周期语义，改口径只改这一处）。 */
+    function matchFilter(t, f) {
+        /* ★ 防御：`Array.prototype.filter(matchFilter)` 会把**下标**当第二参数传进来，
+           f 就变成 0/1/2…，一路落到末尾 `return true` ⇒ 周期筛选彻底失效。
+           （本轮闸门实测抓到过：filter='today' 却返回全部 4 条。）
+           非字符串一律视为「没传」，回落全局 filter。 */
+        if (typeof f !== 'string') f = filter;
         const d = today();
         const dt = new Date(d);
-        if (filter === 'all') return true;
+        if (f === 'all') return true;
         /* v46：已完成清单 = 完成满 ARCHIVE_DAYS 天的任务（含母子任务整体）
            v47：开启「完成后立即归档」时，刚勾完的任务即刻进入已完成清单 */
-        if (filter === 'archived') return isArchivedOut(t);
-        if (filter === 'nodate') return t.mode === 'none';
+        if (f === 'archived') return isArchivedOut(t);
+        if (f === 'nodate') return t.mode === 'none';
         const ds = taskDates(t);
         if (!ds.length) return false;
-        if (filter === 'today') return ds.includes(d);
-        if (filter === 'tomorrow') { const t2 = new Date(dt);
+        if (f === 'today') return ds.includes(d);
+        if (f === 'tomorrow') { const t2 = new Date(dt);
             t2.setDate(t2.getDate() + 1); return ds.includes(fmtDLocal(t2)); }
-        if (filter === 'week') {
+        if (f === 'week') {
             const w = new Date(dt);
             w.setDate(w.getDate() - ((w.getDay() + 6) % 7));   // 周一为起点
             const end = new Date(w);
             end.setDate(end.getDate() + 6);
             return ds.some(x => x >= fmtDLocal(w) && x <= fmtDLocal(end));
         }
-        if (filter === 'month') return ds.some(x => x.slice(0, 7) === d.slice(0, 7));
-        if (filter === 'overdue') return taskState(t) === 'overdue';
+        if (f === 'month') return ds.some(x => x.slice(0, 7) === d.slice(0, 7));
+        if (f === 'overdue') return taskState(t) === 'overdue';
         return true;
     }
 
@@ -7211,7 +7232,11 @@ oninput="pgRefresh()"></textarea>
             searchParsed = null;
             /* v47：勾完即出列 —— 常规清单里不再留已完成任务，它们只在「已完成清单」中可见
                （关闭「完成后立即归档」则退回 v46 的「满 3 天」规则） */
-            ts = S.tasks.filter(filter === 'archived' ? isArchivedOut : (t => !isArchivedOut(t))).filter(matchFilter);
+            /* v64 ★ 必须写成箭头函数：`.filter(matchFilter)` 会把**下标**当第二参数
+               传给 matchFilter(t, f)，f 变成 0/1/2…，一路落到末尾 `return true`
+               ⇒ 周期筛选彻底失效。闸门实测抓到过：filter='today' 却返回全部 4 条。 */
+            ts = S.tasks.filter(filter === 'archived' ? isArchivedOut : (t => !isArchivedOut(t)))
+                       .filter(t => matchFilter(t));
         }
         if (sortBy === 'time-asc') ts.sort((a, b) => nextTaskDate(a).localeCompare(nextTaskDate(b)));
         else if (sortBy === 'time-desc') ts.sort((a, b) => nextTaskDate(b).localeCompare(nextTaskDate(a)));
@@ -7227,9 +7252,47 @@ oninput="pgRefresh()"></textarea>
         return ts;
     }
 
-    function getFilterLabel() {
-        const f = FILTERS.find(x => x[0] === filter);
-        return f ? f[1] : '全部';
+    /* v64：当前周期名。不传参 = 清单页的 filter；传参 = 任意周期键（专注页会传 focusFilter） */
+    function getFilterLabel(k) {
+        const key = (k === undefined) ? filter : k;
+        const it = FILTERS.find(x => x[0] === key);
+        return it ? it[1] : '全部';
+    }
+
+    /* v64：某个周期下「清单页会显示几条」—— 口径与 getFilteredTasks 完全一致：
+       先按归档与否分池，再过 matchFilter。两处各写一份迟早会漂移，故统一走这里。 */
+    function countForPeriod(f) {
+        try {
+            return S.tasks
+                .filter(t => (f === 'archived' ? isArchivedOut(t) : !isArchivedOut(t)))
+                .filter(t => matchFilter(t, f)).length;
+        } catch (e) { return 0; }
+    }
+
+    /* v64：侧栏「时间周期」段的竖排条目。
+       cur = 当前生效的周期键；opt.count = 是否带实时计数（清单页带 / 专注页不带，
+       跟随各页侧栏既有风格）；opt.fn = 点选后调用的函数名。 */
+    function periodItemsHTML(cur, opt) {
+        opt = opt || {};
+        const fn = opt.fn || 'pickSideFilter';
+        return FILTERS.map(f => {
+            const on = (f[0] === cur) ? ' active' : '';
+            const cnt = opt.count ? `<span class="count" id="sfc-${f[0]}">0</span>` : '';
+            return `<div class="s-item${on}" data-sf="${f[0]}" onclick="${fn}('${f[0]}')">`
+                + `${f[1]}${cnt}<span class="sf-ck">✓</span></div>`;
+        }).join('');
+    }
+
+    /* v64：清单页侧栏的「时间周期」整段（含搜索态置灰说明）。
+       搜索时 getFilteredTasks 会忽略周期（全局匹配），所以这一段必须明说「暂不参与」，
+       否则用户点了周期却发现列表不动。 */
+    function sidebarPeriodSection() {
+        const searching = !!(searchQuery && searchQuery.trim());
+        return `<div class="s-section">时间周期</div>`
+            + (searching ? `<div class="sf-note">搜索中 · 周期不参与筛选（清空搜索后恢复）</div>` : '')
+            + `<div class="${searching ? 'sf-off' : ''}">`
+            + periodItemsHTML(filter, { count: true, fn: 'pickSideFilter' })
+            + `</div>`;
     }
 
     /* 当前生效的视图：搜索时结果一律用列表视角呈现，清空搜索后自动回到原视图 */
@@ -7386,10 +7449,11 @@ oninput="pgRefresh()"></textarea>
                 </span>`;
                 return;
             }
-            const filterHtml = FILTERS.map(f =>
-                `<span class="${filter===f[0]?'on':''}" onclick="filter='${f[0]}';closeFilter();render()">${f[1]}</span>`
-            ).join('');
-            const dropdown = `<div class="filter-dropdown" id="filterDropdownHeader">${filterHtml}</div>`;
+            /* v64：周期筛选整体搬到侧边栏（Tom 定：顶部移除）——
+               标题里只留只读的当前周期名（在下面 filterLabel 里，
+               如「四象限 全部·5待办」），不再有 ▾ 触发器和下拉面板。
+               archBackHTML() 的「← 返回」**照旧保留** ——
+               那是归档口径的显式出口，不是筛选入口，删了就出不来了。 */
             if (listView === 'quadrant') {
                 const filterLabel = getFilterLabel();
                 /* v47：从「已完成清单」进来时按归档口径计数与命名（仍保留四象限布局） */
@@ -7399,10 +7463,8 @@ oninput="pgRefresh()"></textarea>
                 <span class="title-text" style="display:flex;align-items:center;gap:6px;justify-content:center;width:100%;">
                     <span>${isArch ? '✅ 已完成清单·' + cnt + ' 项' : '四象限 ' + filterLabel + '·' + cnt + '待办'}</span>
                     ${archBackHTML()}
-                    <span class="filter-toggle" onclick="toggleFilter()">周期 <span class="arrow ${filter!=='all'?'open':''}">▾</span></span>
                     <span class="qfont-ctl" onclick="event.stopPropagation()"><span onclick="quadFontStep(-1)" title="缩小四象限字体">A−</span><span onclick="quadFontStep(1)" title="放大四象限字体">A+</span></span>
-                </span>
-                ${dropdown}`;
+                </span>`;
             } else {
                 const label = viewNames[listView] || '清单';
                 const cnt = getViewTaskCount();
@@ -7411,9 +7473,7 @@ oninput="pgRefresh()"></textarea>
                 <span class="title-text" style="display:flex;align-items:center;gap:6px;justify-content:center;width:100%;">
                     <span>${label} <span style="font-weight:400;font-size:12px;opacity:0.8;">${filterLabel} · ${cnt}</span></span>
                     ${archBackHTML()}
-                    <span class="filter-toggle" onclick="toggleFilter()">周期 <span class="arrow ${filter!=='all'?'open':''}">▾</span></span>
-                </span>
-                ${dropdown}`;
+                </span>`;
             }
         } else {
             titleEl.innerHTML = `<span class="title-text">${PGT[page] || '清单'}</span>`;
@@ -7520,6 +7580,9 @@ oninput="pgRefresh()"></textarea>
     function rSidebar() {
         const menu = document.getElementById('sidebarMenu');
         if (!menu) return;
+        /* v64：重建菜单会丢滚动位置 —— 侧栏现在带「时间周期」筛选，点一下就要重绘一次，
+           手机端 150px 侧栏十几个条目一重建就跳回顶部，很难受。存旧值、重建后还原。 */
+        const _keepTop = menu.scrollTop;
         const h2 = document.getElementById('sidebarH2');
         const sub = document.getElementById('sidebarSub');
         const searchBox = document.getElementById('sidebarSearchBox');
@@ -7539,7 +7602,7 @@ oninput="pgRefresh()"></textarea>
         } else if (page === 'focus') {
             /* v23：专注页 ☰ 汉堡 =「红框 8 项」操作面板（清空原系统导航，仅留专注功能） */
             if (h2) h2.textContent = '专注';
-            if (sub) sub.textContent = '操作 · 计时辅助 · 开关';
+            if (sub) sub.textContent = '周期 · 操作 · 计时辅助 · 开关';
             if (searchBox) searchBox.style.display = 'none';
             if (foot) foot.textContent = 'v23 · 专注面板';
             menu.innerHTML = sidebarFocusHTML();
@@ -7565,6 +7628,7 @@ oninput="pgRefresh()"></textarea>
         }
         // 渲染完后把动态计数 / 开关状态回填
         updateSidebarCounts();
+        if (_keepTop) menu.scrollTop = _keepTop;
     }
 
     /* v23：专注页 ☰ 汉堡侧栏 —— 红框 8 项（操作类 6 + 开关类 2） */
@@ -7573,6 +7637,10 @@ oninput="pgRefresh()"></textarea>
         const cardDel = !(S.settings && S.settings.showCardDelBtn === false);
         const detAlign = !!(S.settings && S.settings.focusDetailAlign === 'bottom');
         return `
+            <div class="s-section">时间周期</div>
+            ${periodItemsHTML(focusFilter, { fn: 'pickFocusFilter' })}
+            <div class="sf-note">只筛「待办」组 · 习惯与目标没有日期，照常显示</div>
+
             <div class="s-section">操作</div>
             <div class="s-item" onclick="closeSidebar();openTaskFromFocus()">新建任务<span class="arrow">›</span></div>
             <div class="s-item" onclick="closeSidebar();openHabitFromFocus()">新建习惯<span class="arrow">›</span></div>
@@ -7685,6 +7753,7 @@ oninput="pgRefresh()"></textarea>
                 分类列表
                 <span class="count" id="sCatCount">0</span>
             </div>
+            ${page === 'list' ? sidebarPeriodSection() : `
             <div class="s-item" onclick="goOverdue()">
                 逾期任务
                 <span class="count" id="sOverdueCount">0</span>
@@ -7694,7 +7763,7 @@ oninput="pgRefresh()"></textarea>
                 已完成清单
                 <span class="count" id="sArchivedCount">0</span>
                 <span class="arrow">›</span>
-            </div>
+            </div>`}
 
             <div class="s-section">生成</div>
             <div class="s-item" onclick="closeSidebar();openPasteImport()">
@@ -8074,6 +8143,26 @@ oninput="pgRefresh()"></textarea>
         closeSidebar();
         if (page !== 'list') go('list');
         filter = 'archived';
+        render();
+    }
+
+    /* v64：侧栏「时间周期」点选 —— 清单页。
+       搜索态下周期不参与（getFilteredTasks 走全局匹配），直接拦下并说清楚，
+       而不是让用户点了没反应还以为坏了。 */
+    function pickSideFilter(f) {
+        if (searchQuery && searchQuery.trim()) {
+            showToast('搜索中 · 周期筛选暂不参与，清空搜索后生效');
+            return;
+        }
+        filter = f;
+        render();
+    }
+
+    /* v64：侧栏「时间周期」点选 —— 专注页（独立状态 focusFilter）。
+       故意**不**调 closeSidebar()：连续点几个周期看计数/卡片变化更顺手。
+       计时中也能切 —— 正在计时的卡片会被 focusCardPasses 强制保留，不会把入口藏掉。 */
+    function pickFocusFilter(f) {
+        focusFilter = f;
         render();
     }
 
@@ -8474,6 +8563,20 @@ oninput="pgRefresh()"></textarea>
             try { n = all.filter(isArchivedOut).length; } catch (e) { n = 0; }
             ac2.textContent = n;
         }
+
+        /* v64：侧栏「时间周期」段的实时计数 + 当前项高亮。
+           当前值按页取：清单页 filter / 专注页 focusFilter（两页状态各自独立）。
+           计数只在清单页那一段存在（专注页侧栏刻意不带计数）。 */
+        try {
+            FILTERS.forEach(f => {
+                const el = document.getElementById('sfc-' + f[0]);
+                if (el) el.textContent = countForPeriod(f[0]);
+            });
+            const cur = (page === 'focus') ? focusFilter : filter;
+            document.querySelectorAll('#sidebar .s-item[data-sf]').forEach(el => {
+                el.classList.toggle('active', el.dataset.sf === cur);
+            });
+        } catch (e) {}
 
         // 高亮当前菜单（仅 default 侧边栏有 data-view）
         document.querySelectorAll('#sidebar .s-item[data-view]').forEach(el => {
@@ -14125,6 +14228,16 @@ oninput="pgRefresh()"></textarea>
 
     /* ===== 专注任务卡片列表（图一）===== */
     /* 运行时聚合：谁在编辑弹窗里勾了「添加至专注任务」，谁就出现在这里 */
+    /* v64：某张专注卡片是否通过专注页的周期筛选（只对 task / sub 有意义） */
+    function focusCardPasses(c, keepScope) {
+        if (focusFilter === 'all') return true;
+        if (keepScope && c.scope === keepScope) return true;   // 正在计时的卡强制保留
+        const t = (c.kind === 'sub') ? S.tasks.find(x => x.id === c.taskId)
+                                     : S.tasks.find(x => x.id === c.id);
+        if (!t) return false;
+        return matchFilter(t, focusFilter);
+    }
+
     function focusCards() {
         const out = [];
         S.tasks.forEach(t => {
@@ -14263,11 +14376,19 @@ oninput="pgRefresh()"></textarea>
         const cards = focusCards();
         /* v13: 就地展开的详情指向的卡片若已不在列表（被移出/完成）→ 收起 */
         if (focusInlineDetail && !cards.find(c => c.scope === focusInlineDetail)) focusInlineDetail = null;
+        /* v64：正在计时的那张卡永远保留 —— 否则切了周期之后卡片被滤掉，
+           「⏵ 回到计时页」的入口就跟着消失，只能靠顶部横幅。 */
+        const _runScope = (fState === 'run' && linkTarget && linkTarget.id)
+            ? (linkTarget.kind + ':' + linkTarget.id) : null;
         /* v20: 窄屏（<640）时详情栏改为内嵌到对应卡片下方 —— 不再堆到所有分组之后 */
         const narrow = effectiveView() === 'mobile';
         const inlineDetail = !!(focusDetailOpen && narrow);
         /* v8: 三组分组（待办 / 习惯 / 目标） */
-        const todoCards  = cards.filter(c => c.kind === 'task' || c.kind === 'sub');
+        /* v64：周期筛选只作用于「待办」组（task / sub）。
+           习惯与目标没有稳定的日期语义，被周期滤掉会很反直觉（选「今日」它们全消失），
+           故明确不参与 —— 这是 Tom 在 AskUserQuestion 里定的口径。
+           子任务跟随父任务判定：focusCards 里 sub 的日期本来就是 `s.due || t.due`。 */
+        const todoCards  = cards.filter(c => (c.kind === 'task' || c.kind === 'sub') && focusCardPasses(c, _runScope));
         const habitCards = cards.filter(c => c.kind === 'habit' && !(c.goal && c.goal.mode === 'multi' && (c.goal.total || 1) > 1));
         const goalCards  = cards.filter(c => c.kind === 'habit' && c.goal && c.goal.mode === 'multi' && (c.goal.total || 1) > 1);
         /* 进行中的未来倒计时条（取最近到期的未完成项，全宽置顶） */
@@ -14301,11 +14422,19 @@ oninput="pgRefresh()"></textarea>
         const bodyHTML = focusDetailOpen
             ? `<div class="fc-body"><div class="fc-cols">${colsHTML}</div>${detail}</div>`
             : `<div class="fc-cols">${colsHTML}</div>`;
-        const total = cards.length;
+        /* v64：页脚与空态按「筛选后」口径说话，并写明当前周期。
+           rawTotal = 筛选前的卡片数，用来区分「本来就没有专注任务」与「当前周期没有」——
+           这两种空态给同一句话会让人以为数据丢了。 */
+        const rawTotal = cards.length;
+        const total = todoCards.length + habitCards.length + goalCards.length;
         const hasAny = total > 0;
-        const empty = `<div class="fcards-empty">还没有专注任务<br>用左上 ☰ 汉堡菜单新建或一键导入<br>想专注的事</div>`;
+        const _fl = getFilterLabel(focusFilter);
+        const empty = rawTotal > 0
+            ? `<div class="fcards-empty">周期「${esc(_fl)}」下没有待办的专注任务<br>换个周期看看，或点左上 ☰ 新建 / 导入</div>`
+            : `<div class="fcards-empty">还没有专注任务<br>用左上 ☰ 汉堡菜单新建或一键导入<br>想专注的事</div>`;
         /* v13: 页脚带版本号 —— 用来快速判断浏览器是否还停留在旧缓存 */
-        const foot = hasAny ? `<div class="fcards-foot">共 ${total} 个专注任务 · 点标题进入编辑 · 点「开始」进入专注<br><span style="opacity:.6">当前版本 ${APP_VER}${remoteUpdateAvailable?'（云端有 '+remoteVer+'，请用 ⋯ 菜单里的「强制刷新」更新）':'（若看不到新功能，请用 ⋯ 菜单里的「强制刷新」）'}</span></div>` : '';
+        const _flTag = (focusFilter !== 'all') ? `（周期：${esc(_fl)}）` : '';
+        const foot = hasAny ? `<div class="fcards-foot">共 ${total} 个专注任务${_flTag} · 点标题进入编辑 · 点「开始」进入专注<br><span style="opacity:.6">当前版本 ${APP_VER}${remoteUpdateAvailable?'（云端有 '+remoteVer+'，请用 ⋯ 菜单里的「强制刷新」更新）':'（若看不到新功能，请用 ⋯ 菜单里的「强制刷新」）'}</span></div>` : '';
         document.getElementById('main').innerHTML = `
             <div class="focus-page cards ${focusDark?'dark':''}">
                 ${runBanner}
@@ -24799,7 +24928,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924g</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924m</div>
 <!-- build-tag:end -->
 <!-- v57: 集思录 · 梦想成真迁移骨架（晨间日记 / 目标管理 / 计划视图 + 右栏目标树 + 编辑弹窗）
      用 <template> 承载：内容不在文档树里，不参与主站的 id / 类匹配，
