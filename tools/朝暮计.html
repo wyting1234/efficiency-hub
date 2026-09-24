@@ -723,6 +723,17 @@
         .qtask.hbq.hb-done { opacity: .74; }
         .qtask.hbq.hb-done .qt { color: #4a7f61; }
         .qtask.hbq .chk.hb-multi { font-size: 8px; letter-spacing: -.5px; }
+        /* ==== v62：今日习惯「全部完成 / 出列」后的兜底提示 ====
+           独立类，不并进 .qempty —— 那个类在 main.quad-mode 下是 flex:1 的居中容器。 */
+        .hb-all-done {
+            font-size: calc(10px * var(--qfs, 1));
+            color: #3f8a5c;
+            font-weight: 600;
+            padding: 5px 2px 3px;
+            cursor: pointer;
+            text-align: left;
+        }
+        .hb-all-done:hover { text-decoration: underline; }
 
         /* ==== v61：已完成清单里的习惯行（#48/#49）====
            单次习惯在清单界面打完卡即离开 Ⅳ 格，落到「已完成清单」这里；
@@ -9395,10 +9406,16 @@ oninput="pgRefresh()"></textarea>
                     tasksHtml = items.length ? items.map(t => qTaskHTML(t)).join('') : '';
                 }
                 /* v60：Ⅳ 格自动带上「今日习惯」。习惯不是任务、不参与 priority 分组，
-                   按自己的排期决定今天出不出现（quadHabitDue）。
-                   已完成清单（archived）与搜索态不掺进来，避免与任务口径打架。 */
-                if (q.p === 4 && filter !== 'archived' && !searchQuery.trim()) {
-                    tasksHtml += quadHabitRowsHTML();
+                   按自己的排期决定今天出不出现（quadHabitDue）。搜索态仍不掺进来。
+                   ★ v62 修正：原来这里是「归档口径整块跳过」的。v60/v61 之前习惯打完卡
+                     仍留在格子里，跳过的代价只是「看不到历史」；v61 起单次习惯打完卡就出列，
+                     于是「已完成清单 + 四象限」变成 Ⅳ 格两头都空的空格 —— 而
+                     archivedHabitRowsHTML() 明明有数据（实测 1778 字符）根本没被用上。
+                     这就是「已完成的四象限的习惯打卡界面数据为空」。 */
+                if (q.p === 4 && !searchQuery.trim()) {
+                    tasksHtml += (filter === 'archived')
+                        ? archivedHabitRowsHTML()
+                        : (quadHabitRowsHTML() || quadHabitsAllDoneHTML());
                 }
                 if (!tasksHtml) tasksHtml = '<div class="qempty">点击 ＋ 添加</div>';
                 return `<div class="quad ${q.cls}">
@@ -9573,6 +9590,30 @@ oninput="pgRefresh()"></textarea>
         /* v61：单次习惯打完卡会离开 Ⅳ 格 —— 明说一句「去哪了」，
            否则格子里的行凭空消失，用户会以为打卡没生效。 */
         if (h && quadHabitFlowOut(h, today())) showToast('已完成 → 已进入完成清单');
+    }
+
+    /* ===== v62：今日习惯「全部出列」时的兜底提示 =====
+       v61 起单次习惯打完卡就离开 Ⅳ 格。若当天该出现的习惯**全部**是单次且都打完了，
+       quadHabitRowsHTML() 返回空串 ⇒ Ⅳ 格的习惯区整块消失，看起来像功能没了。
+       这里只在「本来有该出现的习惯、但一个都不剩」时补一行「去哪儿看」：
+         · 今天压根没有该出现的习惯（all.length === 0）→ 返回空串，不打扰；
+         · 还有一日多次/周期习惯留在格子里 → quadHabitRowsHTML() 非空，也不会走到这里。 */
+    function quadHabitsAllDoneHTML() {
+        const ds = today();
+        const all = (S.habits || []).filter(h => quadHabitDue(h, ds));
+        if (!all.length) return '';
+        return `<div class="qtoday-h hb">🔁 今日习惯 · ${all.length} 项已全部完成</div>` +
+            `<div class="hb-all-done" onclick="quadGotoArchived()">已完成 → 点此打开「已完成清单」</div>`;
+    }
+
+    /* 从四象限的习惯提示跳到「已完成清单」。
+       不在 HTML 属性里堆三句赋值 —— 命名函数便于测试直接调，也便于以后换落点。 */
+    function quadGotoArchived() {
+        searchQuery = '';
+        switchListView('all');
+        filter = 'archived';
+        if (typeof closeFilter === 'function') closeFilter();
+        render();
     }
 
     function quadHabitRowsHTML() {
@@ -24490,7 +24531,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924c</div>
 <!-- build-tag:end -->
 <!-- v57: 集思录 · 梦想成真迁移骨架（晨间日记 / 目标管理 / 计划视图 + 右栏目标树 + 编辑弹窗）
      用 <template> 承载：内容不在文档树里，不参与主站的 id / 类匹配，
