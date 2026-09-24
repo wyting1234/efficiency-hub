@@ -724,6 +724,15 @@
         .qtask.hbq.hb-done .qt { color: #4a7f61; }
         .qtask.hbq .chk.hb-multi { font-size: 8px; letter-spacing: -.5px; }
 
+        /* ==== v61：已完成清单里的习惯行（#48/#49）====
+           单次习惯在清单界面打完卡即离开 Ⅳ 格，落到「已完成清单」这里；
+           同名习惯只占一行（打卡次数相加、连续天数取最大），行上挂
+           「🔁 打卡 N 次 / 🔥 连续 N 天」。复用 Ⅳ 格那套 .qtask.hbq 骨架，
+           避免两处样式漂移。 */
+        .qtask.hbq.hb-arch .qt { color: #3f8a5c; }
+        .qtask.hbq .chip.hb-punch { color: #3f8a5c; font-weight: 600; }
+        .qtask.hbq .chip.hb-streak { color: #c2691a; font-weight: 600; }
+
         /* ===== 任务卡片 ===== */
         .qtask {
             position: relative;
@@ -1717,8 +1726,20 @@
         .hd-seg { display: flex; background: #f0f0f4; border-radius: 12px; padding: 2px; }
         .hd-seg span { padding: 3px 10px; font-size: 11px; color: #666; border-radius: 10px; cursor: pointer; }
         .hd-seg span.on { background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
-        .hd-wd { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; color: #999; margin-bottom: 6px; }
-        .hd-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        /* v61 #51：日历图太大不协调 —— 7 列 × aspect-ratio:1 的格子宽度完全由容器决定，
+           桌面端整页宽时单格能涨到 150px+（一个「日历」比整屏还夸张）。
+           收一条上限把它钉成正常月历尺寸（332px ⇒ 单格 44px）；
+           窄屏仍按容器自适应（max-width 不会把内容撑宽，只会把居中留白收掉）。 */
+        .hd-wd { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 11px; color: #999; max-width: 332px; margin: 0 auto 6px; }
+        .hd-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; max-width: 332px; margin: 0 auto; }
+        /* v61 #51（续）：日历收窄后整页仍是 1100px+ 的宽白卡 —— 日历缩在中间反而更空。
+           给详情页这一列卡片一条统一内容宽度，成为一列居中的窄卡；
+           手机端本来就只有 ~336px，max-width 不生效、视觉零变化。
+           只写 margin-left/right，别用 margin 简写 —— 下面 .hd-actions/.hd-log/.hd-sum
+           各自的 margin-top 不能被这里清掉。 */
+        .hd-hd, .hd-cal, .hd-actions, .hd-sum, .hd-log {
+            max-width: 480px; margin-left: auto; margin-right: auto;
+        }
         .hd-d { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 13px; border-radius: 50%; cursor: pointer; color: #555; position: relative; }
         .hd-d.empty { visibility: hidden; }
         .hd-d.future { color: #ccc; }
@@ -1754,8 +1775,8 @@
         .hpct-txt { position: absolute; left: 0; top: 0; right: 0; bottom: 0;
             display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
         .hpct-txt .n { display: flex; align-items: baseline; gap: 1px; }
-        .hpct-txt .n b { font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -1.5px; }
-        .hpct-txt .n i { font-size: 14px; font-style: normal; color: #9a9aa8; font-weight: 600; }
+        .hpct-txt .n b { font-size: 27px; font-weight: 700; line-height: 1; letter-spacing: -1.2px; }
+        .hpct-txt .n i { font-size: 12px; font-style: normal; color: #9a9aa8; font-weight: 600; }
         .hpct-txt .t { font-size: 10px; color: #a8a8b8; margin-top: 5px; letter-spacing: 1px; }
         /* ===== v26 #9：打卡日志页 ===== */
         .hl-hd { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 10px; padding: 12px; }
@@ -3942,6 +3963,15 @@
         /* v32：习惯页不豁免 —— 打卡钮 / 图标也参与透明化 */
         body.ink-on .h-card .h-icon,
         body.ink-on .h-card .h-check,
+        /* v61 #50：习惯详情（打卡日历）页此前整片实心白 —— 字浮开着时主页面透了、
+           点进这一页却还是白块。补上日历卡 / 统计卡 / 日志卡 / 视图切换条。
+           ★ 刻意**不加** .hd-d（日期格子）：它是 border-radius:50% 的小圆，而这条
+             主列表带 inset 边线，并进来等于 30 多个格子每个都长出一圈描边
+             —— 与 v52 给 .month-grid .cd.off 单独写一条是同一个道理。 */
+        body.ink-on .hd-cal,
+        body.ink-on .hd-sum,
+        body.ink-on .hd-log,
+        body.ink-on .hd-seg,
         body.ink-on .ink-demo {
             background-color: rgba(255,255,255,var(--ink-card,0)) !important;
             background-image: none !important;
@@ -4031,41 +4061,8 @@
             padding: 14px 12px;
             margin-bottom: 10px;
         }
-        /* ===== v32：手动保存悬浮按钮 ===== */
-        .save-fab {
-            position: absolute;
-            right: 14px;
-            bottom: calc(var(--nav-height) + 60px + env(safe-area-inset-bottom, 0px));
-            z-index: 30;
-            border: none;
-            border-radius: 20px;
-            background: linear-gradient(135deg, #ff9f43, #e74c3c);
-            color: #fff;
-            font-size: 12px;
-            font-weight: 700;
-            font-family: inherit;
-            padding: 9px 15px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            box-shadow: 0 4px 14px rgba(231, 76, 60, .42);
-            cursor: pointer;
-            opacity: 0;
-            pointer-events: none;
-            transform: translateY(8px);
-            transition: opacity .2s ease, transform .2s ease;
-        }
-        .save-fab.show {
-            opacity: 1;
-            pointer-events: auto;
-            transform: translateY(0);
-            animation: saveFabPulse 1.6s ease-in-out infinite;
-        }
-        .save-fab:active { transform: scale(.94); }
-        @keyframes saveFabPulse {
-            0%, 100% { box-shadow: 0 4px 14px rgba(231, 76, 60, .42); }
-            50% { box-shadow: 0 4px 20px rgba(231, 76, 60, .68); }
-        }
+        /* v61 #52：原 v32 的「保存更改」悬浮按钮样式已随按钮一起删除 ——
+           现在保存的唯一入口是脚本里的 save() / commitSave()（都走向自动落盘）。 */
         /* ===== v31b：内容文字颜色 —— 任务 / 清单 / 习惯 文字可调色，与底层背景图形成对比 =====
            挂独立的 body.ink-tx 类：不开字浮也能单独染色（配合栏目透明度透出的背景图）。
            染容器内所有文字；浅彩底功能元素（chip 标签 / 分类 / 按钮 / 优先级胶囊）用 :not 排除，
@@ -5308,8 +5305,9 @@
     <!--pnid:grfFDSla7jNcNPfM6ds4KV--><!-- ===== 底部导航 ===== -->
     <nav data-page-node-id="gDf7oWfd8mlgHzn9Tf8OM8" class="tabs" id="nav"></nav>
     <button data-page-node-id="4DEosyvdswrm5SEM4RpjbF" class="fab" id="fab"><!--pnid:jdiHLWbNOQqZWK6YfbVSIV-->+</button>
-    <!-- v32：手动保存 —— 有未保存更改时亮出 -->
-    <button class="save-fab" id="saveFab" onclick="commitSave()" type="button">💾 保存更改</button>
+    <!-- v61 #52：右下角那个「保存更改」悬浮按钮已移除 —— 保存改为自动
+         （save() 内的 120ms 节流 flushSave），同步免费搭车：落盘 → 导航页收到
+         storage 事件 → 排一次自动同步 -->
 </div>
 
 <!--pnid:GLf8O5xxpYtRYNnVyRTWBd--><!-- ===== 批量编辑操作栏 ===== -->
@@ -6463,27 +6461,40 @@ oninput="pgRefresh()"></textarea>
         keys.forEach(k => { if (!alive.has(k)) { delete CARDBG[k]; dirty = true; } });
         if (dirty) saveCardBg();
     }
-    /* ===== v32：手动保存机制 =====
-       save() 只标记「有未保存更改」并亮出右下角 💾 保存按钮；
-       点按钮（commitSave）才真正写入 localStorage —— 除日记（保持自动保存）外，
-       所有修改和编辑都经由这一步手动确认。离开页面前有未保存更改会先询问。 */
+    /* ===== v61：自动保存（Tom #52「去掉保存更改的图标，自动保存并同步」）=====
+       取代 v32 的「手动确认」：
+         · save() 只做两件事 —— 失效日期缓存、把改动排进 120ms 的节流队列。
+           节流是为了让「拖一次滑块 / 连续输入 / 连点打卡」这种成串调用
+           只序列化一次 S（S 里带日记与任务，stringify 不便宜）。
+         · flushSave() 真正写 localStorage。
+         · **同步是免费搭车的**：iframe 里 localStorage.setItem 会触发导航页的
+           storage 事件，导航页的 noteLocalChange 据此排一次自动同步
+           （见 sync-github.js）。所以「保存」与「同步」在这条链路上是一件事，
+           本页不需要自己发任何网络请求。
+         · commitSave 保留为兼容入口（旧调用点语义 = 立刻落盘）。
+         · beforeunload 不再弹询问 —— 自动保存还弹「有未保存的更改」是自相矛盾的。 */
     let _dirty = false;
-    const save = () => { invalidateDateCache(); _dirty = true; updateSaveFab(); };
-    function commitSave(silent) {
-        if (!_dirty) return;
+    let _saveTimer = null;
+    function flushSave() {
+        if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+        if (!_dirty) return true;
         try {
             localStorage.setItem(DKEY, JSON.stringify(S));
         } catch (e) {
             notify('保存失败：存储空间不足，请清理后重试');
-            return;
+            return false;
         }
         _dirty = false;
-        updateSaveFab();
-        if (!silent) showToast('已保存 ✓');
+        return true;
     }
-    function updateSaveFab() {
-        const b = document.getElementById('saveFab');
-        if (b) b.classList.toggle('show', _dirty);
+    const save = () => {
+        invalidateDateCache();
+        _dirty = true;
+        if (!_saveTimer) _saveTimer = setTimeout(flushSave, 120);
+    };
+    function commitSave(silent) {
+        if (!_dirty) return;
+        if (flushSave() && !silent) showToast('已保存 ✓');
     }
     /* ===== v55 · 历史脏优先级归一（需求：粘贴生成的计划要能进清单） =====
        v54 的 pgBuildTask 把「跟随上次」这个**设置值**当成了任务优先级写进
@@ -6502,16 +6513,15 @@ oninput="pgRefresh()"></textarea>
         try { commitSave(true); } catch (e) {}
         return n;
     }
-    /* 防丢兜底：有未保存更改时关闭/刷新页面先询问 */
-    window.addEventListener('beforeunload', e => {
-        if (!_dirty) return;
-        /* v49：嵌在效率中心的 iframe 里时不弹窗 —— 外层页面一跳走（比如去看外部
-           网页），这个弹窗会挂在别人的页面上，用户还以为是那个网站的问题，而且
-           它拦不住任何东西。改成静默落盘：同样不丢数据，但不打扰。 */
-        if (window.self !== window.top) { try { commitSave(true); } catch (err) {} return; }
-        e.preventDefault();
-        e.returnValue = '有未保存的更改，确定离开？';
-        return e.returnValue;
+    /* 防丢兜底（v61）：自动保存之后不再弹「有未保存的更改，确定离开？」——
+       那是 v32 手动保存时代的产物，与「自动保存」自相矛盾。
+       这里只做静默兜底：把还在 120ms 节流队列里的改动落盘。
+       v49 的老问题（iframe 里弹窗会挂在别人页面上）也随之消失，因为不再有弹窗。 */
+    window.addEventListener('beforeunload', () => { try { flushSave(); } catch (e) {} });
+    /* 移动端 beforeunload 常不触发：用 pagehide / 切到后台两个时机补上 */
+    window.addEventListener('pagehide', () => { try { flushSave(); } catch (e) {} });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') { try { flushSave(); } catch (e) {} }
     });
     const uid = () => Date.now() + '' + Math.floor(Math.random() * 999);
 
@@ -9443,9 +9453,14 @@ oninput="pgRefresh()"></textarea>
         const banner = searchQuery.trim() ?
             `<div class="search-banner">🔍 搜索「${esc(searchQuery.trim())}」· ${items.length} 项
                 <span class="sb-clear" onclick="clearSearch()">清除</span></div>` : '';
-        const content = items.length ?
+        /* v61 #48/#49：已完成清单额外收编「有完成记录的习惯」——
+           单次习惯在清单界面打完卡会离开 Ⅳ 格，落到这里（同名只占一行，
+           挂「🔁 打卡 N 次 / 🔥 连续 N 天」）。搜索态不掺进来，避免与搜索口径打架。 */
+        const archHb = (filter === 'archived' && !searchQuery.trim()) ? archivedHabitRowsHTML() : '';
+        const content = (items.length || archHb) ?
             `<div class="list-header">${title} <span class="sub">${items.length} 项</span></div>` +
-            items.map(t => qTaskHTML(t)).join('') :
+            items.map(t => qTaskHTML(t)).join('') +
+            archHb :
             `<div class="empty">${searchQuery.trim() ? '没有匹配的任务' : '暂无任务'}</div>`;
         main.innerHTML = `<div class="${compactClass}">${banner}${content}</div>`;
     }
@@ -9535,15 +9550,29 @@ oninput="pgRefresh()"></textarea>
         return true;
     }
 
+    /* ===== v61 #48：单次习惯「勾完即出列」=====
+       当日打完卡就离开 Ⅳ 格，落进「已完成清单」（与任务的「勾完即出列」同一套直觉）。
+       只对**单次**（goal.mode !== 'multi'）生效：
+         · 一日多次（8 杯水）与 weekly/monthly/interval 周期习惯的「完成」是当天内的
+           中间态（1/8 → 12.5% …），移走反而看不到进度，仍留在格子里显示完成态；
+         · 也因此不会出现「同一习惯同时挂在 Ⅳ 格和完成清单」的重复登记。 */
+    function quadHabitFlowOut(h, ds) {
+        return !(h && h.goal && h.goal.mode === 'multi') && habitDone(h, ds);
+    }
+
     /* 今天要出现在 Ⅳ 格的习惯（保持 S.habits 原顺序，与习惯页分组顺序一致） */
     function quadHabitsToday(ds) {
-        return (S.habits || []).filter(h => quadHabitDue(h, ds));
+        return (S.habits || []).filter(h => quadHabitDue(h, ds) && !quadHabitFlowOut(h, ds));
     }
 
     /* 打卡入口：唯一的动作就是转交 punchHabit —— 这是「和习惯一致」的保证。
        punchHabit 自己会 save() + render() + 还原 main.scrollTop，这里不再重复。 */
     function quadHabitPunch(id) {
-        punchHabit(id, today());
+        const h = (S.habits || []).find(x => x.id === id);
+        punchHabit(id, today());   // 自带 save() + render() + 还原 scrollTop
+        /* v61：单次习惯打完卡会离开 Ⅳ 格 —— 明说一句「去哪了」，
+           否则格子里的行凭空消失，用户会以为打卡没生效。 */
+        if (h && quadHabitFlowOut(h, today())) showToast('已完成 → 已进入完成清单');
     }
 
     function quadHabitRowsHTML() {
@@ -9577,6 +9606,80 @@ oninput="pgRefresh()"></textarea>
             </div>`;
         }).join('');
         return `<div class="qtoday-h hb">🔁 今日习惯 · ${hs.length} 项</div>${rows}`;
+    }
+
+    /* ===== v61 #49：已完成清单里的习惯 =====
+       ★ 进清单的判据：habitDoneDays(h) > 0（**有过完整完成的日期**）。
+         于是「当日单次打完卡」会立刻出现 —— 这正是 Tom 说的
+         「打完以后会自动进入已完成的清单」；一日多次只打了一半（1/8）不算完成，不出现。
+       ★ 同名只保留一行（需求原文「重复名字的项目…不用重复登记任务名，只保留一个」）：
+         同名习惯合并计数 —— 打卡次数相加、连续天数取最大，图标 / 详情取第一个。
+       ★ 「🔁 打卡 N 次」= 累计打卡**次数**（把每个完成日的 records 值加起来），
+         不是天数：单次习惯每天记 1，所以等于天数；「喝水 8 杯」这种则如实反映点了几次。
+         「🔥 连续 N 天」= habitCurStreak()，为 0 时不出这个标识。 */
+    function habitPunchCount(h) {
+        const rec = h.records || {};
+        let n = 0;
+        Object.keys(rec).forEach(function (ds) { if (habitDone(h, ds)) n += Math.max(1, +rec[ds] || 1); });
+        return n;
+    }
+
+    /* 最近一次完成的日期 —— 完成清单里点 ✓ 取消时撤的是「这一天」，
+       而不是今天（否则对昨天完成的习惯会变成"顺手又打了今天一次"）。 */
+    function habitLastDoneDay(h) {
+        const rec = h.records || {};
+        let best = '';
+        Object.keys(rec).forEach(function (ds) { if (habitDone(h, ds) && ds > best) best = ds; });
+        return best;
+    }
+
+    function archHabitUndo(id) {
+        const h = (S.habits || []).find(x => x.id === id);
+        if (!h) return;
+        const ds = habitLastDoneDay(h);
+        if (!ds) return;
+        punchHabit(id, ds);        // 已完成的日期 → punchHabit 走「取消打卡」分支
+    }
+
+    function archivedHabitRowsHTML() {
+        const groups = {};
+        const order = [];
+        (S.habits || []).forEach(function (h) {
+            const days = habitDoneDays(h);
+            if (!days) return;                                  // 从没完成过 → 不登记
+            const key = String(h.name == null ? '' : h.name).trim() || ('__id__' + h.id);
+            if (!groups[key]) {
+                groups[key] = { h: h, ids: [], punches: 0, days: 0, streak: 0 };
+                order.push(key);
+            }
+            const g = groups[key];
+            g.ids.push(h.id);
+            g.punches += habitPunchCount(h);
+            g.days += days;
+            g.streak = Math.max(g.streak, habitCurStreak(h));
+        });
+        const list = order.map(function (k) { return groups[k]; });
+        if (!list.length) return '';
+        list.sort(function (a, b) { return b.streak - a.streak || b.punches - a.punches; });
+        const rows = list.map(function (g) {
+            const h = g.h;
+            const chips = ['<span class="chip hb-punch">🔁 打卡 ' + g.punches + ' 次</span>'];
+            if (g.streak > 0) chips.push('<span class="chip hb-streak">🔥 连续 ' + g.streak + ' 天</span>');
+            /* 同名合并后「次数」与「天数」不再相等时把天数也摊开，免得 8 次被读成 8 天 */
+            if (g.days !== g.punches) chips.push('<span class="chip">共 ' + g.days + ' 天</span>');
+            if (g.ids.length > 1) chips.push('<span class="chip">合并 ' + g.ids.length + ' 个同名习惯</span>');
+            return `<div class="qtask hbq hb-arch" data-hid="${h.id}">
+                <div class="qface">
+                    <div class="chk done" title="再点一次取消最近一次打卡"
+                         onclick="event.stopPropagation();archHabitUndo('${h.id}')">✓</div>
+                    <div class="qbody" onclick="goHabitDetail('${h.id}')">
+                        <div class="qt">${h.icon || '✨'} ${esc(h.name || '（未命名）')}</div>
+                        <div class="qmeta">${chips.join('')}</div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+        return `<div class="qtoday-h hb">🔁 已完成习惯 · ${list.length} 项</div>${rows}`;
     }
 
     function qTaskHTML(t) {
@@ -19808,7 +19911,8 @@ oninput="pgRefresh()"></textarea>
              ② 圆心显示完成率的「整数部分」；③ 圈足够大，能完整包住数字。 */
     function habitPctRing(pct) {
         const p = Math.max(0, Math.min(100, Number(pct) || 0));
-        const size = 118, stroke = 11;
+        /* v61 #51：118 → 96 —— 日历收窄之后，这个圈比整张日历还大，视觉上不协调 */
+        const size = 96, stroke = 9;
         const cx = size / 2, cy = size / 2;
         const r = (size - stroke) / 2 - 0.5;      // 留 0.5px 防描边被 viewBox 切掉
         const c = 2 * Math.PI * r;
@@ -23811,11 +23915,12 @@ oninput="pgRefresh()"></textarea>
              ① 首次打开 💾 按钮就一直亮着（用户什么都没改）；
              ② beforeunload 从第 0 秒起就武装好了 —— 用户一个字没改、只是点了个
                 外部链接，也会弹「有未保存的更改，确定离开？」。
-           改成直接落盘，与导入 / 清空数据的既有写法保持一致。 */
+           改成直接落盘，与导入 / 清空数据的既有写法保持一致。
+           v61：💾 按钮已随自动保存一起移除，这段注释保留是为了说明「为什么种子数据
+           不走 save()」—— 结论没变：写种子必须绕开 save()，否则会多排一次无谓的落盘。 */
         try { localStorage.setItem(DKEY, JSON.stringify(S)); } catch (e) {}
         _dirty = false;
         invalidateDateCache();
-        updateSaveFab();
     }
     /* v55：历史脏优先级归一 —— 必须赶在首屏渲染之前，否则四象限首帧仍缺这些任务 */
     try { normalizeFollowPri(); } catch (e) {}
@@ -24385,7 +24490,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260923l</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924a</div>
 <!-- build-tag:end -->
 <!-- v57: 集思录 · 梦想成真迁移骨架（晨间日记 / 目标管理 / 计划视图 + 右栏目标树 + 编辑弹窗）
      用 <template> 承载：内容不在文档树里，不参与主站的 id / 类匹配，
