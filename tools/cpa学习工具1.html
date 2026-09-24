@@ -767,6 +767,7 @@
         .mastery-badge.mastery-熟练掌握 { background: #DCFCE7; color: #5C6647; }
         .mastery-badge.mastery-掌握 { background: #F1EBDF; color: #6F5C45; }
         .mastery-badge.mastery-了解 { background: #F2EDE4; color: #8A6A2F; }
+        .mastery-badge.mastery-熟悉 { background: #EFE7D2; color: #7A6428; }
         .guide-panel .guide-empty {
             color: var(--text-secondary);
             text-align: center;
@@ -7373,8 +7374,12 @@
                 objectiveEl.textContent = guide.objective || '-';
                 keypointsEl.textContent = guide.keypoints || '-';
                 const mastery = guide.mastery || '了解';
-                const badgeClass = mastery.includes('熟练') ? 'mastery-熟练掌握' :
-                    mastery.includes('掌握') ? 'mastery-掌握' : 'mastery-了解';
+                /* ★ 2026-09-24：补「熟悉」一档，并让「通过」与「熟练掌握」同色 ——
+                   与热力图图例（了解 / 熟悉 / 掌握 / 通过）用同一套词，别再出现
+                   「写了熟悉、颜色却是了解」这种对不上的观感。 */
+                const badgeClass = (mastery.includes('熟练') || mastery.includes('通过')) ? 'mastery-熟练掌握' :
+                    mastery.includes('掌握') ? 'mastery-掌握' :
+                    mastery.includes('熟悉') ? 'mastery-熟悉' : 'mastery-了解';
                 masteryEl.innerHTML = `<span class="mastery-badge ${badgeClass}">${mastery}</span>`;
                 emptyEl.style.display = 'none';
                 document.querySelector('.guide-body').style.display = 'grid';
@@ -9636,8 +9641,34 @@ const GD_FIELD_RES = [
     [/^难点\s*[:：]/, 'keypoints'],
     [/^掌握\s*[:：]/, 'mastery'],
     [/^时长\s*[:：]/, 'duration'],
-    [/^学时\s*[:：]/, 'duration']
+    [/^学时\s*[:：]/, 'duration'],
+    /* ★ 2026-09-24（第十六轮）：学习材料推荐 —— 唯一的**列表字段**。
+       三种操作符（第三项就是操作符，缺省 = replace）：
+         `材料:`  整节替换（重贴同一份大纲幂等）
+         `材料+:` 追加去重（同 书名+范围+载体 只更新备注）
+         `材料-:` 清空本节材料
+       ⚠️ 带操作符的必须排前面：裸 `材料:` 的 \s*[:：] 挡不住 `材料-:`，
+          `-` 会落进值里变成「-: xxx」。 */
+    [/^(?:学习)?(?:材料|资料|参考书)\s*[+＋]\s*[:：]/, 'materials', 'append'],
+    [/^(?:学习)?(?:材料|资料|参考书)\s*[-－]\s*[:：]/, 'materials', 'clear'],
+    [/^(?:学习)?(?:材料|资料|参考书)\s*[:：]/, 'materials', 'replace']
 ];
+
+/* 材料行 → { src, scope, mode, note }；解析不出书名则返回 null。
+   段位用 | 或 ｜ 分隔：① 书名/来源（必填）② 内容范围 ③ 载体 ④ 备注，后三段可省。
+   ★ 第 3 段不是载体词时，**从第 3 段起整段并进备注** —— 否则
+     「材料: 《轻一》 | 第5章 | 只做选择题」会把「只做选择题」当成载体丢掉。 */
+function gdParseMaterial(val) {
+    const segs = String(val == null ? '' : val).split(/[|｜]/).map(function (x) { return String(x).trim(); });
+    const src = segs[0] || '';
+    if (!src) return null;
+    const scope = segs[1] || '';
+    let mode = '', note = '';
+    const m3 = (segs.length > 2) ? gmModeOf(segs[2]) : null;
+    if (m3) { mode = m3; note = (segs[3] || '').trim(); }
+    else { note = segs.slice(2).filter(Boolean).join(' ').trim(); }
+    return { src: src, scope: scope, mode: mode || '精读', note: note };
+}
 
 function parseGuideBulk(text) {
     const items = [], skipped = [], chNames = {};
@@ -9652,6 +9683,7 @@ function parseGuideBulk(text) {
         for (let i = 0; i < GD_FIELD_RES.length; i++) {
             if (GD_FIELD_RES[i][0].test(r.raw)) {
                 r.field = GD_FIELD_RES[i][1];
+                r.op = GD_FIELD_RES[i][2] || '';       // ★ 只有材料字段有操作符
                 r.val = r.raw.replace(GD_FIELD_RES[i][0], '').trim();
                 return;
             }
@@ -9677,12 +9709,43 @@ function parseGuideBulk(text) {
     rows.forEach(function (r) {
         if (r.field) {
             if (!item) { skipped.push(r.raw); return; }   // 字段行前面还没有节 → 跳过并报告
+            if (r.field === 'materials') {
+                /* ★ 材料是**列表字段**：多行 = 多条，所以这里不能走下面的
+                   「item.fields[field] = val」那条覆盖式赋值（那会只剩最后一条）。
+                   · 冒号后留空 = 不动（与其它字段同口径）⇒ 不 push
+                   · `材料-:` 后有没有值都表示清空本节材料 */
+                if (r.op === 'clear') { item.matClear = true; }
+                else if (r.val) {
+                    const mm = gdParseMaterial(r.val);
+                    if (mm) {
+                        if (!item.materials) item.materials = [];
+                        item.materials.push(mm);
+                        if (r.op !== 'append') item.matHasReplace = true;
+                    } else skipped.push(r.raw);      // 只有分隔符、没有书名
+                }
+                lastField = 'materials';
+                return;
+            }
             item.fields[r.field] = r.val;
             lastField = r.field;
             return;
         }
         const tier = levels.indexOf(r.ind);
         if (tier < 0) {                        // 比节更深 → 上一字段的续行
+            /* ★ 材料区的续行有两种含义，靠**有没有分段符**区分（写进提示文案）：
+                 · 带 | ｜ ⇒ 又一条材料（省掉「材料:」前缀，贴大纲时省事）
+                 · 不带     ⇒ 上一条材料的备注续写（与其它字段的续行规则一致） */
+            if (item && lastField === 'materials' && r.raw) {
+                if (!item.materials || !item.materials.length) { skipped.push(r.raw); return; }
+                if (/[|｜]/.test(r.raw)) {
+                    const mm2 = gdParseMaterial(r.raw);
+                    if (mm2) item.materials.push(mm2); else skipped.push(r.raw);
+                } else {
+                    const lastM = item.materials[item.materials.length - 1];
+                    lastM.note = lastM.note ? (lastM.note + ' ' + r.raw) : r.raw;
+                }
+                return;
+            }
             if (item && lastField && r.raw) {
                 const prev = item.fields[lastField];
                 item.fields[lastField] = prev ? (prev + '\n' + r.raw) : r.raw;
@@ -9711,7 +9774,8 @@ function parseGuideBulk(text) {
 
 function applyGuideBulk(target, parsed) {
     if (!target || !parsed || !parsed.items.length) return null;
-    const res = { written: 0, newCourses: [], newChs: 0, newSecs: 0, chNamed: 0 };
+    const res = { written: 0, newCourses: [], newChs: 0, newSecs: 0, chNamed: 0,
+                  matSecs: 0, matRows: 0, matCleared: 0 };
     if (typeof dettachBuiltinStructure === 'function') dettachBuiltinStructure(target);
     if (!Array.isArray(target.courses)) target.courses = [];
     target.chapterNames = target.chapterNames || {};
@@ -9743,6 +9807,38 @@ function applyGuideBulk(target, parsed) {
                 o.duration = num + 'h';
             } else o[f] = v;
         });
+        /* ★ 2026-09-24（第十六轮）：学习材料推荐 —— 唯一一个**列表字段**，
+           合并语义与标量字段不同（标量天然「写就覆盖」）。三条规则：
+             · 有材料行 + 出现过 `材料:`   ⇒ **整节替换**（写几条就是几条；重贴幂等）
+             · 有材料行 + 只出现 `材料+:`  ⇒ 按 书名+范围+载体 去重后追加，只更新备注
+             · 没有材料行 + `材料-:`       ⇒ 清空本节材料
+             · 一个材料行都没有、也没有 `材料-:` ⇒ 本节材料**一个字节都不动**
+               （与标量字段同口径：「没写的不动」） */
+        const mats = it.materials || [];
+        if (mats.length) {
+            if (it.matHasReplace) {
+                o.materials = mats.map(function (m) { return Object.assign({}, m); });
+            } else {
+                const base = Array.isArray(o.materials) ? o.materials.slice() : [];
+                mats.forEach(function (m) {
+                    const kk = [m.src, m.scope, m.mode].join('|');
+                    let hit = -1;
+                    for (let i = 0; i < base.length; i++) {
+                        const b = base[i] || {};
+                        if ([b.src || '', b.scope || '', b.mode || '精读'].join('|') === kk) { hit = i; break; }
+                    }
+                    if (hit >= 0) {
+                        base[hit] = Object.assign({}, base[hit], { note: m.note || (base[hit] || {}).note || '' });
+                    } else base.push(Object.assign({}, m));
+                });
+                o.materials = base;
+            }
+            res.matSecs++;
+            res.matRows += mats.length;
+        } else if (it.matClear) {
+            delete o.materials;
+            res.matCleared++;
+        }
         if (Object.keys(o).length) target.targetOverrides[key] = o;
         res.written++;
     });
@@ -9760,7 +9856,11 @@ function applyGuideBulk(target, parsed) {
     // 清理空串（与 applyGoalRows 同一收尾，避免空白覆盖有效内容）
     Object.keys(target.targetOverrides).forEach(function (k) {
         const v = target.targetOverrides[k];
-        Object.keys(v).forEach(function (f) { if (v[f] === '') delete v[f]; });
+        Object.keys(v).forEach(function (f) {
+            if (v[f] === '') delete v[f];
+            // ★ 材料是数组：清空后留一个 [] 不报错但会白占一个键，顺手删掉
+            else if (Array.isArray(v[f]) && !v[f].length) delete v[f];
+        });
         if (!Object.keys(v).length) delete target.targetOverrides[k];
     });
     return res;
@@ -9769,8 +9869,10 @@ function applyGuideBulk(target, parsed) {
 function pdGuideHTML(ll) {
     const cL = (ll && ll.course) || '科目', chL = (ll && ll.chapter) || '章', sL = (ll && ll.section) || '节';
     return '<div class="pf"><label>📖 学习指南 · 批量添加（缩进大纲式粘贴）</label>' +
-        '<div class="pf-hint" style="background:#f6f1e8;border:1px dashed #d8c9ad;padding:8px 10px;border-radius:8px;line-height:1.7;">三个层级：<b>不缩进=' + kp3Esc(cL) + '</b>，缩进 1=<b>' + kp3Esc(chL) + '</b>（行首写「第2章」就按 2 定位，不写编号按顺序 +1），缩进 2=<b>' + kp3Esc(sL) + '</b>；' + kp3Esc(sL) + '下面再缩进一行写字段：<code>目标:</code> <code>难点:</code> <code>掌握:</code> <code>时长:</code>（写哪个存哪个，<b>写了就覆盖、没写的字段不动</b>；一行写不下换行接着写，会并进上一字段）。定位不到的' + kp3Esc(cL) + ' / ' + kp3Esc(chL) + ' / ' + kp3Esc(sL) + '<b>自动创建</b>。<b>「📥 解析并写入」点完立即落盘生效</b>，不依赖下方「保存」按钮。</div>' +
-        '<textarea id="pdGuideBulk" rows="9" placeholder="会计&#10;  第二章 存货&#10;    第1节 存货的确认和初始计量&#10;      目标: 理解存货的确认条件与初始计量&#10;      难点: 跌价准备的计提与转回，历年高频&#10;      掌握: 掌握&#10;      时长: 1.5h&#10;    第2节 存货的期末计量&#10;      目标: 掌握可变现净值的计算与存货减值"></textarea>' +
+        '<div class="pf-hint" style="background:#f6f1e8;border:1px dashed #d8c9ad;padding:8px 10px;border-radius:8px;line-height:1.7;">三个层级：<b>不缩进=' + kp3Esc(cL) + '</b>，缩进 1=<b>' + kp3Esc(chL) + '</b>（行首写「第2章」就按 2 定位，不写编号按顺序 +1），缩进 2=<b>' + kp3Esc(sL) + '</b>；' + kp3Esc(sL) + '下面再缩进一行写字段：<code>目标:</code> <code>难点:</code> <code>掌握:</code>（了解 / 熟悉 / 掌握 / 熟练掌握）<code>时长:</code> <code>材料:</code>（写哪个存哪个，<b>写了就覆盖、没写的字段不动</b>；一行写不下换行接着写，会并进上一字段）。' +
+        '<br><b>材料每行一条</b>，段位用 <code>|</code> 分隔：<code>书名/来源 | 内容范围 | 载体 | 备注</code>，后三段可省。载体 = 精读 / 泛读 / 视频 / 笔记 / 软件 / 做题，可写「教材、网课、听课、刷题、实操」这类别名，不写默认精读；<b>第 3 段不是载体词时，从第 3 段起整段并进备注</b>。<code>材料:</code> 整节替换（重贴幂等）· <code>材料+:</code> 追加去重 · <code>材料-:</code> 清空；材料行下面再缩进、且<b>带 <code>|</code></b> 的裸行 = 又一条材料（省前缀），不带 <code>|</code> 的拼进上一条的备注。' +
+        '<br>定位不到的' + kp3Esc(cL) + ' / ' + kp3Esc(chL) + ' / ' + kp3Esc(sL) + '<b>自动创建</b>。<b>「📥 解析并写入」点完立即落盘生效</b>，不依赖下方「保存」按钮。</div>' +
+        '<textarea id="pdGuideBulk" rows="13" placeholder="会计&#10;  第二章 存货&#10;    第1节 存货的确认和初始计量&#10;      目标: 理解存货的确认条件与初始计量&#10;      难点: 跌价准备的计提与转回，历年高频&#10;      掌握: 掌握&#10;      时长: 1.5h&#10;      材料: 《会计》教材 | 第2章 P30-P48 | 精读 | 课后选择题必做&#10;      材料: 东奥网课 张敬富 | 第5讲 存货 | 视频 | 1.5 倍速过一遍&#10;      材料: 《轻一》 | 第3章 P1-P20 | 做题&#10;        合格率不到 80% 就回来重做&#10;    第2节 存货的期末计量&#10;      目标: 掌握可变现净值的计算与存货减值&#10;      材料: 《会计》教材 | 第2章 P48-P60 | 精读"></textarea>' +
         '<div style="display:flex;align-items:center;gap:10px;margin-top:7px;flex-wrap:wrap;">' +
         '<button type="button" class="pd-btn" id="pdGuidePreview">👁 解析预览</button>' +
         '<button type="button" class="pd-btn primary" id="pdGuideApply">📥 解析并写入</button>' +
@@ -10100,11 +10202,30 @@ function gpBindEditable() {
 
 /* ---------- C-2. 学习材料推荐 ----------
    每条 = { src 书名/来源, scope 内容范围, mode 载体, note 备注 }；
-   载体枚举：精读 / 视频 / 笔记 / 软件。
+   ★ 2026-09-24（第十六轮）：载体枚举扩到 6 档 —— 补 泛读 / 做题
+     （CPA 场景里「教材精读一遍」与「泛读一遍」「刷题」是三种不同安排，
+      原先只能写 精读，材料列的表情图标也跟着骗人）。
    落盘 targetOverrides[key].materials —— ⚠️ 必须同时在 buildGuideData 里显式登记，
    否则被「逐字段重建」静默丢掉（本文件同一坑踩过两次：marks / kpH）。          */
-const GM_MODES = ['精读', '视频', '笔记', '软件'];
-const GM_MODE_ICON = { '精读': '📖', '视频': '🎬', '笔记': '✍️', '软件': '💻' };
+const GM_MODES = ['精读', '泛读', '视频', '笔记', '软件', '做题'];
+const GM_MODE_ICON = { '精读': '📖', '泛读': '📄', '视频': '🎬', '笔记': '✍️', '软件': '💻', '做题': '✏️' };
+/* ★ 载体别名表（**只给批量添加用**，界面下拉仍是上面 6 档）：
+   贴大纲时人不爱写「视频」，会写「网课」「听课」。别名归一到枚举值。
+   返回 null = 「这不是载体词」—— gdParseMaterial 据此判定
+   「第三段其实是备注」（如「材料: 《轻一》 | 第5章 | 只做选择题」）。 */
+const GM_MODE_ALIAS = {
+    '精读': '精读', '细读': '精读', '教材': '精读', '课本': '精读', '书': '精读', '看书': '精读', '阅读': '精读',
+    '泛读': '泛读', '浏览': '泛读', '速读': '泛读', '过一遍': '泛读',
+    '视频': '视频', '网课': '视频', '听课': '视频', '课': '视频', '课件': '视频', '看课': '视频',
+    '笔记': '笔记', '整理': '笔记', '记录': '笔记', '做笔记': '笔记',
+    '软件': '软件', '实操': '软件', '操作': '软件', '工具': '软件', '上机': '软件',
+    '做题': '做题', '刷题': '做题', '习题': '做题', '练习': '做题', '题库': '做题'
+};
+function gmModeOf(tok) {
+    const t = String(tok == null ? '' : tok).trim().replace(/[：:（）()\s]/g, '');
+    if (!t) return null;
+    return GM_MODE_ALIAS[t] || null;
+}
 
 function gmListOf(course, chapter, section) {
     const proj = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
@@ -10766,6 +10887,7 @@ if (document.readyState === 'loading') {
                         if (it.fields.keypoints) fs.push('难点');
                         if (it.fields.mastery) fs.push('掌握');
                         if (it.fields.duration) fs.push('时长 ' + kp3Esc(it.fields.duration));
+                        if (it.materials && it.materials.length) fs.push('材料 ' + it.materials.length + ' 条');
                         return '· ' + kp3Esc(it.course) + ' · 第' + it.ch + '章 · 第' + it.sec + '节' + (it.name ? ' ' + kp3Esc(it.name) : '') + ' → ' + (fs.length ? fs.join(' / ') : '仅定位（不写字段）');
                     }).join('<br>');
                     if (parsed.items.length > 12) html += '<br>… 其余 ' + (parsed.items.length - 12) + ' 节略';
@@ -10793,6 +10915,8 @@ if (document.readyState === 'loading') {
                     if (res.newChs) bits.push('新建章 ' + res.newChs + ' 个');
                     if (res.newSecs) bits.push('补齐节 ' + res.newSecs + ' 个');
                     if (res.chNamed) bits.push('章名覆盖 ' + res.chNamed + ' 个');
+                    if (res.matRows) bits.push('材料 ' + res.matRows + ' 条（' + res.matSecs + ' 节）');
+                    if (res.matCleared) bits.push('清空材料 ' + res.matCleared + ' 节');
                     if (bits.length) html += '（' + bits.join('，') + '）';
                     html += '。指南卡片与建议学时已同步；弹窗可继续改其它配置。';
                     if (parsed.skipped.length) html += '<br>⚠️ 未解析 ' + parsed.skipped.length + ' 行：' + kp3Esc(parsed.skipped.slice(0, 3).join(' ｜ '));
@@ -22978,7 +23102,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260922i</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924e</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
