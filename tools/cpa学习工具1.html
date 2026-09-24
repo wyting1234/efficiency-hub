@@ -2981,7 +2981,12 @@
     </style>
     <style>
         /* ===== 学习记录：知识点记录 / 其他 双 Tab ===== */
-        .rec-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 2px 0 16px; }
+        .rec-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 2px 0 16px;
+            /* ★ v46：页签从 4 个变 5 个，手机宽度下会横向溢出 —— 让它自己横滚，
+               页签本体不换行（滚动条藏掉，视觉上仍是一排页签） */
+            overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; }
+        .rec-tabs::-webkit-scrollbar { display: none; }
+        .rec-tabs .rec-tab { flex: 0 0 auto; white-space: nowrap; }
         .rec-tab {
             background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
             padding: 9px 18px; font-family: inherit; font-size: 14px; font-weight: 600;
@@ -3854,9 +3859,11 @@
 .kp3-saved.on { opacity: 1; }
 
 /* ---------- C. 学习指南卡片：迁入「学习记录」后的形态 + 学习材料推荐 ---------- */
-/* 迁位后作为记录区的一块卡片，与上下留出间距 */
+/* ★ v46：卡片已迁进「📖 学习指南」页签（.rec-pane 是 flex column + gap:16px，
+   间距由 gap 负责），这里不再需要自己的上下外边距 —— 原来那 14px 会与 gap 叠加。
+   保留 .in-records 类名只是为了不动 CSS 选择器，它已不代表「挂在记录区」。 */
 #view-study .guide-panel.in-records {
-    margin: 0 0 14px;
+    margin: 0;
 }
 .gm-item { grid-column: 1 / -1; }
 /* .value 的 contenteditable 观感（cursor:text / hover 底色）不适用于结构化的材料区 */
@@ -4204,12 +4211,32 @@
                     <div class="form-row full">
                         <div class="field">
                             <div class="rec-tabs" id="recTabs" role="tablist">
+                                <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneGuide" data-rec="guide" title="当前科目 / 章 / 节的 学习目标 · 重点难点 · 掌握程度 · 学习材料推荐（直接点进去改，失焦即存）">📖 学习指南</button>
                                 <button type="button" class="rec-tab active" role="tab" aria-selected="true" aria-controls="recPaneInfo" data-rec="info" title="本记录的基本信息与学习明细（科目 / 章 / 节 · 起止时间与时长 · 理解程度 · 重点难点疑点 · 学习状态自评）">📋 记录信息</button>
                                 <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneKp" data-rec="kp">📌 知识点记录</button>
                                 <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneOther" data-rec="other">📝 其他</button>
                                 <button type="button" class="rec-tab" role="tab" aria-selected="false" aria-controls="recPaneTmpl" data-rec="tmpl" title="设置一键编号使用的编号模版">🧩 模版设置</button>
                             </div>
 
+                            <!-- ★ v46（Tom 2026-09-24）：学习指南从「学习记录」列表区迁入本页签，
+                                 页签排在「📋 记录信息」之前。整张卡片一字未改，只换了容器 ——
+                                 updateGuide() / gpPersistField() / gpBindEditable() 全按 id 取元素。 -->
+                            <div class="rec-pane" id="recPaneGuide" role="tabpanel" hidden>
+                                <div class="guide-panel in-records" id="guidePanel">
+                                    <div class="guide-header">
+                                        <h4 id="guideTitle">📖 学习指南</h4>
+                                        <span class="badge-duration" id="guideDuration">建议时长：-</span>
+                                        <span class="gp-saved" id="gpSaved"></span>
+                                    </div>
+                                    <div class="guide-body" id="guideBody">
+                                        <div class="item"><span class="label">学习目标</span><span class="value" id="guideObjective" contenteditable="true">-</span></div>
+                                        <div class="item"><span class="label">重点难点</span><span class="value" id="guideKeypoints" contenteditable="true">-</span></div>
+                                        <div class="item" style="grid-column:1 / -1;"><span class="label">掌握程度</span><span class="value" id="guideMastery" contenteditable="true">-</span></div>
+                                        <div class="item gm-item"><span class="label">学习材料推荐</span><div class="value gm-box" id="guideMaterials"></div></div>
+                                    </div>
+                                    <div class="guide-empty" id="guideEmpty" style="display:none;"><span data-lv-prefix="该" data-lv="chapter" data-lv-suffix="暂无详细指南，请参考教材。">该章节暂无详细指南，请参考教材。</span></div>
+                                </div>
+                            </div>
                             <div class="rec-pane" id="recPaneInfo" role="tabpanel">
                     <!-- ★ 2026-09-21（需求 E）：基本信息四项收成一行。
                          Tom 的原话：「红框，记录学习中科目、日期、章、节变成一行」。
@@ -4534,21 +4561,6 @@
                 <button type="button" class="rec-exp-btn" id="printRecBtn">🖨️ 一键打印</button>
             </div>
             </div>
-        <!-- ===== 学习指南面板（需求 C：迁入学习记录区）===== -->
-        <div class="guide-panel in-records" id="guidePanel">
-            <div class="guide-header">
-                <h4 id="guideTitle">📖 学习指南</h4>
-                <span class="badge-duration" id="guideDuration">建议时长：-</span>
-                <span class="gp-saved" id="gpSaved"></span>
-            </div>
-            <div class="guide-body" id="guideBody">
-                <div class="item"><span class="label">学习目标</span><span class="value" id="guideObjective" contenteditable="true">-</span></div>
-                <div class="item"><span class="label">重点难点</span><span class="value" id="guideKeypoints" contenteditable="true">-</span></div>
-                <div class="item" style="grid-column:1 / -1;"><span class="label">掌握程度</span><span class="value" id="guideMastery" contenteditable="true">-</span></div>
-                <div class="item gm-item"><span class="label">学习材料推荐</span><div class="value gm-box" id="guideMaterials"></div></div>
-            </div>
-            <div class="guide-empty" id="guideEmpty" style="display:none;"><span data-lv-prefix="该" data-lv="chapter" data-lv-suffix="暂无详细指南，请参考教材。">该章节暂无详细指南，请参考教材。</span></div>
-        </div>
         <div class="rec-display-bar" id="recDisplayBar">
             <span class="filter-label">👁 展示内容</span>
             <div class="rec-chips" id="recShowChips">
@@ -22163,7 +22175,7 @@ if (document.readyState === 'loading') {
         }
 
         /* ================= Tab 切换 ================= */
-        var TAB_PANES = { info: 'recPaneInfo', kp: 'recPaneKp', other: 'recPaneOther', tmpl: 'recPaneTmpl' };
+        var TAB_PANES = { guide: 'recPaneGuide', info: 'recPaneInfo', kp: 'recPaneKp', other: 'recPaneOther', tmpl: 'recPaneTmpl' };
         /* ★ 2026-09-22（第十二轮）：底部动作条按当前页签同步。
            「✅ 保存记录」只在「📌 知识点记录」出现；其余页签显示「跳知识点记录」；
            知识点记录页另给「← 返回 📋 记录信息」—— 两个 tab 双向可达，
@@ -23102,7 +23114,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924e</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924i</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
