@@ -22400,6 +22400,7 @@ oninput="pgRefresh()"></textarea>
     /* v51：重新编辑时把 master 的字节留在内存 —— 用户没改构图就直接原样存回，
        否则会被重新烘焙成无损 PNG（5MB JPEG → 15MB PNG）。 */
     let __bgMasterBlob = null;
+    let __bgMasterPreviewURL = '';
     function showBgPreview(rec) {
         const img = document.getElementById('bgImg');
         img.onload = () => {
@@ -22452,8 +22453,16 @@ oninput="pgRefresh()"></textarea>
                     /* 顺序很重要：先把字节抓到内存再设 img.src —— onload 是同步链路，
                        它建 bgEdit 时要用到 __bgMasterBlob */
                     return fetch(u).then(function (r) { return r.blob(); })
-                        .then(function (bl) { __bgMasterBlob = bl; img.src = u; })
-                        .catch(function () { img.src = u; });
+                        .then(function (bl) {
+                            __bgMasterBlob = bl;   /* 原图字节，bgOriginalBlob 原图直存用 */
+                            /* v52：webp / 现代格式用 createImageBitmap 解码更稳，导出栅格给预览 <img>；
+                               否则部分 WebView 直接 new Image(webp blob) 会 onerror，重编辑就进不去。 */
+                            if (__bgMasterPreviewURL) { try { URL.revokeObjectURL(__bgMasterPreviewURL); } catch (e) {} }
+                            return decodeImageFile(bl).then(function (r) {
+                                __bgMasterPreviewURL = r.url; img.src = r.url;
+                            }).catch(function () { img.src = u; });
+                        })
+                        .catch(function () { img.src = rec.d; });
                 })
                 .catch(function () { img.src = rec.d; });
         })();
@@ -22563,20 +22572,70 @@ oninput="pgRefresh()"></textarea>
        且是按 UTF-16 计的字符），手机浏览器上基本等于 OOM。
        object URL 不复制数据 —— 浏览器只在内部记一个引用，我们拿到的是一小段字符串。 */
     let __bgPreviewURL = '';
-    function readFileForPreview(file) {
-        return new Promise((resolve, reject) => {
-            let url = '';
+    /* v52：webp / 现代格式稳健解码。
+       旧版只走 new Image() + objectURL；部分 WebView / 旧版 Safari 对 blob 态 webp 的
+       <img> 解码不稳定，表现就是「图片解码失败，建议换成 JPG / PNG」。
+       createImageBitmap 对这些格式解码更稳，且能直接拿到位图；把位图画到离屏 canvas
+       再导出成「任何环境都能解码」的栅格（webp/png 用 PNG 保透明，其余用 JPEG），
+       后续裁剪 / 预览 / 再编辑全部基于这个栅格 —— webp 显示不再依赖目标环境自带 webp 解码器。
+       原始文件字节仍由 be.file 保留（bgOriginalBlob 原图直存），画质不丢。 */
+    function imgDecodeStrategy(file) {
+        return new Promise(function (resolve, reject) {
+            var url = '';
             try { url = URL.createObjectURL(file); } catch (e) { reject(new Error('无法读取该文件')); return; }
-            if (__bgPreviewURL && __bgPreviewURL !== url) { try { URL.revokeObjectURL(__bgPreviewURL); } catch (e) {} }
-            __bgPreviewURL = url;
-            const img = new Image();
-            img.onload = () => resolve({ dataURL: url, w: img.width, h: img.height });
-            img.onerror = () => { try { URL.revokeObjectURL(url); } catch (e) {} reject(new Error('图片解码失败，建议换成 JPG / PNG')); };
+            var img = new Image();
+            img.onload = function () { resolve({ url: url, w: img.naturalWidth || img.width, h: img.naturalHeight || img.height, keep: true }); };
+            img.onerror = function () { try { URL.revokeObjectURL(url); } catch (e) {} reject(new Error('图片解码失败，建议换成 JPG / PNG')); };
             img.src = url;
+        });
+    }
+    function decodeImageFile(file) {
+        return new Promise(function (resolve, reject) {
+            var fail = function (msg) { reject(new Error(msg || '图片解码失败，建议换成 JPG / PNG')); };
+            /* 策略 A：createImageBitmap —— webp / avif 等现代格式最稳，且原生返回位图 */
+            if (typeof createImageBitmap === 'function') {
+                try {
+                    createImageBitmap(file).then(function (bmp) {
+                        try {
+                            var w = bmp.width, h = bmp.height;
+                            if (!w || !h) throw new Error('empty');
+                            var c = document.createElement('canvas');
+                            c.width = w; c.height = h;
+                            var ctx = c.getContext('2d');
+                            if (!ctx) throw new Error('no ctx');
+                            /* webp / png 可能有透明通道 → 用 PNG 保留；其余（JPEG 等）用 JPEG 省体积 */
+                            var t = String((file && file.type) || '').toLowerCase();
+                            var usePng = (t.indexOf('webp') >= 0 || t.indexOf('png') >= 0);
+                            if (!usePng) { try { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); } catch (e) {} }
+                            ctx.drawImage(bmp, 0, 0);
+                            try { bmp.close && bmp.close(); } catch (e) {}
+                            c.toBlob(function (bl) {
+                                if (!bl) return imgDecodeStrategy(file).then(resolve, fail);   /* 回退 <img> 策略 */
+                                var u = URL.createObjectURL(bl);
+                                resolve({ url: u, w: w, h: h, keep: false });
+                            }, usePng ? 'image/png' : 'image/jpeg', usePng ? undefined : 0.92);
+                        } catch (e) {
+                            try { bmp.close && bmp.close(); } catch (x) {}
+                            imgDecodeStrategy(file).then(resolve, fail);
+                        }
+                    }, function () { imgDecodeStrategy(file).then(resolve, fail); });
+                    return;
+                } catch (e) { /* 落到 <img> 策略 */ }
+            }
+            /* 策略 B：new Image() + objectURL（旧行为，兜底） */
+            imgDecodeStrategy(file).then(resolve, fail);
+        });
+    }
+    function readFileForPreview(file) {
+        return decodeImageFile(file).then(function (r) {
+            if (__bgPreviewURL && __bgPreviewURL !== r.url) { try { URL.revokeObjectURL(__bgPreviewURL); } catch (e) {} }
+            __bgPreviewURL = r.url;
+            return { dataURL: r.url, w: r.w, h: r.h };
         });
     }
     function releaseBgPreviewURL() {
         if (__bgPreviewURL) { try { URL.revokeObjectURL(__bgPreviewURL); } catch (e) {} __bgPreviewURL = ''; }
+        if (__bgMasterPreviewURL) { try { URL.revokeObjectURL(__bgMasterPreviewURL); } catch (e) {} __bgMasterPreviewURL = ''; }
         __bgMasterBlob = null;      /* v51：编辑态结束后不再留着这份字节 */
     }
     /* v23：把 File 读成 dataURL（不压缩）+ 顺手拿原始宽高 —— 仅剩旧调用路径在用 */
@@ -23058,39 +23117,47 @@ oninput="pgRefresh()"></textarea>
     /* 由 master 生成渲染副图；返回 Blob 或 null（null = 不必生成 / 生成失败，都不是错误） */
     async function bgMakeRenderVariant(master) {
         if (!master || typeof master.size !== 'number') return null;
-        let u = '';
-        try { u = URL.createObjectURL(master); } catch (e) { return null; }
-        try {
-            const im = await bgLoadMeta(u);
-            const w = im ? (im.naturalWidth || 0) : 0;
-            const h = im ? (im.naturalHeight || 0) : 0;
-            if (!w || !h) return null;
-            const long = Math.max(w, h);
-            if (long <= BGR_MAX) return null;            /* ① 尺寸已够小，副图没有收益 */
-            const k = BGR_MAX / long;
-            const tw = Math.max(1, Math.round(w * k));
-            const th = Math.max(1, Math.round(h * k));
-            const c = document.createElement('canvas');
-            c.width = tw; c.height = th;
-            const g = c.getContext('2d');
-            if (!g) return null;
-            try { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; } catch (e) {}
-            /* JPEG 没有 alpha，透明像素会变成黑块 —— 先铺白底 */
-            try { g.fillStyle = '#ffffff'; g.fillRect(0, 0, tw, th); } catch (e) {}
-            /* 先按目标尺寸建 canvas 再 drawImage —— 浏览器按目标尺寸做缩放采样，
-               不会在内存里摊开整张原图 */
-            g.drawImage(im, 0, 0, tw, th);
-            /* 必须用 JPEG，不能用 WebP。实测同一张 4000×3000 原图（解码 73.2ms）：
-                 2560 webp q0.86 → 解码 88.6ms（比原图还慢）  编码 608ms
-                 2560 jpeg q0.86 → 解码 25.3ms（原图的 0.35×）编码 129ms
-               有损 WebP 的 VP8 解码成本远高于 JPEG；原图越大差距越悬殊
-               （6000×4500：161→17ms，8000×6000：267→21ms）。 */
-            const out = await canvasToBlobAsync(c, BGR_Q, 'image/jpeg');
-            if (!out || !out.size) return null;
-            if (out.size >= master.size * 1.5) return null;   /* ② 副图反而更大 → 不存 */
-            return out;
-        } catch (e) { return null; }
-        finally { try { URL.revokeObjectURL(u); } catch (e) {} }
+        let src = null, w = 0, h = 0, bmp = null, u = '';
+        /* v52：优先 createImageBitmap —— webp / avif 等现代格式解码比 <img> 更稳，
+           否则主图是 webp 时「先 fetch blob 再 new Image()」在某些 WebView 会解码失败，
+           副图生成失败 → 渲染回落原图 webp → 背景空白。 */
+        if (typeof createImageBitmap === 'function') {
+            try { bmp = await createImageBitmap(master); src = bmp; w = bmp.width; h = bmp.height; } catch (e) { bmp = null; }
+        }
+        if (!src) {
+            try { u = URL.createObjectURL(master); } catch (e) { return null; }
+            try {
+                const im = await bgLoadMeta(u);
+                if (im) { src = im; w = im.naturalWidth || 0; h = im.naturalHeight || 0; }
+            } catch (e) {}
+            finally { try { URL.revokeObjectURL(u); } catch (e) {} }
+        }
+        if (!src || !w || !h) return null;
+        const long = Math.max(w, h);
+        if (long <= BGR_MAX) return null;            /* ① 尺寸已够小，副图没有收益 */
+        const k = BGR_MAX / long;
+        const tw = Math.max(1, Math.round(w * k));
+        const th = Math.max(1, Math.round(h * k));
+        const c = document.createElement('canvas');
+        c.width = tw; c.height = th;
+        const g = c.getContext('2d');
+        if (!g) return null;
+        try { g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; } catch (e) {}
+        /* JPEG 没有 alpha，透明像素会变成黑块 —— 先铺白底 */
+        try { g.fillStyle = '#ffffff'; g.fillRect(0, 0, tw, th); } catch (e) {}
+        /* 先按目标尺寸建 canvas 再 drawImage —— 浏览器按目标尺寸做缩放采样，
+           不会在内存里摊开整张原图 */
+        g.drawImage(src, 0, 0, tw, th);
+        /* 必须用 JPEG，不能用 WebP。实测同一张 4000×3000 原图（解码 73.2ms）：
+             2560 webp q0.86 → 解码 88.6ms（比原图还慢）  编码 608ms
+             2560 jpeg q0.86 → 解码 25.3ms（原图的 0.35×）编码 129ms
+           有损 WebP 的 VP8 解码成本远高于 JPEG；原图越大差距越悬殊
+           （6000×4500：161→17ms，8000×6000：267→21ms）。 */
+        const out = await canvasToBlobAsync(c, BGR_Q, 'image/jpeg');
+        if (bmp) { try { bmp.close(); } catch (e) {} }
+        if (!out || !out.size) return null;
+        if (out.size >= master.size * 1.5) return null;   /* ② 副图反而更大 → 不存 */
+        return out;
     }
     /* v51：老记录惰性补副图 —— 用户不重新上传也能受益。
        只在浏览器空闲时做，每次启动最多 limit 个（不长时间占 CPU）；
