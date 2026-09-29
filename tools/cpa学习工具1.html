@@ -847,41 +847,43 @@
             background: var(--primary-dark);
         }
 
-        /* ★ v49（Tom 2026-09-29 需求）：双计时并行 —— 原 v48 的模式开关（.ut-mode-switch / .ut-tab）已移除，
-           🍅 番茄行（正计时）与 ⏳ 学时行（倒计时 · 按节存档剩余）在同一卡片内上下并列、同时可跑。
-           两套状态机（state.tomato / state.studyTimer）与表单联动桥原样保留，只改了外壳与显示口径。 */
-        .ut-pane-tomato {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-        }
-        .ut-pane-study {
+        /* ★ v50（Tom 2026-09-29 需求）：单钟面 · 双统计 —— 只有一个计时界面。
+           主钟 = ⏳ 学时倒计时（大字，按节存档剩余）；副行 = 🍅 番茄正计时 + 本次/累计番茄数（小字）。
+           一套控件（开始/暂停/重置/提前完成）同时作用于两个计时；⚙ 设置 = 番茄设置。 */
+        .ut-pane-unified {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            border-top: 1px dashed var(--border);
-            padding-top: 12px;
         }
-        .ut-pane[hidden] { display: none; }
-        .ut-pane-study .tomato-display .timer {
-            font-size: 26px;
-            min-width: 84px;
-        }
-        .ut-pane-study .st-basis {
+        .tomato-side {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
             font-size: 13px;
             color: var(--text-secondary);
         }
-        .ut-pane-study .st-min {
+        .tomato-side-timer {
+            font-size: 15px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 1px;
+            color: var(--text);
+            min-width: 52px;
+        }
+        .ut-pane-unified .st-basis {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .ut-pane-unified .st-min {
             display: inline-flex;
             align-items: center;
             gap: 4px;
             font-size: 13px;
             color: var(--text-secondary);
         }
-        .ut-pane-study .st-min input {
-            width: 66px;
+        .ut-pane-unified .st-min input {
+            width: 60px;
             padding: 4px 6px;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
@@ -891,20 +893,20 @@
             background: var(--card-bg);
             color: var(--text);
         }
-        .ut-pane-study .st-min input:disabled {
+        .ut-pane-unified .st-min input:disabled {
             opacity: .55;
             cursor: not-allowed;
         }
-        .ut-pane-study button#studyTimerDoneBtn:disabled {
+        .ut-pane-unified button#utDoneBtn:disabled {
             opacity: .45;
             cursor: not-allowed;
         }
-        .ut-pane-study button#studyTimerDoneBtn:disabled:hover {
+        .ut-pane-unified button#utDoneBtn:disabled:hover {
             background: var(--bg);
             color: var(--text-secondary);
             border-color: var(--border);
         }
-        .ut-pane-study button#studyTimerDoneBtn:not(:disabled) {
+        .ut-pane-unified button#utDoneBtn:not(:disabled) {
             background: var(--primary-bg);
             color: var(--primary-dark);
             border-color: var(--primary-light);
@@ -4279,37 +4281,32 @@
             </div>
             <button class="action-btn" id="toggleFormBtn">➕ 添加记录</button>
 
-            <!-- ===== ★ v49（Tom 2026-09-29 需求）：双计时并行 —— 原 v48 的「模式开关 + 互斥」取消。
-                 🍅 番茄行：专注段**正计时**（从零往上，重开页面归零），到专注时长结算一个番茄、进休息（休息段显示剩余）；
-                 ⏳ 学时行：**倒计时** + 剩余**按节存档**（继续学本节时从上次剩余接着倒数；结算 / 重置后按「建议 − 已学」重算）。
-                 两行各自统计、同时可跑；两套状态机（state.tomato / state.studyTimer）与表单联动桥原样保留。 ===== -->
+            <!-- ===== ★ v50（Tom 2026-09-29 需求）：单钟面 · 双统计 —— 只有一个计时界面。
+                 主钟 = ⏳ 学时倒计时（本节还剩多少，按节存档，继续学从上次剩余接着倒数）；
+                 副行 = 🍅 番茄正计时（已专注多久，到专注时长结算一个番茄；重开归零）+ 本次 / 累计番茄数。
+                 ▶ 开始 / ⏸ 暂停 / ⏹ 重置 / ✅ 提前完成 一套控件同时作用于两个计时；
+                 ⚙ 设置 = 番茄设置（专注/休息时长、自动休息、各科目建议学时）。
+                 两套状态机（state.tomato / state.studyTimer）与表单联动桥 CPATomatoLink 原样保留，
+                 全部元素 id 一字未改（被隐藏的旧控件不渲染，init 绑定按 if(btn) 优雅降级）。 ===== -->
             <div class="tomato-container" id="tomatoContainer">
-                <div class="ut-pane ut-pane-tomato" id="utPaneTomato">
-                    <div class="tomato-display">
-                        <span class="timer" id="tomatoTimer">00:00</span>
-                        <span class="status" id="tomatoStatus">⏸️ 未开始</span>
-                        <span class="tomato-count" id="tomatoSession" style="display:none;">本次 <span class="num" id="tomatoSessionCount">0</span> 🍅</span>
-                    </div>
-                    <div class="tomato-controls">
-                        <button class="primary" id="tomatoStartBtn">▶ 开始</button>
-                        <button id="tomatoPauseBtn">⏸ 暂停</button>
-                        <button id="tomatoResetBtn">⏹ 重置</button>
-                        <button id="tomatoDoneBtn" title="提前完成当前番茄：立刻结算这一个，并进入休息">✅ 提前完成</button>
-                        <button id="tomatoSettingsBtn" title="番茄设置：专注/休息时长、自动休息、各科目建议学时">⚙ 设置</button>
-                        <span class="tomato-count">累计 <span class="num" id="tomatoCount">0</span> 🍅</span>
-                    </div>
-                </div>
-                <div class="ut-pane ut-pane-study" id="utPaneStudy">
+                <div class="ut-pane ut-pane-unified">
                     <div class="tomato-display">
                         <span class="timer" id="studyTimerClock">--:--</span>
                         <span class="status" id="studyTimerStatus">⏸️ 未开始</span>
                     </div>
+                    <div class="tomato-side">
+                        <span class="tomato-side-timer" id="tomatoTimer">00:00</span>
+                        <span class="status" id="tomatoStatus">⏸️ 未开始</span>
+                        <span class="tomato-count" id="tomatoSession" style="display:none;">本次 <span class="num" id="tomatoSessionCount">0</span> 🍅</span>
+                        <span class="tomato-count">累计 <span class="num" id="tomatoCount">0</span> 🍅</span>
+                    </div>
                     <div class="tomato-controls">
-                        <button class="primary" id="studyTimerStartBtn">▶ 开始</button>
-                        <button id="studyTimerPauseBtn">⏸ 暂停</button>
-                        <button id="studyTimerResetBtn">⏹ 重置</button>
-                        <button id="studyTimerDoneBtn" title="提前完成：按已用时长计入学时，不计番茄个数">✅ 提前完成</button>
-                        <label class="st-min">时长 <input id="studyTimerMin" type="number" min="1" max="600" step="1"> 分钟</label>
+                        <button class="primary" id="utStartBtn">▶ 开始</button>
+                        <button id="utPauseBtn">⏸ 暂停</button>
+                        <button id="utResetBtn">⏹ 重置</button>
+                        <button id="utDoneBtn" title="提前完成：番茄立刻结算一个并进休息；学时按已用时长结算（不计番茄个数）">✅ 提前完成</button>
+                        <button id="tomatoSettingsBtn" title="番茄设置：专注/休息时长、自动休息、各科目建议学时">⚙ 设置</button>
+                        <label class="st-min" title="本节倒计时总时长（改完即存为该节的剩余）">时长 <input id="studyTimerMin" type="number" min="1" max="600" step="1"> 分</label>
                     </div>
                     <span class="st-basis" id="studyTimerBasis">基准：—</span>
                 </div>
@@ -9407,6 +9404,7 @@
                 const usable = (t.mode === 'focus') && (t.isRunning || t.isPaused);
                 doneBtn.disabled = !usable;
             }
+            renderUnifiedControls();   /* ★ v50：统一控件禁用态跟状态走 */
         }
         function startTomatoTimer() {
             const t = state.tomato;
@@ -9512,7 +9510,7 @@
             t.isPaused = true;
             renderTomatoDisplay();
         }
-        function resetTomatoTimer() {
+        function resetTomatoTimer(skipConfirm) {
             const t = state.tomato;
             clearInterval(t.timerId);
             t.timerId = null;
@@ -9521,7 +9519,8 @@
             t.mode = 'focus';
             t.timeLeft = t.cfg.focusMin * 60;
             if (t.session && t.session.pomodoros > 0) {
-                if (confirm('重置会把「本次番茄」计数（' + t.session.pomodoros + ' 个）清零。\n表单里已填好的起止时间与番茄个数不受影响。\n\n确定清零吗？')) {
+                /* ★ v50：统一控件的「重置」已在入口 confirm 过一次，这里 skipConfirm 直清 */
+                if (skipConfirm || confirm('重置会把「本次番茄」计数（' + t.session.pomodoros + ' 个）清零。\n表单里已填好的起止时间与番茄个数不受影响。\n\n确定清零吗？')) {
                     t.session = { active: false, start: '', pomodoros: 0 };
                     if (window.CPATomatoLink) window.CPATomatoLink.clear();
                 }
@@ -9639,6 +9638,7 @@
                 if (!running) minEl.value = total;
             }
             if (doneBtn) doneBtn.disabled = !running;
+            renderUnifiedControls();   /* ★ v50：统一控件禁用态跟状态走 */
         }
 
         /* ---------- 需求 6 · 计时 ---------- */
@@ -9927,6 +9927,57 @@
         function utClearRemain() {
             const t = state.studyTimer;
             if (t.remain && t.remain[utSectionKey()]) { delete t.remain[utSectionKey()]; saveData(); }
+        }
+
+        /* ---------- ★ v50：单钟面统一控件 —— 一套按钮同时驱动两个计时 ---------- */
+        function startUnifiedTimers() {
+            startTomatoTimer();
+            startStudyTimer();
+        }
+        function pauseUnifiedTimers() {
+            pauseTomatoTimer();
+            pauseStudyTimer();
+        }
+        function resetUnifiedTimers() {
+            const busy = (state.tomato.isRunning || state.tomato.isPaused ||
+                          state.studyTimer.isRunning || state.studyTimer.isPaused ||
+                          (state.tomato.session && (state.tomato.session.active || state.tomato.session.pomodoros > 0)));
+            if (busy && !confirm('重置将：\n· 番茄正计时归零（本次番茄计数清零）\n· 学时倒计时丢弃本节剩余，回到「建议 − 已学」基准\n\n确定重置吗？')) return;
+            resetTomatoTimer(true);
+            resetStudyTimer();
+            showToast('⟲ 已重置：番茄从 00:00 重新开始 · 学时回到本节剩余基准');
+        }
+        function finishUnifiedEarly() {
+            const a = state.tomato, s = state.studyTimer;
+            if (!a.isRunning && !a.isPaused && !s.isRunning && !s.isPaused) {
+                showToast('计时还没开始 —— 先点「▶ 开始」再计时');
+                return;
+            }
+            finishTomatoEarly();   // 专注中 → 立刻结算一个番茄并进休息；休息中/未开始 → 各自护栏提示
+            finishStudyTimerEarly(); // 结算学时段落（不计番茄个数）；未开始 → 护栏提示
+        }
+        function renderUnifiedControls() {
+            const doneBtn = document.getElementById('utDoneBtn');
+            if (doneBtn) {
+                const a = state.tomato, s = state.studyTimer;
+                doneBtn.disabled = !(a.isRunning || a.isPaused || s.isRunning || s.isPaused);
+            }
+            const pauseBtn = document.getElementById('utPauseBtn');
+            if (pauseBtn) {
+                const a = state.tomato, s = state.studyTimer;
+                pauseBtn.disabled = !(a.isRunning || a.isPaused || s.isRunning || s.isPaused);
+            }
+        }
+        function initUnifiedControls() {
+            const bind = function (id, fn) {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('click', fn);
+            };
+            bind('utStartBtn', startUnifiedTimers);
+            bind('utPauseBtn', pauseUnifiedTimers);
+            bind('utResetBtn', resetUnifiedTimers);
+            bind('utDoneBtn', finishUnifiedEarly);
+            renderUnifiedControls();
         }
 
         
@@ -19636,6 +19687,7 @@ if (document.readyState === 'loading') {
             initFilters();
             initTomato();
             initStudyTimer();
+            initUnifiedControls();   /* ★ v50：单钟面统一控件 */
             wireAutoTomatoAsk();
             initProjectSwitcher();
             initGoalPanel();
