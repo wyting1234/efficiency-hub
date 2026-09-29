@@ -781,6 +781,7 @@
         }
 
         /* ===== 番茄时钟 ===== */
+        /* ★ v48：外壳同时容纳「模式开关 + 两个模式 pane」，改纵向堆叠 */
         .tomato-container {
             background: var(--card-bg);
             border: 1px solid var(--border);
@@ -788,9 +789,9 @@
             padding: 16px 24px;
             margin-bottom: 20px;
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
             gap: 12px;
             transition: all var(--transition);
             box-shadow: var(--shadow);
@@ -846,35 +847,40 @@
             background: var(--primary-dark);
         }
 
-        /* ★ v47（Tom 2026-09-24 需求 6）：独立的「⏳ 学时倒计时」面板。
-           与番茄钟并列、各记各的 —— 它按「当前节建议时长」倒计时，
-           结算只写「结束时间 + 已用时长」，**不碰番茄个数**。 */
-        .study-timer-container {
+        /* ★ v49（Tom 2026-09-29 需求）：双计时并行 —— 原 v48 的模式开关（.ut-mode-switch / .ut-tab）已移除，
+           🍅 番茄行（正计时）与 ⏳ 学时行（倒计时 · 按节存档剩余）在同一卡片内上下并列、同时可跑。
+           两套状态机（state.tomato / state.studyTimer）与表单联动桥原样保留，只改了外壳与显示口径。 */
+        .ut-pane-tomato {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .ut-pane-study {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            margin-top: 10px;
-            padding: 12px 16px;
-            background: var(--bg);
-            border: 1px dashed var(--border);
-            border-radius: var(--radius);
+            border-top: 1px dashed var(--border);
+            padding-top: 12px;
         }
-        .study-timer-container .tomato-display .timer {
+        .ut-pane[hidden] { display: none; }
+        .ut-pane-study .tomato-display .timer {
             font-size: 26px;
             min-width: 84px;
         }
-        .study-timer-container .st-basis {
+        .ut-pane-study .st-basis {
             font-size: 13px;
             color: var(--text-secondary);
         }
-        .study-timer-container .st-min {
+        .ut-pane-study .st-min {
             display: inline-flex;
             align-items: center;
             gap: 4px;
             font-size: 13px;
             color: var(--text-secondary);
         }
-        .study-timer-container .st-min input {
+        .ut-pane-study .st-min input {
             width: 66px;
             padding: 4px 6px;
             border: 1px solid var(--border);
@@ -885,20 +891,20 @@
             background: var(--card-bg);
             color: var(--text);
         }
-        .study-timer-container .st-min input:disabled {
+        .ut-pane-study .st-min input:disabled {
             opacity: .55;
             cursor: not-allowed;
         }
-        .study-timer-container button#studyTimerDoneBtn:disabled {
+        .ut-pane-study button#studyTimerDoneBtn:disabled {
             opacity: .45;
             cursor: not-allowed;
         }
-        .study-timer-container button#studyTimerDoneBtn:disabled:hover {
+        .ut-pane-study button#studyTimerDoneBtn:disabled:hover {
             background: var(--bg);
             color: var(--text-secondary);
             border-color: var(--border);
         }
-        .study-timer-container button#studyTimerDoneBtn:not(:disabled) {
+        .ut-pane-study button#studyTimerDoneBtn:not(:disabled) {
             background: var(--primary-bg);
             color: var(--primary-dark);
             border-color: var(--primary-light);
@@ -1488,6 +1494,7 @@
             .star-filter { gap: 3px; }
             .star-filter-btn { font-size: 12px; padding: 3px 8px; }
             .tomato-container { flex-direction: column; align-items: stretch; }
+            .ut-pane-tomato { flex-direction: column; align-items: stretch; }
             .tomato-display { justify-content: center; }
             .tomato-controls { justify-content: center; }
         }
@@ -4272,38 +4279,40 @@
             </div>
             <button class="action-btn" id="toggleFormBtn">➕ 添加记录</button>
 
-            <!-- ===== 番茄时钟（已并入课程头部条，全宽第二行） ===== -->
+            <!-- ===== ★ v49（Tom 2026-09-29 需求）：双计时并行 —— 原 v48 的「模式开关 + 互斥」取消。
+                 🍅 番茄行：专注段**正计时**（从零往上，重开页面归零），到专注时长结算一个番茄、进休息（休息段显示剩余）；
+                 ⏳ 学时行：**倒计时** + 剩余**按节存档**（继续学本节时从上次剩余接着倒数；结算 / 重置后按「建议 − 已学」重算）。
+                 两行各自统计、同时可跑；两套状态机（state.tomato / state.studyTimer）与表单联动桥原样保留。 ===== -->
             <div class="tomato-container" id="tomatoContainer">
-                <div class="tomato-display">
-                    <span class="timer" id="tomatoTimer">25:00</span>
-                    <span class="status" id="tomatoStatus">⏸️ 未开始</span>
-                    <span class="tomato-count" id="tomatoSession" style="display:none;">本次 <span class="num" id="tomatoSessionCount">0</span> 🍅</span>
+                <div class="ut-pane ut-pane-tomato" id="utPaneTomato">
+                    <div class="tomato-display">
+                        <span class="timer" id="tomatoTimer">00:00</span>
+                        <span class="status" id="tomatoStatus">⏸️ 未开始</span>
+                        <span class="tomato-count" id="tomatoSession" style="display:none;">本次 <span class="num" id="tomatoSessionCount">0</span> 🍅</span>
+                    </div>
+                    <div class="tomato-controls">
+                        <button class="primary" id="tomatoStartBtn">▶ 开始</button>
+                        <button id="tomatoPauseBtn">⏸ 暂停</button>
+                        <button id="tomatoResetBtn">⏹ 重置</button>
+                        <button id="tomatoDoneBtn" title="提前完成当前番茄：立刻结算这一个，并进入休息">✅ 提前完成</button>
+                        <button id="tomatoSettingsBtn" title="番茄设置：专注/休息时长、自动休息、各科目建议学时">⚙ 设置</button>
+                        <span class="tomato-count">累计 <span class="num" id="tomatoCount">0</span> 🍅</span>
+                    </div>
                 </div>
-                <div class="tomato-controls">
-                    <button class="primary" id="tomatoStartBtn">▶ 开始</button>
-                    <button id="tomatoPauseBtn">⏸ 暂停</button>
-                    <button id="tomatoResetBtn">⏹ 重置</button>
-                    <button id="tomatoDoneBtn" title="提前完成当前番茄：立刻结算这一个，并进入休息">✅ 提前完成</button>
-                    <button id="tomatoSettingsBtn" title="番茄设置：专注/休息时长、自动休息、各科目建议学时">⚙ 设置</button>
-                    <span class="tomato-count">累计 <span class="num" id="tomatoCount">0</span> 🍅</span>
+                <div class="ut-pane ut-pane-study" id="utPaneStudy">
+                    <div class="tomato-display">
+                        <span class="timer" id="studyTimerClock">--:--</span>
+                        <span class="status" id="studyTimerStatus">⏸️ 未开始</span>
+                    </div>
+                    <div class="tomato-controls">
+                        <button class="primary" id="studyTimerStartBtn">▶ 开始</button>
+                        <button id="studyTimerPauseBtn">⏸ 暂停</button>
+                        <button id="studyTimerResetBtn">⏹ 重置</button>
+                        <button id="studyTimerDoneBtn" title="提前完成：按已用时长计入学时，不计番茄个数">✅ 提前完成</button>
+                        <label class="st-min">时长 <input id="studyTimerMin" type="number" min="1" max="600" step="1"> 分钟</label>
+                    </div>
+                    <span class="st-basis" id="studyTimerBasis">基准：—</span>
                 </div>
-            </div>
-            <!-- ★ v47（Tom 2026-09-24 需求 6）：独立的「⏳ 学时倒计时」面板。
-                 默认倒计时 = 当前节建议时长（取不到 → 本章合计 → 60 分钟）；
-                 结算只写「结束时间 + 已用时长」，**不碰番茄个数**。 -->
-            <div class="study-timer-container" id="studyTimerContainer">
-                <div class="tomato-display">
-                    <span class="timer" id="studyTimerClock">--:--</span>
-                    <span class="status" id="studyTimerStatus">⏸️ 未开始</span>
-                </div>
-                <div class="tomato-controls">
-                    <button class="primary" id="studyTimerStartBtn">▶ 开始</button>
-                    <button id="studyTimerPauseBtn">⏸ 暂停</button>
-                    <button id="studyTimerResetBtn">⏹ 重置</button>
-                    <button id="studyTimerDoneBtn" title="提前完成：按已用时长计入学时，不计番茄个数">✅ 提前完成</button>
-                    <label class="st-min">时长 <input id="studyTimerMin" type="number" min="1" max="600" step="1"> 分钟</label>
-                </div>
-                <span class="st-basis" id="studyTimerBasis">基准：—</span>
             </div>
         </div>
 
@@ -4315,11 +4324,11 @@
             </div>
             <div class="form-body" id="formBody">
                 <form id="recordForm" autocomplete="off" novalidate>
-                                        <!-- ★ v47（Tom 2026-09-24 需求 5）：表单展开时问一句是否自动番茄计时。
-                                             每次都问（不写 localStorage 记忆）；若番茄钟或学时倒计时
-                                             已在计时，则不弹（见 askAutoTomato）。 -->
+                                        <!-- ★ v47（Tom 2026-09-24 需求 5）：表单展开时问一句是否自动计时。
+                                             每次都问（不写 localStorage 记忆）；若任一计时已在跑，则不弹（见 askAutoTomato）。
+                                             ★ v49：点「开始计时」= 番茄 + 学时一起开（双计时并行）。 -->
                                         <div class="auto-tomato-ask" id="autoTomatoAsk" hidden>
-                                            <span class="ata-text">🍅 要不要自动开始番茄计时？</span>
+                                            <span class="ata-text">🍅⏳ 要不要自动开始计时？（番茄 + 学时一起）</span>
                                             <button type="button" class="primary" id="ataYes">▶ 开始计时</button>
                                             <button type="button" id="ataNo">先不用</button>
                                         </div>
@@ -5977,9 +5986,8 @@
                     sound: true
                 }
             },
-            /* ★ v47（Tom 2026-09-24 需求 6）：独立「⏳ 学时倒计时」。
-               只记「用户手改过、且与建议时长不同」的分钟数；timeLeft / isRunning
-               都是运行期状态，不落盘（换台设备/重开页面应当回到建议时长基准）。 */
+            /* ★ v49（Tom 2026-09-29 需求）：学时倒计时**按节存档剩余** —— 「下次继续学本节，从上次剩余接着倒数」。
+               remain = { '课程|章|节': { planMin, timeLeft } }，随数据落盘；结算 / 重置后该节存档清除、按「建议 − 已学」重算。 */
             studyTimer: {
                 planMin: 0,
                 timeLeft: 0,
@@ -5988,6 +5996,8 @@
                 timerId: null,
                 sessionActive: false,
                 sessionStart: '',
+                lastKey: null,   /* ★ v49：当前倒计时上下文对应的节（'课程|章|节'），运行期状态不落盘 */
+                remain: {},
                 cfg: { lastMin: 0 }
             }
         };
@@ -6081,6 +6091,10 @@
                     if (data.studyTimer && data.studyTimer.cfg) {
                         const _lm = parseFloat(data.studyTimer.cfg.lastMin);
                         if (isFinite(_lm) && _lm > 0) state.studyTimer.cfg.lastMin = _lm;
+                    }
+                    /* ★ v49：恢复按节存档的剩余倒计时（老存档没有 → 空表，各节按「建议 − 已学」初始化） */
+                    if (data.studyTimer && data.studyTimer.remain && typeof data.studyTimer.remain === 'object') {
+                        state.studyTimer.remain = data.studyTimer.remain;
                     }
                     state.progressMode = (data.progressMode === 'tomato') ? 'tomato' : 'hours';
                     // 一次性迁移闸门（见 migrateKpQuickRaw）。老存档没有该字段 = 还没迁移过。
@@ -6450,7 +6464,11 @@
                 tomato: { count: state.tomato.count, cfg: state.tomato.cfg },
                 /* ★ v47：saveData 是**白名单序列化** —— 不在这里登记就永远写不进 localStorage。
                    只存 cfg.lastMin（用户手改且与建议时长不同的那个值）。 */
-                studyTimer: { cfg: { lastMin: (state.studyTimer && state.studyTimer.cfg && state.studyTimer.cfg.lastMin) || 0 } },
+                studyTimer: {
+                    cfg: { lastMin: (state.studyTimer && state.studyTimer.cfg && state.studyTimer.cfg.lastMin) || 0 },
+                    /* ★ v49：按节存档的剩余倒计时（继续学本节 → 从上次剩余接着倒数） */
+                    remain: (state.studyTimer && state.studyTimer.remain && typeof state.studyTimer.remain === 'object') ? state.studyTimer.remain : {}
+                },
                 progressMode: (state.progressMode === 'tomato' ? 'tomato' : 'hours'),
                 kpMigrated: state.kpMigrated === true,
                 tierV2: state.tierV2 === true,
@@ -8492,6 +8510,8 @@
             }
             if (window.CPATomatoLink) window.CPATomatoLink.clear();
             renderTomatoDisplay();
+            /* ★ v48：新记录落库 → 章节已学变了 → 学时倒计时基准（还差多少）跟着重算（未在跑时） */
+            syncStudyTimerToBase();
             if (state.currentCourse !== course) {
                 state.currentCourse = course;
                 renderAll();
@@ -9359,9 +9379,18 @@
             const sessEl = document.getElementById('tomatoSession');
             const sessCnt = document.getElementById('tomatoSessionCount');
             if (timerEl) {
-                const mins = Math.floor(Math.max(t.timeLeft, 0) / 60);
-                const secs = Math.max(t.timeLeft, 0) % 60;
-                timerEl.textContent = ('0' + mins).slice(-2) + ':' + ('0' + secs).slice(-2);
+                /* ★ v49：专注段**正计时**（从 00:00 往上，显示「已专注」时长，到专注时长结算一个番茄的节奏不变）；
+                   休息段保持倒计时（显示剩余）。番茄不跨会话存档 —— 重开页面 / 重置后从 00:00 重新开始。 */
+                let show;
+                if (t.mode === 'focus') {
+                    show = Math.max(0, t.cfg.focusMin * 60 - Math.max(t.timeLeft, 0));
+                } else {
+                    show = Math.max(t.timeLeft, 0);
+                }
+                const mins = Math.floor(show / 60);
+                const secs = show % 60;
+                /* ★ v48 顺手修：padStart 取代 slice(-2) —— 专注时长上限 180 分钟，三位数不再被截成两位（如 108:00 → 误显 08:00） */
+                timerEl.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
             }
             if (countEl) countEl.textContent = t.count;
             if (statusEl) {
@@ -9516,6 +9545,22 @@
             if (m < 60) return m + ' 分钟';
             return (Math.round(m / 60 * 10) / 10) + ' 小时';
         }
+        /* ★ v48（Tom 2026-09-29 核心口径）：每一章最终「拼」出来的学时要 ≥ 建议时长。
+           所以倒计时基准 = 建议时长 − 已学 = **还差多少**，一段段倒计时拼起来正好覆盖建议时长。 */
+        function chapterLearnedHours(course, chapter, section) {
+            // 已学合计（小时）；section 传 0 = 整章合计
+            return (state.records || []).reduce(function (sum, r) {
+                if (!r || r.course !== course) return sum;
+                if (+r.chapter !== +chapter) return sum;
+                if (section && +r.section !== +section) return sum;
+                return sum + (parseFloat(r.durationHours) || 0);
+            }, 0);
+        }
+        /* 基准口径（自上而下）：
+           ① 当前节有建议时长 → 节剩余 = 节建议 − 节已学（学满 → 落到章剩余）；
+           ② 本章有建议合计   → 章剩余 = 章建议 − 章已学；
+           ③ 章也学满         → 已达标文案（done），默认时长交给 lastMin / 60 保底；
+           ④ 都取不到         → { min:0, src:'' }，由 studyTimerDefaultMin 走 上次手改 → 60 分钟。 */
         function studyTimerBaseMin() {
             const cEl = document.getElementById('fCourse');
             const chEl = document.getElementById('fChapter');
@@ -9527,25 +9572,38 @@
                 const g = getGuide(course, chapter, section);
                 const h = g ? parseHoursTxt(g.duration) : 0;
                 if (isFinite(h) && h > 0) {
-                    return { min: Math.max(1, Math.round(h * 60)), hours: h,
-                             src: '本节建议时长 ' + durMinTxt(h * 60) };
+                    const learned = chapterLearnedHours(course, chapter, section);
+                    const remain = h - learned;
+                    if (remain > 0.05) {
+                        return { min: Math.max(1, Math.round(remain * 60)), hours: remain,
+                                 src: '本节还需 ' + durMinTxt(remain * 60) + '（建议 ' + durMinTxt(h * 60) + ' − 已学 ' + learned.toFixed(1) + 'h）' };
+                    }
+                    /* 本节已学满 → 不停在这里，继续看整章还差多少 */
                 }
             }
             if (course && chapter) {
                 const th = getChapterTotalHours(course, chapter);
                 if (isFinite(th) && th > 0) {
-                    return { min: Math.max(1, Math.round(th * 60)), hours: th,
-                             src: '本' + L('chapter') + '建议时长合计 ' + durMinTxt(th * 60) };
+                    const learned = chapterLearnedHours(course, chapter, 0);
+                    const remain = th - learned;
+                    if (remain > 0.05) {
+                        return { min: Math.max(1, Math.round(remain * 60)), hours: remain,
+                                 src: '本' + L('chapter') + '还需 ' + durMinTxt(remain * 60) + '（建议 ' + durMinTxt(th * 60) + ' − 已学 ' + learned.toFixed(1) + 'h）' };
+                    }
+                    return { min: 0, hours: 0, src: '✅ 本章已学 ' + learned.toFixed(1) + 'h ≥ 建议时长 ' + durMinTxt(th * 60) + ' · 已达标', done: true };
                 }
             }
             return { min: 0, hours: 0, src: '' };
         }
-        /* 建议时长**优先**（需求 6 的字面口径）；本节没设过建议时长才退回上次手改值，再退回 60 分钟。 */
+        /* ★ v48 剩余口径优先：基准 = 建议 − 已学（还差多少）；本节/本章都学满（done）→ 已达标文案 + 保底时长；
+           没设建议时长 → 退回上次手改值，再退回 60 分钟。 */
         function studyTimerDefaultMin() {
             const b = studyTimerBaseMin();
             if (b.min > 0) return { min: b.min, src: b.src };
             const last = parseFloat(state.studyTimer && state.studyTimer.cfg && state.studyTimer.cfg.lastMin);
-            if (isFinite(last) && last > 0) return { min: Math.round(last), src: '上次手动设定 ' + durMinTxt(last) };
+            const lastMin = (isFinite(last) && last > 0) ? Math.round(last) : 60;
+            if (b.done) return { min: lastMin, src: b.src + '（暂按 ' + durMinTxt(lastMin) + ' 计，可手改）' };
+            if (isFinite(last) && last > 0) return { min: lastMin, src: '上次手动设定 ' + durMinTxt(last) };
             return { min: 60, src: '本节未设建议时长，暂用 60 分钟' };
         }
 
@@ -9566,7 +9624,8 @@
             const basisEl = document.getElementById('studyTimerBasis');
             const minEl = document.getElementById('studyTimerMin');
             const doneBtn = document.getElementById('studyTimerDoneBtn');
-            if (clockEl) clockEl.textContent = ('0' + mm).slice(-2) + ':' + ('0' + ss).slice(-2);
+            /* ★ v48 顺手修：同番茄钟 —— 时长可到 600 分钟，三位数 mm 不再被 slice(-2) 截断 */
+            if (clockEl) clockEl.textContent = String(mm).padStart(2, '0') + ':' + String(ss).padStart(2, '0');
             if (stEl) {
                 stEl.textContent = t.isRunning
                     ? ('⏳ 计时中 · 已用 ' + used + ' / 共 ' + total + ' 分钟')
@@ -9586,6 +9645,7 @@
         function startStudyTimer() {
             const t = state.studyTimer;
             if (t.isRunning) return;
+            t.lastKey = utSectionKey();   /* ★ v49：锁定本段倒计时归属的节 */
             const d = studyTimerDefaultMin();
             if (!t.planMin) t.planMin = d.min;
             if (t.timeLeft <= 0) t.timeLeft = t.planMin * 60;
@@ -9603,6 +9663,7 @@
             t.timerId = setInterval(tickStudyTimer, 1000);
             renderStudyTimer();
         }
+        let studyAutosaveTick = 0;   /* ★ v49：计时中每 30 秒把剩余倒计时写一次盘（防断电/闪退丢进度） */
         function tickStudyTimer() {
             const t = state.studyTimer;
             t.timeLeft--;
@@ -9613,6 +9674,13 @@
                     if (window.CPATomatoLink && window.CPATomatoLink.liveStudy) {
                         try { window.CPATomatoLink.liveStudy(hmNow()); } catch (e) {}
                     }
+                }
+                /* ★ v49：节流落盘剩余（关页前 pagehide 也会存，这里兜底闪退场景） */
+                studyAutosaveTick++;
+                if (studyAutosaveTick % 30 === 0) {
+                    t.remain = t.remain || {};
+                    t.remain[utSectionKey()] = { planMin: t.planMin, timeLeft: Math.max(1, t.timeLeft | 0) };
+                    saveData();
                 }
             }
             if (t.timeLeft > 0) return;
@@ -9625,6 +9693,10 @@
             t.timerId = null;
             t.isRunning = false;
             t.isPaused = true;
+            /* ★ v49：暂停即存档 —— 下次继续学本节，从这次暂停的剩余接着倒数 */
+            t.remain = t.remain || {};
+            t.remain[utSectionKey()] = { planMin: t.planMin, timeLeft: Math.max(1, t.timeLeft | 0) };
+            saveData();
             renderStudyTimer();
         }
         function resetStudyTimer() {
@@ -9635,6 +9707,8 @@
             t.isPaused = false;
             t.sessionActive = false;
             t.sessionStart = '';
+            /* ★ v49：重置 = 丢弃该节的存档剩余，回到「建议 − 已学」基准 */
+            utClearRemain();
             const d = studyTimerDefaultMin();
             t.planMin = d.min;
             t.timeLeft = d.min * 60;
@@ -9652,7 +9726,6 @@
             clearInterval(t.timerId);
             t.timerId = null;
             const now = hmNow();
-            const total = Math.max(1, Math.round(t.planMin || studyTimerDefaultMin().min));
             t.isRunning = false;
             t.isPaused = false;
             if (window.CPATomatoLink && window.CPATomatoLink.tickStudy) {
@@ -9660,12 +9733,17 @@
             }
             t.sessionActive = false;
             t.sessionStart = '';
+            /* ★ v49：结算 → 该节这一段学完了，清掉存档剩余；新基准（建议 − 已学）由下方 render 前重算 */
+            if (t.remain && t.remain[utSectionKey()]) delete t.remain[utSectionKey()];
             saveData();
             beep();
             showToast(natural
                 ? ('⏳ 学时倒计时到点（' + now + '）：结束时间与时长已填进表单 · 只计学时，不计番茄个数')
                 : ('✅ 提前完成（' + now + '）：按已用时长计入学时，不计番茄个数'));
-            t.timeLeft = total * 60;
+            /* ★ v49：回到「建议 − 已学」的新剩余（刚结算的已学已计入），而不是旧 planMin */
+            const nd = studyTimerDefaultMin();
+            t.planMin = nd.min;
+            t.timeLeft = nd.min * 60;
             renderStudyTimer();
             askRestAfterStudy();
         }
@@ -9703,12 +9781,35 @@
             renderTomatoDisplay();
             startTomatoTimer();
         }
+        /* ★ v49：基准同步 —— 该节**有存档剩余**则原样恢复（「从上次剩余接着倒数」），
+           没有存档才按「建议 − 已学」重算。
+           护栏只剩「正在倒数」：跑着的时候表单切节不动这一段计时；
+           **暂停态放行** —— 暂停的剩余在 pauseStudyTimer 里已按当时的节存档，切节 = 换一份存档上下文，不丢进度。 */
         function syncStudyTimerToBase() {
             const t = state.studyTimer;
-            if (t.isRunning || t.isPaused) return;
-            const d = studyTimerDefaultMin();
-            t.planMin = d.min;
-            t.timeLeft = d.min * 60;
+            if (t.isRunning) return;
+            const key = utSectionKey();
+            const changedSection = (t.lastKey !== undefined && key !== t.lastKey);
+            const saved = t.remain && t.remain[key];
+            if (saved && saved.planMin > 0 && saved.timeLeft > 0) {
+                t.planMin = Math.round(saved.planMin);
+                t.timeLeft = Math.max(1, Math.round(saved.timeLeft));
+            } else {
+                const d = studyTimerDefaultMin();
+                t.planMin = d.min;
+                t.timeLeft = d.min * 60;
+            }
+            /* ★ v49：暂停中换了节 → 旧会话已随 pause 存档归旧节，这里解除暂停、开新上下文 */
+            if (t.isPaused && changedSection) {
+                t.isPaused = false;
+                t.sessionActive = false;
+                t.sessionStart = '';
+                if (window.CPATomatoLink && window.CPATomatoLink.clearStudy) {
+                    try { window.CPATomatoLink.clearStudy(); } catch (e) {}
+                }
+                showToast('⏳ 已切到另一节 · 原节剩余已存档，切回即恢复');
+            }
+            t.lastKey = key;
             renderStudyTimer();
         }
         function initStudyTimer() {
@@ -9730,24 +9831,30 @@
                     if (v > 600) v = 600;
                     t.planMin = v;
                     t.timeLeft = v * 60;
+                    /* 手改即成为该节的新存档（v49：下次继续学本节，从这次改的剩余接着倒数） */
+                    t.remain = t.remain || {};
+                    t.remain[utSectionKey()] = { planMin: v, timeLeft: v * 60 };
                     /* 只在「与建议时长不同」时才记成手动值 —— 否则切章节后会被这个陈旧值粘住。 */
                     t.cfg.lastMin = (v === studyTimerDefaultMin().min) ? 0 : v;
                     saveData();
                     renderStudyTimer();
                 });
             }
-            /* 科目 / 章 / 节 一变，基准就变 ⇒ 未在跑就跟着重算（需求 6 的「基准」语义）。 */
+            /* 科目 / 章 / 节 一变 → 换该节的存档剩余 / 基准（v49 的「继续学本节」语义）。 */
             ['fCourse', 'fChapter', 'fSection'].forEach(function (id) {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('change', syncStudyTimerToBase);
             });
-            const t = state.studyTimer;
-            if (!t.isRunning && !t.isPaused) {
-                const d = studyTimerDefaultMin();
-                t.planMin = d.min;
-                t.timeLeft = d.min * 60;
-            }
-            renderStudyTimer();
+            /* ★ v49：离开页面时把剩余倒计时存住（暂停 / 计时中都算「未完成 → 有剩余」） */
+            window.addEventListener('pagehide', function () {
+                const t = state.studyTimer;
+                if (t.isRunning || t.isPaused) {
+                    t.remain = t.remain || {};
+                    t.remain[utSectionKey()] = { planMin: t.planMin, timeLeft: Math.max(1, t.timeLeft | 0) };
+                    saveData();
+                }
+            });
+            syncStudyTimerToBase();
         }
 
         /* ---------- 需求 5 · 表单展开时问「是否自动番茄计时」 ---------- */
@@ -9774,7 +9881,9 @@
             const no = document.getElementById('ataNo');
             if (yes) yes.addEventListener('click', function () {
                 hideAutoTomatoAsk();
+                /* ★ v49：双计时并行 —— 「▶ 开始计时」= 番茄正计时 + 学时倒计时一起开（各统计各的） */
                 startTomatoTimer();
+                startStudyTimer();
             });
             if (no) no.addEventListener('click', hideAutoTomatoAsk);
         }
@@ -9796,6 +9905,28 @@
                 t.timeLeft = t.cfg.focusMin * 60;
             }
             renderTomatoDisplay();
+        }
+
+        /* ============================================================
+           ★ v49（Tom 2026-09-29 需求）：双计时并行（取代 v48 的「合并 + 模式开关互斥」）。
+           · 🍅 番茄：专注段正计时、休息段倒计时；每次重新开始都从 00:00（不跨会话存档）；
+             到专注时长结算一个番茄、按配置进休息 —— 节奏口径与 v47 一致，只改显示。
+           · ⏳ 学时：倒计时 + 剩余**按节存档**（remain['课程|章|节'] = {planMin, timeLeft}，随数据落盘）。
+             「下次继续学本节 → 从上次剩余接着倒数」；结算 / 重置后清该节存档，按「建议 − 已学」重算。
+           · 两行同时可跑、各自统计；「要不要自动开始计时」一条 = 两个一起开。
+           ============================================================ */
+        function utSectionKey() {
+            const cEl = document.getElementById('fCourse');
+            const chEl = document.getElementById('fChapter');
+            const sEl = document.getElementById('fSection');
+            const course = (cEl && cEl.value) || state.currentCourse || '';
+            const chapter = parseInt((chEl && chEl.value) || '0', 10) || 0;
+            const section = parseInt((sEl && sEl.value) || '0', 10) || 0;
+            return course + '|' + chapter + '|' + section;
+        }
+        function utClearRemain() {
+            const t = state.studyTimer;
+            if (t.remain && t.remain[utSectionKey()]) { delete t.remain[utSectionKey()]; saveData(); }
         }
 
         
@@ -13442,7 +13573,8 @@ if (document.readyState === 'loading') {
 
         /* ---------- 复习界面（复用番茄钟方法） ---------- */
         let rvCtx = null;   // { recordId, round, record, timer }
-        function rvPad2(n) { return ('0' + n).slice(-2); }
+        /* ★ v48 顺手修：padStart 取代 slice(-2)，专注时长 100+ 分钟时三位数不再被截断（同主页面计时器） */
+        function rvPad2(n) { return String(n).padStart(2, '0'); }
         function rvHM2Min(hm) {
             if (!hm) return null;
             const m = String(hm).match(/^(\d{1,2}):(\d{2})/);
@@ -19526,6 +19658,16 @@ if (document.readyState === 'loading') {
             }
             renderAll();
             renderGoalSummary();
+
+            /* ★ v49：currentCourse 在 initStudyTimer 之后才按记录重算（上方 19648 段）——
+               表单科目此时才真正稳定。这里显式对齐 fCourse 并**重新同步一次**学时倒计时
+               （该节有存档 → 恢复剩余；没存档 → 「建议 − 已学」），
+               否则首屏会停留在 init 早期中间态科目上的基准。 */
+            {
+                const _fc = document.getElementById('fCourse');
+                if (_fc && state.currentCourse && _fc.value !== state.currentCourse) _fc.value = state.currentCourse;
+                syncStudyTimerToBase();
+            }
 
             document.addEventListener('click', () => {
                 const submitBtn = document.querySelector('.form-actions .btn-submit');
