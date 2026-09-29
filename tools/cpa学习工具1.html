@@ -4281,24 +4281,22 @@
             </div>
             <button class="action-btn" id="toggleFormBtn">➕ 添加记录</button>
 
-            <!-- ===== ★ v50（Tom 2026-09-29 需求）：单钟面 · 双统计 —— 只有一个计时界面。
-                 主钟 = ⏳ 学时倒计时（本节还剩多少，按节存档，继续学从上次剩余接着倒数）；
-                 副行 = 🍅 番茄正计时（已专注多久，到专注时长结算一个番茄；重开归零）+ 本次 / 累计番茄数。
-                 ▶ 开始 / ⏸ 暂停 / ⏹ 重置 / ✅ 提前完成 一套控件同时作用于两个计时；
-                 ⚙ 设置 = 番茄设置（专注/休息时长、自动休息、各科目建议学时）。
-                 两套状态机（state.tomato / state.studyTimer）与表单联动桥 CPATomatoLink 原样保留，
-                 全部元素 id 一字未改（被隐藏的旧控件不渲染，init 绑定按 if(btn) 优雅降级）。 ===== -->
+            <!-- ===== ★ v51（Tom 2026-09-29 需求）：主副钟对调 —— 🍅 番茄做主钟（大字正计时）。
+                 主钟 = 🍅 番茄正计时（已专注多久，到专注时长自动结算一个番茄；重开归零）+ 专注/休息状态；
+                 副行 = ⏳ 学时倒计时（本节还剩多少，按节存档，继续学从上次剩余接着倒数）+ 基准文案。
+                 一套控件（开始/暂停/重置/提前完成）同时驱动两个计时（v50 口径不变）。 ===== -->
             <div class="tomato-container" id="tomatoContainer">
                 <div class="ut-pane ut-pane-unified">
                     <div class="tomato-display">
-                        <span class="timer" id="studyTimerClock">--:--</span>
-                        <span class="status" id="studyTimerStatus">⏸️ 未开始</span>
-                    </div>
-                    <div class="tomato-side">
-                        <span class="tomato-side-timer" id="tomatoTimer">00:00</span>
+                        <span class="timer" id="tomatoTimer">00:00</span>
                         <span class="status" id="tomatoStatus">⏸️ 未开始</span>
                         <span class="tomato-count" id="tomatoSession" style="display:none;">本次 <span class="num" id="tomatoSessionCount">0</span> 🍅</span>
                         <span class="tomato-count">累计 <span class="num" id="tomatoCount">0</span> 🍅</span>
+                    </div>
+                    <div class="tomato-side">
+                        <span class="tomato-side-timer" id="studyTimerClock">--:--</span>
+                        <span class="status" id="studyTimerStatus">⏸️ 未开始</span>
+                        <span class="st-basis" id="studyTimerBasis">基准：—</span>
                     </div>
                     <div class="tomato-controls">
                         <button class="primary" id="utStartBtn">▶ 开始</button>
@@ -4308,7 +4306,6 @@
                         <button id="tomatoSettingsBtn" title="番茄设置：专注/休息时长、自动休息、各科目建议学时">⚙ 设置</button>
                         <label class="st-min" title="本节倒计时总时长（改完即存为该节的剩余）">时长 <input id="studyTimerMin" type="number" min="1" max="600" step="1"> 分</label>
                     </div>
-                    <span class="st-basis" id="studyTimerBasis">基准：—</span>
                 </div>
             </div>
         </div>
