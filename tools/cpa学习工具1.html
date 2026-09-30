@@ -2500,10 +2500,25 @@
 .rv-dialog .pf label { display: block; font-size: 12.5px; color: var(--text-secondary, #888); margin-bottom: 6px; }
 .rv-dialog .pf-row { display: flex; gap: 10px; }
 .rv-dialog .pf-row .pf { flex: 1; min-width: 0; }
+/* ★ 2026-09-30（需求六）：起止 / 时长 / 番茄个数 / 第几轮复习 = 五个字段两行（6 列网格）。
+   第 1 行各占 2 列（3 个），第 2 行各占 3 列（2 个）。窄屏不再竖排成 5 行。 */
+.rv-dialog .rv-fields { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px 10px; margin-bottom: 10px; }
+.rv-dialog .rv-fields .pf { margin-bottom: 0; grid-column: span 2; min-width: 0; }
+.rv-dialog .rv-fields .pf.pf-half { grid-column: span 3; }
+.rv-dialog .rv-fields .pf label { display: block; }
+.rv-dialog .rv-fields .pf-hint { font-weight: 400; color: var(--text-secondary, #9A8E7C); }
 .rv-dialog input, .rv-dialog select, .rv-dialog textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border, #E2D9C8); border-radius: 8px; font-size: 13px; font-family: inherit; color: var(--text, #3A3128); background: #fff; }
 .rv-dialog textarea { line-height: 1.55; resize: vertical; }
 .rv-dialog textarea[readonly] { background: #F5F1E8; color: #6E6355; }
-@media (max-width: 560px) { .rv-dialog .pf-row { flex-direction: column; gap: 0; } }
+@media (max-width: 560px) {
+  .rv-dialog .pf-row { flex-direction: column; gap: 0; }
+  /* 窄屏下复习面板这五个字段**仍然是两行**（网格不会像 flex 那样塌成竖排），
+     只是把字号和内距收紧，保证「开始 / 结束 / 时长」三个框各还放得下。 */
+  .rv-dialog .rv-fields { gap: 6px; }
+  .rv-dialog .rv-fields .pf label { font-size: 11px; }
+  .rv-dialog .rv-fields .pf-hint { display: block; font-size: 10px; line-height: 1.35; }
+  .rv-dialog .rv-fields input, .rv-dialog .rv-fields select { padding: 5px 6px; font-size: 12.5px; }
+}
 /* ===== 闪卡模块（自动生成 · 按章节/标签归类 · 内容可编辑） ===== */
 .fc-wrap { margin-top: 14px; background: #FFFDF8; border: 1px solid #E6DCCB; border-radius: 12px; padding: 14px 15px 16px; }
 .fc-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
@@ -2557,6 +2572,37 @@
 .fc-gbody .fc-group { margin: 5px 0 5px 12px; }
 .fc-gbody .fc-group:last-child { margin-bottom: 0; }
 .fc-indent { margin-left: 12px; }
+
+/* —— ★ 2026-09-30 复习库（文件夹视图，📚 复习库 tab） —— */
+.fc-libbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 9px; }
+.fc-libdim { border: 1px solid #E0D5C2; background: #FFFDF8; color: #7A6A56; border-radius: 999px;
+             padding: 3px 11px; font-size: 12px; cursor: pointer; font-family: inherit; transition: .15s; }
+.fc-libdim:hover { background: #F4EDE0; }
+.fc-libdim.active { background: #8A7358; border-color: #8A7358; color: #FAF7F1; font-weight: 600; }
+.fc-libgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 9px; margin: 2px 0 12px; }
+.fc-folder { border: 1px solid #EDE4D5; border-radius: 10px; background: #FFFDF8; padding: 10px 11px;
+             cursor: pointer; transition: .14s; display: flex; flex-direction: column; gap: 5px; }
+.fc-folder:hover { background: #FBF6EC; border-color: #D9C9AE; transform: translateY(-1px);
+                   box-shadow: 0 2px 8px rgba(122,106,86,.10); }
+.fc-folder.on { border-color: #8A7358; background: #F7F1E5; box-shadow: inset 0 0 0 1px #8A7358; }
+.fc-folder .ff-top { display: flex; align-items: center; gap: 7px; }
+.fc-folder .ff-ico { font-size: 18px; line-height: 1; }
+.fc-folder .ff-name { font-weight: 600; font-size: 13px; color: #3E372E; }
+.fc-folder .ff-count { font-size: 12px; color: #6F5C45; }
+.fc-folder .ff-count b { font-size: 16px; color: #3E372E; }
+.fc-folder .ff-sub { font-size: 11.5px; color: #9A8E7C; line-height: 1.5; }
+.fc-folder .ff-bar { height: 5px; border-radius: 999px; background: #EFE7D8; overflow: hidden; margin-top: 1px; }
+.fc-folder .ff-bar i { display: block; height: 100%; border-radius: 999px; background: #8A7358; }
+.fc-folder .ff-bar.f-due i { background: #A6503C; }
+.fc-folder .ff-bar.f-weak i { background: #B07A3E; }
+.fc-folder .ff-bar.f-good i { background: #7E8B5B; }
+.fc-folder .ff-bar.f-great i { background: #4F7A5E; }
+.fc-libcrumb { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 9px; padding: 4px 11px;
+               border-radius: 999px; background: #F3EADD; border: 1px solid #E4D8C2;
+               font-size: 12px; color: #5C4E3C; }
+.fc-libcrumb b { color: #3E372E; }
+.fc-libcrumb .x { cursor: pointer; color: #9A8E7C; padding: 0 2px; font-weight: 700; }
+.fc-libcrumb .x:hover { color: #A6503C; }
 
 /* —— 卡片行 —— */
 .fc-row { display: flex; align-items: flex-start; gap: 9px; padding: 7px 9px; border-radius: 8px;
@@ -4299,9 +4345,14 @@
                         <span class="st-basis" id="studyTimerBasis">基准：—</span>
                     </div>
                     <div class="tomato-controls">
-                        <button class="primary" id="utStartBtn">▶ 开始</button>
-                        <button id="utPauseBtn">⏸ 暂停</button>
-                        <button id="utResetBtn">⏹ 重置</button>
+                <button class="primary" id="utStartBtn">▶ 开始</button>
+                <button id="utPauseBtn">⏸ 暂停</button>
+                <!-- ★ 2026-09-30（需求八）：🏁 结束 —— 与「暂停 / 重置 / 提前完成」三键分工不同：
+                     暂停 = 临时停下、回来接着跑；重置 = 这次不算、清零重来；提前完成 = 结算一个番茄并进休息；
+                     结束 = **收工记账**：把开始 / 结束时间、时长、本次番茄个数填进下方记录表单，
+                            番茄主钟归零（累计个数保留），学时剩余按节存档 —— 下次学本节接着倒数。 -->
+                <button id="utEndBtn" title="结束本次计时：起止时间 / 时长 / 番茄个数自动填入下方记录表单；番茄主钟归零，学时剩余存档下次接着倒数">🏁 结束</button>
+                <button id="utResetBtn">⏹ 重置</button>
                         <button id="utDoneBtn" title="提前完成：番茄立刻结算一个并进休息；学时按已用时长结算（不计番茄个数）">✅ 提前完成</button>
                         <button id="tomatoSettingsBtn" title="番茄设置：专注/休息时长、自动休息、各科目建议学时">⚙ 设置</button>
                         <label class="st-min" title="本节倒计时总时长（改完即存为该节的剩余）">时长 <input id="studyTimerMin" type="number" min="1" max="600" step="1"> 分</label>
@@ -4816,6 +4867,9 @@
                     <button type="button" class="fc-tab" data-fcmode="tag">🏷 按标签</button>
                     <button type="button" class="fc-tab" data-fcmode="mastery">🎯 按掌握程度</button>
                     <button type="button" class="fc-tab" data-fcmode="due">⏰ 待复习<span class="fc-badge" id="fcDueBadge">0</span></button>
+                    <!-- ★ 2026-09-30（Tom 需求三）：📚 复习库 —— 按文件夹把闪卡分成若干个库
+                         （复习状态 / 掌握程度 / 标签 三种分法），点文件夹进库看卡片。 -->
+                    <button type="button" class="fc-tab" data-fcmode="lib" title="把闪卡按库归类：待复习 / 掌握差 / 良好 / 优秀，也可按标签、掌握程度分库">📚 复习库</button>
                     <!-- ★ 2026-09-17 需求 4：按「复习掌握程度」筛选 —— 挪到 tab 行右侧（原来占一整行）。
                          筛的是复习时自评的值（card.review.mastery），与表格里「掌握」列
                          （学习记录的理解星级）不是一回事：后者是学习时自评，前者是每轮复习后自评。 -->
@@ -5958,6 +6012,10 @@
             tierV2: false,         // 一次性迁移闸门：闪卡层级口径 1-4 → 4-7（见 migrateTierV2）
             fcRawT: false,         // 一次性迁移闸门：卡片正文从「归一化比较键」换回原文（见 migrateCardRaw）
             currentCourse: '会计',
+            /* ★ v52（Tom 2026-09-30 需求）：上次保存记录时所在的「科目 / 章 / 节」。
+               再点「➕ 添加记录」时默认落在这个位置 —— 连着学同一节就不用每次重选章节。
+               只在**新建**时套用；编辑已有记录时以那条记录自身的坐标为准（见 editRecord）。 */
+            lastRecPos: null,
             editingId: null,
             filterStar: 'all',
             progressMode: 'hours', // 'hours' 时长模式 | 'tomato' 番茄个数模式
@@ -6091,6 +6149,15 @@
                         state.studyTimer.remain = data.studyTimer.remain;
                     }
                     state.progressMode = (data.progressMode === 'tomato') ? 'tomato' : 'hours';
+                    /* ★ v52：上次记录的章节位置。saveData 那边登记了白名单，这边**必须同样读回来** ——
+                       只存不读的话刷新后 state.lastRecPos 还是初始的 null，「记住位置」等于没做。 */
+                    if (data.lastRecPos && data.lastRecPos.course) state.lastRecPos = data.lastRecPos;
+                    /* ★ 2026-09-30（需求七核验）：两个漏读字段一并补上（存了不读 = 白存）。
+                       currentCourse 只有在科目还在项目里时才认，避免带着一个已经删掉的科目开局。 */
+                    state.fcRawT = (data.fcRawT === true);
+                    if (data.currentCourse && Array.isArray(COURSES) && COURSES.indexOf(data.currentCourse) >= 0) {
+                        state.currentCourse = data.currentCourse;
+                    }
                     // 一次性迁移闸门（见 migrateKpQuickRaw）。老存档没有该字段 = 还没迁移过。
                     state.kpMigrated = (data.kpMigrated === true);
                     state.tierV2 = (data.tierV2 === true);
@@ -6468,7 +6535,16 @@
                 tierV2: state.tierV2 === true,
                 /* ★ 2026-09-22（第十二轮）：HTML 实体迁移的幂等闸门 ——
                    saveData 是白名单序列化，不在这里登记就永远写不进 localStorage。 */
-                entFixedV1: state.entFixedV1 === true
+                entFixedV1: state.entFixedV1 === true,
+                /* ★ 2026-09-30（需求七核验）：一致迁移闸门 fcRawT 补登记。
+                   它与 kpMigrated / tierV2 / entFixedV1 是同一类「一次性迁移闸门」，
+                   那三个都在这里存了，唯独它漏了 —— 不存就每次刷新都重跑一遍迁移。 */
+                fcRawT: state.fcRawT === true,
+                /* ★ 2026-09-30（需求七核验）：当前科目也落盘 —— 与 lastRecPos 配套，
+                   「刷新回来接着上次学」才完整（只看过没保存过记录时也能停在原来那门课）。 */
+                currentCourse: state.currentCourse || '',
+                /* ★ v52：上次记录的章节位置 —— saveData 是白名单序列化，不登记就写不进 localStorage */
+                lastRecPos: state.lastRecPos || null
             };
             try {
                 localStorage.setItem(getStorageKey(), JSON.stringify(data));
@@ -7514,6 +7590,53 @@
             updateGuide(course, parseInt(document.getElementById('fChapter').value), parseInt(sectionSelect.value));
         }
 
+        /* ★ v52（Tom 2026-09-30 需求）：新建记录时把「科目 / 章 / 节」默认落回上次保存的位置。
+           判据很朴素：学习是按章节顺序往前推的，连着学同一节是常态、换节才是例外 ——
+           默认值就该是「上次在哪儿就在哪儿」，要换的时候再手动选，而不是每次都弹回第 1 章第 1 节。
+
+           · 只在**新建态**生效（state.editingId 为空）：编辑记录时坐标由 editRecord 按那条记录填，不能被覆盖。
+           · force=false（表单展开）：科目以用户**当前正在看的**为准 —— 他若自己切了别的科目，
+             说明确实想换，这时不硬把他拽回上次那门课（否则就成了「我选的科目被改了」）。
+           · force=true（页面刚加载 / 刚保存完 / 取消编辑后）：不存在「用户刚手动选过」这回事，
+             直接落到上次位置，含科目 —— 这才是「刷新回来接着学」想要的效果。
+           · 任何一步对不上（科目没了、章超纲、节不在大纲里）都安全退化：返回 false，调用方走原逻辑。 */
+        function applyLastRecPos(force) {
+            try {
+                if (state.editingId) return false;
+                const p = state.lastRecPos;
+                if (!p || !p.course) return false;
+                const cEl = document.getElementById('fCourse');
+                const chEl = document.getElementById('fChapter');
+                const sEl = document.getElementById('fSection');
+                if (!cEl || !chEl || !sEl) return false;
+                if (!force && state.currentCourse && p.course !== state.currentCourse) return false;
+                // 科目必须仍是当前项目里的有效选项（换项目 / 科目改名过就不硬套）
+                let hasCourse = false;
+                for (let i = 0; i < cEl.options.length; i++) {
+                    if (cEl.options[i].value === p.course) { hasCourse = true; break; }
+                }
+                if (!hasCourse) return false;
+                cEl.value = p.course;
+                if (state.currentCourse !== p.course) state.currentCourse = p.course;
+                // 先按这个科目把章选项铺好（它内部会连带刷新节与指南），再逐层覆盖成目标坐标
+                updateChapterSelect(p.course);
+                const wantCh = parseInt(p.chapter, 10) || 1;
+                if (wantCh >= 1 && wantCh <= getMaxChapter(p.course)) chEl.value = String(wantCh);
+                const ch = parseInt(chEl.value, 10) || 1;
+                updateSectionSelect(p.course, ch);
+                const secs = getSectionsForChapter(p.course, ch);
+                const wantSec = parseInt(p.section, 10) || 1;
+                if (secs.length) {
+                    if (secs.indexOf(wantSec) >= 0) sEl.value = String(wantSec);
+                } else if (wantSec >= 1 && wantSec <= 12) {
+                    // 大纲里没登记这一章的节 —— 下拉是 1..12 兜底，直接落
+                    sEl.value = String(wantSec);
+                }
+                updateGuide(p.course, parseInt(chEl.value, 10), parseInt(sEl.value, 10));
+                return true;
+            } catch (e) { return false; }
+        }
+
         // ---------- 更新学习指南 ----------
         function updateGuide(course, chapter, section) {
             const guide = getGuide(course, chapter, section);
@@ -7892,7 +8015,8 @@
                     document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                     document.getElementById('cancelEditBtn').classList.remove('visible');
                     { const _fc = document.getElementById('formContainer'); if (_fc) _fc.classList.remove('in-edit'); }
-                    updateChapterSelect(state.currentCourse);
+                    /* ★ v52：取消编辑 → 回到新建态，章节落回上次保存的位置 */
+                    if (!applyLastRecPos(true)) updateChapterSelect(state.currentCourse);
                 }, 10);
             });
 
@@ -7903,7 +8027,8 @@
                 container.classList.toggle('collapsed');
                 if (!container.classList.contains('collapsed')) {
                     document.getElementById('fCourse').value = state.currentCourse;
-                    updateChapterSelect(state.currentCourse);
+                    /* ★ v52：展开表单 → 默认落到上次记录的章 / 节（科目仍以当前正在看的为准） */
+                    if (!applyLastRecPos(false)) updateChapterSelect(state.currentCourse);
                     /* ★ v47（需求 5）：表单**展开**时问一句是否自动番茄计时 */
                     syncStudyTimerToBase();
                     askAutoTomato();
@@ -7913,7 +8038,8 @@
             document.getElementById('toggleFormBtn').addEventListener('click', () => {
                 container.classList.remove('collapsed');
                 document.getElementById('fCourse').value = state.currentCourse;
-                updateChapterSelect(state.currentCourse);
+                /* ★ v52：走「➕ 添加记录」进来同样是新建 —— 章节默认落回上次保存的位置 */
+                if (!applyLastRecPos(false)) updateChapterSelect(state.currentCourse);
                 /* ★ v47（需求 5）：走「➕ 添加记录」进来同样是表单展开 —— 一并问 */
                 syncStudyTimerToBase();
                 askAutoTomato();
@@ -8491,6 +8617,9 @@
                 state.records.push(record);
             }
 
+            /* ★ v52：记住本次所在的「科目 / 章 / 节」—— 下一条记录默认就从这里接着写 */
+            state.lastRecPos = { course: course, chapter: chapter, section: section };
+
             if (saveData() === false) {
                 // 本地存储写入失败：记录不落盘，不能当成功处理，表单内容保留让用户复制或截图
                 return;
@@ -8512,6 +8641,10 @@
             } else {
                 renderAll();
             }
+            /* ★ v52（Tom 2026-09-30 需求）：保存完问一句「要不要生成闪卡」。
+               以前出卡的入口只有一个 —— 自己跑去 🃏 闪卡页点「重新生成」；忘了点，
+               知识点就一直躺在记录里不出卡。现在保存即问，出不出由当下决定。 */
+            try { askFlashAfterSave(record); } catch (_e) {}
             document.getElementById('recordForm').reset();
             setTimeout(() => {
                 selectedStar = 0;
@@ -8540,7 +8673,8 @@
                 document.querySelector('.btn-submit').textContent = '✅ 保存记录';
                 document.getElementById('cancelEditBtn').classList.remove('visible');
                 { const _fc = document.getElementById('formContainer'); if (_fc) _fc.classList.remove('in-edit'); }
-                updateChapterSelect(state.currentCourse);
+                /* ★ v52：保存完接着写下一条 —— 章 / 节停在刚保存的这一节，不弹回第 1 章第 1 节 */
+                if (!applyLastRecPos(true)) updateChapterSelect(state.currentCourse);
             }, 10);
             document.getElementById('formContainer').classList.add('collapsed');
         }
@@ -9953,6 +10087,39 @@
             finishTomatoEarly();   // 专注中 → 立刻结算一个番茄并进休息；休息中/未开始 → 各自护栏提示
             finishStudyTimerEarly(); // 结算学时段落（不计番茄个数）；未开始 → 护栏提示
         }
+        /* ★ 2026-09-30（需求八）：🏁 结束 = 收工记账。
+           三个「停」键各管一段，别混：
+             ⏸ 暂停   临时停下，回来接着跑（不记账、不清零）
+             🏁 结束   收工：把本次的起止时间 / 时长 / 番茄个数写进记录表单，番茄主钟归零，学时剩余存档
+             ⏹ 重置   这次不算：番茄正计时与本次个数清零，学时丢弃剩余回到基准
+           结束**不**额外结算一个番茄（那是「✅ 提前完成」的事），也不进休息、不标记本节学完。 */
+        function endUnifiedTimers() {
+            const a = state.tomato, s = state.studyTimer;
+            if (!a.isRunning && !a.isPaused && !s.isRunning && !s.isPaused) {
+                showToast('计时还没开始 —— 先点「▶ 开始」，或这一轮已经结束了');
+                return;
+            }
+            const n = parseInt((a.session && a.session.pomodoros) || 0, 10);
+            const now = hmNow();
+            // ① 番茄：停表 → 把本次会话（结束时间 / 时长 / 个数）记进表单 → 主钟归零、本次会话清空
+            stopTomatoClock();
+            a.isRunning = false;
+            a.isPaused = false;
+            if (window.CPATomatoLink && window.CPATomatoLink.tick) {
+                try { window.CPATomatoLink.tick(now, n); } catch (e) {}
+            }
+            a.mode = 'focus';
+            a.timeLeft = a.cfg.focusMin * 60;
+            a.session = { active: false, start: '', pomodoros: 0 };
+            // ② 学时：停表并**按节存档剩余** —— 下次继续学本节，从这次剩下的时间接着倒数（v49 口径）
+            pauseStudyTimer();
+            saveData();
+            renderTomatoDisplay();
+            try { renderStudyTimer(); } catch (e) {}
+            renderUnifiedControls();
+            showToast('🏁 已结束本次计时（' + now + '）· 结束时间与番茄个数（' + n + ' 个）已填入下方表单' +
+                ' · 学时剩余已存档，下次学本节接着倒数');
+        }
         function renderUnifiedControls() {
             const doneBtn = document.getElementById('utDoneBtn');
             if (doneBtn) {
@@ -9964,6 +10131,11 @@
                 const a = state.tomato, s = state.studyTimer;
                 pauseBtn.disabled = !(a.isRunning || a.isPaused || s.isRunning || s.isPaused);
             }
+            const endBtn = document.getElementById('utEndBtn');
+            if (endBtn) {
+                const a = state.tomato, s = state.studyTimer;
+                endBtn.disabled = !(a.isRunning || a.isPaused || s.isRunning || s.isPaused);
+            }
         }
         function initUnifiedControls() {
             const bind = function (id, fn) {
@@ -9972,6 +10144,7 @@
             };
             bind('utStartBtn', startUnifiedTimers);
             bind('utPauseBtn', pauseUnifiedTimers);
+            bind('utEndBtn', endUnifiedTimers);
             bind('utResetBtn', resetUnifiedTimers);
             bind('utDoneBtn', finishUnifiedEarly);
             renderUnifiedControls();
@@ -13744,6 +13917,32 @@ if (document.readyState === 'loading') {
             t.left = getTomatoMinutes() * 60;
             rvTimerRender();
         }
+        /* ★ 2026-09-30（需求五）：第几轮复习**自动**推算 —— 取第一个还没复习过的轮次。
+           「这一轮已经动过」有两个来源，都得算：
+             · state.reviewDone：复习清单里勾过「完成」的轮次；
+             · state.kpReviews[记录id#轮次]：存过起止 / 时长 / 笔记的轮次（写了内容就是复习过）。
+           只认 reviewDone 会漏掉「复习过但没勾完成」的情况 —— 于是每次打开都推荐第 1 轮，
+           用户得手动改成第 3 轮，这正是要修的那件事。 */
+        function rvDoneRounds(recordId) {
+            const set = {};
+            (state.reviewDone || []).forEach(function (x) {
+                if (x && x.recordId === recordId && parseInt(x.round, 10) > 0) set[parseInt(x.round, 10)] = 1;
+            });
+            Object.keys(state.kpReviews || {}).forEach(function (k) {
+                const m = String(k).match(/^(.*)#(\d+)$/);
+                if (!m || m[1] !== recordId) return;
+                const n = parseInt(m[2], 10);
+                if (n > 0) set[n] = 1;
+            });
+            return Object.keys(set).map(Number).sort(function (a, b) { return a - b; });
+        }
+        function rvAutoRound(recordId, maxRound) {
+            const done = rvDoneRounds(recordId);
+            const mx = Math.max(1, parseInt(maxRound, 10) || 5);
+            for (let i = 1; i <= mx; i++) { if (done.indexOf(i) < 0) return i; }
+            return mx;     // 每轮都复习过 → 停在最后一轮（再练一遍）
+        }
+
         // 「上期学习内容」= 两段，分开渲染（★ 2026-09-17 需求 3）：
         //   ① rvPrevNote → 上一轮**人写下的**笔记 / 补充 / 提示（纯文本，无层级）
         //   ② rvPrevGrid → 上一轮的知识点（**只读 excel 网格**，列 = 层级）
@@ -13797,7 +13996,12 @@ if (document.readyState === 'loading') {
             const old = document.getElementById('reviewDialog');
             if (old && old.parentNode) old.parentNode.removeChild(old);
             const maxRound = getReviewIntervals().length || 5;
-            const rd = Math.min(Math.max(parseInt(round, 10) || 1, 1), maxRound);
+            /* ★ 需求五：轮次自动推算 —— 外面没指定（点卡片 / 看板进来）就用「第一个还没复习的轮次」；
+               外面指定了（点复习清单里某一轮进来）仍以指定为准，不抢用户的操作。 */
+            const doneRounds = rvDoneRounds(recordId);
+            const autoRd = rvAutoRound(recordId, maxRound);
+            const _rdGiven = (round === undefined || round === null || round === '') ? NaN : parseInt(round, 10);
+            const rd = (isFinite(_rdGiven) && _rdGiven > 0) ? Math.min(Math.max(_rdGiven, 1), maxRound) : autoRd;
             const saved = getKpReview(recordId, rd) || {};
             const kps = (rec.knowledgePoints || []).filter(k => k && String(k.text || '').trim());
             rvCtx = {
@@ -13813,6 +14017,9 @@ if (document.readyState === 'loading') {
             for (let i = 1; i <= maxRound; i++) {
                 opts += '<option value="' + i + '"' + (i === rd ? ' selected' : '') + '>' + roundName(i) + '</option>';
             }
+            // ★ 需求五：把「已复习过几轮」摆在轮次下拉的标题上 —— 自动落到第几轮，一眼能看懂依据
+            const roundHint = '（已复习 ' + doneRounds.length + ' / ' + maxRound + ' 轮'
+                + (doneRounds.length ? '：' + doneRounds.map(roundName).join('、') : '') + '）';
             // ★ 2026-09-17：知识点区接入「展示方式」（默认 / 大纲视角 / MD视角）。
             //   此前固定平铺一串序号（1. 2. 3. …），层级被抹平，与学习记录卡片的口径不一致。
             //   现在与卡片共用同一套渲染；平铺 chips 只作为解析器未就位时的兜底，
@@ -13849,14 +14056,17 @@ if (document.readyState === 'loading') {
                     '</div>' +
                     '<div class="rvp-status" id="rvStatus"></div>' +
                 '</div>' +
-                '<div class="pf-row">' +
+                /* ★ 2026-09-30（需求六）：开始 / 结束 / 时长 / 番茄个数 / 第几轮复习 —— 五个字段收成**两行**：
+                     第 1 行  开始时间 · 结束时间 · 时长（各占 2/6）
+                     第 2 行  番茄个数 · 第几轮复习（各占 3/6）
+                   用网格而不是原来的两个 .pf-row：窄屏（<560px）下 .pf-row 是 flex-direction:column，
+                   会竖排成 5 行；改成网格后无论多窄都稳稳两行。 */
+                '<div class="rv-fields">' +
                     '<div class="pf"><label>开始时间</label><input type="time" id="rvStartT" value="' + (saved.start || '') + '"></div>' +
                     '<div class="pf"><label>结束时间</label><input type="time" id="rvEndT" value="' + (saved.end || '') + '"></div>' +
                     '<div class="pf"><label>时长（小时）</label><input type="number" step="0.1" min="0" id="rvHours" value="' + (saved.hours || '') + '" placeholder="自动"></div>' +
-                '</div>' +
-                '<div class="pf-row">' +
-                    '<div class="pf"><label>番茄个数</label><input type="number" min="0" id="rvPomo" value="' + (parseInt(saved.tomatoes, 10) || 0) + '"></div>' +
-                    '<div class="pf"><label>第几轮复习</label><select id="rvRound">' + opts + '</select></div>' +
+                    '<div class="pf pf-half"><label>番茄个数</label><input type="number" min="0" id="rvPomo" value="' + (parseInt(saved.tomatoes, 10) || 0) + '"></div>' +
+                    '<div class="pf pf-half"><label>第几轮复习<span class="pf-hint">' + roundHint + '</span></label><select id="rvRound">' + opts + '</select></div>' +
                 '</div>' +
                 // 上期学习内容：默认**收起**，点标题才展开（Tom：内容太长，先不占地方）
                 '<div class="pf"><label class="rv-fold-head" data-rvfold="rvPrevBody">' +
@@ -13889,6 +14099,28 @@ if (document.readyState === 'loading') {
                 const t = rvCtx.timer;
                 if (!t.running) return;
                 clearInterval(t.id); t.id = null; t.running = false; t.paused = true;
+                /* ★ 2026-09-30（需求四）：暂停 = 这一轮复习先告一段落 ——
+                   与「▶ 开始」自动填开始时间对称，这里自动补上**结束时间**、按起止**算出时长**，
+                   并把「已完成几个番茄」落到个数框（暂停不等于完成一个番茄，所以不 +1）。
+                   结束时间被用户亲手改过（endManual）就不覆盖；起止同一分钟 = 0 分钟，先不写。 */
+                if (t.mode === 'focus') {
+                    const now = hmNow();
+                    const sEl = document.getElementById('rvStartT');
+                    const eEl = document.getElementById('rvEndT');
+                    const hEl = document.getElementById('rvHours');
+                    const pEl = document.getElementById('rvPomo');
+                    const st = (sEl && sEl.value) || t.start || '';
+                    if (st && !t.start) t.start = st;
+                    const sameMinute = !!st && st === now;
+                    if (eEl && !t.endManual && st && !sameMinute) { eEl.value = now; t.end = now; }
+                    else if (!t.end) t.end = (eEl && eEl.value) || t.end || '';
+                    if (hEl && st && !sameMinute) { const d = rvDiffHours(st, (eEl && eEl.value) || now); if (d > 0) hEl.value = d; }
+                    if (pEl) pEl.value = Math.max(0, parseInt(t.pomodoros, 10) || 0);
+                    showToast(sameMinute
+                        ? '⏸ 已暂停（不满 1 分钟，先不记结束时间）'
+                        : ('⏸ 已暂停（' + now + '）· 结束时间与时长已自动填好'
+                            + (t.pomodoros ? ' · 本次已完成 ' + t.pomodoros + ' 个番茄' : '')));
+                }
                 rvTimerRender();
             };
             box.querySelector('#rvResetBtn').onclick = function () { rvTimerReset(); };
@@ -14038,10 +14270,16 @@ if (document.readyState === 'loading') {
             { k: 'tip',        icon: '💡', label: '下轮提示',   cls: 'c-tip',        ph: '给下一轮复习的自己留个提示' }
         ];
 
-        let fcView = 'chapter';     // chapter | tag | due | mastery
+        let fcView = 'chapter';     // chapter | tag | due | mastery | lib
         let fcStyle = 'list';       // list（表格行）| tile（正面平铺）
         let fcQuery = '';
         let fcEditing = null;       // 正在行内编辑的卡片 id
+        /* ★ 2026-09-30（需求三）：📚 复习库（文件夹视图）的状态。
+           fcLibDim  分库维度：state（复习状态）| mastery（掌握程度）| tag（标签）
+           fcBucket  当前打开的库 {dim,key} —— 只在 lib 视图里有效，切走其它 tab 即清空，
+                     所以它不会污染按章节 / 待复习那些视图的口径。 */
+        let fcLibDim = 'state';
+        let fcBucket = null;
         let fcCollapsed = {};       // 分组折叠状态
         let fcDetailId = null;      // 卡片详情弹窗当前卡片
         let fcEmbedState = null;    // 复习面板内嵌闪卡的{idx, flipped}
@@ -14873,6 +15111,61 @@ if (document.readyState === 'loading') {
             return state.cardCfg.lastResult;
         }
 
+        /* ★ v52（Tom 2026-09-30 需求）：这条记录现在能出几张闪卡 —— **试算，不动卡片池**。
+           判据与 fcBuild 逐条对齐（同一棵 fcWalkTree、同一个 cardCfg 层级范围、同样「有下一级
+           且反面非空才出卡」），否则会出现「提示 3 张、点完生成 5 张」的口径分裂。 */
+        function fcCountForRecord(rec) {
+            try {
+                if (!rec) return 0;
+                fcState();
+                const nodes = fcWalkTree();
+                const from = Math.max(KT_KP_OFFSET + 1, parseInt(state.cardCfg.from, 10) || (KT_KP_OFFSET + 1));
+                const to = Math.max(from, parseInt(state.cardCfg.to, 10) || (KT_KP_OFFSET + KT_KP_MAXLV));
+                const ch = parseInt(rec.chapter, 10), se = parseInt(rec.section, 10);
+                let n = 0;
+                nodes.forEach(function (x) {
+                    if (x.course !== rec.course) return;
+                    if (parseInt(x.chapter, 10) !== ch) return;
+                    if (parseInt(x.section, 10) !== se) return;
+                    if (x.tier < from || x.tier > to) return;
+                    // 叶子不出卡：没有下一级 = 反面是空的（与 fcBuild 同一条判据）
+                    if (x.virtual || !x.hasKids) return;
+                    if (!String((x.answers || []).join('')).trim()) return;
+                    n++;
+                });
+                return n;
+            } catch (e) { return 0; }
+        }
+
+        /* ★ v52：保存记录后问一句「要不要生成闪卡」。
+           · 一条都出不来（这节的知识点没有下一级）就不弹 —— 没有可做的事别打断人。
+           · 选「确定」：跑 fcBuild(true)（silent，免得它自己再弹一条 toast），这里统一报新增数。
+           · 选「取消」：卡片池保持原样，什么都不丢；提示可到闪卡页补生成。 */
+        function askFlashAfterSave(rec) {
+            try {
+                if (!rec || typeof fcBuild !== 'function') return;
+                const n = fcCountForRecord(rec);
+                if (n <= 0) return;
+                const cL = L('chapter'), sL = L('section');
+                const where = (rec.course || '') + ' 第' + rec.chapter + cL + ' 第' + rec.section + sL;
+                const msg = '✅ 记录已保存（' + where + '）。\n\n' +
+                    '本次的知识点可生成约 ' + n + ' 张闪卡，是否现在生成？\n\n' +
+                    '· 确定：立即生成，之后到 🃏 闪卡页复习；\n' +
+                    '· 取消：先不出卡，之后到 🃏 闪卡页点「重新生成」随时补上（记录不受影响）。';
+                if (!window.confirm(msg)) {
+                    showToast('已跳过生成闪卡 · 到 🃏 闪卡页点「重新生成」可补上');
+                    return;
+                }
+                let r = null;
+                try { r = fcBuild(true); } catch (e) { r = null; }
+                const added = (r && typeof r === 'object' && r.added) ? r.added : 0;
+                try { saveData(); } catch (e) {}
+                try { if (typeof fcRender === 'function') fcRender(); } catch (e) {}
+                showToast(added ? ('🃏 已生成 ' + added + ' 张闪卡 · 到 🃏 闪卡页开始复习')
+                    : '🃏 闪卡已刷新（本次没有新增卡）');
+            } catch (e) {}
+        }
+
         // ---------- 读取 ----------
         /* ★ 2026-09-18（F3）：这张卡现在**还背得出来吗**？
            判据只有一个 —— 它在树上的节点存在、且**有下一级**（hasKids）。
@@ -15698,6 +15991,7 @@ if (document.readyState === 'loading') {
             if (fcView === 'chapter') body.innerHTML = fcChapterHTML();
             else if (fcView === 'tag') body.innerHTML = fcTagHTML();
             else if (fcView === 'mastery') body.innerHTML = fcMasteryHTML();
+            else if (fcView === 'lib') body.innerHTML = fcLibHTML();
             else body.innerHTML = fcDueHTML();
 
             fcBindBody(body);
@@ -16086,6 +16380,128 @@ if (document.readyState === 'loading') {
             return out.join('') || fcEmptyHTML('没有卡片。');
         }
 
+        /* ★ 2026-09-30（Tom 需求三）：📚 复习库 —— 把闪卡按「文件夹」分成若干个库。
+           三种分库方式：
+             state   复习状态：待复习 / 掌握差 / 良好 / 优秀
+             mastery 掌握程度：未自评 + ★…★★★★★ 各一库
+             tag     标签：每个标签一库（连自动标签也算，没有标签的归「未打标签」）
+
+           state 四库为什么**互斥**：先摘走「该复习的」（今天到期 or 压根没背过），
+           剩下的再按自评星级分档 —— 一张卡只落在一个库里，四库卡数相加正好等于全部，
+           不会出现「既在待复习库、又在优秀库」这种同一张卡被数两遍的账。 */
+        function fcMasteryTier(card) {
+            const rv = fcReviewOf(card);
+            if (!rv) return 'none';                       // 没自评过 = 还没进复习流程
+            const m = parseInt(rv.mastery, 10) || 0;
+            if (m <= 0) return 'none';
+            if (m <= 2) return 'weak';                    // ★ / ★★ 完全不记得 / 印象模糊
+            if (m === 3) return 'good';                   // ★★★ 勉强想起
+            return 'great';                               // ★★★★ / ★★★★★ 基本掌握 / 脱口而出
+        }
+
+        function fcLibEsc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+            });
+        }
+
+        function fcBucketsOf(dim) {
+            const all = fcVisibleCards();
+            const pendIds = {};
+            fcPendingCards().forEach(function (c) { pendIds[c.id] = 1; });
+            if (dim === 'state') {
+                const b = [
+                    { key: 'due',   ico: '📥', name: '待复习库', sub: '还没背过 · 或今天到期',        cls: 'f-due',   cards: [] },
+                    { key: 'weak',  ico: '😵', name: '掌握差',   sub: '自评 ★ / ★★（印象模糊）',      cls: 'f-weak',  cards: [] },
+                    { key: 'good',  ico: '🙂', name: '良好',     sub: '自评 ★★★（勉强想起）',         cls: 'f-good',  cards: [] },
+                    { key: 'great', ico: '🏆', name: '优秀',     sub: '自评 ★★★★ / ★★★★★',           cls: 'f-great', cards: [] }
+                ];
+                const idx = { due: b[0], weak: b[1], good: b[2], great: b[3] };
+                all.forEach(function (c) {
+                    if (pendIds[c.id]) { idx.due.cards.push(c); return; }
+                    (idx[fcMasteryTier(c)] || idx.due).cards.push(c);
+                });
+                return b;
+            }
+            if (dim === 'mastery') {
+                const b = [{ key: 'm0', ico: '⚪', name: '未自评', sub: '还没背过 / 还没打掌握程度', cls: 'f-none', cards: [] }];
+                FC_MASTERY_LEVELS.slice().reverse().forEach(function (lv) {
+                    b.push({
+                        key: 'm' + lv.v, ico: new Array(lv.v + 1).join('★'),
+                        name: lv.v + '★ ' + lv.label, sub: '自评 ' + lv.v + ' 星 · ' + lv.label,
+                        cls: 'f-m' + lv.v, cards: []
+                    });
+                });
+                const idx = {};
+                b.forEach(function (x) { idx[x.key] = x; });
+                const none = idx['m0'];
+                all.forEach(function (c) {
+                    const rv = fcReviewOf(c);
+                    const m = rv ? (parseInt(rv.mastery, 10) || 0) : 0;
+                    (idx['m' + m] || none).cards.push(c);
+                });
+                return b;
+            }
+            // tag：一个标签一个库（自动标签 + 自定义标签都算，一卡多标签会在多个库里出现）
+            const map = {};
+            all.forEach(function (c) {
+                const ts = (typeof fcAllTags === 'function' ? fcAllTags(c) : []).filter(Boolean);
+                if (!ts.length) { (map['__none'] = map['__none'] || []).push(c); return; }
+                ts.forEach(function (t) { (map[t] = map[t] || []).push(c); });
+            });
+            const b = Object.keys(map).map(function (t) {
+                return {
+                    key: t, ico: (t === '__none' ? '🗂' : '🏷'),
+                    name: (t === '__none' ? '未打标签' : t),
+                    sub: (t === '__none' ? '自动标签与自定义标签都没有' : '标签：' + t),
+                    cls: 'f-tag', cards: map[t]
+                };
+            });
+            // 卡多的库排前面：文件夹视图里最常用的在最前
+            b.sort(function (x, y) { return y.cards.length - x.cards.length; });
+            return b;
+        }
+
+        function fcLibHTML() {
+            const all = fcVisibleCards();
+            if (!all.length) return fcEmptyHTML(fcNoCardsHTML());
+            const dim = fcLibDim;
+            const bs = fcBucketsOf(dim);
+            const pendIds = {};
+            fcPendingCards().forEach(function (c) { pendIds[c.id] = 1; });
+            let h = '<div class="fc-libbar">' +
+                '<span class="fc-gmeta">分库方式</span>' +
+                '<button type="button" class="fc-libdim' + (dim === 'state' ? ' active' : '') + '" data-fclibdim="state">📥 按复习状态</button>' +
+                '<button type="button" class="fc-libdim' + (dim === 'mastery' ? ' active' : '') + '" data-fclibdim="mastery">🎯 按掌握程度</button>' +
+                '<button type="button" class="fc-libdim' + (dim === 'tag' ? ' active' : '') + '" data-fclibdim="tag">🏷 按标签</button>' +
+                '<span class="fc-gmeta" style="margin-left:auto;">共 ' + all.length + ' 张 · 点文件夹进库看卡片</span>' +
+                '</div><div class="fc-libgrid">';
+            bs.forEach(function (b) {
+                const dueN = b.cards.filter(function (c) { return pendIds[c.id]; }).length;
+                const pct = all.length ? Math.round(b.cards.length / all.length * 100) : 0;
+                const on = !!(fcBucket && fcBucket.dim === dim && fcBucket.key === b.key);
+                h += '<div class="fc-folder' + (on ? ' on' : '') + '" data-fcfolder="' + fcLibEsc(b.key) + '" title="点开看这个库里的卡片">' +
+                    '<div class="ff-top"><span class="ff-ico">' + b.ico + '</span><span class="ff-name">' + fcLibEsc(b.name) + '</span></div>' +
+                    '<div class="ff-count"><b>' + b.cards.length + '</b> 张 · 占 ' + pct + '%</div>' +
+                    '<div class="ff-sub">' + fcLibEsc(b.sub) + (dueN ? ' · ⏰ 待复习 ' + dueN + ' 张' : '') + '</div>' +
+                    '<div class="ff-bar ' + b.cls + '"><i style="width:' + Math.max(pct, 3) + '%"></i></div>' +
+                    '</div>';
+            });
+            h += '</div>';
+            // 已进某个库 → 面包屑 + 该库卡片（沿用列表 / 平铺，卡片上的操作照旧可用）
+            if (fcBucket && fcBucket.dim === dim) {
+                const hit = bs.filter(function (b) { return b.key === fcBucket.key; })[0];
+                if (hit) {
+                    h += '<div class="fc-libcrumb">📁 <b>' + fcLibEsc(hit.name) + '</b> · ' + hit.cards.length + ' 张' +
+                        '<span class="x" data-fclibexit="1" title="退出这个库，回到全部文件夹">✕</span></div>';
+                    h += hit.cards.length
+                        ? fcCardsHTML(hit.cards, { noIndent: true })
+                        : '<div class="fc-empty" style="padding:12px 4px;">这个库里还没有卡片。</div>';
+                }
+            }
+            return h;
+        }
+
         // ---------- 待复习（与记录复习同一套排期） ----------
         function fcPendingCards() {
             const today = dateToStr(new Date());
@@ -16163,6 +16579,29 @@ if (document.readyState === 'loading') {
                     e.stopPropagation();
                     const want = sb.dataset.fcstyle;
                     if (want && want !== fcStyle) { fcStyle = want; fcRender(); }
+                    return;
+                }
+                /* ★ 2026-09-30（需求三）：📚 复习库的三个交互 —— 切分库方式 / 进出文件夹。
+                   放在卡片点击之前处理，否则点文件夹里的卡片会被判定成点文件夹。 */
+                const ldim = t.closest ? t.closest('[data-fclibdim]') : null;
+                if (ldim) {
+                    e.stopPropagation();
+                    const d = ldim.dataset.fclibdim;
+                    if (d && d !== fcLibDim) { fcLibDim = d; fcBucket = null; fcRender(); }
+                    return;
+                }
+                const lexit = t.closest ? t.closest('[data-fclibexit]') : null;
+                if (lexit) { e.stopPropagation(); fcBucket = null; fcRender(); return; }
+                const folder = t.closest ? t.closest('[data-fcfolder]') : null;
+                if (folder) {
+                    e.stopPropagation();
+                    const key = folder.dataset.fcfolder;
+                    const hit = fcBucketsOf(fcLibDim).filter(function (b) { return String(b.key) === key; })[0];
+                    if (hit) {
+                        // 再点一次同一个文件夹 = 收起（回到只看文件夹）
+                        fcBucket = (fcBucket && fcBucket.key === hit.key) ? null : { dim: fcLibDim, key: hit.key };
+                        fcRender();
+                    }
                     return;
                 }
                 const ghead = t.closest ? t.closest('.fc-ghead') : null;
@@ -16622,6 +17061,9 @@ if (document.readyState === 'loading') {
                 b.addEventListener('click', function () {
                     fcView = b.dataset.fcmode || 'chapter';
                     fcEditing = null;
+                    /* ★ 2026-09-30（需求三）：进的库只在「📚 复习库」里算数，
+                       切到按章节 / 待复习等其它视图就清掉 —— 否则会带着库的口径去看别处。 */
+                    if (fcView !== 'lib') fcBucket = null;
                     fcRender();
                 });
             });
@@ -19717,6 +20159,12 @@ if (document.readyState === 'loading') {
                 if (_fc && state.currentCourse && _fc.value !== state.currentCourse) _fc.value = state.currentCourse;
                 syncStudyTimerToBase();
             }
+
+            /* ★ v52：首屏就把表单落到上次记录的章 / 节（含科目）——「打开就接着上次学」。
+               放在这一步而不是 init 早期：currentCourse 到这里才按记录重算完，
+               早了会套到一个中间态科目上，基准与章节都对不上（v49 踩过的同一个坑）。 */
+            try { applyLastRecPos(true); } catch (e) {}
+            try { syncStudyTimerToBase(); } catch (e) {}
 
             document.addEventListener('click', () => {
                 const submitBtn = document.querySelector('.form-actions .btn-submit');
@@ -23793,7 +24241,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260924k</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260930a</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
