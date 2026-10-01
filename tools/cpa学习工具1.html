@@ -3211,6 +3211,7 @@
             color: var(--primary-dark); transition: var(--transition);
         }
         .kp-bar button:hover { background: var(--primary-bg); }
+        .kp-bar button.active { background: var(--primary); color: #FAF7F1; border-color: var(--primary); }
         .kp-bar .kp-bar-stat { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
         .kp-bar .kp-bar-stat + .kp-bar-stat { margin-left: 8px; }
 
@@ -4600,6 +4601,9 @@
 
                                     <div class="kp-bar">
                                         <button type="button" id="kpRenumberBtn" title="按层级重新编号（1 / 1.1 / 1.1.1 / 1.1.1.1）">🔢 一键编号</button>
+                                        <button type="button" id="kpOutlineNoBtn" title="开 / 关大纲视角的行首编号（只影响显示，不影响层级与内容）">🔢 编号：开</button>
+                                        <button type="button" id="kpPromoteBtn" title="把光标所在行升级一级（减少缩进，等同行首退格 / Shift+Tab）">⬆ 升级</button>
+                                        <button type="button" id="kpDemoteBtn" title="把光标所在行降级一级（增加缩进，等同 Tab）">⬇ 降级</button>
                                         <button type="button" id="kpToMdBtn" title="生成 Markdown，切到 MD 视角并复制到剪贴板">📋 转 Markdown</button>
                                         <button type="button" id="kpCopyMdBtn" title="复制当前 Markdown 到剪贴板">⧉ 复制 MD</button>
                                         <!-- ★ 2026-09-21：手机没有 Shift 键 —— 给软换行一个显式入口（桌面也可点）。
@@ -21924,6 +21928,10 @@ if (document.readyState === 'loading') {
         var mode = 'default';
         var curTab = 'kp';
         var outlineNo = false;
+        /* ★ 2026-10-01（需求④：取消编号）：大纲视角的「行首编号」改为用户可开关。
+           默认开启；点工具条「🔢 编号：开/关」切换，存 localStorage。 */
+        var KP_OUTLINE_NO_KEY = 'kp_outline_no_v1';
+        var kpOutlineNo = (load(KP_OUTLINE_NO_KEY) === '0') ? false : true;
         var tree = [];
         var colCount = 3;                                      // 当前展示列数：3 或 4
         var tmpl = 'roman';                                    // 当前编号模版（默认罗马体系）
@@ -22551,7 +22559,23 @@ if (document.readyState === 'loading') {
             if (it === 'insertParagraph') {
                 ev.preventDefault();
                 if (t.classList && t.classList.contains('kp-cell-in')) insertSoft(t);
+                else if (mode === 'outline') outlineEnter(t);
                 else continueLine(t);
+            }
+            if (it === 'deleteContentBackward') {
+                /* ★ 2026-10-01（需求①+② + 修复顶层空行删不掉）：大纲视角行首退格 = 升级
+                   层级 / 删空行。在 .kpi 缩进 / .kp-noin 编号 / .kpn 正文起点这些「层级边界」
+                   按退格，浏览器默认会跨节点删除、吞掉上层结构 → 层级意外错乱。
+                   这里改为：可升级就升级（Shift+Tab 等价），空行直接删掉，顶层非空则把光标
+                   移到正文起点，绝不跨行破坏结构；正文中间的正常退格一律放行。 */
+                if (t.classList && t.classList.contains('kp-cell-in')) return;  // 网格不接管
+                var bi = outlineCaretInfo();
+                if (bi && (bi.inNoin || bi.atBodyStart)) {
+                    ev.preventDefault();
+                    if (mode === 'outline') outlineBackspaceBoundary(t);
+                    else if (bi.kpiLen >= 2) { kpIndentLine(t, true); relevelRepaintKeepCursor(); }
+                    else moveToBodyStart();
+                }
             }
         }, true);
         /* 新增知识点（回车续号）—— 从 onTextKeyRich 抽出来，供 keydown 与上面的
@@ -22795,7 +22819,9 @@ if (document.readyState === 'loading') {
             if (idx < 0 || idx >= ls.length) return null;
             return { i: idx, nodes: ls[idx], text: lineText(ls[idx]) };
         }
-        // Tab / Shift+Tab：在光标所在行的行首加 / 去 2 个空格（与 textarea 版同一口径）
+        // Tab / Shift+Tab：在光标所在行的行首加 / 去 2 个空格（与 textarea 版同一口径）。
+        // 注：大纲视角不走这条（大纲是「缩进即父子」的树，直接改 .kpi 再回读 parse 会因
+        // 相对缩进 normalization 而丢失层级），改由 outlineIndent 在**树**上做升降，见下。
         function kpIndentLine(root, out) {
             var cur = curLine(root);
             if (!cur || !cur.nodes.length) return;
@@ -22828,6 +22854,59 @@ if (document.readyState === 'loading') {
             kpIndentPaint(cell);
             try { root.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) {}
         }
+        /* ★ 2026-10-02（需求①②③：大纲视角的层级升降）。
+           大纲是「缩进即父子」的树，层级升降 = 在树上**重新挂接节点**，而不是去碰 .kpi 文本
+           —— 后者经 parse 的相对缩进栈 normalization 会丢失层级（降级「加 2 空格」会被当成
+           「仍是第 2 档不同缩进」而忽略，正是回退 / 按钮降级失效的根因）。
+             · 升级（demote=false）：当前节点成为「其父节点」的同级，插在父节点之后；它后面的
+               同级兄弟整体降为它的子节点（标准大纲语义）。已是顶层则拦截。
+             · 降级（demote=true）：当前节点成为「同级上一行」的最后一个子节点。没有同级上一行
+               （已是该行最前）则拦截。
+           两者都自带整棵子树（节点的 .c 含子节点），所以升降时子节点跟着走，结构不会散。 */
+        function outlineIndent(demote) {
+            if (mode !== 'outline') return false;
+            var e = el('fKpOutline'); if (!e) return false;
+            var R = window.CpaRich; if (!R || !R.caretLineIndex) return false;
+            var idx = R.caretLineIndex(e);
+            if (idx < 0) return false;
+            syncFromView();                                   // 先把当前行可能的文本编辑回读到树
+            var flat = [];
+            walk(tree, function (n, p) { flat.push({ n: n, p: p.slice() }); });
+            if (idx >= flat.length) return false;
+            var cur = flat[idx], p = cur.p, changed = false;
+            if (demote) {
+                if (p[p.length - 1] <= 1) { toast('已是该行最前，无法再降级（需有同级的上一行）'); return false; }
+                var prevP = p.slice(0, -1).concat(p[p.length - 1] - 1);
+                var prev = nodeAt(prevP); if (!prev) return false;
+                var sib = parentListOf(p); if (!sib) return false;
+                var node = sib.list.splice(sib.i, 1)[0];
+                if (!prev.c) prev.c = [];
+                prev.c.push(node);                            // 挂到同级上一行之下
+                changed = true;
+            } else {
+                /* 升级（dedent-in-place，需求②：行首退格 / Shift+Tab / 升级按钮 = 减一级缩进）。
+                   与降级对称：降级把节点挂到「同级上一行」之下；升级则把节点上移一级、
+                   插在「父节点整棵子树之后」—— 既减了缩进，又**不打乱文档顺序**
+                   （节点仍紧跟在它原来的上级分组后面，不会像 Workflowy 那样「跳」到父节点正下方，
+                   那正是需求①里用户吐槽的「意外层级变动」）。
+                   节点在父节点里的后续同级兄弟，整体随它上移、成为它的子节点，保持原相对顺序。 */
+                if (p.length <= 1) { toast('已是最顶层，无法再升级'); return false; }
+                var par = nodeAt(p.slice(0, -1)); if (!par) return false;        // 父节点 P
+                var gp = parentListOf(p.slice(0, -1)); if (!gp) return false;    // 祖父层（含 P 的列表）
+                var sib2 = parentListOf(p); if (!sib2) return false;             // P.c（含当前节点）
+                var node2 = sib2.list.splice(sib2.i, 1)[0];                      // 先从父节点摘下
+                var foll = sib2.list.splice(sib2.i);                             // 后续同级兄弟
+                node2.c = (node2.c || []).concat(foll);
+                gp.list.splice(gp.i + 1, 0, node2);                             // 插在 P 之后（即 P 子树之后）
+                changed = true;
+            }
+            if (changed) {
+                viewDirty['outline'] = true;
+                writeViews();                                 // 树 → DOM（.kp-noin 按新 path 重算）
+                setOutlineCaret(idx, 0);                     // 光标回原行正文起点
+            }
+            return changed;
+        }
         /* 缩进格的**可见宽度**跟着文本缩进走（文本是唯一真源，宽度只是把它画大）。
            每级 2 空格 ⇒ 层级 = floor(长度 / 2) + 1，夹在 1–7。 */
         function kpIndentPaint(cell) {
@@ -22840,6 +22919,184 @@ if (document.readyState === 'loading') {
             for (var i = 0; i < cur.length; i++) if (cur[i] && !/^kpi-k[1-7]$/.test(cur[i])) keep.push(cur[i]);
             keep.push('kpi-k' + d);
             cell.className = keep.join(' ');
+        }
+        /* ★ 2026-10-01：大纲视角层级编辑的辅助函数（需求①②③④）。
+           层级真源是 .kpi 缩进格的空格数（每 2 空格 = 1 级）。
+           编辑缩进后把 DOM 解析回 tree（syncFromView）→ 依 tree 重绘（writeViews），
+           编号（.kp-noin）即按新 path 重算，并恢复光标到原行原正文偏移。 */
+        function collectBodyTexts(kpn) {
+            var out = [];
+            try {
+                var w = document.createTreeWalker(kpn, NodeFilter.SHOW_TEXT, null);
+                while (w.nextNode()) {
+                    var tn = w.currentNode;
+                    if (tn.parentNode && tn.parentNode.classList && tn.parentNode.classList.contains('kp-noin')) continue;
+                    out.push(tn);
+                }
+            } catch (e) {}
+            return out;
+        }
+        // 当前光标所在「大纲行」的信息：行号、缩进长度、是否在编号/正文边界、正文内偏移
+        function outlineCaretInfo() {
+            try {
+                if (mode !== 'outline') return null;
+                var R = window.CpaRich, e = el('fKpOutline');
+                if (!e || !R || !R.caretLineIndex) return null;
+                var sel = window.getSelection();
+                if (!sel || !sel.rangeCount) return null;
+                if (!sel.isCollapsed) return null;   // 有选区：让浏览器正常删除
+                var idx = R.caretLineIndex(e);
+                if (idx < 0) return null;
+                var ls = domLines(e);
+                if (idx >= ls.length) return null;
+                var nodes = ls[idx];
+                var kpiLen = 0;
+                var first = nodes[0];
+                if (first && first.nodeType === 1 && first.classList && first.classList.contains('kpi')) {
+                    kpiLen = nodePlain(first).length;
+                }
+                var kpn = null;
+                for (var i = 0; i < nodes.length; i++) {
+                    if (nodes[i].nodeType === 1 && nodes[i].classList && nodes[i].classList.contains('kpn')) { kpn = nodes[i]; break; }
+                }
+                var r = sel.getRangeAt(0);
+                var sc = r.startContainer, so = r.startOffset;
+                var inNoin = false, n = (sc.nodeType === 3) ? sc.parentNode : sc;
+                while (n && n !== e) {
+                    if (n.nodeType === 1 && n.classList && n.classList.contains('kp-noin')) { inNoin = true; break; }
+                    if (n === kpn) break;
+                    n = n.parentNode;
+                }
+                var bodyOffset = 0;
+                if (kpn) {
+                    var noin = kpn.querySelector('.kp-noin');
+                    try {
+                        var rr = document.createRange();
+                        rr.setStartAfter(noin || kpn);
+                        rr.setEnd(sc, so);
+                        bodyOffset = rr.toString().length;
+                    } catch (ex) { bodyOffset = 0; }
+                }
+                return { idx: idx, kpiLen: kpiLen, kpn: kpn, atBodyStart: (bodyOffset === 0), inNoin: inNoin, bodyOffset: bodyOffset };
+            } catch (e2) { return null; }
+        }
+        // 把光标恢复到第 idx 行的正文（.kpn 内、编号之后）bodyOffset 字符处
+        function setOutlineCaret(idx, bodyOffset) {
+            try {
+                var e = el('fKpOutline'); if (!e) return false;
+                var ls = domLines(e); if (idx < 0 || idx >= ls.length) return false;
+                var nodes = ls[idx], kpn = null;
+                for (var i = 0; i < nodes.length; i++) {
+                    if (nodes[i].nodeType === 1 && nodes[i].classList && nodes[i].classList.contains('kpn')) { kpn = nodes[i]; break; }
+                }
+                if (!kpn) return false;
+                var texts = collectBodyTexts(kpn);
+                var sel = window.getSelection();
+                if (!texts.length) {
+                    var nr0 = document.createRange(); nr0.setStart(kpn, 0); nr0.collapse(true);
+                    sel.removeAllRanges(); sel.addRange(nr0); return true;
+                }
+                var acc = 0, tgt = texts[0], toff = 0;
+                for (var j = 0; j < texts.length; j++) {
+                    var len = texts[j].data.length;
+                    if (acc + len >= bodyOffset) { tgt = texts[j]; toff = bodyOffset - acc; break; }
+                    acc += len;
+                }
+                if (bodyOffset > acc) { tgt = texts[texts.length - 1]; toff = texts[texts.length - 1].data.length; }
+                var nr = document.createRange(); nr.setStart(tgt, toff); nr.collapse(true);
+                sel.removeAllRanges(); sel.addRange(nr);
+                return true;
+            } catch (e2) { return false; }
+        }
+        function moveToBodyStart() {
+            var info = outlineCaretInfo();
+            if (info) setOutlineCaret(info.idx, 0);
+        }
+        /* ★ 2026-10-01（修复：顶层空行删不掉）：大纲视角行首退格的统一处理。
+           判定顺序：① 当前行是「空行」（无正文文字、且无子节点）→ 直接删掉这一行，
+             光标落到上一行末尾（若删的是首行则落到新的首行首；删空整棵树则补一行空白可编辑）。
+             空行带子节点时不删，避免把子节点变孤儿。
+           ② 非空行：能升级（kpiLen>=2）就升级（退格在层级边界 = 减一级）；
+             顶层非空行则只把光标送到正文起点，绝不跨行吞并上层结构。 */
+        function outlineBackspaceBoundary(t) {
+            if (mode !== 'outline') return false;
+            var R = window.CpaRich; if (!R || !R.caretLineIndex) return false;
+            var e = el('fKpOutline'); if (!e) return false;
+            var bi = outlineCaretInfo();
+            if (!bi || !(bi.inNoin || bi.atBodyStart)) return false;
+            syncFromView();                                   // 先回读当前行编辑，拿到最新树
+            var flat = [];
+            walk(tree, function (n, p) { flat.push({ n: n, p: p.slice() }); });
+            var idx = bi.idx;
+            if (idx < 0 || idx >= flat.length) return false;
+            var cur = flat[idx];
+            var isEmpty = !(String(cur.n.t || '').trim());
+            var hasChild = !!(cur.n.c && cur.n.c.length);
+            if (!hasChild) {
+                // ① 空行（无文字、无子节点）→ 直接删行
+                if (isEmpty) {
+                    var sib = parentListOf(cur.p); if (!sib) return false;
+                    sib.list.splice(sib.i, 1);
+                    if (tree.length === 0) tree.push({ t: '', c: [] });   // 至少留一行可编辑
+                    viewDirty['outline'] = true;
+                    writeViews();
+                    if (idx > 0) {
+                        var prev = flat[idx - 1].n;
+                        setOutlineCaret(idx - 1, String(prev.t || '').length);   // 上一行末
+                    } else {
+                        setOutlineCaret(0, 0);                                    // 新的首行首
+                    }
+                    return true;
+                }
+                // ② 非空、无子节点：缩进行升级（保持 dedent-in-place）；顶层行只送光标、绝不合并
+                //    （场景2：最保守 —— 只清理手滑多敲的空行，绝不自动把两条一级条目揉成一条）
+                if (bi.kpiLen >= 2) { outlineIndent(false); return true; }
+                moveToBodyStart();                       // 顶层非空：保守，不删不并
+                return true;
+            }
+            // ③ 带子节点：保护结构，绝不删/并；缩进行升级，顶层则送正文起点
+            if (bi.kpiLen >= 2) outlineIndent(false);
+            else moveToBodyStart();
+            return true;
+        }
+        // 缩进变更（Tab / 回退升级）后：重算层级与编号，并保住光标
+        function relevelRepaintKeepCursor() {
+            if (mode !== 'outline') { syncFromView(); writeViews(); return; }
+            var info = outlineCaretInfo();
+            var idx = info ? info.idx : -1, bodyOffset = info ? info.bodyOffset : 0;
+            viewDirty[mode] = true;
+            syncFromView();      // DOM 缩进 → tree（新层级 / 新 path）
+            writeViews();        // tree → DOM（.kp-noin 按新 path 重算）
+            if (idx >= 0) setOutlineCaret(idx, bodyOffset);
+        }
+        // ★ 2026-10-02（需求②：换行跟随上一个层级）：大纲视角的回车。
+        //   纯文本视图的 continueLine 走「插 <br> + 续号前缀」—— 但大纲每行是
+        //   .kpi 缩进格 + .kpn 正文壳 的 span 结构，把 <br> 插进 .kpn 里会变成
+        //   节点内部软换行、把编号前缀也糊进正文，整行结构当场散掉。
+        //   所以这里直接改树：在当前行**之后**插入一个「同级」空节点（换行即跟随上一层级），
+        //   若光标不在行尾则把后半段文本挪到新行（正常断行），再重绘并把光标移入新行。
+        function outlineEnter(t) {
+            var R = window.CpaRich; if (!R || !R.caretLineIndex) return false;
+            var idx = R.caretLineIndex(t);
+            if (idx < 0) return false;
+            syncFromView();                                   // 先回读当前行编辑
+            var flat = [];
+            walk(tree, function (n, p) { flat.push({ n: n, p: p.slice() }); });
+            if (idx >= flat.length) return false;
+            var cur = flat[idx];
+            var info = outlineCaretInfo();
+            var caretOff = info ? info.bodyOffset : (cur.n.t ? cur.n.t.length : 0);
+            var txt = cur.n.t || '';
+            cur.n.t = txt.slice(0, caretOff);
+            var suf = txt.slice(caretOff);
+            var sib = parentListOf(cur.p);
+            if (!sib) return false;
+            sib.list.splice(sib.i + 1, 0, { t: suf, c: [] });
+            viewDirty['outline'] = true;
+            writeViews();                                     // 重绘 → 新行带自己的 .kpi / .kpn / 编号
+            setOutlineCaret(idx + 1, 0);                      // 光标进入新行正文起点
+            try { t.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) {}
+            return true;
         }
         // 三视角的 contenteditable 键盘分支（textarea 那条老路原地保留，见下方 onTextKey）
         function onTextKeyRich(ev, t) {
@@ -22860,12 +23117,34 @@ if (document.readyState === 'loading') {
                beforeinput 不再触发），手机软键盘不派发 keydown 时由 beforeinput 兜住。 */
             if (ev.key === 'Enter' && !ev.shiftKey) {
                 ev.preventDefault();
-                continueLine(t);
+                if (mode === 'outline') outlineEnter(t);
+                else continueLine(t);
                 return;
             }
             if (ev.key === 'Tab') {
                 ev.preventDefault();
-                kpIndentLine(t, ev.shiftKey);
+                /* Tab = 降级（增加缩进，右移），Shift+Tab = 升级（减少缩进，左移）。
+                   ⚠️ 两个函数的第二个参数语义**相反**，别一起取反：
+                     · outlineIndent(demote)：true=降级 / false=升级  ⇒ 取反用 !ev.shiftKey
+                     · kpIndentLine(out)    ：true=升级(去2空格) / false=降级(加2空格) ⇒ 直接用 ev.shiftKey */
+                if (mode === 'outline') outlineIndent(!ev.shiftKey);   // 大纲：在树上升降（带子树）
+                else { kpIndentLine(t, ev.shiftKey); relevelRepaintKeepCursor(); }
+            }
+            /* ★ 2026-10-01（需求①+②）：行首退格 = 升级层级。
+               在 .kpi 缩进 / .kp-noin 编号 / .kpn 正文起点这些「层级边界」按退格时，
+               浏览器默认会跨节点删除、吞掉上层结构 → 层级意外错乱。
+               这里改为：可升级就升级（Shift+Tab 等价），顶层则把光标移到正文起点，
+               绝不跨行破坏结构；正文中间的正常退格一律放行。keydown 必然触发，
+               比 beforeinput 的 deleteContentBackward 更稳。 */
+            if (ev.key === 'Backspace') {
+                var bi = outlineCaretInfo();
+                if (bi && (bi.inNoin || bi.atBodyStart)) {
+                    ev.preventDefault();
+                    if (mode === 'outline') outlineBackspaceBoundary(t);
+                    else if (bi.kpiLen >= 2) { kpIndentLine(t, true); relevelRepaintKeepCursor(); }
+                    else moveToBodyStart();
+                    return;
+                }
             }
         }
 
@@ -22933,6 +23212,7 @@ if (document.readyState === 'loading') {
                 v.hidden = v.getAttribute('data-kpview') !== mode;
             });
             applyCols();
+            outlineNo = (mode === 'outline') ? kpOutlineNo : false;  // 大纲视角默认显示编号，可由「编号：开/关」按钮关闭
             writeViews();
             renderGrid();
             updateStat();
@@ -23222,7 +23502,7 @@ if (document.readyState === 'loading') {
         }
         function doRenumber() {
             syncFromView();
-            if (mode === 'outline') outlineNo = true;
+            if (mode === 'outline') outlineNo = kpOutlineNo ? true : false;
             applyMode();
             toast(mode === 'mind' ? ('思维导图视角按层级编号（' + tmplName(tmpl) + '）')
                 : (tree.length ? ('已按模版「' + tmplName(tmpl) + '」重新编号') : '还没有内容，先输入知识点'));
@@ -23940,6 +24220,21 @@ if (document.readyState === 'loading') {
             // 首屏可能已经渲染过（主应用的初始化与本模块的顺序不定），补一次把用户的隐藏设置生效
             window.setTimeout(function () { applyRecCfg(); reRenderRecords(); }, 400);
             var rn = el('kpRenumberBtn'); if (rn) rn.addEventListener('click', doRenumber);
+            /* ★ 2026-10-01（需求③④）：大纲视角「编号 开/关」「升级 / 降级」按钮。
+               mousedown 里 preventDefault 跟「⏎ 换行」同款 —— 否则点按钮会把光标从
+               正文里抢走，就不知道要调哪一行了。 */
+            var nob = el('kpOutlineNoBtn');
+            if (nob) { updateOutlineNoBtn(); nob.addEventListener('click', toggleOutlineNo); }
+            var prb = el('kpPromoteBtn');
+            if (prb) {
+                prb.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+                prb.addEventListener('click', function () { outlineShiftCurrent(false); });
+            }
+            var dmb = el('kpDemoteBtn');
+            if (dmb) {
+                dmb.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+                dmb.addEventListener('click', function () { outlineShiftCurrent(true); });
+            }
             var tm = el('kpToMdBtn'); if (tm) tm.addEventListener('click', doToMD);
             var cm = el('kpCopyMdBtn');
             if (cm) cm.addEventListener('click', function () { syncFromView(); copyText(toMD(tree)); });
@@ -23972,6 +24267,30 @@ if (document.readyState === 'loading') {
             window.addEventListener('pagehide', function () { saveDraft(); });
             // ★ 2026-09-18（需求 E）：给全站每一个多行文本输入挂「🔢 一键编号」工具条
             numbInit();
+        }
+
+        /* ★ 2026-10-01（需求③④）：大纲视角编号开关 + 层级升降按钮 */
+        function updateOutlineNoBtn() {
+            var b = el('kpOutlineNoBtn'); if (!b) return;
+            b.textContent = kpOutlineNo ? '🔢 编号：开' : '⚪ 编号：关';
+            b.classList.toggle('active', kpOutlineNo);
+        }
+        function toggleOutlineNo() {
+            kpOutlineNo = !kpOutlineNo;
+            try { store(KP_OUTLINE_NO_KEY, kpOutlineNo ? '1' : '0'); } catch (e) {}
+            outlineNo = (mode === 'outline') ? kpOutlineNo : false;
+            writeViews();
+            updateOutlineNoBtn();
+        }
+        // 按钮：对光标所在行升级/降级（outline 视角）。demote=true 降级，false 升级
+        function outlineShiftCurrent(demote) {
+            if (mode !== 'outline') { toast('请先切到「大纲视角」'); return; }
+            var e = el('fKpOutline'); if (!e) return;
+            var info = outlineCaretInfo();
+            if (!info) { toast('先把光标点进要调层级的行'); return; }
+            /* ★ 2026-10-02：大纲升降在**树**上做（见 outlineIndent），不碰 .kpi 文本；
+               顶层升级 / 该行最前降级由 outlineIndent 内部拦截并提示，这里不再单独判 kpiLen。 */
+            outlineIndent(demote);
         }
 
         // 供外部（表单重置 / 编辑既有记录）调用
