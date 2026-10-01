@@ -3767,6 +3767,12 @@
             font-family: ui-monospace, Consolas, "Courier New", monospace;
             font-size: 11px; font-weight: 600; letter-spacing: -.2px;
             color: var(--text-secondary); margin-right: 1px;
+            /* ★ 2026-10-01（编号残留修复）：编号只是显示层、不参与编辑。
+               设为不可编辑原子 —— 用户无法用方向键/退格/粘贴把编号文字改掉，
+               从而避免「手滑改编号 → 字符混进正文 → 关编号后正文体残留编号」的链路。
+               退格/升级的边界判定改用 body 起点（atBodyStart），与编号壳无关。 */
+            -webkit-user-select: none; user-select: none;
+            -webkit-user-modify: read-only;
         }
         .cpa-rt .kpn {
             vertical-align: top; font-size: 12.5px; line-height: 1.55;
@@ -22653,7 +22659,7 @@ if (document.readyState === 'loading') {
                       消掉旧 .kho 定宽留下的整段死空白。 */
                 out.push('<span class="kpi kpi-k' + kil + '">' + esc(sp.ind) + '</span>' +
                     '<span class="kpn kp-hlv' + klv + '" data-kp="' + esc(p.join('.')) + '">' +
-                    (sp.tail ? '<span class="kp-noin">' + esc(sp.tail) + '</span>' : '') + body + '</span>');
+                    (sp.tail ? '<span class="kp-noin" contenteditable="false">' + esc(sp.tail) + '</span>' : '') + body + '</span>');
             });
             return out.join('<br>');
         }
