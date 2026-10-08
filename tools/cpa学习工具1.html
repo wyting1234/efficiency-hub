@@ -16408,7 +16408,7 @@ if (document.readyState === 'loading') {
            原先压成 掌握差 / 良好 / 优秀 三库，档位差被并掉看不见，现在五档各自成库。
 
            state 七库为什么**互斥**：先摘走「该复习的」（今天到期 or 压根没背过），
-           剩下的再按自评星级分档（未自评的卡：今天点过完成 → 「⭕ 已复习待评星」库，否则 → 待复习库；「✅ 今天已复习」只装点过完成**且已评星**的卡）。
+           剩下的再按自评星级分档（未自评的卡：今天点过完成 → 「⭕ 已复习待评星」库，否则 → 待复习库；「✅ 今天已复习」只装**当天点过完成且已评星**的卡，明天自动回到五档库）。
            不会出现「既在待复习库、又在脱口而出库」这种同一张卡被数两遍的账。 */
         function fcMasteryTier(card) {
             const rv = fcReviewOf(card);
@@ -16437,7 +16437,7 @@ if (document.readyState === 'loading') {
                     };
                     const b = [
                         { key: 'due',  ico: '📥', name: '待复习库',       sub: '还没背过 · 或今天到期',           cls: 'f-due', cards: [] },
-                        { key: 'done', ico: '✅', name: '今天已复习',     sub: '当天点过完成 · 明天起回到待复习',  cls: 'f-done', cards: [] },
+                        { key: 'done', ico: '✅', name: '今天已复习',     sub: '当天点过完成且已评星 · 明天回到掌握库',  cls: 'f-done', cards: [] },
                         { key: 'unrated', ico: '⭕', name: '已复习待评星', sub: '点过完成但没评星 · 评一下才进掌握库', cls: 'f-unrated', cards: [] },
                         { key: 'l1',   ico: '🥀', name: '★ 完全不记得',   sub: '自评 1 星 · 优先抢救',            cls: 'f-l1',  cards: [] },
                         { key: 'l2',   ico: '😵', name: '★★ 印象模糊',    sub: '自评 2 星 · 趁热再过',            cls: 'f-l2',  cards: [] },
@@ -16458,7 +16458,7 @@ if (document.readyState === 'loading') {
                                还没碰过 / 今天到期 → 待复习库。 */
                             (isExempt(c) ? idx.unrated : idx.due).cards.push(c); return;
                         }
-                        (idx[tier] || idx.due).cards.push(c);
+                        (isExempt(c) ? idx.done : (idx[tier] || idx.due)).cards.push(c);
                     });
                     return b;
                 }
@@ -24618,7 +24618,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008f</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008h</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
