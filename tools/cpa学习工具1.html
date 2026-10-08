@@ -2594,9 +2594,12 @@
 .fc-folder .ff-bar { height: 5px; border-radius: 999px; background: #EFE7D8; overflow: hidden; margin-top: 1px; }
 .fc-folder .ff-bar i { display: block; height: 100%; border-radius: 999px; background: #8A7358; }
 .fc-folder .ff-bar.f-due i { background: #A6503C; }
-.fc-folder .ff-bar.f-weak i { background: #B07A3E; }
-.fc-folder .ff-bar.f-good i { background: #7E8B5B; }
-.fc-folder .ff-bar.f-great i { background: #4F7A5E; }
+.fc-folder .ff-bar.f-l1 i { background: #96412F; }
+.fc-folder .ff-bar.f-l2 i { background: #B07A3E; }
+.fc-folder .ff-bar.f-l3 i { background: #C0975A; }
+.fc-folder .ff-bar.f-l4 i { background: #7E8B5B; }
+.fc-folder .ff-bar.f-l5 i { background: #4F7A5E; }
+                    .fc-folder .ff-bar.f-done i { background: #8FA3B8; }
 .fc-libcrumb { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 9px; padding: 4px 11px;
                border-radius: 999px; background: #F3EADD; border: 1px solid #E4D8C2;
                font-size: 12px; color: #5C4E3C; }
@@ -4879,7 +4882,7 @@
                     <button type="button" class="fc-tab" data-fcmode="due">⏰ 待复习<span class="fc-badge" id="fcDueBadge">0</span></button>
                     <!-- ★ 2026-09-30（Tom 需求三）：📚 复习库 —— 按文件夹把闪卡分成若干个库
                          （复习状态 / 掌握程度 / 标签 三种分法），点文件夹进库看卡片。 -->
-                    <button type="button" class="fc-tab" data-fcmode="lib" title="把闪卡按库归类：待复习 / 掌握差 / 良好 / 优秀，也可按标签、掌握程度分库">📚 复习库</button>
+                    <button type="button" class="fc-tab" data-fcmode="lib" title="把闪卡按库归类：待复习 + 五档复习程度（不记得/模糊/勉强/基本/脱口而出），也可按标签、掌握程度分库">📚 复习库</button>
                     <!-- ★ 2026-09-17 需求 4：按「复习掌握程度」筛选 —— 挪到 tab 行右侧（原来占一整行）。
                          筛的是复习时自评的值（card.review.mastery），与表格里「掌握」列
                          （学习记录的理解星级）不是一回事：后者是学习时自评，前者是每轮复习后自评。 -->
@@ -16392,21 +16395,25 @@ if (document.readyState === 'loading') {
 
         /* ★ 2026-09-30（Tom 需求三）：📚 复习库 —— 把闪卡按「文件夹」分成若干个库。
            三种分库方式：
-             state   复习状态：待复习 / 掌握差 / 良好 / 优秀
+             state   复习状态：待复习 + 五档自评（l1 完全不记得 … l5 脱口而出）
              mastery 掌握程度：未自评 + ★…★★★★★ 各一库
              tag     标签：每个标签一库（连自动标签也算，没有标签的归「未打标签」）
 
-           state 四库为什么**互斥**：先摘走「该复习的」（今天到期 or 压根没背过），
-           剩下的再按自评星级分档 —— 一张卡只落在一个库里，四库卡数相加正好等于全部，
-           不会出现「既在待复习库、又在优秀库」这种同一张卡被数两遍的账。 */
+           ★ 2026-10-08（Tom）：「按复习状态」补齐五档 —— 复习程度本来就有五档
+           （★★★★★ 脱口而出 … ★ 完全不记得，与反面屏自评 / 掌握程度下拉同一套口径），
+           原先压成 掌握差 / 良好 / 优秀 三库，档位差被并掉看不见，现在五档各自成库。
+
+           state 七库为什么**互斥**：先摘走「该复习的」（今天到期 or 压根没背过），
+           剩下的再按自评星级分档（未自评的卡：今天点过完成 → 「今天已复习」库，否则 → 待复习库）。
+           不会出现「既在待复习库、又在脱口而出库」这种同一张卡被数两遍的账。 */
         function fcMasteryTier(card) {
             const rv = fcReviewOf(card);
             if (!rv) return 'none';                       // 没自评过 = 还没进复习流程
             const m = parseInt(rv.mastery, 10) || 0;
             if (m <= 0) return 'none';
-            if (m <= 2) return 'weak';                    // ★ / ★★ 完全不记得 / 印象模糊
-            if (m === 3) return 'good';                   // ★★★ 勉强想起
-            return 'great';                               // ★★★★ / ★★★★★ 基本掌握 / 脱口而出
+            /* ★ 2026-10-08（Tom）：五档各自成库 —— 'l' + 星值（l1..l5），
+               与 FC_MASTERY_LEVELS 的五档一一同名对齐，不再把 ★–★★ / ★★★★–★★★★★ 并档。 */
+            return 'l' + Math.min(5, Math.max(1, m));
         }
 
         function fcLibEsc(s) {
@@ -16419,20 +16426,32 @@ if (document.readyState === 'loading') {
             const all = fcVisibleCards();
             const pendIds = {};
             fcPendingCards().forEach(function (c) { pendIds[c.id] = 1; });
-            if (dim === 'state') {
-                const b = [
-                    { key: 'due',   ico: '📥', name: '待复习库', sub: '还没背过 · 或今天到期',        cls: 'f-due',   cards: [] },
-                    { key: 'weak',  ico: '😵', name: '掌握差',   sub: '自评 ★ / ★★（印象模糊）',      cls: 'f-weak',  cards: [] },
-                    { key: 'good',  ico: '🙂', name: '良好',     sub: '自评 ★★★（勉强想起）',         cls: 'f-good',  cards: [] },
-                    { key: 'great', ico: '🏆', name: '优秀',     sub: '自评 ★★★★ / ★★★★★',           cls: 'f-great', cards: [] }
-                ];
-                const idx = { due: b[0], weak: b[1], good: b[2], great: b[3] };
-                all.forEach(function (c) {
-                    if (pendIds[c.id]) { idx.due.cards.push(c); return; }
-                    (idx[fcMasteryTier(c)] || idx.due).cards.push(c);
-                });
-                return b;
-            }
+                if (dim === 'state') {
+                    const doneIds = fcDoneTodayIds();
+                    const isExempt = function (c) {
+                        return fcSourceRecords(c).some(function (r) { return doneIds[r.id]; });
+                    };
+                    const b = [
+                        { key: 'due',  ico: '📥', name: '待复习库',       sub: '还没背过 · 或今天到期',           cls: 'f-due', cards: [] },
+                        { key: 'done', ico: '✅', name: '今天已复习',     sub: '当天点过完成 · 明天起回到待复习',  cls: 'f-done', cards: [] },
+                        { key: 'l1',   ico: '🥀', name: '★ 完全不记得',   sub: '自评 1 星 · 优先抢救',            cls: 'f-l1',  cards: [] },
+                        { key: 'l2',   ico: '😵', name: '★★ 印象模糊',    sub: '自评 2 星 · 趁热再过',            cls: 'f-l2',  cards: [] },
+                        { key: 'l3',   ico: '🙂', name: '★★★ 勉强想起',   sub: '自评 3 星 · 正常节奏',            cls: 'f-l3',  cards: [] },
+                        { key: 'l4',   ico: '🌿', name: '★★★★ 基本掌握',  sub: '自评 4 星 · 保持间隔',            cls: 'f-l4',  cards: [] },
+                        { key: 'l5',   ico: '🏆', name: '★★★★★ 脱口而出', sub: '自评 5 星 · 拉长间隔',            cls: 'f-l5',  cards: [] }
+                    ];
+                    const idx = {};
+                    b.forEach(function (x) { idx[x.key] = x; });
+                    all.forEach(function (c) {
+                        if (pendIds[c.id]) { idx.due.cards.push(c); return; }
+                        const tier = fcMasteryTier(c);
+                        /* 未自评的卡原兜底进 due —— 当日豁免的卡会跟着溜回去，
+                           所以先问豁免：今天为它的记录点过完成，就落「今天已复习」库。 */
+                        if (tier === 'none') { (isExempt(c) ? idx.done : idx.due).cards.push(c); return; }
+                        (idx[tier] || idx.due).cards.push(c);
+                    });
+                    return b;
+                }
             if (dim === 'mastery') {
                 const b = [{ key: 'm0', ico: '⚪', name: '未自评', sub: '还没背过 / 还没打掌握程度', cls: 'f-none', cards: [] }];
                 FC_MASTERY_LEVELS.slice().reverse().forEach(function (lv) {
@@ -16512,6 +16531,18 @@ if (document.readyState === 'loading') {
             return h;
         }
 
+        // ★ 2026-10-08（Tom）：当天已勾过任意复习轮次的记录 id 集合 ——
+        //   fcPendingCards 的当日豁免与复习库「今天已复习」库共用同一口径，
+        //   别在两处各写一遍（口径一分裂，页签角标和文件夹就会各说各话）。
+        function fcDoneTodayIds() {
+            const today = dateToStr(new Date());
+            const ids = {};
+            (state.reviewDone || []).forEach(function (x) {
+                if (x && x.date === today && x.recordId) ids[x.recordId] = 1;
+            });
+            return ids;
+        }
+
         // ---------- 待复习（与记录复习同一套排期） ----------
         function fcPendingCards() {
             const today = dateToStr(new Date());
@@ -16522,9 +16553,16 @@ if (document.readyState === 'loading') {
                 const rv = fcReviewOf(c);
                 if (rv && rv.nextAt <= today && !ids[c.id]) { ids[c.id] = 1; out.push(c); }
             });
+            /* ★ 2026-10-08（Tom）：「今天已点过完成」的记录，它的卡当天不再进待复习。
+               一条记录常有多个轮次同时到期（补勾 / 过期堆积），原先点一次完成只勾掉
+               一个轮次、其余轮次仍把整节的卡拉住 —— 卡看起来「点完完成还赖着不走」。
+               豁免口径收口在 fcDoneTodayIds()（复习库的「今天已复习」库同源）；
+               只改闪卡这层显示口径；复习清单 / 月历 / 轮次统计仍走 getReviewItems，不受影响。 */
+            const doneToday = fcDoneTodayIds();
             // 其余卡：仍按记录级复习清单（已完成勾选语义不变）
             const items = (typeof getReviewItems === 'function') ? getReviewItems(today).pending : [];
             items.forEach(function (it) {
+                if (doneToday[it.record.id]) return;   // ★ 今天已点过完成的记录：今天不再催
                 fcCardsForRecord(it.record).forEach(function (c) {
                     if (ids[c.id]) return;
                     if (fcReviewOf(c)) return;      // 自评过的卡不再重复跟随记录级排期
@@ -24566,7 +24604,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260930a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008a</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
