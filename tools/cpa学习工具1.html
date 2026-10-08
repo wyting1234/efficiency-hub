@@ -14103,8 +14103,12 @@ if (document.readyState === 'loading') {
                 //   ⚠️ 历史数据不丢：rvPrevText() 与 fcNotes() 仍照常读 kpReviews 里的旧值。
                 '<div class="pd-actions">' +
                     '<button class="pd-btn ghost" id="rvCancelBtn">取消</button>' +
-                    '<button class="pd-btn" id="rvSkipBtn">仅标记已完成</button>' +
-                    '<button class="pd-btn primary" id="rvSaveBtn">保存复习记录</button>' +
+                    /* ★ 需求 6（Tom 2026-10-08）：复习面板只留**一个**收尾按钮。
+                       原来「仅标记已完成」「保存复习记录」并排，用户要在两个都该做的动作里二选一；
+                       而实际想要的是「保存这一轮 + 标记完成」一次做完。
+                       「知识点补充 / 联想延伸」写在闪卡反面、由 fcAddNote 即时落库，
+                       不该因为点了「仅标记已完成」被联动清掉（原来 skip 分支正是把它清成 ''）。 */
+                    '<button class="pd-btn primary" id="rvDoneBtn">保存并标记已完成</button>' +
                 '</div></div>';
             document.body.appendChild(box);
             const close = function () { rvTimerStop(); if (box.parentNode) box.parentNode.removeChild(box); rvCtx = null; };
@@ -14148,7 +14152,7 @@ if (document.readyState === 'loading') {
             box.querySelector('#rvEndT').addEventListener('input', function () {
                 if (rvCtx) rvCtx.timer.endManual = true;
             });
-            const doSave = function (skip) {
+            const doSave = function () {
                 const p = box.querySelector('#rvPomo');
                 const hIn = box.querySelector('#rvHours');
                 const sIn = box.querySelector('#rvStartT');
@@ -14167,17 +14171,19 @@ if (document.readyState === 'loading') {
                     //   于是每复习一轮就把「上期内容」抄成本轮 note，下一轮再抄一次 ——
                     //   「【上一轮补充】」会逐轮自我嵌套。改为保留本轮已存值，
                     //   与下面 newKp / nextTips 同款口径：不新增污染，也不动历史数据。
-                    //   （跳过本轮时也保留 —— 该字段已无输入源，清掉就是纯丢数据。）
+                    //   （现在只剩「保存并标记已完成」一个动作，一律保留。）
                     note: saved.note || '',
                     // 输入框已移除 → 保留已存值，避免编辑旧记录时把历史内容清掉
-                    newKp: skip ? '' : (saved.newKp || ''),
-                    nextTips: skip ? '' : (saved.nextTips || ''),
-                    skipped: !!skip
+                    /* ★ 需求 6（Tom 2026-10-08）：合并成一个动作后，这两个字段不再有
+                       「跳过 → 清空」的分支 —— 清掉就是纯丢数据，与上面 note 同一口径：
+                       不新增污染，也不动历史数据。 */
+                    newKp: saved.newKp || '',
+                    nextTips: saved.nextTips || '',
+                    skipped: true
                 });
                 close();
             };
-            box.querySelector('#rvSaveBtn').onclick = function () { doSave(false); };
-            box.querySelector('#rvSkipBtn').onclick = function () { doSave(true); };
+            box.querySelector('#rvDoneBtn').onclick = function () { doSave(); };
             rvTimerRender();
             try { fcBindEmbed(box); } catch (e) {}
             // ★ 2026-09-17：展示方式切换 —— **原地重绘知识点区**，不整块重建面板
@@ -15123,7 +15129,10 @@ if (document.readyState === 'loading') {
                     (deletedBlock ? '，' + deletedBlock + ' 张旧卡的位置已被复用、已让位并重新出卡' : '') +
                     (skipped ? '，' + skipped + ' 张在第 ' + from + '–' + to + ' 级之外' : '') +
                     (scopeOutN ? '，' + scopeOutN + ' 张本次不在范围（历史保留）' : '') +
-                    (gone ? '，' + gone + ' 张已不在学习记录中（历史保留）' : ''));
+                    (gone ? '，⚠️ ' + gone + ' 张对应的知识点已从知识树消失' : ''));
+                /* ★ 需求 3（Tom 2026-10-08）：报完数**顺手给一键删除** ——
+                   旧行为是「历史保留」、永不清理，这些卡只会一直挂在列表里。 */
+                try { fcOfferCleanOrphan(); } catch (_e) {}
             }
             return state.cardCfg.lastResult;
         }
@@ -15307,6 +15316,99 @@ if (document.readyState === 'loading') {
             fcRender();
             showToast('🧹 已清理 ' + list.length + ' 张无来源的卡（可点「🗑 恢复已删除」找回）');
         }
+        /* ══════════════════════════════════════════════════════════════
+           ★ 需求 3（Tom 2026-10-08）：清理「知识点已从知识树消失」的卡。
+           ──────────────────────────────────────────────────────────────
+           与紧邻的 fcNoSrcCards 是**两个不同口径**，别混：
+             fcNoSrcCards  → 这张卡的**来源学习记录**没了（列表里写「未关联记录」）
+             fcOrphanCards → 这个**知识点节点**不在知识树上了（记录里把那级删了 / 改了名）
+           两者可能同时命中，也可能各自独立命中。
+
+           为什么只清 orphan、不清 scopeOut（Tom 10-08 裁定）：
+             orphan   = 树上真的没有这个节点了 —— 卡面文字永远对不上任何东西，是死内容；
+             scopeOut = 节点还在树上、只是本次不在出题范围（没学到 / 层级范围外）——
+                        删了就是真丢内容，它的「历史保留」是对的。
+           ══════════════════════════════════════════════════════════════ */
+        function fcOrphanCards() {
+            fcState();
+            return fcVisibleCards().filter(function (c) {
+                if (!c || c.manual) return false;
+                return !!c.orphan;
+            });
+        }
+
+        // 实际执行删除（打标记，不真删）—— 供确认弹窗与生成后的提示共用
+        function fcCleanOrphanCards(list) {
+            const arr = Array.isArray(list) ? list : fcOrphanCards();
+            if (!arr.length) return 0;
+            const today = dateToStr(new Date());
+            arr.forEach(function (c) { c.deleted = true; c.deletedAt = today; });
+            saveData();
+            fcRender();
+            return arr.length;
+        }
+
+        // 弹窗里的摘要（复用 fcNoSrcGroups：按 科目 / 章 / 节 归堆，口径与列表一致）
+        function fcOrphanHead(list) {
+            const gs = fcNoSrcGroups(list);
+            return {
+                head: gs.slice(0, 6).map(function (x) { return '· ' + x.label + '：' + x.n + ' 张'; }).join('\n'),
+                more: gs.length > 6 ? ('\n· …… 另有 ' + (gs.length - 6) + ' 处') : ''
+            };
+        }
+
+        // 顶部按钮入口：显式点 → 弹确认再删
+        function fcCleanOrphan() {
+            const list = fcOrphanCards();
+            if (!list.length) { showToast('没有需要清理的卡片'); return; }
+            const s = fcOrphanHead(list);
+            if (!confirm('删除 ' + list.length + ' 张「知识点已从知识树消失」的卡？\n\n' + s.head + s.more +
+                '\n\n说明：只是打「已删除」标记 —— 不再出现在列表与复习轮转里；\n' +
+                '复习历史与笔记不会丢，顶部「🗑 恢复已删除」随时可以找回。')) return;
+            const n = fcCleanOrphanCards(list);
+            showToast('🧹 已删除 ' + n + ' 张失效卡（可点「🗑 恢复已删除」找回）');
+        }
+
+        /* ★ 需求 3：点「⚡ 生成 / 更新」后发现失效卡 → 主动提示 + 一键删除。
+           —— 为什么不在 fcBuild 里直接删：复习历史与笔记挂在这张卡上，
+              删除必须是用户的显式决定，不能由一次「生成」顺带做掉。 */
+        function fcOfferCleanOrphan() {
+            const list = fcOrphanCards();
+            if (!list.length) return;
+            const s = fcOrphanHead(list);
+            if (!confirm('注意：有 ' + list.length + ' 张卡的知识点在知识树里已不存在（被删除或改名）。\n\n' +
+                s.head + s.more +
+                '\n\n是否现在删除这些卡？\n' +
+                '· 确定：打「已删除」标记 —— 不再出现在列表与复习轮转里；\n' +
+                '· 取消：先保留，顶部「🧹 清理失效卡 (N)」随时可点。')) return;
+            const n = fcCleanOrphanCards(list);
+            showToast('🧹 已删除 ' + n + ' 张失效卡（可点「🗑 恢复已删除」找回）');
+        }
+
+        // 与 fcSyncNoSrcBtn 同一套做法：0 张就摘掉按钮，>0 挂上并刷新文案
+        function fcSyncOrphanBtn(n) {
+            const head = document.querySelector('#fcWrap .fc-head');
+            if (!head) return;
+            const cnt = (typeof n === 'number') ? n : fcOrphanCards().length;
+            let btn = document.getElementById('fcOrphanBtn');
+            if (!cnt) { if (btn && btn.parentNode) btn.parentNode.removeChild(btn); return; }
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.type = 'button';
+                btn.id = 'fcOrphanBtn';
+                btn.className = 'fc-btn';
+                btn.addEventListener('click', fcCleanOrphan);
+                // 排在「清理无来源的卡」左边：两个清理入口挨在一起，用户一眼看到一对
+                const ref = document.getElementById('fcNoSrcBtn') || document.getElementById('fcBulkDelBtn');
+                if (ref && ref.parentNode) ref.parentNode.insertBefore(btn, ref);
+                else head.appendChild(btn);
+            }
+            btn.textContent = '🧹 清理失效卡 (' + cnt + ')';
+            btn.title = '这 ' + cnt + ' 张卡的知识点已经不在知识树上了（记录里把那一级删掉或改了名），' +
+                '卡面文字再也对不上任何内容。\n点一下把它们标记为已删除：不再出现在列表与复习轮转里，' +
+                '复习历史与笔记保留，可「恢复已删除」找回。';
+        }
+
         // 数量为 0 时把按钮摘掉，>0 时挂上并更新文案（与 fcSyncRestoreBtn 同一套做法）
         function fcSyncNoSrcBtn(n) {
             const head = document.querySelector('#fcWrap .fc-head');
@@ -15962,6 +16064,10 @@ if (document.readyState === 'loading') {
             if (!body) return;
             const all = fcVisibleCards();
             const _noSrc = fcNoSrcCards();
+            /* ★ 需求 3（Tom 2026-10-08）：「节点已从知识树消失」的卡（orphan）——
+               与 _noSrc 是两个口径：_noSrc 看「来源学习记录还在不在」，
+               _orphan 看「这个知识点还在不在知识树上」（那一级被删 / 被改名都算）。 */
+            const _orphan = fcOrphanCards();
             const cfg = state.cardCfg;
             const from = Math.max(1, parseInt(cfg.from, 10) || 1);
             const to = Math.max(from, parseInt(cfg.to, 10) || 99);
@@ -15976,12 +16082,14 @@ if (document.readyState === 'loading') {
                            ? '范围＝整棵树'
                            : '范围＝学习记录' + (lr.skipped ? '（' + lr.skipped + ' 个节点还没学到）' : '')) +
                        ' · 复习周期与记忆曲线共用' +
-                       (_noSrc.length ? ' · ⚠️ ' + _noSrc.length + ' 张卡的来源记录已不存在' : ''))
+                       (_noSrc.length ? ' · ⚠️ ' + _noSrc.length + ' 张卡的来源记录已不存在' : '') +
+                       (_orphan.length ? ' · ⚠️ ' + _orphan.length + ' 张卡的知识点已从知识树消失' : ''))
                     : '尚未生成';
             }
             const hiddenN = fcHiddenCount();
             fcSyncUnhideBtn(hiddenN);
             try { fcSyncNoSrcBtn(_noSrc.length); } catch (e) {}
+            try { fcSyncOrphanBtn(_orphan.length); } catch (e) {}
             const badge = document.getElementById('fcDueBadge');
             if (badge) {
                 const n = fcPendingCards().length;
@@ -19819,7 +19927,8 @@ if (document.readyState === 'loading') {
             const nextTip = (d.round < ivs.length && rec)
                 ? ('；' + roundName(d.round + 1) + ' 排在 ' + memAddDays(rec.date, ivs[d.round]))
                 : '；这是最后一轮复习';
-            showToast('🔁 ' + roundName(d.round) + (d.skipped ? ' 已标记完成' : (' 已记录：🍅 ' + d.tomatoes + ' 个 · ' + (d.hours || 0) + 'h')) + nextTip);
+            showToast('🔁 ' + roundName(d.round) + ' 已保存并标记完成' + ((d.tomatoes || d.hours)
+                ? ('（🍅 ' + (d.tomatoes || 0) + ' 个 · ' + (d.hours || 0) + 'h）') : '') + nextTip);
         }
 
         /* ============================================================
@@ -23051,7 +23160,15 @@ if (document.readyState === 'loading') {
                 var texts = collectBodyTexts(kpn);
                 var sel = window.getSelection();
                 if (!texts.length) {
-                    var nr0 = document.createRange(); nr0.setStart(kpn, 0); nr0.collapse(true);
+                    /* ★ 2026-10-08（需求 5）：正文为空时，光标要落在**编号之后**。
+                       旧写法 setStart(kpn, 0) 的第 0 个位置在 .kp-noin（编号壳）**之前**，
+                       回车刚生成的新行正文为空 ⇒ 正好落进这一支 ⇒ 光标停在编号左边，
+                       用户接着打字得到「Xb. 」而不是「b. X」（与需求 5 的正相反）。
+                       有编号壳就把光标放到编号之后；没有壳（大纲档「一键编号」关着）才退回起点。 */
+                    var noin0 = kpn.querySelector('.kp-noin');
+                    var nr0 = document.createRange();
+                    if (noin0) nr0.setStartAfter(noin0); else nr0.setStart(kpn, 0);
+                    nr0.collapse(true);
                     sel.removeAllRanges(); sel.addRange(nr0); return true;
                 }
                 var acc = 0, tgt = texts[0], toff = 0;
@@ -23143,7 +23260,14 @@ if (document.readyState === 'loading') {
             if (idx >= flat.length) return false;
             var cur = flat[idx];
             var info = outlineCaretInfo();
-            var caretOff = info ? info.bodyOffset : (cur.n.t ? cur.n.t.length : 0);
+            /* ★ 2026-10-08（需求 5 同族缺陷）：行没被 .kpn 包裹时 bodyOffset 不可信。
+               空编辑器里键入的第一行是**裸 span**（没有 .kpn 包裹）⇒
+               outlineCaretInfo 里那段量正文偏移的 Range 根本没跑（它在 if (kpn) 里），
+               bodyOffset 停在初始值 0 ⇒ 下面 suf = txt.slice(0) 会把**整行文字**
+               复制进新行（实测：键入「甲」+ 回车 ⇒ "a. 甲" / "b. 甲"）。
+               退化处理：量不出偏移就按「光标在行尾」算 —— 宁可不断行，绝不复制内容。
+               ⚠️ 已包裹的行 info.kpn 非空，走原路径，行为一字不变。 */
+            var caretOff = (info && info.kpn) ? info.bodyOffset : (cur.n.t ? cur.n.t.length : 0);
             var txt = cur.n.t || '';
             cur.n.t = txt.slice(0, caretOff);
             var suf = txt.slice(caretOff);
@@ -24618,7 +24742,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008h</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008j</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
