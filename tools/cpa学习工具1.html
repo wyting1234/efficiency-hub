@@ -16819,12 +16819,15 @@ if (document.readyState === 'loading') {
             fcVisibleCards().forEach(function (c) {
                 if (pendIds[c.id]) return;          // 已被当日复习库收走（互斥）
                 if (doneCards[c.id]) return;        // 今天已完成 → 今天不再出现在任何待办库
-                const rv = fcReviewOf(c);
-                if (rv) {                           // ① 卡片级排期（自评过）：只看 nextAt
-                    if (rv.nextAt > today) out.push({ card: c, next: rv.nextAt });
-                    return;
-                }
-                // ② 记录级排期：名下所有**未完成**的轮次里，取最早的 sched
+                /* ★ 2026-10-09（需求 1）：自评过的卡不再是「还没到期」。
+                   以前这里会把 nextAt 在未来的自评卡也算进来 ⇒
+                   ⏰ 待复习视图的「剩余复习库」= 4 张，
+                   而 📚 复习库「还没到期」桶 = 2 张（它只收未自评的卡）
+                   —— 同一批卡、同一个词，两处给两个答案。
+                   自评卡的家是五档掌握库（那里能看到「下次 MM-DD」），
+                   算进这里就等于一卡两库、被数两遍。放到一个地方才对得上账。 */
+                if (fcReviewOf(c)) return;
+                // 记录级排期：名下所有**未完成**的轮次里，取最早的 sched
                 let next = null, hasDue = false;
                 fcSourceRecords(c).forEach(function (r) {
                     if (!r || r.addToMemory === false) return;      // 与 getReviewItems 同口径
@@ -16850,6 +16853,17 @@ if (document.readyState === 'loading') {
             const uns = fcUnScheduledCards().filter(fcMatch);
             const today = dateToStr(new Date());
             const up = fcUpcomingCards(today).filter(function (u) { return fcMatch(u.card); });
+            /* ★ 2026-10-09：评过星、既不今天到期也进不了剩余库的卡 ——
+               它们住在掌握度五档库，这里只告诉用户「还有 N 张在那边」，
+               免得把「没出现」误读成「丢了」。
+               ⚠️ 必须排在 pend / up / uns 三个 const 之后 —— 本函数把它们都声明在前面还好，
+                  但 today / up 是后加的，顺序一乱就撞 const 的 TDZ（v45d 踩过同一个坑）。 */
+            const _pendSet = {}; pend.forEach(function (c) { _pendSet[c.id] = 1; });
+            const _upSet = {}; up.forEach(function (u) { _upSet[u.card.id] = 1; });
+            const _unsSet = {}; uns.forEach(function (c) { _unsSet[c.id] = 1; });
+            const ratedN = fcVisibleCards().filter(fcMatch).filter(function (c) {
+                return !_pendSet[c.id] && !_upSet[c.id] && !_unsSet[c.id] && !!fcReviewOf(c);
+            }).length;
             let h = '<div class="fc-progress" style="margin:2px 0 8px;">' +
                 '没有自评过的卡，排期与上方「复习清单 / 月历」<b>共用</b>同一套艾宾浩斯节点（' +
                 getReviewIntervals().join(' / ') + ' 天）；' +
@@ -16873,7 +16887,9 @@ if (document.readyState === 'loading') {
                     ' 起 · 共 ' + days.length + ' 个到期日</span>',
                     fcCardsHTML(up.map(function (u) { return u.card; }), { noIndent: true }));
             } else {
-                h += '<div class="fc-empty" style="padding:10px 4px;">剩余复习库为空 —— 其余的卡要么今天已复习、要么还没有排期。</div>';
+                h += '<div class="fc-empty" style="padding:10px 4px;">剩余复习库为空 —— 其余的卡要么今天已复习、要么还没有排期' +
+                    (ratedN ? '，还有 ' + ratedN + ' 张已评星的卡在「📚 复习库 → 掌握度」里，那里能看到它们下次复习的日子' : '') +
+                    '。</div>';
             }
             if (uns.length) {
                 h += fcGroupHTML('fcuns', '🕐 还没有复习排期的卡（时间未知 → 难度高的排前面）',
@@ -22936,10 +22952,27 @@ if (document.readyState === 'loading') {
                 e.__kpVal = 1;
             } catch (err) {}
         }
+        /* ★ 2026-10-09（需求 2-1）：「行首编号到底显不显示」的唯一裁决点。
+           以前每个视角各自写判定、散落四处，默认视角那条分支压根没问开关，
+           于是开关只在大纲视角有效（用户在默认视角点「关」，编号原地不动）。
+           规则：default / outline 两个视角展示节点编号；
+           MD 视角的 «# » «- » 是 Markdown 语法标记，不属于本开关管辖。 */
+        function kpShow() {
+            if (mode === 'md') return true;
+            if (mode === 'outline') return !!outlineNo;
+            return !!kpOutlineNo;
+        }
+
         // 一行的行首前缀（缩进 + 编号 / MD 标记）—— 逐字对齐 toFlat / toOutline / toMD
         function viewPrefix(m, p, d) {
             var no = noStr(p);
-            if (m === 'outline') return new Array(d).join('  ') + (outlineNo && no ? (no + ' ') : '');
+            /* ★ 2026-10-09（需求 2-1）：编号开关以前只管大纲视角 ——
+               default 分支自己拼前缀、完全没读 outlineNo，所以用户在默认视角
+               点「编号：关」时编号原地不动（按钮却已经变成「关」）。
+               现在 default / outline 统一问 kpShow()。
+               ⚠️ md 分支刻意不走 kpShow：它的 «# » «- » 是 Markdown 语法，
+                  摘掉就不再能被 parse / toMD 认回来，与纯文本对不上账。 */
+            if (m === 'outline' || m === 'default') return new Array(d).join('  ') + (kpShow() && no ? (no + ' ') : '');
             if (m === 'md') return (d === 1) ? ('# ' + no + ' ') : (new Array(d).join('  ') + '- ' + no + ' ');
             return new Array(p.length).join('  ') + (no ? (no + ' ') : '');
         }
@@ -23291,10 +23324,20 @@ if (document.readyState === 'loading') {
                 }
                 var bodyOffset = 0;
                 if (kpn) {
+                    /* ★ 2026-10-09（需求 2-2）：无编号时不能退回「整个 chip 之后」。
+                       旧写法 rr.setStartAfter(noin || kpn) —— 没有编号壳时退化成
+                       setStartAfter(kpn)，起点落在正片 chip **之后**，而光标在 chip
+                       内部 ⇒ Range 起点跑到终点之后 ⇒ 被浏览器 collapse ⇒
+                       toString() 恒为 '' ⇒ bodyOffset 恒为 0 ⇒ atBodyStart 恒真。
+                       后果：行内任何位置按退格都被误判成「正文起点」，被
+                       outlineBackspaceBoundary 拦截去做边界处理，
+                       于是字符删不掉（B2）、空行也删不掉（C2）。
+                       正解：正文起点的定义与编号壳无关 ——
+                       有编号壳就取壳后第一位，没有就直接取 .kpn 的第 0 个子节点位置。 */
                     var noin = kpn.querySelector('.kp-noin');
                     try {
                         var rr = document.createRange();
-                        rr.setStartAfter(noin || kpn);
+                        if (noin) rr.setStartAfter(noin); else rr.setStart(kpn, 0);
                         rr.setEnd(sc, so);
                         bodyOffset = rr.toString().length;
                     } catch (ex) { bodyOffset = 0; }
@@ -23342,6 +23385,58 @@ if (document.readyState === 'loading') {
             var info = outlineCaretInfo();
             if (info) setOutlineCaret(info.idx, 0);
         }
+        /* ★ 2026-10-09（需求 2-2b）：按 <br> 把大纲框切成「行」，
+           rows[i] = 第 i 行的顶层节点，seps[i] = 第 i 行与第 i+1 行之间的那个 <br>。
+           domLines() 会把 <br> 丢掉，删行必须知道分隔符在哪，所以另起一套。 */
+        function outlineRows() {
+            var e = el('fKpOutline'); if (!e) return { rows: [], seps: [] };
+            var rows = [], seps = [], cur = [];
+            for (var i = 0; i < e.childNodes.length; i++) {
+                var nd = e.childNodes[i];
+                if (nd.nodeType === 1 && nd.tagName === 'BR') { rows.push(cur); seps.push(nd); cur = []; }
+                else cur.push(nd);
+            }
+            rows.push(cur);
+            return { rows: rows, seps: seps };
+        }
+        /* 第 idx 行是不是「视觉上的空行」：除缩进格外没有任何可见文字。
+           有内容就返回 false —— 绝不替浏览器吞掉用户正常的删除动作。 */
+        function outlineLineIsBlank(idx) {
+            var R = outlineRows();
+            if (idx < 0 || idx >= R.rows.length) return false;
+            var nodes = R.rows[idx];
+            for (var i = 0; i < nodes.length; i++) {
+                var nd = nodes[i];
+                if (nd.nodeType === 1 && nd.classList && nd.classList.contains('kpi')) continue;  // 缩进不算内容
+                if (String(nodePlain(nd) || '').replace(/^\s+|\s+$/g, '') !== '') return false;
+            }
+            return true;
+        }
+        /* 直接从 DOM 删掉第 idx 行（连同它相邻的那个 <br>），再回读 + 重绘。
+           只在「树里找不到这一行」并确认它是空行时才调用。 */
+        function outlineDropDomLine(idx) {
+            var e = el('fKpOutline'); if (!e) return false;
+            var R = outlineRows();
+            if (idx < 0 || idx >= R.rows.length) return false;
+            var nodes = R.rows[idx];
+            /* 分隔 <br>：优先删本行**前面**那个（上一行与本行之间），
+               首行没有前面的 <br>，就删它后面那个。 */
+            var br = (idx > 0) ? (R.seps[idx - 1] || null) : (R.seps.length ? R.seps[0] : null);
+            nodes.forEach(function (nd) { if (nd && nd.parentNode) nd.parentNode.removeChild(nd); });
+            if (br && br.parentNode) br.parentNode.removeChild(br);
+            viewDirty['outline'] = true;      // DOM 动了 → 回读
+            syncFromView();
+            writeViews();
+            /* 光标落回上一行行尾（删的是首行就落到新的首行首） */
+            if (idx > 0) {
+                var nf = []; walk(tree, function (n, p) { nf.push(n); });
+                var prev = nf[idx - 1];
+                setOutlineCaret(idx - 1, prev ? String(prev.t || '').length : 0);
+            } else {
+                setOutlineCaret(0, 0);
+            }
+            return true;
+        }
         /* ★ 2026-10-01（修复：顶层空行删不掉）：大纲视角行首退格的统一处理。
            判定顺序：① 当前行是「空行」（无正文文字、且无子节点）→ 直接删掉这一行，
              光标落到上一行末尾（若删的是首行则落到新的首行首；删空整棵树则补一行空白可编辑）。
@@ -23358,7 +23453,17 @@ if (document.readyState === 'loading') {
             var flat = [];
             walk(tree, function (n, p) { flat.push({ n: n, p: p.slice() }); });
             var idx = bi.idx;
-            if (idx < 0 || idx >= flat.length) return false;
+            /* ★ 2026-10-09（需求 2-2b）：**DOM 里有这一行、树里却没有**。
+               无编号时，回车产生的空行是一个纯空的 .kpn，回读 parse 时被当作
+               无关空行丢弃 ⇒ tree 少一行 ⇒ idx 顶到 flat 末尾 ⇒ 旧代码直接
+               return false，浏览器默认退格又删不掉空 span ⇒ 表现就是「退格没反应」。
+               有编号时不犯这个错：空行里有 .kp-noin 编号壳，回读时算有内容、节点保留。
+               这里把「树里找不到」的情况交给 DOM 层兜底，两档行为就此对齐。 */
+            if (idx >= flat.length) {
+                if (idx >= 0 && outlineLineIsBlank(idx)) return outlineDropDomLine(idx);
+                return false;
+            }
+            if (idx < 0) return false;
             var cur = flat[idx];
             var isEmpty = !(String(cur.n.t || '').trim());
             var hasChild = !!(cur.n.c && cur.n.c.length);
@@ -24616,8 +24721,10 @@ if (document.readyState === 'loading') {
             kpOutlineNo = !kpOutlineNo;
             try { store(KP_OUTLINE_NO_KEY, kpOutlineNo ? '1' : '0'); } catch (e) {}
             outlineNo = (mode === 'outline') ? kpOutlineNo : false;
+            syncFromView();
             writeViews();
             updateOutlineNoBtn();
+            updateStat();
         }
         // 按钮：对光标所在行升级/降级（outline 视角）。demote=true 降级，false 升级
         function outlineShiftCurrent(demote) {
@@ -24897,7 +25004,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008m</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008n</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
