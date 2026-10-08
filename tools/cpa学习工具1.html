@@ -13696,6 +13696,8 @@ if (document.readyState === 'loading') {
             saveData();
             renderMemoryView();
             renderGoalStatsPanel();   // 统计面板同步刷新
+            /* ★ v45b：勾选/取消都会改「今天已复习」豁免口径，闪卡侧同步重绘 */
+            try { if (typeof fcRefreshViews === 'function') fcRefreshViews(); } catch (e) {}
         }
 
         /* ============================================================
@@ -19800,6 +19802,10 @@ if (document.readyState === 'loading') {
             try { renderGoalStatsPanel(); } catch (e) {}
             try { if (typeof renderBoard === 'function') renderBoard(); } catch (e) {}
             try { if (typeof updateSeals === 'function') updateSeals(); } catch (e) {}
+            /* ★ v45b（Tom 10-08 反馈：点完成卡片没从待复习库出去）：数据层豁免已生效，
+               但这里原先不刷闪卡视图 —— ⏰ 角标/待复习列表/复习库分库停在旧渲染，
+               要切一次页签才消失。补 fcRefreshViews 让完成动作即时反映到闪卡。 */
+            try { if (typeof fcRefreshViews === 'function') fcRefreshViews(); } catch (e) {}
             const ivs = getReviewIntervals();
             const rec = (state.records || []).find(r => r.id === recordId);
             const nextTip = (d.round < ivs.length && rec)
@@ -24604,7 +24610,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008d</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
