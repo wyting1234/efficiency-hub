@@ -16665,24 +16665,41 @@ if (document.readyState === 'loading') {
         function fcPendingCards() {
             const today = dateToStr(new Date());
             const ids = {}, out = [];
+            /* ★ v45c（Tom 2026-10-08 二次反馈：「点完『保存并标记已完成』，卡还赖在待复习里」）：
+               当日豁免的粒度从「记录」提到「卡」。
+               doneToday 记的是「今天点过完成的**记录** id」，但一张卡是按 (科目,章,节)
+               关联该节**全部**学习记录的（见 fcSourceRecords —— 按坐标匹配，不按记录 id），
+               而一次完成只勾掉面板定位到的那**一条**记录的一个轮次。
+               于是同一节学过两三次时，其余记录的到期轮次仍会把这张卡拉回来 ——
+               用户看到的就是「点完完成，卡还在待复习」。先展开成卡集合，两段统一按卡豁免。 */
+            const doneToday = fcDoneTodayIds();
+            const doneCards = {};
+            Object.keys(doneToday).forEach(function (rid) {
+                const r = (state.records || []).filter(function (x) { return x && x.id === rid; })[0];
+                if (!r) return;
+                try { fcCardsForRecord(r).forEach(function (c) { if (c) doneCards[c.id] = 1; }); } catch (e) {}
+            });
             // ★ 需求 3：先收「自评过、且已到期」的卡 —— 它们的到期日由 card.review.nextAt
             //   决定（与月历 fcScheduleByDate 同源），跟记录级的轮次没关系。
+            //   ★ v45c：自评卡同样吃当日豁免 —— 今天点过完成的这张卡今天不再催，
+            //     它下一轮什么时候回来由「自评」自己推（fcApplyMastery 改 nextAt）。
             fcVisibleCards().forEach(function (c) {
                 const rv = fcReviewOf(c);
-                if (rv && rv.nextAt <= today && !ids[c.id]) { ids[c.id] = 1; out.push(c); }
+                if (rv && rv.nextAt <= today && !ids[c.id] && !doneCards[c.id]) { ids[c.id] = 1; out.push(c); }
             });
             /* ★ 2026-10-08（Tom）：「今天已点过完成」的记录，它的卡当天不再进待复习。
                一条记录常有多个轮次同时到期（补勾 / 过期堆积），原先点一次完成只勾掉
                一个轮次、其余轮次仍把整节的卡拉住 —— 卡看起来「点完完成还赖着不走」。
                豁免口径收口在 fcDoneTodayIds()（复习库的「今天已复习」库同源）；
-               只改闪卡这层显示口径；复习清单 / 月历 / 轮次统计仍走 getReviewItems，不受影响。 */
-            const doneToday = fcDoneTodayIds();
+               只改闪卡这层显示口径；复习清单 / 月历 / 轮次统计仍走 getReviewItems，不受影响。
+               ★ v45c：这条记录级豁免改由函数开头展开出的 doneCards 统一执行。 */
             // 其余卡：仍按记录级复习清单（已完成勾选语义不变）
             const items = (typeof getReviewItems === 'function') ? getReviewItems(today).pending : [];
             items.forEach(function (it) {
                 if (doneToday[it.record.id]) return;   // ★ 今天已点过完成的记录：今天不再催
                 fcCardsForRecord(it.record).forEach(function (c) {
                     if (ids[c.id]) return;
+                    if (doneCards[c.id]) return;    // ★ v45c：这张卡今天已经完成过，今天不再催
                     if (fcReviewOf(c)) return;      // 自评过的卡不再重复跟随记录级排期
                     ids[c.id] = 1; out.push(c);
                 });
@@ -24742,7 +24759,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008j</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008k</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
