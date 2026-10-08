@@ -2600,6 +2600,8 @@
 .fc-folder .ff-bar.f-l4 i { background: #7E8B5B; }
 .fc-folder .ff-bar.f-l5 i { background: #4F7A5E; }
                     .fc-folder .ff-bar.f-done i { background: #8FA3B8; }
+                    /* ★ v46（Tom 10-08）：点过完成但没评星 —— 与 f-done 区分（更灰、带紫调） */
+                    .fc-folder .ff-bar.f-unrated i { background: #A99BB5; }
 .fc-libcrumb { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 9px; padding: 4px 11px;
                border-radius: 999px; background: #F3EADD; border: 1px solid #E4D8C2;
                font-size: 12px; color: #5C4E3C; }
@@ -16406,7 +16408,7 @@ if (document.readyState === 'loading') {
            原先压成 掌握差 / 良好 / 优秀 三库，档位差被并掉看不见，现在五档各自成库。
 
            state 七库为什么**互斥**：先摘走「该复习的」（今天到期 or 压根没背过），
-           剩下的再按自评星级分档（未自评的卡：今天点过完成 → 「今天已复习」库，否则 → 待复习库）。
+           剩下的再按自评星级分档（未自评的卡：今天点过完成 → 「⭕ 已复习待评星」库，否则 → 待复习库；「✅ 今天已复习」只装点过完成**且已评星**的卡）。
            不会出现「既在待复习库、又在脱口而出库」这种同一张卡被数两遍的账。 */
         function fcMasteryTier(card) {
             const rv = fcReviewOf(card);
@@ -16436,6 +16438,7 @@ if (document.readyState === 'loading') {
                     const b = [
                         { key: 'due',  ico: '📥', name: '待复习库',       sub: '还没背过 · 或今天到期',           cls: 'f-due', cards: [] },
                         { key: 'done', ico: '✅', name: '今天已复习',     sub: '当天点过完成 · 明天起回到待复习',  cls: 'f-done', cards: [] },
+                        { key: 'unrated', ico: '⭕', name: '已复习待评星', sub: '点过完成但没评星 · 评一下才进掌握库', cls: 'f-unrated', cards: [] },
                         { key: 'l1',   ico: '🥀', name: '★ 完全不记得',   sub: '自评 1 星 · 优先抢救',            cls: 'f-l1',  cards: [] },
                         { key: 'l2',   ico: '😵', name: '★★ 印象模糊',    sub: '自评 2 星 · 趁热再过',            cls: 'f-l2',  cards: [] },
                         { key: 'l3',   ico: '🙂', name: '★★★ 勉强想起',   sub: '自评 3 星 · 正常节奏',            cls: 'f-l3',  cards: [] },
@@ -16449,7 +16452,12 @@ if (document.readyState === 'loading') {
                         const tier = fcMasteryTier(c);
                         /* 未自评的卡原兜底进 due —— 当日豁免的卡会跟着溜回去，
                            所以先问豁免：今天为它的记录点过完成，就落「今天已复习」库。 */
-                        if (tier === 'none') { (isExempt(c) ? idx.done : idx.due).cards.push(c); return; }
+                        if (tier === 'none') {
+                            /* ★ v46（Tom 10-08）：未评星的卡再分两种 ——
+                               当天点过完成 → 「⭕ 已复习待评星」（评一下才进掌握库）；
+                               还没碰过 / 今天到期 → 待复习库。 */
+                            (isExempt(c) ? idx.unrated : idx.due).cards.push(c); return;
+                        }
                         (idx[tier] || idx.due).cards.push(c);
                     });
                     return b;
@@ -24610,7 +24618,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008d</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008f</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
