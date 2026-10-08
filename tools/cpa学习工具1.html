@@ -16525,9 +16525,21 @@ if (document.readyState === 'loading') {
            （★★★★★ 脱口而出 … ★ 完全不记得，与反面屏自评 / 掌握程度下拉同一套口径），
            原先压成 掌握差 / 良好 / 优秀 三库，档位差被并掉看不见，现在五档各自成库。
 
-           state 七库为什么**互斥**：先摘走「该复习的」（今天到期 or 压根没背过），
-           剩下的再按自评星级分档（未自评的卡：今天点过完成 → 「⭕ 已复习待评星」库，否则 → 待复习库；「✅ 今天已复习」只装**当天点过完成且已评星**的卡，明天自动回到五档库）。
-           不会出现「既在待复习库、又在脱口而出库」这种同一张卡被数两遍的账。 */
+           ★ 2026-10-08 晚（Tom）：「待复习」这个词原先在**两个地方是两个数** ——
+           顶部页签角标 = fcPendingCards().length（**今天到期/过期**的卡），
+           而复习库「待复习库」桶 = pendIds ∪ 所有「没评过星且今天没完成」的卡。
+           后者把「下次复习日在明天以后」和「轮次全做完 / 卡没挂上记录」这两类
+           与今天无关的卡一并算了进去，于是角标 0、库里却是 2 张。
+
+           现在 state 维十库**互斥且完备**，一张卡只进一个：
+             📥 待复习库        今天到期（含过期）        ← pendIds（= 顶部角标，同一个数）
+             📅 还没到期        未评星 + 下次复习日在今天之后
+             ⚪ 没有下一次复习   未评星 + 轮次全做完 / 卡没挂上学习记录
+             ✅ 今天已复习      自评过 + 当天点过完成（明天自动回到五档库）
+             ⭕ 已复习待评星    未评星 + 当天点过完成（评一下才进掌握库）
+             🥀😵🙂🌿🏆 五档    自评 1–5 星（不因「还没到期」而搬家 —— 那是它们的家）
+           刻意让自评卡留在五档掌握库，不进「还没到期」：否则同一张卡会在
+           两个库里各出现一次，就是 09-30 定下要避免的「数两遍」。 */
         function fcMasteryTier(card) {
             const rv = fcReviewOf(card);
             if (!rv) return 'none';                       // 没自评过 = 还没进复习流程
@@ -16553,10 +16565,17 @@ if (document.readyState === 'loading') {
                     const isExempt = function (c) {
                         return fcSourceRecords(c).some(function (r) { return doneIds[r.id]; });
                     };
+                    /* ★ 2026-10-08 晚：三个「到期状态」桶的数据源，与 ⏰ 待复习 / 📅 剩余 两个视图同源 */
+                    const upIds = {};
+                    if (typeof fcUpcomingCards === 'function') {
+                        fcUpcomingCards().forEach(function (u) { if (u && u.card) upIds[u.card.id] = 1; });
+                    }
                     const b = [
-                        { key: 'due',  ico: '📥', name: '待复习库',       sub: '还没背过 · 或今天到期',           cls: 'f-due', cards: [] },
-                        { key: 'done', ico: '✅', name: '今天已复习',     sub: '当天点过完成且已评星 · 明天回到掌握库',  cls: 'f-done', cards: [] },
-                        { key: 'unrated', ico: '⭕', name: '已复习待评星', sub: '点过完成但没评星 · 评一下才进掌握库', cls: 'f-unrated', cards: [] },
+                        { key: 'due',      ico: '📥', name: '待复习库',       sub: '今天到期（含过期）· 与顶部「待复习」同一个数', cls: 'f-due',    cards: [] },
+                        { key: 'upcoming', ico: '📅', name: '还没到期',       sub: '未评星 · 下次复习日在今天之后',              cls: 'f-none',   cards: [] },
+                        { key: 'unsched',  ico: '⚪', name: '没有下一次复习', sub: '轮次全做完了 / 卡没挂上学习记录',            cls: 'f-none',   cards: [] },
+                        { key: 'done',     ico: '✅', name: '今天已复习',     sub: '当天点过完成且已评星 · 明天回到掌握库',      cls: 'f-done',   cards: [] },
+                        { key: 'unrated',  ico: '⭕', name: '已复习待评星',   sub: '点过完成但没评星 · 评一下才进掌握库',        cls: 'f-unrated', cards: [] },
                         { key: 'l1',   ico: '🥀', name: '★ 完全不记得',   sub: '自评 1 星 · 优先抢救',            cls: 'f-l1',  cards: [] },
                         { key: 'l2',   ico: '😵', name: '★★ 印象模糊',    sub: '自评 2 星 · 趁热再过',            cls: 'f-l2',  cards: [] },
                         { key: 'l3',   ico: '🙂', name: '★★★ 勉强想起',   sub: '自评 3 星 · 正常节奏',            cls: 'f-l3',  cards: [] },
@@ -16566,17 +16585,24 @@ if (document.readyState === 'loading') {
                     const idx = {};
                     b.forEach(function (x) { idx[x.key] = x; });
                     all.forEach(function (c) {
+                        /* ① 今天到期（含过期）→ 待复习库。
+                              数据源就是 fcPendingCards()（pendIds 由它算来），
+                              所以这个桶的张数必然等于顶部「⏰ 待复习」角标。 */
                         if (pendIds[c.id]) { idx.due.cards.push(c); return; }
                         const tier = fcMasteryTier(c);
-                        /* 未自评的卡原兜底进 due —— 当日豁免的卡会跟着溜回去，
-                           所以先问豁免：今天为它的记录点过完成，就落「今天已复习」库。 */
+                        /* ② 没评过星：先看今天完成过没有，再按「还有没有下一次复习任务」
+                              分「还没到期」与「没有下一次复习」。
+                              原先这两类一律兜底进 due —— 就是两个数字对不上的根源。 */
                         if (tier === 'none') {
-                            /* ★ v46（Tom 10-08）：未评星的卡再分两种 ——
-                               当天点过完成 → 「⭕ 已复习待评星」（评一下才进掌握库）；
-                               还没碰过 / 今天到期 → 待复习库。 */
-                            (isExempt(c) ? idx.unrated : idx.due).cards.push(c); return;
+                            if (isExempt(c)) { idx.unrated.cards.push(c); return; }
+                            (upIds[c.id] ? idx.upcoming : idx.unsched).cards.push(c);
+                            return;
                         }
-                        (isExempt(c) ? idx.done : (idx[tier] || idx.due)).cards.push(c);
+                        /* ③ 自评过：今天完成过 → 今天已复习；否则留在它那一档掌握库。
+                              刻意不因「还没到期」把自评卡挪去「还没到期」——
+                              五档掌握库才是它们的家，挪走会让掌握库空掉，
+                              也会让同一张卡在两个库里各出现一次。 */
+                        (isExempt(c) ? idx.done : (idx[tier] || idx.unsched)).cards.push(c);
                     });
                     return b;
                 }
@@ -16640,7 +16666,8 @@ if (document.readyState === 'loading') {
                 h += '<div class="fc-folder' + (on ? ' on' : '') + '" data-fcfolder="' + fcLibEsc(b.key) + '" title="点开看这个库里的卡片">' +
                     '<div class="ff-top"><span class="ff-ico">' + b.ico + '</span><span class="ff-name">' + fcLibEsc(b.name) + '</span></div>' +
                     '<div class="ff-count"><b>' + b.cards.length + '</b> 张 · 占 ' + pct + '%</div>' +
-                    '<div class="ff-sub">' + fcLibEsc(b.sub) + (dueN ? ' · ⏰ 待复习 ' + dueN + ' 张' : '') + '</div>' +
+                    /* ★ 2026-10-08 晚：待复习库自己就是那个数，别在副标题里再报一遍 */
+                    '<div class="ff-sub">' + fcLibEsc(b.sub) + ((dueN && b.key !== 'due') ? ' · ⏰ 待复习 ' + dueN + ' 张' : '') + '</div>' +
                     '<div class="ff-bar ' + b.cls + '"><i style="width:' + Math.max(pct, 3) + '%"></i></div>' +
                     '</div>';
             });
@@ -24870,7 +24897,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008l</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008m</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
