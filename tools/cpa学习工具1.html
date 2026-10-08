@@ -16234,13 +16234,23 @@ if (document.readyState === 'loading') {
                 return String(b.date || '').localeCompare(String(a.date || ''));
             });
             if (!recs.length || typeof openReviewPanel !== 'function') { fcDetail(card.id); return; }
-            const rec = recs[0];
+            /* ★ v45d · 需求 1：面板落点必须与待复习列表**同源**。
+               列表按 sched 升序催任务，所以这里也定位到「最早到期的那条记录的那个轮次」，
+               不再一律取日期最新的那条 —— 否则点列表最上面那张卡，勾掉的是另一条记录的
+               轮次：列表那条任务原封不动，卡也照样被其余记录拽回待复习（v45c 的可见症状上
+               一版已经按住，但数据层的错位留到现在才真正修掉）。 */
+            const task = (typeof fcDueTaskOf === 'function') ? fcDueTaskOf(card) : null;
+            const rec = (task && task.record) || recs[0];
             const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [];
             const doneKeys = {};
             (state.reviewDone || []).forEach(function (x) { doneKeys[x.recordId + '#' + x.round] = 1; });
-            let round = Math.max(1, ivs.length);
-            for (let i = 0; i < ivs.length; i++) {          // 第一个还没做完的轮次
-                if (!doneKeys[rec.id + '#' + (i + 1)]) { round = i + 1; break; }
+            let round = (task && task.round) || 0;
+            if (!round) {
+                // 没有到期任务（例如从章节视图点进来）→ 退回老口径：第一个还没做完的轮次
+                round = Math.max(1, ivs.length);
+                for (let i = 0; i < ivs.length; i++) {
+                    if (!doneKeys[rec.id + '#' + (i + 1)]) { round = i + 1; break; }
+                }
             }
             const kps = rec.knowledgePoints || [];
             const nm = fcNormText(card.q);
@@ -16661,6 +16671,51 @@ if (document.readyState === 'loading') {
             return ids;
         }
 
+        /* ★ v45d：「今天点过完成」的**卡**集合 —— 当日复习库与剩余复习库共用这把豁免尺。
+           fcDoneTodayIds() 收的是「记录 id」，而一张卡按 (科目,章,节) 关联该节**全部**
+           学习记录（见 fcSourceRecords —— 按坐标匹配，不按记录 id），所以必须先按记录
+           展开成卡，豁免才不会漏半边：勾掉一条记录 ≠ 这张卡今天的活干完了。 */
+        function fcDoneTodayCardIds() {
+            const doneToday = fcDoneTodayIds();
+            const cards = {};
+            Object.keys(doneToday).forEach(function (rid) {
+                const r = (state.records || []).filter(function (x) { return x && x.id === rid; })[0];
+                if (!r) return;
+                try { fcCardsForRecord(r).forEach(function (c) { if (c) cards[c.id] = 1; }); } catch (e) { }
+            });
+            return cards;
+        }
+
+        /* ★ v45d · 需求 1（数据层错位）：这张卡今天该复习「哪条记录的哪一个轮次」。
+           错位长这样 —— 待复习列表按 sched **升序**催最早的记录（getReviewItems().pending），
+           而 fcOpenReview 一律取日期**最新**的那条（recs[0]）。于是点列表最上面那张卡，
+           面板打开的其实是另一条记录的轮次：勾掉之后，列表最上面那条任务还在，
+           卡也因为别的记录仍到期而赖着不走 —— 左右两边对不上账。
+
+           修法是把「列表怎么选任务」抽成一个函数，列表与面板共用同一来源：
+             ① 自评过的卡走卡片级排期（card.review.nextAt），没有记录级轮次 → 返回 null；
+             ② 否则从 pending 清单里取**第一条**名下有这张卡的到期轮次 —— pending 在
+                getReviewItems 里已按 (sched, round) 升序排好，天然就是「最早到期」那条；
+             ③ 连一个到期轮次都没有（例如从章节视图点进来）→ 返回 null，由调用方退回老口径。 */
+        function fcDueTaskOf(card) {
+            if (!card) return null;
+            try {
+                const today = dateToStr(new Date());
+                const recs = fcSourceRecords(card);
+                if (!recs.length) return null;
+                const own = {};
+                recs.forEach(function (r) { own[r.id] = 1; });
+                const items = (typeof getReviewItems === 'function') ? getReviewItems(today).pending : [];
+                for (let i = 0; i < items.length; i++) {
+                    const it = items[i];
+                    if (it && it.record && own[it.record.id]) {
+                        return { record: it.record, round: it.round, sched: it.sched };
+                    }
+                }
+            } catch (e) { }
+            return null;
+        }
+
         // ---------- 待复习（与记录复习同一套排期） ----------
         function fcPendingCards() {
             const today = dateToStr(new Date());
@@ -16673,12 +16728,7 @@ if (document.readyState === 'loading') {
                于是同一节学过两三次时，其余记录的到期轮次仍会把这张卡拉回来 ——
                用户看到的就是「点完完成，卡还在待复习」。先展开成卡集合，两段统一按卡豁免。 */
             const doneToday = fcDoneTodayIds();
-            const doneCards = {};
-            Object.keys(doneToday).forEach(function (rid) {
-                const r = (state.records || []).filter(function (x) { return x && x.id === rid; })[0];
-                if (!r) return;
-                try { fcCardsForRecord(r).forEach(function (c) { if (c) doneCards[c.id] = 1; }); } catch (e) {}
-            });
+            const doneCards = (typeof fcDoneTodayCardIds === 'function') ? fcDoneTodayCardIds() : {};
             // ★ 需求 3：先收「自评过、且已到期」的卡 —— 它们的到期日由 card.review.nextAt
             //   决定（与月历 fcScheduleByDate 同源），跟记录级的轮次没关系。
             //   ★ v45c：自评卡同样吃当日豁免 —— 今天点过完成的这张卡今天不再催，
@@ -16720,22 +16770,83 @@ if (document.readyState === 'loading') {
             return out;
         }
 
+        /* ★ v45d · 需求 2（Tom 2026-10-08）：待复习库切成「当日复习库」与「剩余复习库」。
+           剩余复习库 = **还没到期**的卡 —— 排期已生成，但下次复习日在今天之后。
+           三个库互斥，一张卡今天只可能出现在一个地方：
+             · 当日复习库：今天到期（含过期）且未完成   ← fcPendingCards()
+             · 剩余复习库：下次复习日 > 今天            ← fcUpcomingCards()
+             · 无排期：名下一个可用轮次都没有           ← fcUnScheduledCards()
+           今天点过「已完成」的卡两个库都不进（吃 v45c 那把 doneCards 豁免），今天的事就算结了；
+           它下一次什么时候回来，仍由记录级轮次 / 自评的 nextAt 决定 —— 不需要额外记账。 */
+        function fcUpcomingCards(today) {
+            today = today || dateToStr(new Date());
+            const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [];
+            const rvOv = state.reviewOverrides || {};
+            const rvDel = state.reviewDeleted || {};
+            const doneKeys = {};
+            (state.reviewDone || []).forEach(function (x) { doneKeys[x.recordId + '#' + x.round] = 1; });
+            const doneCards = (typeof fcDoneTodayCardIds === 'function') ? fcDoneTodayCardIds() : {};
+            let pendIds = {};
+            try { fcPendingCards().forEach(function (c) { pendIds[c.id] = 1; }); } catch (e) { }
+            const out = [];
+            fcVisibleCards().forEach(function (c) {
+                if (pendIds[c.id]) return;          // 已被当日复习库收走（互斥）
+                if (doneCards[c.id]) return;        // 今天已完成 → 今天不再出现在任何待办库
+                const rv = fcReviewOf(c);
+                if (rv) {                           // ① 卡片级排期（自评过）：只看 nextAt
+                    if (rv.nextAt > today) out.push({ card: c, next: rv.nextAt });
+                    return;
+                }
+                // ② 记录级排期：名下所有**未完成**的轮次里，取最早的 sched
+                let next = null, hasDue = false;
+                fcSourceRecords(c).forEach(function (r) {
+                    if (!r || r.addToMemory === false) return;      // 与 getReviewItems 同口径
+                    ivs.forEach(function (iv, i) {
+                        const key = r.id + '#' + (i + 1);
+                        if (rvDel[key] || doneKeys[key]) return;    // 已删除 / 已完成 → 不再是未来的任务
+                        const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
+                        if (sched <= today) hasDue = true;          // 今天已到期 → 归当日库，不进这里
+                        else if (!next || sched < next) next = sched;
+                    });
+                });
+                if (hasDue) return;                 // 互斥：已经在当日复习库里了
+                if (next) out.push({ card: c, next: next });
+            });
+            out.sort(function (a, b) { return a.next.localeCompare(b.next); });
+            return out;
+        }
+
         function fcDueHTML() {
             const all = fcVisibleCards();
             if (!all.length) return fcEmptyHTML(fcNoCardsHTML());
             const pend = fcPendingCards().filter(fcMatch);
             const uns = fcUnScheduledCards().filter(fcMatch);
             const today = dateToStr(new Date());
+            const up = fcUpcomingCards(today).filter(function (u) { return fcMatch(u.card); });
             let h = '<div class="fc-progress" style="margin:2px 0 8px;">' +
                 '没有自评过的卡，排期与上方「复习清单 / 月历」<b>共用</b>同一套艾宾浩斯节点（' +
                 getReviewIntervals().join(' / ') + ' 天）；' +
-                '<b>自评过掌握程度</b>的卡改用<b>卡片级排期</b>（下次复习日期由自评值算出，见卡片反面）。</div>';
+                '<b>自评过掌握程度</b>的卡改用<b>卡片级排期</b>（下次复习日期由自评值算出，见卡片反面）。' +
+                ' <b>当日库</b>今天到期就要看，<b>剩余库</b>是今天之后才排到的卡 —— 两边互斥，一张卡不重复出现。</div>';
+            // ---- ① 当日复习库：今天到期（含过期）且未完成 ----
             if (pend.length) {
-                h += fcGroupHTML('fcpending', '⏰ 今天该复习的闪卡',
-                    '<span class="fc-gmeta">' + pend.length + ' 张 · 来自 ' + today + ' 的复习清单</span>',
+                h += fcGroupHTML('fcpending', '⏰ 当日复习库',
+                    '<span class="fc-gmeta">' + pend.length + ' 张 · ' + today + ' 到期</span>',
                     fcCardsHTML(pend, { noIndent: true }));
             } else {
-                h += '<div class="fc-empty" style="padding:10px 4px;">今天没有到期的复习任务 —— 到上方「📋 复习清单」或月历里安排。</div>';
+                h += '<div class="fc-empty" style="padding:10px 4px;">当日复习库已清空 —— 今天到期（含过期）的卡都复习完了。</div>';
+            }
+            // ---- ② 剩余复习库：还没到期（下次复习日在今天之后） ----
+            if (up.length) {
+                const dayN = {};
+                up.forEach(function (u) { dayN[u.next] = (dayN[u.next] || 0) + 1; });
+                const days = Object.keys(dayN).sort();
+                h += fcGroupHTML('fcupcoming', '📅 剩余复习库 · 还没到期',
+                    '<span class="fc-gmeta">' + up.length + ' 张 · 最近 ' + days[0].slice(5) +
+                    ' 起 · 共 ' + days.length + ' 个到期日</span>',
+                    fcCardsHTML(up.map(function (u) { return u.card; }), { noIndent: true }));
+            } else {
+                h += '<div class="fc-empty" style="padding:10px 4px;">剩余复习库为空 —— 其余的卡要么今天已复习、要么还没有排期。</div>';
             }
             if (uns.length) {
                 h += fcGroupHTML('fcuns', '🕐 还没有复习排期的卡（时间未知 → 难度高的排前面）',
@@ -24759,7 +24870,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008k</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008l</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
