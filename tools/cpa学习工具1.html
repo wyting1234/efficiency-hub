@@ -562,6 +562,50 @@
             color: var(--text-secondary);
         }
         .form-body { margin-top: 18px; }
+
+        /* ===== ★ v54（Tom 2026-10-09）：面板全屏 ——「✏️ 记录学习」表单 /「🌳 知识树」 =====
+           页内全屏：面板自己 fixed 铺满视口，body.fs-on 把侧栏 + 顶部页签栏收走。
+           刻意**不用**浏览器 Fullscreen API：手机端（iOS 尤其）对非视频元素支持参差，
+           还会多一层权限提示，且系统级退出（ESC / 手势）后按钮态容易不同步；
+           页内全屏跨设备一套行为，退出方式也由页面自己说了算。 ===== */
+        .fs-btn {
+            flex: 0 0 auto;
+            font-size: 13px;
+            line-height: 1;
+            padding: 5px 9px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            transition: color var(--transition), border-color var(--transition), background var(--transition);
+        }
+        .fs-btn:hover { color: var(--primary); border-color: var(--primary); }
+        .fs-btn.on { color: #fff; background: var(--primary); border-color: var(--primary); }
+        .form-toggle .ft-right { display: flex; align-items: center; gap: 10px; }
+        /* 知识树是 .fc-btn 风格，尺寸跟它那一排对齐 */
+        .kt-head .fs-btn { padding: 6px 10px; border-radius: var(--radius-sm); background: transparent; }
+
+        /* 全屏进行中：其它出口先让位，免得「全屏了却还能点到别处」造成错觉 */
+        body.fs-on { overflow: hidden; }
+        body.fs-on .sidebar,
+        body.fs-on .view-tabs { display: none !important; }
+        .is-fs {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 9000 !important;
+            width: auto !important;
+            height: auto !important;
+            max-width: none !important;
+            max-height: none !important;
+            margin: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            background: var(--bg) !important;
+            overflow: auto !important;
+            padding: 14px 18px 24px !important;
+        }
+        @media (max-width: 640px) { .is-fs { padding: 10px 10px 18px !important; } }
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -4378,7 +4422,12 @@
         <div class="form-container collapsed" id="formContainer">
             <div class="form-toggle" id="formToggle">
                 <h3><span class="icon">✏️</span> 记录学习</h3>
-                <span class="form-toggle-icon">▶</span>
+                <span class="ft-right">
+                    <!-- ★ v54（Tom 2026-10-09）：全屏编辑 —— 表单铺满整屏，侧栏与顶部页签栏让位。
+                         点它时 stopPropagation：标题栏整块是「折叠 / 展开」热区，别顺手把表单收了。 -->
+                    <button type="button" class="fs-btn" id="recFsBtn" title="全屏编辑：把「记录学习」铺满整屏（侧栏与顶部页签栏让位）。再点一次 ⛶ 或按 Esc 恢复">⛶</button>
+                    <span class="form-toggle-icon">▶</span>
+                </span>
             </div>
             <div class="form-body" id="formBody">
                 <form id="recordForm" autocomplete="off" novalidate>
@@ -4793,6 +4842,8 @@
                     <h3>🌳 知识树</h3>
                     <span class="kt-sub" id="ktStat">尚未导入知识点</span>
                     <span class="fc-spacer"></span>
+                    <!-- ★ v54（Tom 2026-10-09）：知识树全屏 —— 铺满整屏（侧栏与顶部页签栏让位）。 -->
+                    <button type="button" class="fc-btn fs-btn" id="ktFsBtn" title="全屏：知识树铺满整屏（侧栏与顶部页签栏让位）。再点一次或按 Esc 恢复">⛶ 全屏</button>
                     <button type="button" class="fc-btn" id="ktExpandAll" title="展开当前选中节的所有节点">＋ 全部展开</button>
                     <button type="button" class="fc-btn" id="ktCollapseAll" title="收拢当前选中节的所有节点">－ 全部收拢</button>
                     <!-- ★ 2026-09-19（需求Z2）：打印 / 导出 PDF / 导出 MD。
@@ -8059,6 +8110,9 @@
             const toggle = document.getElementById('formToggle');
             toggle.addEventListener('click', () => {
                 container.classList.toggle('collapsed');
+                /* ★ v54：收起表单时若正处于全屏，先把全屏收掉 ——
+                   否则面板还是 fixed 满屏、内容却收起来了 = 一整屏空白，找不着北。 */
+                if (container.classList.contains('collapsed')) { try { fsExit(); } catch (e) {} }
                 if (!container.classList.contains('collapsed')) {
                     document.getElementById('fCourse').value = state.currentCourse;
                     /* ★ v52：展开表单 → 默认落到上次记录的章 / 节（科目仍以当前正在看的为准） */
@@ -8497,6 +8551,64 @@
                 });
             });
             ['fProblemSolving', 'fMemoryNetwork', 'fAiQA', 'fKpQuick'].forEach(bindAutoNumber);
+        })();
+
+        /* ================= ★ v54（Tom 2026-10-09）：面板全屏 =================
+           两个入口：「✏️ 记录学习」标题栏的 ⛶、「🌳 知识树」工具条的 ⛶ 全屏。
+           ── 口径 ──
+           · 「全屏」= 页内全屏：面板自身 position:fixed / inset:0 铺满视口，
+             body 挂 .fs-on 收起侧栏与顶部页签栏。理由见 CSS 段注释。
+           · 同一时刻只允许一块全屏 —— 两块都是 fixed，叠在一起就分不清谁在上面；
+             开新的先收旧的。
+           · 退出：再点同一个按钮 / 按 Esc / 把表单折叠（折叠 + 全屏 = 一整屏空白）。
+           · 表单处于折叠态时点全屏 → 先走 #formToggle 那条既有展开路径再全屏，
+             不绕过它（展开时要落的章 / 节、要问的「是否自动计时」都还在那里面）。 */
+        var _fsOwner = null;
+        function fsExit() {
+            if (!_fsOwner) return;
+            try {
+                if (_fsOwner.el) _fsOwner.el.classList.remove('is-fs');
+                if (_fsOwner.btn) _fsOwner.btn.classList.remove('on');
+            } catch (e) {}
+            document.body.classList.remove('fs-on');
+            _fsOwner = null;
+        }
+        function fsToggle(el, btn) {
+            if (!el) return;
+            if (el.classList.contains('is-fs')) { fsExit(); return; }
+            fsExit();
+            el.classList.add('is-fs');
+            document.body.classList.add('fs-on');
+            if (btn) btn.classList.add('on');
+            _fsOwner = { el: el, btn: btn };
+            try { el.scrollTop = 0; } catch (e) {}   // 别停在上次滚动位置
+        }
+        (function bindPanelFullscreen() {
+            var rb = document.getElementById('recFsBtn');
+            if (rb) rb.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                ev.preventDefault();
+                var fc = document.getElementById('formContainer');
+                if (!fc) return;
+                if (!fc.classList.contains('is-fs') && fc.classList.contains('collapsed')) {
+                    var tg = document.getElementById('formToggle');
+                    if (tg) tg.click();              // 走既有展开路径
+                }
+                fsToggle(fc, rb);
+            });
+            var kb = document.getElementById('ktFsBtn');
+            if (kb) kb.addEventListener('click', function (ev) {
+                ev.stopPropagation();
+                fsToggle(document.getElementById('ktWrap') || document.getElementById('view-kptree'), kb);
+            });
+            document.addEventListener('keydown', function (ev) {
+                if (ev.key !== 'Escape' || !_fsOwner) return;
+                var t = ev.target;
+                /* 输入框 / 富文本里的 Esc 先让给「失焦」（页面既有行为，见 19835 行那处）——
+                   否则想取消输入的人会连全屏一起被收掉。再按一次即退全屏。 */
+                if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+                fsExit();
+            });
         })();
 
         function handleFormSubmit(e) {
@@ -25190,7 +25302,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009h</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009i</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
