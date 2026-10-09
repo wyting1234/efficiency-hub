@@ -21597,30 +21597,51 @@ if (document.readyState === 'loading') {
     }
     function scStructSections(course,chNo){
       const ch=parseInt(chNo,10)||1;
-      let names=null;
+      /* ★ 2026-10-09（第五十五轮）：节名必须与「学习记录」表单的 #fSection 同源。
+         旧实现把「项目结构原始数组 proj.sectionNames[course][ch]」放在最优先 ——
+         而「批量添加 / 导入文件」写节名时落的是 targetOverrides[course|ch|sec].name，
+         sectionNames 里只留一个占位空串（见 applyGuideBulk）。于是：
+           表单 #fSection（走 getSectionName → GUIDE_DATA，含 overrides）→ 有名字；
+           自检 #sc-secSubSel（走 sectionNames 原始数组）→ 「第1节」，名字丢了。
+         章名没这问题，因为 chapterNames 两边都读同一个源 —— 用户看到的就是
+         「章同步了、节没同步」。这里改成与表单完全同一条路：节号取 getSectionsForChapter，
+         节名取 getSectionName（overrides 优先），原始数组只作兜底。 */
+      let nos=[];
       try{
-        const p=(typeof getCurrentProject==="function")?getCurrentProject():null;
-        const sn=(p&&p.sectionNames&&p.sectionNames[course])?p.sectionNames[course]:null;
-        if(sn&&sn[ch]&&sn[ch].length) names=sn[ch].slice();
+        const secs=(typeof getSectionsForChapter==="function")?(getSectionsForChapter(course,ch)||[]):[];
+        if(secs.length) nos=secs.slice();
       }catch(e){}
-      if(!names||!names.length){
+      if(!nos.length){
         try{
-          const secs=(typeof getSectionsForChapter==="function")?(getSectionsForChapter(course,ch)||[]):[];
-          if(secs.length) names=secs.map(function(s){ let nm=""; try{ const g=getGuide(course,ch,s); nm=g&&g.name?g.name:""; }catch(e){} return nm; });
+          const p=(typeof getCurrentProject==="function")?getCurrentProject():null;
+          const sn=(p&&p.sectionNames&&p.sectionNames[course])?p.sectionNames[course]:null;
+          if(sn&&Array.isArray(sn[ch])&&sn[ch].length) nos=sn[ch].map(function(_,i){ return i+1; });
         }catch(e){}
       }
-      if(!names||!names.length){
+      if(!nos.length){
         try{
           const p=(typeof getCurrentProject==="function")?getCurrentProject():null;
           const k=(p&&p.kpTree&&p.kpTree[course]&&p.kpTree[course][ch])?p.kpTree[course][ch]:null;
           if(k){
             const ks=Object.keys(k).map(Number).filter(function(n){return !isNaN(n)&&n>0;}).sort(function(a,b){return a-b;});
-            if(ks.length) names=ks.map(function(){return "";});
+            if(ks.length) nos=ks;
           }
         }catch(e){}
       }
-      if(!names||!names.length) names=[""];
-      return names.map(function(nm,i){ return {no:i+1,title:String(nm==null?"":nm)}; });
+      if(!nos.length) nos=[1];
+      return nos.map(function(no){
+        let nm="";
+        try{ const v=(typeof getSectionName==="function")?getSectionName(course,ch,no):""; nm=(v==null)?"":String(v).trim(); }catch(e){}
+        if(!nm){
+          try{
+            const p=(typeof getCurrentProject==="function")?getCurrentProject():null;
+            const sn=(p&&p.sectionNames&&p.sectionNames[course])?p.sectionNames[course]:null;
+            const arr=(sn&&Array.isArray(sn[ch]))?sn[ch]:null;
+            if(arr&&arr[no-1]!=null) nm=String(arr[no-1]).trim();
+          }catch(e){}
+        }
+        return {no:no,title:nm};
+      });
     }
     function scFillChapters(chapSel, course, keepChapter){
       if(!chapSel) return;
@@ -21633,7 +21654,10 @@ if (document.readyState === 'loading') {
       chapSel.innerHTML=html;
       const want=(keepChapter!=null&&keepChapter!=="")?String(keepChapter):null;
       if(want){
-        const num=scParseChNum(want);
+        // ★ 2026-10-09：keepChapter 常以**裸数字**传入（scSetAll(course,1,1)），
+        //   而 scParseChNum 只认「第N章」形式 → 判定必然落空，每次都往下拉里塞一条
+        //   重复的「N（自定义）」。这里补上裸数字识别（与 scFillSections 的 byName 兜底对齐）。
+        const num=scParseChNum(want)||(/^\d+$/.test(String(want).trim())?parseInt(String(want).trim(),10):null);
         if(num&&[...chapSel.options].some(function(o){return o.value===String(num);})) chapSel.value=String(num);
         else{
           const o=document.createElement("option"); o.value=want; o.textContent=want+"（自定义）";
@@ -25051,7 +25075,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009c</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009e</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
