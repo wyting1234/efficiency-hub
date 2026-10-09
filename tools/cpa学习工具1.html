@@ -8288,7 +8288,9 @@
 
         // ---------- 表单提交 ----------
         // 全局轻提示（保存成功/失败反馈）
-        function showToast(msg) {
+        /* ★ v55：加可选时长 —— 保存那条 toast 现在要把「已保存 + 闪卡情况」一起说完，
+           内容翻倍，2.6 s 读不完（尤其手机）。旧调用点一个都没改，默认值不变。 */
+        function showToast(msg, ms) {
             let t = document.getElementById('appToast');
             if (!t) {
                 t = document.createElement('div');
@@ -8304,7 +8306,7 @@
             t.textContent = msg;
             t.classList.add('show');
             clearTimeout(t._timer);
-            t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+            t._timer = setTimeout(() => t.classList.remove('show'), Math.max(1200, parseInt(ms, 10) || 2600));
         }
 
         // 任一表单控件重新输入时，自动清除校验红框
@@ -8780,9 +8782,12 @@
                 // 本地存储写入失败：记录不落盘，不能当成功处理，表单内容保留让用户复制或截图
                 return;
             }
-            showToast((isEdit ? '✏️ 记录已更新' :
+            /* ★ v55：这句先**不弹** —— 下面 askFlashAfterSave 还要补一句闪卡情况，
+               而 showToast 共用一个 #appToast 元素，谁后调用谁留下（实测：闪卡那句会把
+               「✅ 已保存」整个顶掉，用户从来没看见过保存成功的确认）。合成一条再弹。 */
+            const _saveMsg = (isEdit ? '✏️ 记录已更新' :
                 `✅ 已保存第 ${state.records.length} 条记录：${course} ${date} ${durationHours}h`) +
-                (tomatoCount > 0 ? (' · 🍅 ' + tomatoCount + ' 个') : ''));
+                (tomatoCount > 0 ? (' · 🍅 ' + tomatoCount + ' 个') : '');
             // 记录已保存 → 「本次番茄」清零，准备下一轮
             if (state.tomato.session && (state.tomato.session.active || state.tomato.session.pomodoros)) {
                 state.tomato.session = { active: false, start: '', pomodoros: 0 };
@@ -8800,7 +8805,11 @@
             /* ★ v52（Tom 2026-09-30 需求）：保存完问一句「要不要生成闪卡」。
                以前出卡的入口只有一个 —— 自己跑去 🃏 闪卡页点「重新生成」；忘了点，
                知识点就一直躺在记录里不出卡。现在保存即问，出不出由当下决定。 */
-            try { askFlashAfterSave(record); } catch (_e) {}
+            /* ★ v55：保存确认 + 闪卡情况合成**一条** toast 再弹（见上面 _saveMsg 的注释）。
+               askFlashAfterSave 现在返回字符串，不再自己弹窗。 */
+            let _flashMsg = '';
+            try { _flashMsg = askFlashAfterSave(record) || ''; } catch (_e) {}
+            showToast(_saveMsg + _flashMsg, _flashMsg ? 6500 : 2600);
             document.getElementById('recordForm').reset();
             setTimeout(() => {
                 selectedStar = 0;
@@ -15396,11 +15405,51 @@ if (document.readyState === 'loading') {
            安全性：fcBuild 只增不删（失效卡只打 orphan / scopeOut 标记，
            复习历史与笔记一个字节不动），所以可以放心自动跑；
            手动入口「⚡ 生成 / 更新」原样保留，随时可补。
-           一条都出不来（这节的知识点没有下一级）就直接返回 —— 没可做的事别打扰人。 */
+
+           ★ v55（Tom 2026-10-09：「我保存记录学习了，怎么没有自动生成闪卡？」）：
+           本函数不再自己弹 toast，改成**返回一句闪卡提示**，由保存流程拼进同一条。
+           两个原因：
+             ① showToast 共用一个 #appToast 元素，后来者把前者整个顶掉 —— 实测确认
+                「✅ 已保存第 N 条记录」被「🃏 生成 N 张」顶掉，用户从没看见过保存确认；
+             ② 出不了卡时旧代码是 `if (fcCountForRecord(rec) <= 0) return;` —— **静默返回**。
+                用户填了知识点、点了保存、屏幕上什么也没有，只能来问「怎么没自动生成闪卡」。
+
+           ★ 闪卡为什么会出 0 张（真机实测，同一节 / 同一条记录，只改知识点写法）：
+               知识点只有 1 层  → 0 张   ← Tom 遇到的这种情况
+               知识点有   2 层  → 1 张
+               知识点有   3 层  → 2 张
+             根因：闪卡是「相邻两级配对」—— 正面 = 上一级，反面 = **直接下一级**。
+             只有一层的知识点没有反面，天然出不了卡。这是设计，不是故障 ——
+             所以这里不硬造卡，而是把原因说清 + 给出补下级的操作路径。 */
         function askFlashAfterSave(rec) {
             try {
-                if (!rec || typeof fcBuild !== 'function') return;
-                if (fcCountForRecord(rec) <= 0) return;      // 这节出不了卡 → 不打扰
+                if (!rec || typeof fcBuild !== 'function') return '';
+                /* ——— 出不了卡：先说清是哪一种「出不了」———
+                   ⚠️ 判定「有没有填知识点」必须看 kpQuickRaw **原文**，不能拿 fcCountForRecord 凑：
+                      它在「填了、但整片都是叶子」时同样是 0，两种情况会混成同一句话，
+                      用户还是不知道下一步该改什么。 */
+                if (fcCountForRecord(rec) <= 0) {
+                    const raw = String(rec.kpQuickRaw == null ? '' : rec.kpQuickRaw).trim();
+                    if (!raw) return ' · 🃏 无闪卡（本条没填「知识点速记」）';
+                    // 有几层？用与闪卡 / 知识树同一个解析器，否则又是一套口径
+                    let maxLv = 0, nTop = 0;
+                    try {
+                        const parser = (window.CpaKpEditor && typeof window.CpaKpEditor.parseText === 'function')
+                            ? window.CpaKpEditor.parseText : null;
+                        const parsed = parser ? (parser(raw) || []) : [];
+                        parsed.forEach(function (c) {
+                            const lv = parseInt(c && c.lv, 10) || 1;
+                            if (lv > maxLv) maxLv = lv;
+                            if (lv === 1) nTop++;
+                        });
+                    } catch (e) {}
+                    if (maxLv <= 1) {
+                        return ' · 🃏 无闪卡：这 ' + (nTop || '几') + ' 条知识点都只有 1 层。'
+                            + '闪卡按「上一级 → 直接下一级」配对，给它们补下级就会出卡'
+                            + '（速记里选中那一行，点「⬇ 降级」或按 Tab）';
+                    }
+                    return ' · 🃏 无闪卡（这 ' + maxLv + ' 层知识点的下一级还是空的，补上就会出卡）';
+                }
                 /* ★ v53b（Tom 2026-10-09：「提示生成的卡数量和实际生成的卡数不一致」）：
                    提示数 = **本节实际新增张数** —— 由「生成前 / 生成后这条记录对应的卡数」
                    相减得到（fcCardsForRecord 的口径与闪卡页同源）。两个旧口径都不行：
@@ -15419,12 +15468,10 @@ if (document.readyState === 'loading') {
                 try { if (typeof fcRender === 'function') fcRender(); } catch (e) {}
                 const refreshed = (r && r.refreshed) || 0;
                 // 只在**真的变了**时提示，且提示的数就是用户去看时能数出来的那个数。
-                if (here > 0) {
-                    showToast('🃏 本节已生成 ' + here + ' 张闪卡 · 到 🃏 闪卡页复习');
-                } else if (refreshed > 0) {
-                    showToast('🃏 闪卡已按学习记录更新 ' + refreshed + ' 张');
-                }
-            } catch (e) {}
+                if (here > 0) return ' · 🃏 本节新增 ' + here + ' 张闪卡（到 🃏 闪卡页复习）';
+                if (refreshed > 0) return ' · 🃏 闪卡已按记录更新 ' + refreshed + ' 张';
+                return '';
+            } catch (e) { return ''; }
         }
 
         // ---------- 读取 ----------
@@ -25302,7 +25349,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009i</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009j</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
