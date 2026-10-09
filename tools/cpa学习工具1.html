@@ -9101,7 +9101,84 @@
         }
 
         // ---------- 编辑记录 ----------
+        /* ★ v53（Tom 2026-10-09）：点「✎ 编辑」前的两道关 ——
+             ① 跳回「记录学习」表单所在的页签；
+             ② 表单里还有没保存的东西 / 计时还在跑 → 先问一句，别静默覆盖。
+
+           ── 起因（两件合成一件事）──
+           (a) 「📋 学习记录」2026-10-09 拆成独立页签后，✎ / 双击在这一页，
+               而「✏️ 记录学习」表单仍住在「📚 学习进度」页签里（#formContainer
+               在 #view-study 内）。不切回去，editRecord 把表单填好了用户也看不见 ——
+               表现就是「点了编辑没反应」，但表单内容**已经被换掉了**。
+           (b) editRecord 是整体覆盖（科目 / 章 / 节 / 时间 / 星级 / 知识点 /
+               解题思路 / 记忆网络 / AI 问答 / 备注 全部重写），且旧内容不落盘。
+               正在「记录学习」里填东西时点到了某条记录的编辑，填好的内容直接没了
+               （Tom：「就完全覆盖了我已经填好的其他学习内容」）。
+
+           ── 口径 ──
+           · 目标 = 当前正在编辑的那一条 → 幂等，放行（重复点同一行不该弹窗）。
+           · 命中任一条即提示：新建态有实质内容 / 正在编辑另一条 / 计时在跑。
+           · 「取消」= 用户想先保存 → 顺手把人送回表单那一页并展开，省一次查找；
+             同时作废那份草稿（用户已明确放弃，留着会在刷新后"复活"）。
+           · 判定复用既有轮子：draftMeaningful(collectDraft()) 就是「表单里有没有
+             实质内容」的现成口径（草稿机制每 10 秒用它决定存不存），不另立标准。 */
+        /* ⚠️ 判定本身住在 window.CpaKpEditor 闭包里（见 pendingOfForm）——
+           collectDraft / draftMeaningful / isEditingRecord 只在那层可见。
+           这里直接调会 ReferenceError，而 ReferenceError 一旦被 try/catch 吞掉，
+           守门就会「静默失效」（看着像不弹窗，其实一直没跑）——所以走命名空间。 */
+        function recFormPending() {
+            try {
+                var E = window.CpaKpEditor;
+                if (E && typeof E.pendingOfForm === 'function') return E.pendingOfForm();
+            } catch (e) {}
+            /* 命名空间拿不到时的兜底：至少别漏掉计时在跑 */
+            var t = {};
+            try { t = (state && state.tomato) || {}; } catch (e2) {}
+            var on = !!(t.isRunning || t.isPaused);
+            return { dirty: false, editingOther: false, timerOn: on,
+                     lines: on ? ['· 🍅 番茄钟 / ⏳ 学时倒计时正在计时，这次学习还没记账'] : [],
+                     any: on };
+        }
+
+        /* 表单住在「📚 学习进度」页签里 —— 走既有页签切换（点 .vtab），
+           不另写一套显隐逻辑（与 #recAddBtn 同一路数）。 */
+        function goStudyFormView(expand) {
+            try {
+                var pane = document.getElementById('view-study');
+                if (pane && window.getComputedStyle && getComputedStyle(pane).display === 'none') {
+                    var st = document.querySelector('#viewTabs .vtab[data-view="study"]');
+                    if (st) st.click();
+                }
+                if (expand) {
+                    var fc = document.getElementById('formContainer');
+                    if (fc) fc.classList.remove('collapsed');
+                }
+                return true;
+            } catch (e) { return false; }
+        }
+
         function editRecord(record) {
+            /* ★ v53（Tom 2026-10-09）：先守门，再动表单 —— 见上方函数头注释。 */
+            if (record) {
+                var _same = !!(state.editingId && state.editingId === record.id);
+                var _pend = _same ? null : recFormPending();
+                if (_pend && _pend.any) {
+                    var _msg = '⚠️ 表单里还有没保存的学习内容\n\n' + _pend.lines.join('\n') +
+                        '\n\n直接进入编辑会把它覆盖掉，且无法恢复。\n\n' +
+                        '「确定」= 放弃上面的内容，直接编辑这条记录\n' +
+                        '「取消」= 先保存：自动切到「📚 学习进度」页并展开「✏️ 记录学习」表单';
+                    var _go = window.confirm(_msg);
+                    if (!_go) {
+                        goStudyFormView(true);
+                        try { showToast('已取消编辑 · 内容还在「✏️ 记录学习」里，点「✅ 保存记录」存下来再回来编辑'); } catch (e) {}
+                        return;
+                    }
+                    /* 用户明确选了「放弃」→ 那份草稿一并作废，免得刷新后又被恢复出来，
+                       看着像"放弃没生效"。 */
+                    if (_pend.dirty) { try { window.CpaKpEditor.clearDraft(); } catch (e) {} }
+                }
+            }
+            goStudyFormView(false);   // ★ v53：表单在「📚 学习进度」页签里，先切回去再填
             state.editingId = record.id;
             document.getElementById('fCourse').value = record.course;
             document.getElementById('fDate').value = record.date || getToday();
@@ -24185,6 +24262,29 @@ if (document.readyState === 'loading') {
             store(DRAFT_KEY, JSON.stringify(d));
             setDraftStat('已自动保存 ' + clockStr());
         }
+        /* ★ v53（Tom 2026-10-09）：点「✎ 编辑」前的守门判定。
+           ── 为什么必须住在本闭包里 ──
+           collectDraft / draftMeaningful / isEditingRecord 都是本闭包的局部函数，
+           而 editRecord 住在**另一个 <script> 块**。上一版把这套判定写在 editRecord 边上，
+           结果 ReferenceError 被 try/catch 吞掉 → dirty 恒为 false → 守门静默失效。
+           ── 口径 ──
+           与草稿机制**同源**：draftMeaningful 就是「表单里有没有实质内容」的现成标准
+           （DRAFT_MEANINGFUL 字段 + 知识点树节点数），不另立第二套。 */
+        function pendingOfForm() {
+            var editingOther = isEditingRecord();
+            var dirty = false;
+            if (!editingOther) {
+                try { dirty = draftMeaningful(collectDraft()); } catch (e) { dirty = false; }
+            }
+            var t = (typeof state !== 'undefined' && state && state.tomato) ? state.tomato : {};
+            var timerOn = !!(t.isRunning || t.isPaused);
+            var lines = [];
+            if (dirty) lines.push('· 「记录学习」表单里有尚未保存的内容（知识点速记 / 解题思路 / 记忆网络 / AI 问答 / 备注 / 起止时间 等）');
+            if (editingOther) lines.push('· 正在编辑另一条记录，改动还没保存');
+            if (timerOn) lines.push('· 🍅 番茄钟 / ⏳ 学时倒计时正在计时，这次学习还没记账');
+            return { dirty: dirty, editingOther: editingOther, timerOn: timerOn,
+                     lines: lines, any: lines.length > 0 };
+        }
         function clearDraft() {
             drop(DRAFT_KEY);
             setDraftStat('');
@@ -24849,6 +24949,7 @@ if (document.readyState === 'loading') {
             syncFromView: syncFromView,
             syncNow: syncNow,
             clearDraft: clearDraft,
+            pendingOfForm: pendingOfForm,
             saveDraft: saveDraft,
             setTab: setTab,
             setMode: setMode,
@@ -25089,7 +25190,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009g</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009h</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
