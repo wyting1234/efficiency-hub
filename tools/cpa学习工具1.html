@@ -585,6 +585,78 @@
         /* 知识树是 .fc-btn 风格，尺寸跟它那一排对齐 */
         .kt-head .fs-btn { padding: 6px 10px; border-radius: var(--radius-sm); background: transparent; }
 
+        /* ===== ★ v56（Tom 2026-10-09）「下面还有这么大的空白区域呢，优化一下」 =====
+           两件事：
+           ① 「🃏 知识点记录」页签把卡片下方那片空白吃掉（编辑区撑到可用高度）；
+           ② 「🌳 知识树」的 ⛶ 全屏按钮提到面板右上角固定位。
+           —— ① 的理由：卡片只有内容那么高，底下留一大片页面底色
+              （笔记本 / 手机上一屏能空掉 100~200px）；而速记框固定 96px 起 ——
+              一边是空着没用的屏幕，一边是不够写，正是「屏幕不够用」那个诉求。
+              做法：kp 页签激活时挂 .rec-kp-active，用一条 flex 链把**当前视角**
+                    的编辑区撑到可用高度（--rec-fill-h 由 JS 按
+                    「视口高 − 卡片顶 − 底部留白」算，见 recKpFillSync）。
+              ⚠️ 只对 kp 页签生效 —— 指南 / 信息 / 其他 / 模板四个页签内容天然短，
+                硬撑只会在卡片**内部**造出一片新空白，比现在更难看。
+              ⚠️ 思维导图 / 符号视角不拉伸：它们各有自己的滚动容器，
+                硬拉只会在里面留白。 */
+        /* ⚠️ 用 height 而不是 min-height —— flex:1 只在**容器高度确定**时才能把
+           剩余空间分下去；只给 min-height 的话容器高度仍是内容撑的，flex 项拿不到
+           任何「多余的高度」，编辑区一行都不会长（第一版就是这么写错的，实测
+           taH 只有 113px）。高度取自 --rec-fill-h，JS 已保证它 ≥ 卡片自然高。 */
+        #formContainer.rec-kp-active { display: flex; flex-direction: column; height: var(--rec-fill-h, auto); }
+        #formContainer.rec-kp-active > .form-body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+        #formContainer.rec-kp-active #recordForm { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+        #formContainer.rec-kp-active #recordForm > .form-row.full { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+        #formContainer.rec-kp-active #recordForm > .form-row.full > .field { flex: 1 1 auto; min-height: 0; }
+        #formContainer.rec-kp-active #recPaneKp { flex: 1 1 auto; min-height: 0; }
+        #formContainer.rec-kp-active #recPaneKp > .field { flex: 1 1 auto; min-height: 0; }
+        #formContainer.rec-kp-active #recPaneKp > .field > .kp-view:not([hidden]) { flex: 1 1 auto; min-height: var(--rec-ta-min); }
+        #formContainer.rec-kp-active .kp-view[data-kpview="mind"]:not([hidden]),
+        #formContainer.rec-kp-active .kp-view[data-kpview="symbol"]:not([hidden]) { flex: 0 0 auto; }
+        /* 默认 / 大纲 / MD 三个文本视角：撑满 + 自己滚 ——
+           写到底就滚，不再「顶到边没法加行」 */
+        #formContainer.rec-kp-active #recPaneKp .kp-view[data-kpview="default"]:not([hidden]) .kp-ta,
+        #formContainer.rec-kp-active #recPaneKp .kp-view[data-kpview="outline"]:not([hidden]) .kp-ta,
+        #formContainer.rec-kp-active #recPaneKp .kp-view[data-kpview="md"]:not([hidden]) .kp-ta {
+            /* ★ v56 ③（Tom：「记录学习界面增加上下左右的滑轮，便于调整位置，
+               不然我刚才写到底部了，没法再添加文字」）——
+               改成 auto 而不是只给 y：写到底就滚，回车/打字时浏览器会把光标带进视野，
+               不会再出现「到最下面加不了字」。scrollbar-width 让滑轨常显、
+               肉眼能看出这框还能往下翻（默认 overlay 滚动条在 Windows 上会淡出）。 */
+            flex: 1 1 auto; height: auto; min-height: var(--rec-ta-min);
+            overflow: auto; scrollbar-width: thin;
+        }
+        /* 符号视角是只读预览，长符号串 / 长行同样给它一条横向滑轨，别顶破卡片 */
+        #formContainer.rec-kp-active #recPaneKp .kp-sym-preview { overflow: auto; scrollbar-width: thin; }
+        /* ⚠️ 全屏态必须把高度抢回来 ——
+           .is-fs 里写着 `height: auto !important`，它把卡片高度让给了内容，
+           于是上面这条 flex 链**没有确定高度**可分配，编辑区退回自然高
+           （实测全屏下 taH=1842 而卡片只有 560，卡片自己被撑出滚动条）。
+           这里才用 !important 抢：全屏时卡片 inset:0 → border-box 就是整屏，
+           JS 按视口高写 --rec-fill-h 即可，纵向 padding 已含在 border-box 里。 */
+        #formContainer.rec-kp-active.is-fs { height: var(--rec-fill-h, auto) !important; }
+        /* 量「自然高度」时挂这个类 —— 摘 .rec-kp-active 会触发 .form-container 的
+           `transition: all var(--transition)`，量到的是动画中间值（实测偏 8~20px）。 */
+        #formContainer.rec-kp-measure { transition: none !important; }
+
+        /* ===== ★ v56 ②：知识树的「⛶ 全屏」钉到面板右上角 =====
+           原本它混在 kt-head 那一排 5 个工具按钮里
+           （全屏 / 全部展开 / 全部收拢 / 打印 / 导出 PDF / 导出 MD），
+           在一排工具按钮里完全不显眼 —— 用户说「知识树也想单独全屏」时
+           直接找不到入口。现在与「✏️ 记录学习」的 ⛶ 同位置、同观感。
+           kt-head 留出 padding-right，避免长条统计芯片压到按钮下面。 */
+        .kt-wrap { position: relative; }
+        #ktFsBtn {
+            position: absolute; top: 12px; right: 14px; z-index: 5;
+            padding: 5px 9px; border: 1px solid var(--border); border-radius: 8px;
+            background: var(--bg-card); font-size: 13px; line-height: 1;
+        }
+        .kt-head { padding-right: 84px; }
+        @media (max-width: 640px) {
+            #ktFsBtn { top: 10px; right: 10px; }
+            .kt-head { padding-right: 76px; }
+        }
+
         /* 全屏进行中：其它出口先让位，免得「全屏了却还能点到别处」造成错觉 */
         body.fs-on { overflow: hidden; }
         body.fs-on .sidebar,
@@ -3115,8 +3187,38 @@
 }
 
 /* ===== 闪卡翻面：严格互斥（正面屏 / 反面屏二选一） ===== */
-.fce-backbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed #E6DCCB; }
+.fce-backbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed #E6DCCB; flex-wrap: wrap; }
 .fce-box[data-fce-flip] { cursor: pointer; }
+
+/* ===== ★ v57（Tom 2026-10-09）：「闪卡背面，自动大纲模式带编号或者符号模式，可切换」=====
+   反面答案的三种呈现：默认（原样一行串）/ 大纲·带编号 / 符号。
+   编号与符号都取自**同一份**模版真源（CpaKpEditor.noStrOf / symChOf），
+   所以背面看到的「(1) / a) / ●」与学习记录、知识树里那一行完全一致。
+   切换条挂在反面标题栏（.fce-backbar）里，选择记在 localStorage。 */
+.fc-backview { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+/* 详情弹窗里「反面」标题与切换条同排（那边不是 flex 容器，得自己包一层） */
+.fc-bvrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fc-bvrow .fc-face-label { margin-bottom: 0; }
+.fc-backview .fc-bv {
+    border: 1px solid var(--border); background: #FFFDF8; color: #7A6A56;
+    border-radius: 7px; padding: 2px 7px; font-family: inherit; font-size: 11.5px;
+    line-height: 1.5; cursor: pointer; white-space: nowrap;
+}
+.fc-backview .fc-bv:hover { background: #F4EDE0; }
+.fc-backview .fc-bv.active { background: var(--primary); color: #FAF7F1; border-color: var(--primary); font-weight: 600; }
+/* 带编号 / 符号的答案列表：一行一条，标记独立一列、不参与换行缩进 */
+.fc-a-list { display: flex; flex-direction: column; gap: 2px; }
+.fc-a-li { display: flex; align-items: baseline; gap: 7px; }
+.fc-a-mk {
+    flex: 0 0 auto; min-width: 1.9em; text-align: right;
+    color: #A99A83; font-size: 12.5px; font-weight: 600;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: .2px;
+}
+.fc-a-tx { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 700px) {
+    .fc-backview .fc-bv { padding: 2px 5px; font-size: 11px; }
+}
 
 @media (max-width: 700px) {
     .kt-body { max-height: none; }
@@ -8121,6 +8223,11 @@
                     syncStudyTimerToBase();
                     askAutoTomato();
                 }
+                /* ★ v56：展开 / 折叠都要重算（折叠时要把 --rec-fill-h 撑起来的气放掉）。
+                   先 invalidate：展开会让「要不要自动开始计时？」那一行冒出来，
+                   自然高变了，缓存必须作废（见纪律 ④）。 */
+                try { if (window.recKpFillInvalidate) window.recKpFillInvalidate(); } catch (e) {}
+                try { if (window.recKpFillSync) window.recKpFillSync(); } catch (e) {}
             });
 
             document.getElementById('toggleFormBtn').addEventListener('click', () => {
@@ -8574,6 +8681,7 @@
             } catch (e) {}
             document.body.classList.remove('fs-on');
             _fsOwner = null;
+            try { if (window.recKpFillSync) window.recKpFillSync(); } catch (e) {}
         }
         function fsToggle(el, btn) {
             if (!el) return;
@@ -8584,6 +8692,7 @@
             if (btn) btn.classList.add('on');
             _fsOwner = { el: el, btn: btn };
             try { el.scrollTop = 0; } catch (e) {}   // 别停在上次滚动位置
+            try { if (window.recKpFillSync) window.recKpFillSync(); } catch (e) {}
         }
         (function bindPanelFullscreen() {
             var rb = document.getElementById('recFsBtn');
@@ -8612,6 +8721,121 @@
                 fsExit();
             });
         })();
+
+        /* ⚠️ 四条纪律，都是实测踩出来的：
+           ① 折叠态必须把 .rec-kp-active **一起摘掉** —— 本类规则带 id，优先级高于
+              `.form-container.collapsed .form-body{display:none}`；只清变量不摘类，
+              收起的表单身体照样显示（实测 cardH=494，应 ~53）。
+           ② 全屏态**不能**摘类 —— .is-fs 用 `height:auto!important` 覆盖了本类的高度，
+              flex 链拿不到确定高度，编辑区就按内容自然高（实测 taH=1842）。改由 CSS
+              里 `#formContainer.rec-kp-active.is-fs` 反向抢回，这里照常写变量。
+           ③ 量「自然高」必须先摘类 → 会触发 .form-container 的 height 过渡，读到动画
+              中间值。故测量期挂 .rec-kp-measure 关掉过渡，量完在下一帧摘掉，
+              这样「自然高 → 撑满」这一步也不会走动画。
+           ④ **量出来的自然高必须缓存**（本轮踩得最深的一个坑）：
+              摘类 / 装类本身就是一次布局变更，而布局一变 Chrome 的滚动锚定
+              （scroll anchoring）就会去调 scrollTop；调 scrollTop 又发 scroll 事件；
+              scroll 事件回来再调本函数又摘一次类 …… 滚一下页面就进入
+              **无限 rAF 环**，主线程被打满（实测 2.5s 不停机、页内连
+              scrollTo 都执行不完，Playwright 的「元素稳定」判定直接卡死）。
+              所以自然高只在「形状变了」时才重测（视角 / 列数 / 视口 / 折叠 / 全屏），
+              其余调用只改 --rec-fill-h 这一个数字 —— 写同一个值不产生布局变更。
+              另外卡片被滚动锚定推走的位置仍要在同一帧内 save/restore
+              （实测卡片长 57px，scrollY 会被顺带加 57px，用旧 top 算出的可用高
+               整整差 57px，卡片贴不到底：blank 85 而不是 28）。 */
+        var _recKpNat = 0;      /* 缓存的自然后高；0 = 需要重测 */
+        var _recKpKey = '';     /* 缓存失效键：视角 / 列数 / 视口 / 折叠 / 全屏 */
+        function recKpFillKey(fc, fs) {
+            var v = document.querySelector('#recPaneKp .kp-view:not([hidden])');
+            var c = document.querySelector('#kpCols .kp-mode.active');
+            return [
+                v ? v.getAttribute('data-kpview') : '?',
+                c ? c.getAttribute('data-kpcols') : '?',
+                window.innerWidth || 0,
+                document.documentElement.clientHeight || 0,
+                fs ? 'fs' : '-',
+                document.querySelectorAll('#recordForm .form-row').length
+            ].join('|');
+        }
+        function recKpFillInvalidate() { _recKpKey = ''; _recKpNat = 0; }
+        window.recKpFillInvalidate = recKpFillInvalidate;
+        function recKpFillSync() {
+            try {
+                var fc = document.getElementById('formContainer');
+                if (!fc) return;
+                fc.classList.remove('rec-kp-measure');
+                var on = !!document.querySelector('#recTabs .rec-tab.active[data-rec="kp"]');
+                /* 非 kp 页签 / 折叠态 → 完全退回原样（折叠见纪律 ①） */
+                if (!on || fc.classList.contains('collapsed')) {
+                    fc.classList.remove('rec-kp-active');
+                    fc.style.removeProperty('--rec-fill-h');
+                    recKpFillInvalidate();      /* 再进这个页签要重新量 */
+                    return;
+                }
+                var fs = fc.classList.contains('is-fs');
+                var r = fc.getBoundingClientRect();
+                if (!fs && r.height <= 0) {          /* 不在当前视图，量不准 */
+                    fc.classList.remove('rec-kp-active');
+                    fc.style.removeProperty('--rec-fill-h');
+                    recKpFillInvalidate();
+                    return;
+                }
+                var vh = document.documentElement.clientHeight || 0;
+                /* ── 量自然高：只在「形状变了」时才做（见纪律 ④） ── */
+                var key = recKpFillKey(fc, fs);
+                if (key !== _recKpKey || !_recKpNat) {
+                    _recKpKey = key;
+                    fc.classList.remove('rec-kp-active');
+                    fc.style.removeProperty('--rec-fill-h');
+                    fc.classList.add('rec-kp-measure');
+                    _recKpNat = Math.max(1, fc.getBoundingClientRect().height);
+                    fc.classList.add('rec-kp-active');
+                    requestAnimationFrame(function () { fc.classList.remove('rec-kp-measure'); });
+                } else {
+                    fc.classList.add('rec-kp-active');
+                }
+                /* ── 算可用高 ──
+                   全屏：.is-fs 已 inset:0 铺满视口（border-box，含自身 padding）→ 直接用视口高；
+                   常态：顶边取「视口内可见的那部分」——页面已滚到卡片上方则 r.top<0 → 取 0
+                         （卡片占满整屏），还没滚到就是它离视口顶的距离。两种处境都能把下方空白吃掉。
+                   28px 是给下一页留的呼吸位（实测贴到底反而像被裁掉了）。 */
+                var avail = fs ? vh : (vh - Math.max(0, r.top) - 28);
+                var target = Math.round(Math.max(_recKpNat, avail)) + 'px';
+                /* 写的是同一个值 ⇒ 不产生布局变更 ⇒ 不会绕回纪律 ④ 那个环 */
+                if (fc.style.getPropertyValue('--rec-fill-h') === target) return;
+                var sy = window.scrollY || window.pageYOffset || 0;
+                fc.style.setProperty('--rec-fill-h', target);
+                /* 还原被锚定推走的滚动位置（同一帧内，无可见跳动） */
+                if ((window.scrollY || 0) !== sy) window.scrollTo(0, sy);
+            } catch (e) {}
+        }
+        window.recKpFillSync = recKpFillSync;
+        try {
+            var _rkTimer = 0;
+            window.addEventListener('resize', function () {
+                clearTimeout(_rkTimer);
+                _rkTimer = setTimeout(function () { recKpFillInvalidate(); recKpFillSync(); }, 140);
+            });
+            /* ★ v56：滚动也必须重算 —— 不在滚动里重算的话，卡片底部那片空白
+               会一直留着：用户把页面滚到卡片顶（r.top 从 357 变 185），可用高从
+               415 涨到 587，但 --rec-fill-h 还停在上一轮算出来的 469，
+               于是卡片底下照样空 146px（实测 A→B 两态，见本轮排查）。
+               安全性靠纪律 ④ 的缓存：稳态下这里只比较一个字符串、必要时写一个
+               数字，不产生布局变更，所以「scroll → 重算 → 布局变 → scroll」这条
+               环进不去（第一版没缓存，就是这么把自己绕死的）。
+               rAF 合帧：连续滚动只算一帧一次，不抖。 */
+            var _rkScrollTick = 0;
+            window.addEventListener('scroll', function () {
+                if (_rkScrollTick) return;
+                _rkScrollTick = requestAnimationFrame(function () {
+                    _rkScrollTick = 0;
+                    recKpFillSync();
+                });
+            }, { passive: true });
+            window.addEventListener('load', function () { setTimeout(recKpFillSync, 60); });
+            setTimeout(recKpFillSync, 200);
+            setTimeout(recKpFillSync, 800);
+        } catch (e) {}
 
         function handleFormSubmit(e) {
             e.preventDefault();
@@ -8809,6 +9033,18 @@
                askFlashAfterSave 现在返回字符串，不再自己弹窗。 */
             let _flashMsg = '';
             try { _flashMsg = askFlashAfterSave(record) || ''; } catch (_e) {}
+            /* ★ v56（Tom 2026-10-09：「学习记录再次编辑和保存，知识树和闪卡也要自动更新……
+               保存以后知识树自动更新，闪卡也要自动生成，无需再问」）：
+               闪卡在 askFlashAfterSave 里已经就地重建（fcBuild(true) + fcRender），
+               知识树过去只靠「切到知识树页签时重绘一次」—— 功能上是对的（ktRender 每次
+               都从 state.records 重算），但把保证挂在了视图切换上。这里补一次就地重绘：
+               记录已经写进 state.records，树现在就是个陈旧 DOM。
+               ⚠️ 不调 ktSyncScopeFromRecord：那是「进知识树时把记录侧的科目/章/节带过去」，
+                  保存完顺手改用户的知识树范围等于偷改用户的选择。 */
+            try {
+                const _ktv = document.getElementById('view-kptree');
+                if (_ktv && _ktv.style.display !== 'none' && typeof ktRender === 'function') ktRender();
+            } catch (_e2) {}
             showToast(_saveMsg + _flashMsg, _flashMsg ? 6500 : 2600);
             document.getElementById('recordForm').reset();
             setTimeout(() => {
@@ -8842,6 +9078,11 @@
                 if (!applyLastRecPos(true)) updateChapterSelect(state.currentCourse);
             }, 10);
             document.getElementById('formContainer').classList.add('collapsed');
+            /* ★ v56：保存后卡片是**直接**打上 collapsed 类的（没走 #formToggle），
+               所以那一条「折叠 → 摘 .rec-kp-active」的清场不会自己发生。
+               这里补一次，否则类 + --rec-fill-h 会留在收起来的卡片上（见纪律 ①）。 */
+            try { if (window.recKpFillInvalidate) window.recKpFillInvalidate(); } catch (_e3) {}
+            try { if (window.recKpFillSync) window.recKpFillSync(); } catch (_e3) {}
         }
 
         // ---------- 记录列表 ----------
@@ -13537,6 +13778,8 @@ if (document.readyState === 'loading') {
                     if (view === 'kptree') { try { ktSyncScopeFromRecord(); ktRender(); } catch (e) {} }
                     if (view === 'goal') { renderGoalSummary(); renderGoalStatsPanel(); }
                     if (view === 'scheat') { try { heatRender(); } catch (e) {} }
+                    /* ★ v56：切回「学习进度」才量得到卡片顶边（之前在别的视图里 display:none） */
+                    try { if (window.recKpFillSync) window.recKpFillSync(); } catch (e) {}
                 });
             });
         }
@@ -15904,6 +16147,102 @@ if (document.readyState === 'loading') {
             return a.join('\n');
         }
 
+        /* ============ ★ v57（Tom 2026-10-09）闪卡背面的「答案呈现方式」 ============
+           Tom 的原话：「闪卡背面，自动大纲模式带编号或者符号模式，可切换」。
+           ── 只改**呈现**，一个字都不碰数据层 ──
+           · card.a 本来就是「一行一个直接下级」（fcDispA 用 \n 拼），
+             旧反面 rtRender 出来也是多行，只是行首没有标记 ——
+             读起来像一串平铺的答案，看不出它们是「第 4 级下面的第 5 级」。
+           · 三种模式：
+               outline = 大纲·带编号（默认）：行首按**链路绝对层级**取编号，
+                         与学习记录 / 知识树里那一行同一个模版真源；
+               symbol  = 符号：行首换成该层级的符号（🧩 模版设置 → 每级符号）；
+               plain   = 默认：完全保持原样（给「我就想看干净一行」的人留退路）。
+           · 编号 / 符号都从 window.CpaKpEditor 取（block 2 的单一实现），
+             这里绝不自己造第二套形态 —— 否则换模版时背面会与别处不一致。
+           · 层级换算：card.src.tier 是**正面节点的链路绝对层级**（4–7），
+             答案 = 它的直接下级 ⇒ 层级 tier + 1。
+             编号走 noStrOf(path)，path 长度必须等于**绝对层级**
+             （noStr 里 abs=true 时 d = path.length），所以补成 tier 个 1 再加序号。
+           · 选择记 localStorage（本块没有 store/load，那两个在 block 2），
+             换一张卡 / 关掉面板 / 刷新页面都沿用。 */
+        var FC_BACKVIEW_KEY = 'hub_cpa_fc_backview_v1';
+        var FC_BACKVIEWS = ['outline', 'symbol', 'plain'];
+        var FC_BACKVIEW_NAME = { outline: '大纲·带编号', symbol: '符号', plain: '默认' };
+        var fcBackView = (function () {
+            try {
+                var v = localStorage.getItem(FC_BACKVIEW_KEY);
+                if (FC_BACKVIEWS.indexOf(v) >= 0) return v;
+            } catch (e) {}
+            return 'outline';
+        })();
+        function setFcBackView(v) {
+            if (FC_BACKVIEWS.indexOf(v) < 0) v = 'outline';
+            if (v === fcBackView) { fcBackRedraw(); return; }
+            fcBackView = v;
+            try { localStorage.setItem(FC_BACKVIEW_KEY, v); } catch (e) {}
+            fcBackRedraw();
+        }
+        // 两处「反面」都在这里重绘：复习面板内嵌卡 + 卡片详情弹窗
+        function fcBackRedraw() {
+            try { if (typeof fcEmbedRender === 'function') fcEmbedRender(); } catch (e) {}
+            try { if (fcDetailId && typeof fcDetail === 'function') fcDetail(fcDetailId); } catch (e2) {}
+        }
+        function fcBackViewBarHTML() {
+            return '<span class="fc-backview" role="group" aria-label="答案呈现方式">' +
+                FC_BACKVIEWS.map(function (v) {
+                    return '<button type="button" class="fc-bv' + (v === fcBackView ? ' active' : '') +
+                        '" data-fcbackview="' + v + '" title="' +
+                        (v === 'outline' ? '行首按层级带编号（与学习记录同一套模版）'
+                            : v === 'symbol' ? '行首换成该层级的符号（在 🧩 模版设置 → 每级符号 里配）'
+                                : '保持原样，不加任何行首标记') +
+                        '">' + FC_BACKVIEW_NAME[v] + '</button>';
+                }).join('') + '</span>';
+        }
+        // 答案某一行的行首标记；取不到（层级越界 / 编辑器还没就绪）就返回空串，退化成无标记
+        function fcBackMark(card, i, kind) {
+            try {
+                var tier = parseInt((card && card.src && card.src.tier) || 0, 10) || 0;
+                if (tier < 1) return '';
+                var lv = tier + 1;                       // 答案 = 正面的直接下级
+                if (lv > 7) return '';                   // 模版只定义到链路第 7 级
+                var E = window.CpaKpEditor;
+                if (!E) return '';
+                if (kind === 'symbol') return E.symChOf ? (E.symChOf(lv) || '') : '';
+                if (!E.noStrOf) return '';
+                var p = [], k;
+                for (k = 0; k < tier; k++) p.push(1);
+                p.push(i + 1);
+                return E.noStrOf(p) || '';
+            } catch (e) { return ''; }
+        }
+        /* 反面正文。三处调用点（复习面板 / 卡片详情）都走它，保证两边永远同一种呈现。
+           ⚠️ 带标记的两种模式**优先复用 card.aH 的逐行 HTML** —— 直接 kpEsc(card.a)
+              会把用户在记录里上的颜色洗掉（那是「切个视角颜色就没了」的老毛病）。
+              只有 aH 的 <br> 段数与答案行数对不上（行内自带软换行等）时才退回纯文本。 */
+        function fcBackAnswerHTML(card) {
+            if (!card) return '';
+            var rawA = String(card.a == null ? '' : card.a);
+            if (fcBackView === 'plain') return rtRender(card.aH, rawA || '（无）');
+            var lines = rawA.split('\n').filter(function (x) { return String(x).trim() !== ''; });
+            if (!lines.length) return rtRender(card.aH, rawA || '（无）');
+            var hLines = null;
+            try {
+                if (card.aH) {
+                    var parts = String(card.aH).split(/<br\s*\/?>/i);
+                    if (parts.length === lines.length) hLines = parts;
+                }
+            } catch (e) {}
+            var html = lines.map(function (ln, i) {
+                var mk = fcBackMark(card, i, fcBackView);
+                var body = hLines ? hLines[i] : kpEsc(ln);
+                return '<div class="fc-a-li">' +
+                    (mk ? '<span class="fc-a-mk">' + kpEsc(mk) + '</span>' : '') +
+                    '<span class="fc-a-tx">' + body + '</span></div>';
+            }).join('');
+            return '<div class="fc-a-list">' + html + '</div>';
+        }
+
         /* ★ 2026-09-21：存量卡片一次性换回原文（闸门 state.fcRawT，只真跑一次）。
            只动「系统派生」的卡：用户编辑过（edited）/ 自建（manual）/ 隐藏 / 已删一律不碰
            —— 与 fcBuild 的刷新闸门同一口径，用户的手写内容一个字都不覆盖。
@@ -16472,6 +16811,44 @@ if (document.readyState === 'loading') {
             const hasTree = !!(proj && proj.kpTree && Object.keys(proj.kpTree).length);
             if (!hasTree) {
                 return '还没有可出题的知识点。<br>先在 <b>🎯 考试项目 → ✎ 编辑项目配置 → 大纲结构</b> 里填好 <b>科目 / 章 / 节</b>（只到第 3 级），<br>再到 <b>📝 学习记录 → 知识点速记</b> 写第 4 级往下的知识点，<br>然后回到这里点 <b>⚡ 生成 / 更新</b>。';
+            }
+            /* ★ v56（Tom 2026-10-09：「我保存学习记录了，为什么还是不能自动生成闪卡呢？」）：
+               空态不再只给通用建议 —— 直接**按用户自己的记录**点出是哪一种原因。
+               背景：闪卡是「相邻两级配对」（正面=上一级，反面=直接下一级），
+               只有一层的知识点没有反面，天然出不了卡；而用户不知道这条规则时，
+               只会反复问「为什么没生成」。真机实测三种写法：1 层→0 张，2 层→1 张，3 层→2 张。
+               口径与保存时那条提示、以及 fcBuild 的出卡判据完全一致（同一个 parseText）。 */
+            const recs = (state.records || []).filter(function (r) { return !!r; });
+            if (recs.length) {
+                const parser = (window.CpaKpEditor && typeof window.CpaKpEditor.parseText === 'function')
+                    ? window.CpaKpEditor.parseText : null;
+                const lvOf = function (raw) {
+                    let maxLv = 0;
+                    try {
+                        (parser ? (parser(raw) || []) : []).forEach(function (c) {
+                            const lv = parseInt(c && c.lv, 10) || 1;
+                            if (lv > maxLv) maxLv = lv;
+                        });
+                    } catch (e) {}
+                    return maxLv;
+                };
+                let nNoKp = 0, nFlat = 0, nOk = 0;
+                recs.forEach(function (r) {
+                    const raw = String(r.kpQuickRaw == null ? '' : r.kpQuickRaw).trim();
+                    if (!raw) { nNoKp++; return; }
+                    if (lvOf(raw) <= 1) nFlat++; else nOk++;
+                });
+                const li = [];
+                li.push('闪卡按「<b>上一级 → 直接下一级</b>」配对出卡：一个知识点<b>要有下一级</b>才出得来。');
+                li.push('');
+                li.push('你自己的 ' + recs.length + ' 条学习记录里：');
+                if (nNoKp) li.push('· <b>' + nNoKp + ' 条没填「📌 知识点速记」</b> —— 没有知识点就没有卡；');
+                if (nFlat) li.push('· <b>' + nFlat + ' 条的知识点只有 1 层</b> —— 没有下一级，反面是空的，配不出卡；');
+                if (nOk) li.push('· <b>' + nOk + ' 条的知识点有多层</b> —— 这批本该出卡，点 <b>⚡ 生成 / 更新</b> 立刻补上；');
+                li.push('');
+                li.push('怎么补下一级：<b>📝 学习记录 → 📌 知识点记录 → 速记</b>里，把要点缩进一级'
+                    + '（大纲视角按 <b>Tab</b>，或选中该行点 <b>⬇ 降级</b>），<b>保存记录</b>后会自动出卡。');
+                return li.join('<br>');
             }
             return '这棵树里还没有可出题的层级。<br>闪卡只对「还有下一级」的知识点出卡，请点 <b>⚡ 生成 / 更新</b> 或调整 <b>⚙️ 层级范围</b>。';
         }
@@ -17365,8 +17742,8 @@ if (document.readyState === 'loading') {
                     '<div class="fc-face-label">正面</div>' +
                     '<div class="fc-face-q">' + rtRender(card.qH, card.q) + '</div>' +
                     '<div style="margin-top:12px;border-top:1px dashed #E0D5C2;padding-top:11px;">' +
-                        '<div class="fc-face-label">反面</div>' +
-                        '<div class="fc-face-a">' + rtRender(card.aH, card.a || '（无）') + '</div>' +
+                        '<div class="fc-bvrow"><span class="fc-face-label">反面</span>' + fcBackViewBarHTML() + '</div>' +
+                        '<div class="fc-face-a">' + fcBackAnswerHTML(card) + '</div>' +
                     '</div>' +
                     '<div class="fce-tags">' + fcAllTags(card).map(function (t) {
                         const own = (card.tags || []).indexOf(t) !== -1;
@@ -17391,6 +17768,13 @@ if (document.readyState === 'loading') {
                 const row = document.querySelector('#fcBody .fc-row[data-fcid="' + id + '"]');
                 if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
             };
+            /* ★ v57：详情弹窗里也能切「答案呈现方式」——
+               它自己的 onclick 只在点到遮罩时关闭，不代理内部按钮，
+               所以这里单独挂一条（与复习面板同一份偏好、同一个 setFcBackView）。 */
+            box.addEventListener('click', function (e) {
+                const b = (e.target && e.target.closest) ? e.target.closest('[data-fcbackview]') : null;
+                if (b) { setFcBackView(b.getAttribute('data-fcbackview')); }
+            });
             fcBindNotes(box, card, 'fcdNote');
         }
 
@@ -17561,11 +17945,13 @@ if (document.readyState === 'loading') {
                 '<div class="fce-box">' +
                     '<div class="fce-backbar">' +
                         '<span class="fc-face-label">反面 · 答案</span>' +
+                        /* ★ v57：答案呈现方式切换条 —— 「大纲·带编号 / 符号 / 默认」 */
+                        fcBackViewBarHTML() +
                         '<span class="fc-spacer"></span>' +
                         '<button type="button" class="fc-btn sm" data-fce-edit="1" title="改这张卡的正面 / 反面 / 标签">✎ 编辑</button>' +
                         '<button type="button" class="fc-btn sm" data-fce-flip="0">↩ 回到正面</button>' +
                     '</div>' +
-                    '<div class="fc-face-a">' + rtRender(card.aH, card.a || '（无）') + '</div>' +
+                    '<div class="fc-face-a">' + fcBackAnswerHTML(card) + '</div>' +
                     // 标签栏：章 / 节 / 掌握程度 / 复习次数（另起一栏，在答案下方）
                     fcTagStripHTML(card) +
                     // ★ 需求 3：看完答案顺手自评 —— 自评值决定这张卡下次什么时候再出现
@@ -17616,6 +18002,9 @@ if (document.readyState === 'loading') {
                     if (c) { fcEmbedRestore(c); fcEmbedRender(); fcRender(); }
                     return;
                 }
+                // ★ v57：反面答案的呈现方式（大纲·带编号 / 符号 / 默认）
+                const bvBtn = pick('data-fcbackview');
+                if (bvBtn) { setFcBackView(bvBtn.getAttribute('data-fcbackview')); return; }
                 // 翻面：data-fce-flip="1" 翻到反面，"0" 翻回正面。
                 // 正面整块（含问题文字）都可点 —— 对应「学习笔记展示正面，
                 // 再次点击成为反面」；反面屏只在标题行 / 按钮上可点回，
@@ -24374,6 +24763,8 @@ if (document.readyState === 'loading') {
             store(REC_TAB_KEY, curTab);
             syncFormActions();
             growAll();
+            /* ★ v56：切到 / 切离「知识点记录」都要重算可用高度（圆子在另一个 script 块） */
+            try { if (window.recKpFillSync) window.recKpFillSync(); } catch (e) {}
         }
 
         /* ================= 草稿：10 秒自动保存 ================= */
@@ -25349,7 +25740,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009j</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009n</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
