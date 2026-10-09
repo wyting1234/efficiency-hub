@@ -4866,7 +4866,7 @@
                          逐张确认会把「批量删除」变成「点 20 次确定」；误删由顶部
                          「🗑 恢复已删除」兜底，且复习记录 / 笔记从不随卡片删除。 -->
                     <button type="button" class="fc-btn" id="fcBulkDelBtn" title="批量删除：打开后，列表里每张卡片的「✎」后面会出现一个「🗑」，点它即删除该卡（误删可点顶部「🗑 恢复已删除」找回）">🗑 批量删除</button>
-                    <button type="button" class="fc-btn primary" id="fcBuildBtn">⚡ 生成 / 更新</button>
+                    <button type="button" class="fc-btn primary" id="fcBuildBtn" title="按学习记录重新出卡 / 刷新已有卡（保存记录后与进入本页时也会自动执行，这里可手动立即跑一次）">⚡ 生成 / 更新</button>
                 </div>
                 <div class="fc-range" id="fcRange" style="display:none;">
                     <label>起点 <select id="fcFrom"></select></label>
@@ -4875,7 +4875,7 @@
                         <input type="checkbox" id="fcScopeAll"> 含未学过的知识点
                     </label>
                     <button type="button" class="fc-btn sm" id="fcRangeOk">应用</button>
-                    <span class="fc-range-hint">闪卡只从<b>学习记录</b>生成：记录里选到的知识点、以及它在树上的上级，构成「相邻两级」出卡（正面=上级，反面=直接下级）。<b>未学过的知识点不出卡</b>，想全铺开就勾上「含未学过的知识点」。改范围不会删除已有卡片和复习记录。</span>
+                    <span class="fc-range-hint">闪卡只从<b>学习记录</b>生成：记录里选到的知识点、以及它在树上的上级，构成「相邻两级」出卡（正面=上级，反面=直接下级）。<b>未学过的知识点不出卡</b>，想全铺开就勾上「含未学过的知识点」。改范围不会删除已有卡片和复习记录。<b>保存学习记录后会自动生成 / 更新</b>，进本页时也会自动补齐，平时无需手动点。</span>
                 </div>
                 <div class="fc-tabs" id="fcTabs">
                     <button type="button" class="fc-tab active" data-fcmode="chapter">🌳 按章节</button>
@@ -13297,7 +13297,7 @@ if (document.readyState === 'loading') {
                     const mc = document.getElementById('mainContent');
                     if (mc) mc.classList.toggle('fillpage', view === 'kptree');
                     if (view === 'memory') renderMemoryView();
-                    if (view === 'flash') { try { fcRender(); } catch (e) {} }
+                    if (view === 'flash') { try { fcAutoSync(); } catch (e) {} try { fcRender(); } catch (e) {} }
                     /* ★ 2026-09-18（需求 K）：进知识树前先把 📝 学习记录 那边的
                        科目 / 章 / 节同步过来（只在记录侧真的变过时才动，见 ktSyncScopeFromRecord）。 */
                     if (view === 'kptree') { try { ktSyncScopeFromRecord(); ktRender(); } catch (e) {} }
@@ -15163,32 +15163,42 @@ if (document.readyState === 'loading') {
             } catch (e) { return 0; }
         }
 
-        /* ★ v52：保存记录后问一句「要不要生成闪卡」。
-           · 一条都出不来（这节的知识点没有下一级）就不弹 —— 没有可做的事别打断人。
-           · 选「确定」：跑 fcBuild(true)（silent，免得它自己再弹一条 toast），这里统一报新增数。
-           · 选「取消」：卡片池保持原样，什么都不丢；提示可到闪卡页补生成。 */
+        /* ★ v53（Tom 2026-10-09：「要能自动生成闪卡，或者更新生成闪卡」）：
+           保存记录后**自动**生成 / 更新闪卡 —— 不再弹 confirm 询问。
+           为什么改：v52 是「问一句要不要生成」，只要点了「取消」（或没留意那句提示），
+           知识点就一直躺在记录里不出卡 —— 用户看上去就是「闪卡数量没有更新」。
+           现在保存即自动跑一次增量 fcBuild。
+           安全性：fcBuild 只增不删（失效卡只打 orphan / scopeOut 标记，
+           复习历史与笔记一个字节不动），所以可以放心自动跑；
+           手动入口「⚡ 生成 / 更新」原样保留，随时可补。
+           一条都出不来（这节的知识点没有下一级）就直接返回 —— 没可做的事别打扰人。 */
         function askFlashAfterSave(rec) {
             try {
                 if (!rec || typeof fcBuild !== 'function') return;
-                const n = fcCountForRecord(rec);
-                if (n <= 0) return;
-                const cL = L('chapter'), sL = L('section');
-                const where = (rec.course || '') + ' 第' + rec.chapter + cL + ' 第' + rec.section + sL;
-                const msg = '✅ 记录已保存（' + where + '）。\n\n' +
-                    '本次的知识点可生成约 ' + n + ' 张闪卡，是否现在生成？\n\n' +
-                    '· 确定：立即生成，之后到 🃏 闪卡页复习；\n' +
-                    '· 取消：先不出卡，之后到 🃏 闪卡页点「重新生成」随时补上（记录不受影响）。';
-                if (!window.confirm(msg)) {
-                    showToast('已跳过生成闪卡 · 到 🃏 闪卡页点「重新生成」可补上');
-                    return;
-                }
+                if (fcCountForRecord(rec) <= 0) return;      // 这节出不了卡 → 不打扰
+                /* ★ v53b（Tom 2026-10-09：「提示生成的卡数量和实际生成的卡数不一致」）：
+                   提示数 = **本节实际新增张数** —— 由「生成前 / 生成后这条记录对应的卡数」
+                   相减得到（fcCardsForRecord 的口径与闪卡页同源）。两个旧口径都不行：
+                     · fcBuild 返回的 added 是**全量**新增 —— 别的节没出过的卡也会被一起补出来，
+                       于是「保存第 2 节时提示 6 张、而本节只有 3 张」；
+                     · fcCountForRecord 数的是「这节能出多少张卡」（**含已在池中的**），
+                       所以第二次保存会说「约 3 张」而实际新增 0 —— 正是 Tom 报的那个不一致。 */
+                let here0 = 0;
+                try { here0 = fcCardsForRecord(rec).length; } catch (e) {}
                 let r = null;
                 try { r = fcBuild(true); } catch (e) { r = null; }
-                const added = (r && typeof r === 'object' && r.added) ? r.added : 0;
+                let here1 = here0;
+                try { here1 = fcCardsForRecord(rec).length; } catch (e) {}
+                const here = Math.max(0, here1 - here0);
                 try { saveData(); } catch (e) {}
                 try { if (typeof fcRender === 'function') fcRender(); } catch (e) {}
-                showToast(added ? ('🃏 已生成 ' + added + ' 张闪卡 · 到 🃏 闪卡页开始复习')
-                    : '🃏 闪卡已刷新（本次没有新增卡）');
+                const refreshed = (r && r.refreshed) || 0;
+                // 只在**真的变了**时提示，且提示的数就是用户去看时能数出来的那个数。
+                if (here > 0) {
+                    showToast('🃏 本节已生成 ' + here + ' 张闪卡 · 到 🃏 闪卡页复习');
+                } else if (refreshed > 0) {
+                    showToast('🃏 闪卡已按学习记录更新 ' + refreshed + ' 张');
+                }
             } catch (e) {}
         }
 
@@ -16046,6 +16056,21 @@ if (document.readyState === 'loading') {
             const ans = String(card.a || '').split('\n').filter(function (s) { return s.trim(); }).length;
             const depth = (card.src && card.src.tier) || 1;
             return Math.round((1 + ans * 0.3 + depth * 0.2) * 100) / 100;
+        }
+
+        /* ★ v53（Tom 2026-10-09）：进闪卡页时自动跑一次**静默增量**更新。
+           学习记录改过（或知识树里改名回写了记录）之后，不必再手动点「⚡ 生成 / 更新」；
+           进页面就是最新的。fcBuild 幂等且只增不删，所以每次进页面都能安全跑。
+           只有真的新增 / 刷新过卡才落盘 —— 纯浏览不写 localStorage。 */
+        function fcAutoSync() {
+            try {
+                if (typeof fcBuild !== 'function') return null;
+                const r = fcBuild(true);
+                if (r && (r.added || r.refreshed || r.deletedBlock)) {
+                    try { saveData(); } catch (e) {}
+                }
+                return r;
+            } catch (e) { return null; }
         }
 
         // 顶部页签上的「待复习」角标 —— 与闪卡页内的 ⏰ 待复习 同源同数
@@ -25004,7 +25029,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261008n</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009a</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
