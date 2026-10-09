@@ -5874,7 +5874,14 @@
                 if (ch > g[course].maxChapter) g[course].maxChapter = ch;
                 const prev = g[course].chapters[ch].sections[sec] || {};
                 g[course].chapters[ch].sections[sec] = {
-                    name: val.name !== undefined && val.name !== '' ? val.name : (prev.name || ''),
+                    /* ★ 2026-10-09（第五十六轮）：节名优先序**反转** ——
+                       sectionNames（结构真源：结构编辑器 / 大纲粘贴 / 新增节都写它）
+                       优先，targetOverrides.name 只在结构位为空时兜底（老数据里
+                       sectionNames 是 applyGuideBulk 留的占位空串）。
+                       原实现 overrides 优先，与「谁在写」正好相反 ⇒ 批量添加入库的
+                       名字会盖住结构编辑器后来改的名，两边永远对不上。 */
+                    name: (prev.name && prev.name !== '') ? prev.name
+                        : ((val.name !== undefined && val.name !== '') ? val.name : ''),
                     duration: val.duration !== undefined && val.duration !== '' ? val.duration : (prev.duration || '0h'),
                     objective: val.objective !== undefined && val.objective !== '' ? val.objective : (prev.objective || '待补充'),
                     keypoints: val.keypoints !== undefined && val.keypoints !== '' ? val.keypoints : (prev.keypoints || '待补充'),
@@ -10662,7 +10669,7 @@ function parseGuideBulk(text) {
 function applyGuideBulk(target, parsed) {
     if (!target || !parsed || !parsed.items.length) return null;
     const res = { written: 0, newCourses: [], newChs: 0, newSecs: 0, chNamed: 0,
-                  matSecs: 0, matRows: 0, matCleared: 0 };
+                  matSecs: 0, matRows: 0, matCleared: 0, secNamed: 0 };
     if (typeof dettachBuiltinStructure === 'function') dettachBuiltinStructure(target);
     if (!Array.isArray(target.courses)) target.courses = [];
     target.chapterNames = target.chapterNames || {};
@@ -10682,6 +10689,13 @@ function applyGuideBulk(target, parsed) {
         if (!Array.isArray(sn[it.ch])) { sn[it.ch] = []; res.newChs++; }
         const arr = sn[it.ch];
         while (arr.length < it.sec) { arr.push(''); res.newSecs++; }
+        /* ★ 2026-10-09（第五十六轮）：节名**回填进 sectionNames**（治本）。
+           旧实现只写 overrides.name，sectionNames 里永远留一个占位空串；
+           而 buildGuideData 又把 overrides.name 放在优先位 ⇒「谁写的」决定了
+           「谁看得见」：批量添加改的名只有表单看得见、结构编辑器 / 大纲粘贴
+           改的名只有自检看得见。这里让两个存储位在同一次写入里保持一致。
+           没写名字的节（it.name 为空）不动 —— 与其它字段「没写的不动」同口径。 */
+        if (it.name) { arr[it.sec - 1] = it.name; res.secNamed++; }
         const key = it.course + '|' + it.ch + '|' + it.sec;
         const o = Object.assign({}, target.targetOverrides[key] || {});
         if (it.name) o.name = it.name;     // 节名与「导入文件」同口径：写 overrides.name
@@ -25075,7 +25089,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009e</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009g</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
