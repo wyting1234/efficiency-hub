@@ -4314,6 +4314,7 @@
                  混进来会让「点页签切视图」的遍历逻辑多认一个非视图按钮 -->
             <button type="button" class="sb-toggle" id="sbToggle" title="收起侧栏（把宽度让给内容）" aria-controls="mainContent" aria-expanded="true">☰</button>
             <button type="button" class="vtab active" data-view="study">📚 学习进度</button>
+            <button type="button" class="vtab" data-view="records" title="学习记录：一条条记录的筛选 / 搜索 / 展示方式 / 导出，都在这一页">📋 学习记录</button>
             <button type="button" class="vtab" data-view="kptree" title="知识点树：浏览 / 展开收拢 / 层级范围 / 搜索">🌳 知识树</button>
             <button type="button" class="vtab" data-view="flash" title="闪卡：复习内容的另一种呈现形式">🃏 闪卡<span class="sc-tab-badge" id="fc-tabBadge">0</span></button>
             <button type="button" class="vtab" data-view="memory">🧠 记忆曲线</button>
@@ -4700,6 +4701,16 @@
             <span class="subtext">—— 每一次回顾都是新的领悟</span>
         </div>
 
+        </div><!-- /view-study -->
+
+        <!-- ===== 📋 学习记录视图（独立页签 · 2026-10-09 Tom 需求） =====
+             把原本嵌在「📚 学习进度」页里的「📋 学习记录」筛选条 + 记录卡片列表
+             整块搬出来单独成页签，排在「学习进度」与「知识树」之间。
+             只搬 DOM —— 数据（state.records）、渲染（renderRecords）、筛选（initFilters）、
+             导出 / 打印（buildPrintHTML / printRecords）全在同一份文档里，一字未改；
+             切页签仍旧只是 initViewTabs 的显示切换（见函数内 .view-pane 遍历）。 ===== -->
+        <div class="view-pane" id="view-records" style="display:none;">
+
         <!-- 记录列表 -->
         <div class="records-header">
             <h3>📋 学习记录 <span class="count" id="recordListCount">(0)</span></h3>
@@ -4744,6 +4755,7 @@
                         style="padding:4px 10px;border:1px solid #dcb3b3;border-radius:6px;background:#fdf4f2;color:#a04545;font-size:12px;height:26px;cursor:pointer;flex:0 0 auto;">🧯 强制清理</button>
             </div>
         <div class="rec-export">
+                <button type="button" class="rec-exp-btn" id="recAddBtn" title="回到「📚 学习进度」页签并展开录入表单">➕ 添加记录</button>
                 <button type="button" class="rec-exp-btn" id="expRecXlsxBtn">📊 导出 Excel</button>
                 <button type="button" class="rec-exp-btn" id="expRecPdfBtn">📄 导出 PDF</button>
                 <button type="button" class="rec-exp-btn" id="printRecBtn">🖨️ 一键打印</button>
@@ -4770,7 +4782,7 @@
         </div>
         <div class="record-list" id="recordList"></div>
 
-        </div><!-- /view-study -->
+        </div><!-- /view-records -->
 
         <!-- ===== 记忆曲线视图 ===== -->
         <!-- ===== 🌳 知识树视图（独立体系：浏览 / 展开收拢 / 层级范围 / 搜索） =====
@@ -8458,6 +8470,16 @@
             if (bp) bp.addEventListener('click', function () { printRecords('pdf'); });
             const pr = document.getElementById('printRecBtn');
             if (pr) pr.addEventListener('click', function () { printRecords('print'); });
+            /* ★ 2026-10-09：「📋 学习记录」拆成独立页签后，这一页没有录入表单 ——
+               给一个「➕ 添加记录」入口：先切回「📚 学习进度」页签，再走 toggleFormBtn
+               那条既有路径展开表单（含落回上次章 / 节、问自动计时），不另写一套显隐。 */
+            const ra = document.getElementById('recAddBtn');
+            if (ra) ra.addEventListener('click', function () {
+                const st = document.querySelector('#viewTabs .vtab[data-view="study"]');
+                if (st) st.click();
+                const tb = document.getElementById('toggleFormBtn');
+                if (tb) tb.click();
+            });
             document.querySelectorAll('.now-btn[data-target]').forEach(function (b) {
                 b.addEventListener('click', function () {
                     const el = document.getElementById(b.dataset.target);
@@ -13280,7 +13302,7 @@ if (document.readyState === 'loading') {
         }
 
         // ============================================================
-        //  视图 Tab 切换（学习进度 / 记忆曲线 / 目标管理）
+        //  视图 Tab 切换（学习进度 / 学习记录 / 知识树 / 闪卡 / 记忆曲线 / 自检 / 设置）
         // ============================================================
         function initViewTabs() {
             const tabs = document.querySelectorAll('#viewTabs .vtab');
@@ -25029,7 +25051,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261009c</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
