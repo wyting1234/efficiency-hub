@@ -2373,6 +2373,7 @@
   //   （sync_last_sync / sync_timestamps / __hub_*）都被挡掉，否则「同步把结果写回本机」
   //   会被当成「用户改了数据」→ 立刻再同步 → 无限循环。
   const AUTO_KEY = 'ehub_autosync_v1';
+  // ★ 2026-10-10 修复：'hide' 兜底豁免 minGap（此前「改完切走 App」的数据会被节流拦掉）。
 
   // ============ 同步记录：把 localStorage 键翻成人看得懂的名字 ============
   // 为什么需要：同步留痕以前只写原始键名（`chaomuji_web_v27`），
@@ -2875,7 +2876,15 @@
     if (typeof b.both !== 'function') return null;
     const p = autoPreset();
     const sinceLast = Date.now() - (autoLastAtMem || 0);
-    if (reason !== 'manual' && sinceLast < p.minGap) return null;
+    // ★★ 兜底路径豁免 minGap（2026-10-10 修复）：
+    //   reason 有两种「不等下一次就必须推」：
+    //     · 'manual' —— 用户亲手点的，他正看着，必须立刻有结果；
+    //     · 'hide'   —— 页面即将隐藏 / 卸载（切走 App、关标签页）。
+    //                  这是页面销毁前**唯一**还能把改动推上去的机会，错过即永久丢失；
+    //                  节流在这时没有任何意义（下一次触发根本不会发生，因为 JS 已经停了）。
+    //   曾经的写法只豁免 'manual'，导致「改完 3 分钟内切走 App」的数据一直被 minGap 拦掉 ——
+    //   而定时器随页面销毁 ⇒ 数据永远上不了云端，用户却看到「已同步」（那行是上一次的结果）。
+    if (reason !== 'manual' && reason !== 'hide' && sinceLast < p.minGap) return null;
     autoBusy = true;
     try {
       const sum = await b.both({ silent: true });
@@ -3011,12 +3020,14 @@
         if (document.visibilityState !== 'hidden') return;
         if (!autoCfg.on || !autoDirtyAt || autoBusy) return;
         if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
-        runAutoSync('change');
+        // ★ reason='hide'：这一步必须**豁免 minGap**（见 runAutoSync 里的说明）。
+        //   页面马上要隐藏/销毁，定时器不会再有下一次机会 —— 用 'change' 会被节流拦掉。
+        runAutoSync('hide');
       });
       window.addEventListener('pagehide', function () {
         if (!autoCfg.on || !autoDirtyAt || autoBusy) return;
         if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
-        runAutoSync('change');
+        runAutoSync('hide');
       });
     } catch (e) {}
   }
