@@ -3007,6 +3007,203 @@
     padding: 12px 12px 14px; min-height: 160px; overflow: auto;
 }
 
+        /* ============================================================
+           📐 案例展示 / 🌲 题目树 / 🌳 题眼模式  （Tom 2026-10-10）
+           配色沿用本页的燕麦赭石：cream 底 + umber 标题 + accent 强调
+           ============================================================ */
+        .cs-wrap, .qt-wrap { padding: 14px 16px 28px; }
+        .cs-head, .qt-head {
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            padding: 10px 12px; border: 1px solid var(--line2, #DCCFB4);
+            border-radius: 10px; background: #FFFDF8; margin-bottom: 12px;
+        }
+        .cs-head h3, .qt-head h3 { margin: 0; font-size: 17px; font-family: var(--serif, Georgia), serif; }
+        .cs-sub, .qt-sub { font-size: 12.5px; color: var(--text-secondary, #7A6A55); }
+
+        /* 分段控件（例题/代码、树/列表、浏览/题眼） */
+        .cs-seg { display: inline-flex; gap: 0; border: 1px solid var(--line2, #DCCFB4); border-radius: 8px; overflow: hidden; }
+        .cs-seg .cs-segb, .cs-seg .qt-segb, .cs-seg .kt-segb {
+            border: 0 !important; border-radius: 0 !important; margin: 0 !important;
+            padding: 5px 13px; font-size: 12.5px; background: #FFFDF8; color: #7A6A55;
+        }
+        .cs-seg .cs-segb.on, .cs-seg .qt-segb.on, .cs-seg .kt-segb.on {
+            background: var(--accent, #A6503C); color: #FFF8EE; font-weight: 600;
+        }
+
+        .cs-toolbar {
+            display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+            padding: 9px 12px; border: 1px solid var(--line2, #DCCFB4);
+            border-radius: 9px; background: #FFFDF8; margin-bottom: 12px; font-size: 12.5px;
+        }
+        .cs-toolbar label { display: inline-flex; align-items: center; gap: 6px; color: #6B5B47; white-space: nowrap; flex: 0 0 auto; }
+        .cs-toolbar select { max-width: 240px; }
+        .cs-toolbar input[type="date"], .cs-toolbar select {
+            border: 1px solid var(--line2, #DCCFB4); border-radius: 6px; padding: 4px 7px;
+            background: #fff; font-size: 12.5px; color: #4A3B2A;
+        }
+        .cs-search {
+            border: 1px solid var(--line2, #DCCFB4); border-radius: 7px;
+            padding: 5px 10px; font-size: 12.5px; min-width: 200px; background: #fff;
+        }
+
+        /* ---- 表格本体：照截图的行列结构 ---- */
+        .cs-tablebox { overflow-x: auto; }
+        table.cs-q {
+            width: 100%; border-collapse: collapse; table-layout: fixed;
+            background: #FFFDF8; font-size: 13px;
+        }
+        table.cs-q th, table.cs-q td {
+            border: 1px solid var(--line2, #DCCFB4); padding: 7px 9px;
+            vertical-align: top; word-break: break-word;
+        }
+        table.cs-q .rowhead, table.cs-q th.rowhead {
+            background: #F3EADA; color: #6B5B47; font-weight: 600;
+            text-align: center; width: 84px; white-space: nowrap;
+        }
+        table.cs-q .fill-strong { background: #F6E7B8; text-align: center; font-weight: 600; color: #5A4A2E; }
+        table.cs-q .fill { background: #FDF6D8; }
+        table.cs-q .fill:focus { outline: 2px solid var(--accent, #A6503C); outline-offset: -2px; }
+        table.cs-q thead th { background: #F3EADA; text-align: center; font-weight: 600; color: #6B5B47; }
+        table.cs-q .cs-mini { font-size: 11.5px; color: #8A7358; margin-bottom: 3px; }
+        table.cs-q ul { margin: 0; padding-left: 17px; }
+        table.cs-q li { margin: 1px 0; }
+
+        /* 代码块 */
+        .cs-code {
+            font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+            font-size: 12.5px; line-height: 1.8; color: #3E3226;
+            background: #FBF7ED; border: 1px solid #E6DCC2; border-radius: 6px;
+            padding: 8px 10px; margin: 2px 0; overflow-x: auto; white-space: pre-wrap;
+        }
+        .cs-code .ln {
+            display: inline-block; width: 20px; color: #B8A88C; user-select: none;
+            text-align: right; margin-right: 9px;
+        }
+        .cs-code2 { font-family: "Cascadia Code", Consolas, monospace; font-size: 12px; color: #7A6A55; margin-top: 4px; }
+
+        /* 题眼 / 知识点 chip */
+        .cs-chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: flex-start; }
+        .cs-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: #F0E3C8; border: 1px solid #DCC9A4; border-radius: 12px;
+            padding: 2px 9px; font-size: 12px; color: #6B5B47; white-space: nowrap;
+        }
+        .cs-chip.eye { background: #F3D9D2; border-color: #DFAE9F; color: #8E4433; }
+        .cs-chip b { font-weight: 600; }
+        .cs-chip .x { cursor: pointer; opacity: .55; font-size: 13px; line-height: 1; }
+        .cs-chip .x:hover { opacity: 1; color: #A6503C; }
+        .cs-addchip {
+            border: 1px dashed #CBB894; background: transparent; color: #8A7358;
+            border-radius: 12px; padding: 2px 9px; font-size: 12px; cursor: pointer;
+        }
+        .cs-addchip:hover { background: #F6EFE0; }
+
+        /* 编辑头 */
+        .cs-editor {
+            border: 1px solid var(--line2, #DCCFB4); border-radius: 10px;
+            background: #FFFDF8; padding: 10px 12px 14px; margin-bottom: 16px;
+        }
+        .cs-editor-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+        .cs-editor-head b { font-size: 13.5px; color: #5A4A2E; }
+        .cs-hint { font-size: 11.5px; color: #9C8B72; }
+
+        /* 案例列表 */
+        .cs-list { display: flex; flex-direction: column; gap: 10px; }
+        .cs-listbox { margin-top: 4px; }
+        .cs-listbox > .cs-list-hint {
+            font-size: 12.5px; color: #9C8B72; margin: 0 0 8px;
+        }
+        .cs-item {
+            border: 1px solid var(--line2, #DCCFB4); border-radius: 9px;
+            background: #FFFDF8; padding: 10px 13px; display: flex; gap: 12px;
+        }
+        .cs-item-main { flex: 1; min-width: 0; }
+        .cs-item-q { font-size: 13.5px; color: #3E3226; font-weight: 600; margin-bottom: 4px; }
+        .cs-item-meta { font-size: 12px; color: #8A7358; margin-bottom: 5px; }
+        .cs-item-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+
+        /* ---- 题目树 ---- */
+        .qt-body { font-size: 13px; }
+        .tnode { margin-left: 0; }
+        .trow {
+            display: flex; align-items: center; gap: 7px; padding: 5px 8px;
+            border-radius: 6px; cursor: pointer; color: #5A4A2E;
+        }
+        .trow:hover { background: #F6EFE0; }
+        .trow .tog { width: 13px; color: #A6906F; font-size: 11px; }
+        .trow .tname { font-weight: 600; }
+        .trow .tcnt { font-size: 11.5px; color: #9C8B72; margin-left: auto; }
+        .tkids { margin-left: 21px; border-left: 1px dashed #DCCFB4; padding-left: 10px; }
+        .tleaf { padding: 6px 8px; }
+        .tq { color: #3E3226; margin-bottom: 4px; }
+        .tq .qno {
+            display: inline-block; min-width: 22px; color: #A6503C; font-weight: 600;
+            font-family: var(--serif, Georgia), serif;
+        }
+        .ansbox {
+            margin: 4px 0 4px 30px; background: #F5EEE0; border-left: 3px solid #DCC9A4;
+            border-radius: 0 6px 6px 0; padding: 6px 10px; font-size: 12.5px; color: #5A4A2E;
+        }
+        .ansbox.hide { display: none; }
+        .ansbox .alab { color: #9C8B72; }
+        .qt-list { display: flex; flex-direction: column; gap: 10px; padding: 2px; }
+        .qcard {
+            border: 1px solid var(--line2, #DCCFB4); border-radius: 9px;
+            background: #FFFDF8; padding: 11px 14px;
+        }
+        .qcard .qh { font-size: 13.5px; color: #3E3226; font-weight: 600; margin-bottom: 3px; }
+        .qcard .qm { font-size: 11.5px; color: #9C8B72; margin-bottom: 6px; }
+        .cs-empty { text-align: center; padding: 44px 20px; color: #9C8B72; }
+        .cs-empty .cs-big { font-size: 16px; color: #7A6A55; margin-bottom: 7px; font-family: var(--serif, Georgia), serif; }
+        .cs-empty p { margin: 0; font-size: 12.5px; }
+
+        /* ---- 题眼模式 ---- */
+        .kt-eye-bar {
+            display: flex; align-items: center; gap: 12px;
+            background: #FBF0E4; border: 1px solid #E5CDB4; border-radius: 8px;
+            padding: 7px 12px; margin: 8px 0; font-size: 12.5px; color: #7A5B44;
+        }
+        .kt-eye-n b { color: #A6503C; }
+        /* 题眼模式下：可点的知识点行 */
+        .kt-eye-mode .kt-row, .kt-eye-mode .kt-oline { cursor: pointer; }
+        .kt-eye-mode .kt-row:hover, .kt-eye-mode .kt-oline:hover { background: #F6EFE0; }
+        .kt-eye-dot {
+            display: inline-block; width: 15px; min-width: 15px; text-align: center;
+            margin-right: 3px; color: #C4B499; font-size: 12px; user-select: none;
+        }
+        .kt-eye-on > .kt-eye-dot, .kt-eye-on .kt-eye-dot { color: #A6503C; }
+        .kt-eye-on .kt-name { background: #F7E4DE; border-radius: 4px; padding: 0 4px; color: #8E4433; }
+        .kt-eye-mode .kt-row { display: flex; align-items: baseline; gap: 0; }
+
+        /* 知识点选择弹窗 */
+        .kp-mask {
+            position: fixed; inset: 0; background: rgba(58, 46, 32, .38);
+            display: flex; align-items: center; justify-content: center; z-index: 9998;
+        }
+        .kp-dlg {
+            background: #FFFDF8; border-radius: 12px; width: min(520px, 92vw);
+            max-height: 78vh; display: flex; flex-direction: column;
+            box-shadow: 0 14px 44px rgba(70, 55, 35, .28);
+            border: 1px solid var(--line2, #DCCFB4);
+        }
+        .kp-dlg-head {
+            display: flex; align-items: center; padding: 13px 16px;
+            border-bottom: 1px solid #E8DEC6; font-size: 14.5px; font-weight: 600; color: #5A4A2E;
+        }
+        .kp-dlg-head .x { margin-left: auto; cursor: pointer; color: #A6906F; font-size: 17px; }
+        .kp-dlg-body { overflow: auto; padding: 10px 16px 16px; font-size: 13px; }
+        .kp-dlg-note { font-size: 12px; color: #9C8B72; margin: 0 0 9px; }
+        .kp-dlg-tree .knode { padding: 3px 0; }
+        .kp-dlg-tree .kp-pick { cursor: pointer; display: inline-flex; align-items: baseline; gap: 5px; }
+        .kp-dlg-tree .kp-pick .bx { color: #C4B499; }
+        .kp-dlg-tree .kp-pick.picked .bx { color: #A6503C; }
+        .kp-dlg-tree .kp-pick.picked .nm { background: #F7E4DE; border-radius: 4px; padding: 0 4px; color: #8E4433; }
+        .kp-dlg-foot {
+            display: flex; justify-content: flex-end; gap: 9px;
+            padding: 10px 16px 14px; border-top: 1px solid #E8DEC6;
+        }
+
+
 /* ===== 知识树「铺满整页」（2026-09-17，按 Tom 红框） =====
    症状：知识树卡片按内容自适应高度 —— 视口 828px 时卡片只到 405px，下面 423px 全是空背景，
    纵向填充率 50.9%（Edge 无头内核实测，非目测）。根因不是树太短，是**卡片没有可伸展的高度**：
@@ -4461,14 +4658,16 @@
             <button type="button" class="sb-toggle" id="sbToggle" title="收起侧栏（把宽度让给内容）" aria-controls="mainContent" aria-expanded="true">☰</button>
             <button type="button" class="vtab active" data-view="study">📚 学习进度</button>
             <button type="button" class="vtab" data-view="records" title="学习记录：一条条记录的筛选 / 搜索 / 展示方式 / 导出，都在这一页">📋 学习记录</button>
-            <button type="button" class="vtab" data-view="kptree" title="知识点树：浏览 / 展开收拢 / 层级范围 / 搜索">🌳 知识树</button>
             <button type="button" class="vtab" data-view="flash" title="闪卡：复习内容的另一种呈现形式">🃏 闪卡<span class="sc-tab-badge" id="fc-tabBadge">0</span></button>
             <button type="button" class="vtab" data-view="memory">🧠 记忆曲线</button>
             <button type="button" class="vtab" data-view="scsec" title="小节精简自检">📝 小节自检</button>
             <button type="button" class="vtab" data-view="scchap" title="整章综合复盘">🗂 整章复盘</button>
             <button type="button" class="vtab" data-view="scboard" title="自检看板">📊 自检看板<span class="sc-tab-badge" id="sc-recCount">0</span></button>
             <button type="button" class="vtab" data-view="scheat" title="自检热力图：横轴=章，纵轴=节；可切换掌握程度 / 学习时长">🔥 热力图</button>
+            <button type="button" class="vtab" data-view="case" title="案例展示：按「项目 / 题目 / 解题 / 答案 / 思考总结」表格记录例题，支持例题模式与代码模式">📐 案例展示<span class="sc-tab-badge" id="cs-count">0</span></button>
+            <button type="button" class="vtab" data-view="qtree" title="题目树：案例展示里的所有题目，按「列表」或「章节知识树」展开，可隐藏 / 显示答案">🌲 题目树<span class="sc-tab-badge" id="qt-count">0</span></button>
             <button type="button" class="vtab" data-view="scwrong" title="错题登记与复习">❌ 错题本<span class="sc-tab-badge" id="sc-wrongCount">0</span></button>
+            <button type="button" class="vtab" data-view="kptree" title="知识点树：浏览 / 展开收拢 / 层级范围 / 搜索；题眼模式下点击知识点可标记并回看相关例题">🌳 知识树</button>
             <button type="button" class="vtab vtab-small" data-view="goal" title="科目目标 / 外观设置">⚙️ 设置</button>
         </div>
 
@@ -4936,85 +5135,6 @@
         </div><!-- /view-records -->
 
         <!-- ===== 记忆曲线视图 ===== -->
-        <!-- ===== 🌳 知识树视图（独立体系：浏览 / 展开收拢 / 层级范围 / 搜索） =====
-             自成一套，不依赖闪卡模块，也不在此出题。只读 kpTree，不写学习记录。 -->
-        <div class="view-pane" id="view-kptree" style="display:none;">
-            <div class="kt-wrap" id="ktWrap">
-                <div class="kt-head">
-                    <h3>🌳 知识树</h3>
-                    <span class="kt-sub" id="ktStat">尚未导入知识点</span>
-                    <span class="fc-spacer"></span>
-                    <!-- ★ v54（Tom 2026-10-09）：知识树全屏 —— 铺满整屏（侧栏与顶部页签栏让位）。 -->
-                    <button type="button" class="fc-btn fs-btn" id="ktFsBtn" title="全屏：知识树铺满整屏（侧栏与顶部页签栏让位）。再点一次或按 Esc 恢复">⛶ 全屏</button>
-                    <button type="button" class="fc-btn" id="ktExpandAll" title="展开当前选中节的所有节点">＋ 全部展开</button>
-                    <button type="button" class="fc-btn" id="ktCollapseAll" title="收拢当前选中节的所有节点">－ 全部收拢</button>
-                    <!-- ★ 2026-09-19（需求Z2）：打印 / 导出 PDF / 导出 MD。
-                         范围 = **屏上这一棵**（含展开态、收拢态、搜索过滤），不是全量数据 ——
-                         所以三个入口都是「克隆已经渲染好的那棵树」，不重算一遍。 -->
-                    <button type="button" class="fc-btn" id="ktPrintBtn" title="打印当前知识树视图：打出来的就是屏上这一棵（含展开 / 收拢与搜索过滤的结果）">🖨️ 打印</button>
-                    <button type="button" class="fc-btn" id="ktPdfBtn" title="导出 PDF：会打开打印对话框，在「目标 / 打印机」里选「另存为 PDF」即可">📄 导出 PDF</button>
-                    <button type="button" class="fc-btn" id="ktMdBtn" title="导出 Markdown：按屏上这一棵的层级缩进写成 .md（含一键编号与 ★▲？ 标记）">📥 导出 MD</button>
-                </div>
-                <div class="kt-bar">
-                    <label>科目 <select id="ktCourse"></select></label>
-                    <label>章 <select id="ktChapter"></select></label>
-                    <label>节 <select id="ktSection"></select></label>
-                    <!-- ★ 2026-09-21（Tom 需求②）：知识点展示的**展示方式**三档 ——
-                         思维导图（左→右折线树，原样保留）/ 大纲视角 / 符号视角。
-                         后两档「借用学习记录里面的展示模式」：一行一个节点、行首一列
-                         （编号 或 该层符号）、层级用缩进表达 —— 与「📝 学习记录 →
-                         📌 知识点速记」的 大纲 / 符号 视角同一套视觉语言。
-                         三档共用同一份数据与同一条筛选链（科目/章/节、显示范围、
-                         隐藏未学、搜索、★▲？标记），切换只换画法，不写任何数据。 -->
-                    <span class="kt-modegrp" id="ktModeGrp">
-                        <span class="kt-modecap">展示</span>
-                        <button type="button" class="fc-btn kt-mbtn" id="ktModeBtn_mind" data-ktmode="mind" title="思维导图视角（默认）：左→右折线树，点 ▸ / ▾ 展开收拢">🧠 思维导图</button>
-                        <button type="button" class="fc-btn kt-mbtn" id="ktModeBtn_outline" data-ktmode="outline" title="大纲视角：一行一个节点、层级用缩进表达、行首一列编号（与「📝 学习记录 → 知识点速记 → 大纲视角」同一套排版；编号按当前模版生成）。本视角一次摊开全部层级（不折叠）">🗂 大纲视角</button>
-                        <button type="button" class="fc-btn kt-mbtn" id="ktModeBtn_symbol" data-ktmode="symbol" title="符号视角：行首换成该层的符号（取自「🧩 模版设置 → 🔣 每级符号」），层级用缩进表达（与「📝 学习记录 → 知识点速记 → 符号视角」同源）。本视角一次摊开全部层级（不折叠）">🔣 符号视角</button>
-                    </span>
-                    <span class="kt-noctl">
-                        <button type="button" class="fc-btn" id="ktNumberBtn" title="按编号模版给每一行加上行首编号（只影响本页显示，不改动科目/章/节与学习记录）">🔢 一键编号</button>
-                        <select id="ktNoTmpl" title="编号模版（与「📝 学习记录 → 🧩 模版设置」共用同一份偏好）。五套体系各七档，档位 = 链路层级：1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级"></select>
-                    </span>
-                    <!-- ★ 2026-09-18（需求 C）：把行尾的「层级名 / N 项」换成符号 -->
-                    <button type="button" class="fc-btn" id="ktSymBtn" title="层级角标：打开后在每行行尾显示一个层级符号（科目/章/节/知识点1-4级各一个）。默认关闭 —— 层级另有颜色、缩进、一键编号三条线索。符号取自「模版设置 → 🔣 每级符号」，与编号体系的符号体同源">🔣 层级角标</button>
-                    <!-- ★ 2026-09-19（需求Z1）：隐藏未学。
-                         判据与「📚 进度统计」的已学科目 / 已学章 / 已学节**同一口径**：
-                         这个科目 / 章 / 节上有没有一条学习记录；没有 = 未学，连整支收起来。
-                         知识点行（第 4–7 级）不受影响 —— 它们本来就只来自学习记录，
-                         有行的前提就是学过，所以恒为「已学」。 -->
-                    <button type="button" class="fc-btn" id="ktHideUnBtn" title="隐藏未学：把**没有任何学习记录**的科目 / 章 / 节连整支收起来（与「📚 进度统计」的已学口径一致）。知识点天然来自学习记录，不受影响。开关会记住。">🙈 隐藏未学</button>
-                    <!-- ★ 2026-09-18（追加，需求3）：重点 / 难点 / 疑点 的显示开关。
-                         三个符号**可以同时出**，各有一个开关、各自点亮，互相独立
-                         （也独立于左边的「🔣 符号」）。
-                         数据有两个来源，知识树取并集：
-                           ① 🎯 考试项目 → ✎ 编辑项目配置 →「内容模块」预先配好的章 / 节（计划层）；
-                           ② 📝 学习记录编辑界面勾的 record.marks（执行层）。
-                         预设＝虚线轮廓、记录＝实底，一眼分得清「计划中的」和「确实标过的」。
-                         本页只读，不回写任何一边。 -->
-                    <span class="kt-mkctl" id="ktMkCtl">
-                        <button type="button" class="fc-btn kt-mkb" id="ktMarkBtn_key" data-ktmark="key" title="重点 ★：显示 📝 学习记录里标的，以及「编辑项目配置 → 内容模块」里预设的「重点」。三个符号可以同时显示">★ 重点</button>
-                        <button type="button" class="fc-btn kt-mkb" id="ktMarkBtn_hard" data-ktmark="hard" title="难点 ▲：显示 📝 学习记录里标的，以及「编辑项目配置 → 内容模块」里预设的「难点」。三个符号可以同时显示">▲ 难点</button>
-                        <button type="button" class="fc-btn kt-mkb" id="ktMarkBtn_doubt" data-ktmark="doubt" title="疑点 ？：显示 📝 学习记录里标的，以及「编辑项目配置 → 内容模块」里预设的「疑点」。三个符号可以同时显示">？ 疑点</button>
-                    </span>
-                    <span class="fc-spacer"></span>
-                    <!-- 2026-09-17（按 Tom 红框所指删除）：去掉「显示 第」前缀标签 ——
-                         两个下拉自带的「第X级 · 知识点Y级」已说明含义，前缀只是白占横向宽度。 -->
-                    <label class="kt-range" title="七级链路：1科目 2章 3节 4知识点1级 5知识点2级 6知识点3级 7知识点4级。这里选的是**显示范围**：范围外的层级（含科目/章/节这类祖先行）一律不显示。"><select id="ktFrom"></select><span class="kt-range-sep">–</span><select id="ktTo"></select></label>
-                    <input type="text" class="kt-search" id="ktSearch" placeholder="搜索节点（Esc 清空）">
-                </div>
-                <div class="kt-legend">
-                    <span>全项目：节点 <b id="ktTotal">0</b> · 叶子 <b id="ktLeaf">0</b> · 最深 <b id="ktDepth">0</b> / 7 级</span>
-                    <span class="kt-tierbar" id="ktTierBar"></span>
-                    <span class="kt-lvhint">七级：科目 › 章 › 节 › 知识点 1–4 级 · 右键 / 长按节点可改 ★ ▲ ？</span>
-                    <!-- ★ 需求 F：符号去掉背景与框之后，深浅是区分两层的唯一线索。
-                         这句解释**只在树里真的有计划层标记时**才写进去（见 ktMkHintPaint）——
-                         没预设过就一个字都不占，免得又变成一行常驻噪音。 -->
-                    <span class="kt-lvhint" id="ktMkHint"></span>
-                </div>
-                <div class="kt-body" id="ktBody"></div>
-            </div>
-        </div>
 
         <!-- ===== 🃏 闪卡视图（独立页签） =====
              内容来自知识点树（kpTree）：一个「还有下一级」的节点 = 一张卡。
@@ -5397,6 +5517,61 @@
             </div>
         </div>
 
+        <!-- ===== 📐 案例展示（Tom 2026-10-10 需求）=====
+             独立数据（accCase_v3_<项目>），不依赖自检/错题两套存档。
+             表格结构照 Tom 给的两张截图：
+               项目 | 第N章 | N.N节
+               题目
+               解题 → 问题 / 已知 / 知识点关联 / 推导可知
+               答案 → 文字 / 代码
+               思考总结 → 从已知到未知 / 题眼 / 关键陷阱 / 经验沉淀
+               问题1..N → 追问行
+             两档模式（例题模式 / 代码模式）只换「已知 + 解题过程 + 答案」三格的画法。 -->
+        <div class="view-pane" id="view-case" style="display:none;">
+            <div class="cs-wrap">
+                <div class="cs-head">
+                    <h3>📐 案例展示</h3>
+                    <span class="cs-sub" id="csStat">尚无案例</span>
+                    <span class="fc-spacer"></span>
+                    <span class="cs-seg" id="csModeSeg">
+                        <button type="button" class="fc-btn cs-segb on" data-csmode="example">例题模式</button>
+                        <button type="button" class="fc-btn cs-segb" data-csmode="code">代码模式</button>
+                    </span>
+                    <button type="button" class="fc-btn" id="csNewBtn" title="新建一条案例">＋ 新建案例</button>
+                </div>
+
+                <div class="cs-toolbar">
+                    <label>科目 <select id="csCourse"></select></label>
+                    <label>章 <select id="csChapter"></select></label>
+                    <label>节 <select id="csSection"></select></label>
+                    <label>做题时间 <input type="date" id="csDate"></label>
+                    <span class="fc-spacer"></span>
+                    <input type="text" class="cs-search" id="csSearch" placeholder="搜索题目 / 知识点（Esc 清空）">
+                </div>
+
+                <div class="cs-editor" id="csEditor">
+                    <div class="cs-editor-head">
+                        <b id="csEditorTitle">新建案例</b>
+                        <span class="cs-hint">表格里浅黄格都可直接点进去编辑</span>
+                        <span class="fc-spacer"></span>
+                        <button type="button" class="fc-btn" id="csSaveBtn">💾 保存</button>
+                        <button type="button" class="fc-btn" id="csCancelBtn">取消</button>
+                    </div>
+                    <div class="cs-tablebox">
+                        <table class="cs-q" id="csTable"></table>
+                    </div>
+                </div>
+
+                <div class="cs-listbox" id="csListBox">
+                    <div class="cs-list" id="csList"></div>
+                    <div class="cs-empty" id="csEmpty" style="display:none">
+                        <div class="cs-big">还没有案例</div>
+                        <p>点右上角「＋ 新建案例」，照着表格把一道题的解题过程完整记下来。记完的题会出现在「🌲 题目树」里。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="view-pane sc-app" id="view-scboard" style="display:none;">
     <div class="sc-topbar">
       <div>
@@ -5516,6 +5691,125 @@
         <p>把每次自检/做题的错题沉淀到这里，形成自己的错题闭环。</p>
       </div>
     </div>
+        </div>
+
+        <!-- ===== 🌳 知识树视图（独立体系：浏览 / 展开收拢 / 层级范围 / 搜索） =====
+             自成一套，不依赖闪卡模块，也不在此出题。只读 kpTree，不写学习记录。 -->
+        <div class="view-pane" id="view-kptree" style="display:none;">
+            <div class="kt-wrap" id="ktWrap">
+                <div class="kt-head">
+                    <h3>🌳 知识树</h3>
+                    <span class="kt-sub" id="ktStat">尚未导入知识点</span>
+                    <!-- ★ Tom 2026-10-10：题眼模式 —— 勾选知识点即标为「题眼」，
+                         之后可在「📐 案例展示」的「知识点关联 / 题眼」格把它挂到题上，
+                         也能从这道题反查「哪些题考过这个题眼」。 -->
+                    <span class="cs-seg" id="ktEyeSeg" style="margin-left:10px">
+                        <button type="button" class="fc-btn kt-segb on" data-ktmode2="browse">浏览</button>
+                        <button type="button" class="fc-btn kt-segb" data-ktmode2="eye">题眼模式</button>
+                    </span>
+                    <span class="fc-spacer"></span>
+                    <!-- ★ v54（Tom 2026-10-09）：知识树全屏 —— 铺满整屏（侧栏与顶部页签栏让位）。 -->
+                    <button type="button" class="fc-btn fs-btn" id="ktFsBtn" title="全屏：知识树铺满整屏（侧栏与顶部页签栏让位）。再点一次或按 Esc 恢复">⛶ 全屏</button>
+                    <button type="button" class="fc-btn" id="ktExpandAll" title="展开当前选中节的所有节点">＋ 全部展开</button>
+                    <button type="button" class="fc-btn" id="ktCollapseAll" title="收拢当前选中节的所有节点">－ 全部收拢</button>
+                    <!-- ★ 2026-09-19（需求Z2）：打印 / 导出 PDF / 导出 MD。
+                         范围 = **屏上这一棵**（含展开态、收拢态、搜索过滤），不是全量数据 ——
+                         所以三个入口都是「克隆已经渲染好的那棵树」，不重算一遍。 -->
+                    <button type="button" class="fc-btn" id="ktPrintBtn" title="打印当前知识树视图：打出来的就是屏上这一棵（含展开 / 收拢与搜索过滤的结果）">🖨️ 打印</button>
+                    <button type="button" class="fc-btn" id="ktPdfBtn" title="导出 PDF：会打开打印对话框，在「目标 / 打印机」里选「另存为 PDF」即可">📄 导出 PDF</button>
+                    <button type="button" class="fc-btn" id="ktMdBtn" title="导出 Markdown：按屏上这一棵的层级缩进写成 .md（含一键编号与 ★▲？ 标记）">📥 导出 MD</button>
+                </div>
+                <div class="kt-bar">
+                    <label>科目 <select id="ktCourse"></select></label>
+                    <label>章 <select id="ktChapter"></select></label>
+                    <label>节 <select id="ktSection"></select></label>
+                    <!-- ★ 2026-09-21（Tom 需求②）：知识点展示的**展示方式**三档 ——
+                         思维导图（左→右折线树，原样保留）/ 大纲视角 / 符号视角。
+                         后两档「借用学习记录里面的展示模式」：一行一个节点、行首一列
+                         （编号 或 该层符号）、层级用缩进表达 —— 与「📝 学习记录 →
+                         📌 知识点速记」的 大纲 / 符号 视角同一套视觉语言。
+                         三档共用同一份数据与同一条筛选链（科目/章/节、显示范围、
+                         隐藏未学、搜索、★▲？标记），切换只换画法，不写任何数据。 -->
+                    <span class="kt-modegrp" id="ktModeGrp">
+                        <span class="kt-modecap">展示</span>
+                        <button type="button" class="fc-btn kt-mbtn" id="ktModeBtn_mind" data-ktmode="mind" title="思维导图视角（默认）：左→右折线树，点 ▸ / ▾ 展开收拢">🧠 思维导图</button>
+                        <button type="button" class="fc-btn kt-mbtn" id="ktModeBtn_outline" data-ktmode="outline" title="大纲视角：一行一个节点、层级用缩进表达、行首一列编号（与「📝 学习记录 → 知识点速记 → 大纲视角」同一套排版；编号按当前模版生成）。本视角一次摊开全部层级（不折叠）">🗂 大纲视角</button>
+                        <button type="button" class="fc-btn kt-mbtn" id="ktModeBtn_symbol" data-ktmode="symbol" title="符号视角：行首换成该层的符号（取自「🧩 模版设置 → 🔣 每级符号」），层级用缩进表达（与「📝 学习记录 → 知识点速记 → 符号视角」同源）。本视角一次摊开全部层级（不折叠）">🔣 符号视角</button>
+                    </span>
+                    <span class="kt-noctl">
+                        <button type="button" class="fc-btn" id="ktNumberBtn" title="按编号模版给每一行加上行首编号（只影响本页显示，不改动科目/章/节与学习记录）">🔢 一键编号</button>
+                        <select id="ktNoTmpl" title="编号模版（与「📝 学习记录 → 🧩 模版设置」共用同一份偏好）。五套体系各七档，档位 = 链路层级：1 科目 · 2 章 · 3 节 · 4–7 知识点 1–4 级"></select>
+                    </span>
+                    <!-- ★ 2026-09-18（需求 C）：把行尾的「层级名 / N 项」换成符号 -->
+                    <button type="button" class="fc-btn" id="ktSymBtn" title="层级角标：打开后在每行行尾显示一个层级符号（科目/章/节/知识点1-4级各一个）。默认关闭 —— 层级另有颜色、缩进、一键编号三条线索。符号取自「模版设置 → 🔣 每级符号」，与编号体系的符号体同源">🔣 层级角标</button>
+                    <!-- ★ 2026-09-19（需求Z1）：隐藏未学。
+                         判据与「📚 进度统计」的已学科目 / 已学章 / 已学节**同一口径**：
+                         这个科目 / 章 / 节上有没有一条学习记录；没有 = 未学，连整支收起来。
+                         知识点行（第 4–7 级）不受影响 —— 它们本来就只来自学习记录，
+                         有行的前提就是学过，所以恒为「已学」。 -->
+                    <button type="button" class="fc-btn" id="ktHideUnBtn" title="隐藏未学：把**没有任何学习记录**的科目 / 章 / 节连整支收起来（与「📚 进度统计」的已学口径一致）。知识点天然来自学习记录，不受影响。开关会记住。">🙈 隐藏未学</button>
+                    <!-- ★ 2026-09-18（追加，需求3）：重点 / 难点 / 疑点 的显示开关。
+                         三个符号**可以同时出**，各有一个开关、各自点亮，互相独立
+                         （也独立于左边的「🔣 符号」）。
+                         数据有两个来源，知识树取并集：
+                           ① 🎯 考试项目 → ✎ 编辑项目配置 →「内容模块」预先配好的章 / 节（计划层）；
+                           ② 📝 学习记录编辑界面勾的 record.marks（执行层）。
+                         预设＝虚线轮廓、记录＝实底，一眼分得清「计划中的」和「确实标过的」。
+                         本页只读，不回写任何一边。 -->
+                    <span class="kt-mkctl" id="ktMkCtl">
+                        <button type="button" class="fc-btn kt-mkb" id="ktMarkBtn_key" data-ktmark="key" title="重点 ★：显示 📝 学习记录里标的，以及「编辑项目配置 → 内容模块」里预设的「重点」。三个符号可以同时显示">★ 重点</button>
+                        <button type="button" class="fc-btn kt-mkb" id="ktMarkBtn_hard" data-ktmark="hard" title="难点 ▲：显示 📝 学习记录里标的，以及「编辑项目配置 → 内容模块」里预设的「难点」。三个符号可以同时显示">▲ 难点</button>
+                        <button type="button" class="fc-btn kt-mkb" id="ktMarkBtn_doubt" data-ktmark="doubt" title="疑点 ？：显示 📝 学习记录里标的，以及「编辑项目配置 → 内容模块」里预设的「疑点」。三个符号可以同时显示">？ 疑点</button>
+                    </span>
+                    <span class="fc-spacer"></span>
+                    <!-- 2026-09-17（按 Tom 红框所指删除）：去掉「显示 第」前缀标签 ——
+                         两个下拉自带的「第X级 · 知识点Y级」已说明含义，前缀只是白占横向宽度。 -->
+                    <label class="kt-range" title="七级链路：1科目 2章 3节 4知识点1级 5知识点2级 6知识点3级 7知识点4级。这里选的是**显示范围**：范围外的层级（含科目/章/节这类祖先行）一律不显示。"><select id="ktFrom"></select><span class="kt-range-sep">–</span><select id="ktTo"></select></label>
+                    <input type="text" class="kt-search" id="ktSearch" placeholder="搜索节点（Esc 清空）">
+                </div>
+                <div class="kt-legend">
+                    <span>全项目：节点 <b id="ktTotal">0</b> · 叶子 <b id="ktLeaf">0</b> · 最深 <b id="ktDepth">0</b> / 7 级</span>
+                    <span class="kt-tierbar" id="ktTierBar"></span>
+                    <span class="kt-lvhint">七级：科目 › 章 › 节 › 知识点 1–4 级 · 右键 / 长按节点可改 ★ ▲ ？</span>
+                    <!-- ★ 需求 F：符号去掉背景与框之后，深浅是区分两层的唯一线索。
+                         这句解释**只在树里真的有计划层标记时**才写进去（见 ktMkHintPaint）——
+                         没预设过就一个字都不占，免得又变成一行常驻噪音。 -->
+                    <span class="kt-lvhint" id="ktMkHint"></span>
+                </div>
+                <div class="kt-eye-bar" id="ktEyeBar" style="display:none">
+                    <span>题眼模式下：点知识点即标记 / 取消标记</span>
+                    <span class="kt-eye-n">已标 <b id="ktEyeN">0</b> 个题眼</span>
+                    <span class="fc-spacer"></span>
+                    <button type="button" class="fc-btn" id="ktEyeClear">清空全部题眼</button>
+                </div>
+                <div class="kt-body" id="ktBody"></div>
+            </div>
+        </div>
+        <!-- ===== 🌲 题目树（Tom 2026-10-10 需求）=====
+             数据源 = 📐 案例展示（同一份 accCase_v3_<项目>）。
+             两种视图：列表方式 / 按章节知识树（章节 → 题目）。
+             答案可整体隐藏 / 显示；另有全部展开 / 全部收起。 -->
+        <div class="view-pane" id="view-qtree" style="display:none;">
+            <div class="qt-wrap">
+                <div class="qt-head">
+                    <h3>🌲 题目树</h3>
+                    <span class="qt-sub" id="qtStat">尚无题目</span>
+                    <span class="fc-spacer"></span>
+                    <span class="cs-seg" id="qtViewSeg">
+                        <button type="button" class="fc-btn qt-segb on" data-qtview="tree">按章节树</button>
+                        <button type="button" class="fc-btn qt-segb" data-qtview="list">列表方式</button>
+                    </span>
+                    <button type="button" class="fc-btn" id="qtAnsBtn" title="隐藏 / 显示全部答案">🙈 隐藏答案</button>
+                    <button type="button" class="fc-btn" id="qtExpandBtn">全部展开</button>
+                    <button type="button" class="fc-btn" id="qtCollapseBtn">全部收起</button>
+                </div>
+                <div class="qt-body" id="qtTree"></div>
+                <div class="qt-list" id="qtList" style="display:none"></div>
+                <div class="cs-empty" id="qtEmpty" style="display:none">
+                    <div class="cs-big">还没有题目</div>
+                    <p>先去「📐 案例展示」记一条案例，题目会自动出现在这里。</p>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -13757,6 +14051,936 @@ if (document.readyState === 'loading') {
         // ============================================================
         //  视图 Tab 切换（学习进度 / 学习记录 / 知识树 / 闪卡 / 记忆曲线 / 自检 / 设置）
         // ============================================================
+
+/* ============================================================
+   📐 案例展示 · 🌲 题目树 · 🌳 题眼模式   （Tom 2026-10-10 需求）
+
+   三块共用一个数据源：accCase_v3_<项目id>（经 scKey() 隔离）。
+   数据模型（一条案例）：
+     { id, course, chapter, section, date,
+       q,                                  // 题目
+       problem:[], known:[], derived:[],   // 解题三格（解题过程见 solution）
+       solution:[], answer:[],             // 解题过程 / 答案
+       thought:{fromTo,eye,trap,exp},      // 思考总结
+       followups:[{q,a}],                  // 问题1/2/3
+       kps:[sig], eyes:[sig],              // 关联知识点 / 题眼（多对多）
+       mode:'example'|'code',              // 上次用的模式
+       createdAt, updatedAt }
+
+   题眼集合单独存：hub_cpa_kp_eye_v1_<项目id> → {"<sig>":1}
+   知识点取自：fcWalkAll()（与知识树 / 闪卡同一份节点全集）
+     sig = course|chapter|section|tier|order（见 fcSig）
+
+   ⚠️ 本块是**独立 IIFE**，不污染外层作用域；只通过 window.CaseBook 暴露
+      必要的口子给「页签切换」和「知识树题眼」用。
+   ============================================================ */
+(function () {
+    'use strict';
+
+    /* ---------- 存储 ---------- */
+    var CASE_KEY = 'accCase_v3';
+    var EYE_KEY  = 'hub_cpa_kp_eye_v1';
+
+    function K(base) {
+        try { if (typeof scKey === 'function') return scKey(base); } catch (e) { }
+        return base;
+    }
+    function loadCases() {
+        try { var a = JSON.parse(localStorage.getItem(K(CASE_KEY))) || []; return Array.isArray(a) ? a : []; }
+        catch (e) { return []; }
+    }
+    function saveCases(arr) {
+        try { localStorage.setItem(K(CASE_KEY), JSON.stringify(arr)); } catch (e) { toastSafe('案例保存失败（存储空间可能已满）'); }
+        try { refreshCountsSafe(); } catch (e) { }
+        try { if (window.CaseBook && window.CaseBook._qtRefresh) window.CaseBook._qtRefresh(); } catch (e) { }
+    }
+    function loadEyes() {
+        try { return JSON.parse(localStorage.getItem(K(EYE_KEY))) || {}; } catch (e) { return {}; }
+    }
+    function saveEyes(o) {
+        try { localStorage.setItem(K(EYE_KEY), JSON.stringify(o || {})); } catch (e) { }
+    }
+    function toastSafe(m) { try { if (typeof toast === 'function') toast(m); } catch (e) { } }
+    function refreshCountsSafe() { try { if (typeof refreshCounts === 'function') refreshCounts(); } catch (e) { } }
+    function uidSafe() {
+        try { if (typeof uid === 'function') return uid(); } catch (e) { }
+        return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        });
+    }
+    function today() {
+        try { if (typeof getToday === 'function') return getToday(); } catch (e) { }
+        var d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function Lv(k, dft) {
+        try { if (typeof L === 'function') { var v = L(k); if (v) return v; } } catch (e) { }
+        return dft;
+    }
+
+    var cases = loadCases();
+    var editId = null;                       // 正在编辑的案例 id；null = 新建
+    var csMode = 'example';                  // 例题模式 / 代码模式
+    var qtView = 'tree';                     // 题目树：tree | list
+    var ansShown = true;                     // 题目树答案显隐
+
+    /* ============================================================
+       ① 选项：科目 / 章 / 节（复用页面已有的取名函数）
+       ============================================================ */
+    function chapterName(course, ch) {
+        try { if (typeof getChapterName === 'function') return getChapterName(course, ch) || ''; } catch (e) { }
+        try {
+            var p = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+            var t = p && p.chapterNames && p.chapterNames[course];
+            if (t && t[ch]) return t[ch];
+        } catch (e) { }
+        return '';
+    }
+    function sectionName(course, ch, sec) {
+        try { if (typeof getSectionName === 'function') return getSectionName(course, ch, sec) || ''; } catch (e) { }
+        try {
+            var p = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+            var a = p && p.sectionNames && p.sectionNames[course] && p.sectionNames[course][ch];
+            if (Array.isArray(a) && a[sec - 1]) return a[sec - 1];
+        } catch (e) { }
+        return '';
+    }
+
+    /* 当前项目有哪些「科目 → 章 → 节」 —— 取 fcWalkAll，与知识树同源 */
+    function scopeAll() {
+        var out = {};   // course -> { ch -> [sec...] }
+        try {
+            var rows = (typeof fcWalkAll === 'function') ? fcWalkAll({}) : [];
+            (rows || []).forEach(function (n) {
+                if (!n || !n.course) return;
+                var c = String(n.course), ch = +(n.chapter || 0), se = +(n.section || 0);
+                if (!ch) return;
+                if (!out[c]) out[c] = {};
+                if (!out[c][ch]) out[c][ch] = {};
+                if (se) out[c][ch][se] = 1;
+            });
+        } catch (e) { }
+        // 兜底：从已有案例里补（保证「案例里记过的」一定能选到）
+        cases.forEach(function (r) {
+            var c = r.course; if (!c) return;
+            var ch = +(r.chapter || 0), se = +(r.section || 0);
+            if (!ch) return;
+            if (!out[c]) out[c] = {};
+            if (!out[c][ch]) out[c][ch] = {};
+            if (se) out[c][ch][se] = 1;
+        });
+        return out;
+    }
+
+    function fillSelect(el, list, cur, blankLabel) {
+        if (!el) return;
+        var h = '<option value="">' + (blankLabel || '—') + '</option>';
+        list.forEach(function (x) {
+            h += '<option value="' + esc(x.v) + '"' + (String(cur) === String(x.v) ? ' selected' : '') + '>' + esc(x.t) + '</option>';
+        });
+        el.innerHTML = h;
+    }
+
+    var csCourse = document.getElementById('csCourse');
+    var csChapter = document.getElementById('csChapter');
+    var csSection = document.getElementById('csSection');
+
+    function refillCourse(cur) {
+        var all = scopeAll();
+        var list = Object.keys(all).map(function (c) { return { v: c, t: c }; });
+        fillSelect(csCourse, list, cur || '', '— 选择科目 —');
+    }
+    function refillChapter() {
+        var all = scopeAll();
+        var c = csCourse ? csCourse.value : '';
+        var chs = all[c] ? Object.keys(all[c]).map(Number).sort(function (a, b) { return a - b; }) : [];
+        fillSelect(csChapter, chs.map(function (n) {
+            var nm = chapterName(c, n);
+            return { v: n, t: '第 ' + n + ' ' + Lv('chapter', '章') + (nm ? ' ' + nm : '') };
+        }), csChapter ? csChapter.value : '', '— 选择章 —');
+    }
+    function refillSection() {
+        var all = scopeAll();
+        var c = csCourse ? csCourse.value : '', ch = csChapter ? +csChapter.value || 0 : 0;
+        var secs = (all[c] && all[c][ch]) ? Object.keys(all[c][ch]).map(Number).sort(function (a, b) { return a - b; }) : [];
+        fillSelect(csSection, secs.map(function (n) {
+            var nm = sectionName(c, ch, n);
+            return { v: n, t: nm ? n + ' ' + nm : String(n) };
+        }), csSection ? csSection.value : '', '— 选择节 —');
+    }
+    function refillScope(cur) {
+        refillCourse(cur && cur.course); refillChapter(); refillSection();
+    }
+
+    if (csCourse) csCourse.addEventListener('change', function () { refillChapter(); refillSection(); });
+    if (csChapter) csChapter.addEventListener('change', refillSection);
+
+    /* ============================================================
+       ② 编辑表格：照截图拼出 exact 行列结构
+       ============================================================ */
+    var csTable = document.getElementById('csTable');
+
+    function lines2ul(arr, ph) {
+        var a = (arr || []).filter(function (x) { return String(x || '').trim() !== ''; });
+        if (!a.length) return '<div class="cs-mini">' + esc(ph || '（空）') + '</div>';
+        return '<ul>' + a.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+    }
+    function lines2code(arr) {
+        var a = (arr || []).filter(function (x) { return String(x || '').trim() !== ''; });
+        if (!a.length) return '<div class="cs-code">（空）</div>';
+        return '<div class="cs-code">' + a.map(function (x, i) {
+            return '<span class="ln">' + (i + 1) + '</span>' + esc(x);
+        }).join('\n') + '</div>';
+    }
+
+    /* 一格的编辑器：textarea 以行分隔（保存时 split） */
+    function cellEditor(val, ph, rows) {
+        return '<textarea class="cs-cellin" rows="' + (rows || 3) + '" placeholder="' + esc(ph || '') + '" ' +
+            'style="width:100%;border:0;background:transparent;font:inherit;resize:vertical;outline:none;">' +
+            esc((val || []).join('\n')) + '</textarea>';
+    }
+    function plainIn(val, ph) {
+        return '<input type="text" class="cs-cellin" value="' + esc(val || '') + '" placeholder="' + esc(ph || '') + '" ' +
+            'style="width:100%;border:0;background:transparent;font:inherit;outline:none;">';
+    }
+
+    function chipsHTML(sigs, eye) {
+        var h = '<div class="cs-chips">';
+        (sigs || []).forEach(function (s) {
+            var nm = kpNameOf(s);
+            h += '<span class="cs-chip' + (eye ? ' eye' : '') + '"><b>' + esc(nm) + '</b>' +
+                 '<span class="x" data-rmkp="' + esc(s) + '" data-eye="' + (eye ? 1 : 0) + '" title="移除">×</span></span>';
+        });
+        h += '<button type="button" class="cs-addchip" data-addkp="' + (eye ? 1 : 0) + '">＋ 选知识点</button>';
+        h += '</div>';
+        return h;
+    }
+
+    /* 从 sig 反查知识点名 —— fcWalkAll 的 sig 就是 fcSig 格式 */
+    var _kpIndex = null, _kpIndexFp = '';
+    function kpIndex() {
+        var fp = '';
+        try { fp = String((typeof fcWalkFp === 'function') ? fcWalkFp() : (state.records || []).length); } catch (e) { }
+        if (_kpIndex && _kpIndexFp === fp) return _kpIndex;
+        var idx = {};
+        try {
+            var rows = (typeof fcWalkAll === 'function') ? fcWalkAll({}) : [];
+            (rows || []).forEach(function (n) { if (n && n.sig) idx[n.sig] = n; });
+        } catch (e) { }
+        _kpIndex = idx; _kpIndexFp = fp;
+        return idx;
+    }
+    function kpNameOf(sig) {
+        var n = kpIndex()[sig];
+        return (n && n.name) ? n.name : String(sig || '').split('|').slice(0, 4).join(' · ');
+    }
+    /* 知识点的完整路径文案（科目 › 第N章 › 第N节 › 知识点链） */
+    function kpPathOf(sig) {
+        var n = kpIndex()[sig];
+        if (!n) return '';
+        var p = [];
+        p.push(String(n.course || ''));
+        var ch = +(n.chapter || 0);
+        if (ch) {
+            var cn = chapterName(n.course, ch);
+            p.push('第' + ch + Lv('chapter', '章') + (cn ? ' ' + cn : ''));
+        }
+        var se = +(n.section || 0);
+        if (se) {
+            var sn = sectionName(n.course, ch, se);
+            p.push('第' + se + Lv('section', '节') + (sn ? ' ' + sn : ''));
+        }
+        return p.filter(Boolean).join(' › ');
+    }
+
+    /* ---- 画整张表（编辑态） ---- */
+    var draft = null;
+
+    function blankDraft() {
+        return {
+            id: null, course: '', chapter: '', section: '', date: today(),
+            q: '', problem: [''], known: [''], solution: [''], answer: [''],
+            derived: [''], thought: { fromTo: '', eye: '', trap: '', exp: '' },
+            followups: [{ q: '', a: '' }], kps: [], eyes: [], mode: csMode
+        };
+    }
+    function normDraft(r) {
+        var d = blankDraft();
+        if (!r) return d;
+        for (var k in d) if (r[k] !== undefined) d[k] = r[k];
+        d.thought = Object.assign({ fromTo: '', eye: '', trap: '', exp: '' }, r.thought || {});
+        d.followups = (Array.isArray(r.followups) && r.followups.length) ? r.followups : [{ q: '', a: '' }];
+        d.problem = arr1(r.problem); d.known = arr1(r.known); d.solution = arr1(r.solution);
+        d.answer = arr1(r.answer); d.derived = arr1(r.derived);
+        d.kps = Array.isArray(r.kps) ? r.kps.slice() : [];
+        d.eyes = Array.isArray(r.eyes) ? r.eyes.slice() : [];
+        return d;
+    }
+    function arr1(a) { return (Array.isArray(a) && a.length) ? a.slice() : ['']; }
+
+    function renderTable() {
+        if (!csTable) return;
+        var d = draft || blankDraft();
+        var ch = +d.chapter || 0, se = +d.section || 0;
+        var chLab = ch ? ('第 ' + ch + ' ' + Lv('chapter', '章') + ' ' + chapterName(d.course, ch)).trim() : '（未选章）';
+        var seLab = se ? ((se + ' ' + sectionName(d.course, ch, se)).trim()) : '（未选节）';
+        var codeMode = csMode === 'code';
+
+        var h = '';
+        h += '<tr>' +
+             '<th class="rowhead">项目</th>' +
+             '<th colspan="2" class="fill-strong">' + esc(chLab) + '</th>' +
+             '<th colspan="2" class="fill-strong">' + esc(seLab) + '</th></tr>';
+
+        h += '<tr><td class="rowhead">题目</td>' +
+             '<td colspan="4" class="fill">' + plainIn(d.q, '这道题问的是什么…') + '</td></tr>';
+
+        h += '<tr><td class="rowhead" rowspan="2">解题</td>' +
+             '<th>问题</th><th>已知</th><th>知识点关联</th><th>推导可知</th></tr>';
+        h += '<tr>' +
+             '<td class="fill">' + cellEditor(fmtProblem(d.problem), '1、…\n2、…', 3) + '</td>' +
+             '<td class="fill">' + (codeMode ? cellEditor(d.known, 'cost = 100', 3) : cellEditor(d.known, '逐条写出已知条件', 3)) + '</td>' +
+             '<td class="fill">' + chipsHTML(d.kps, false) + '</td>' +
+             '<td class="fill">' + cellEditor(d.derived, '由已知能推出什么', 3) + '</td></tr>';
+
+        h += '<tr><td class="rowhead">答案</td>' +
+             '<td class="rowhead">' + (codeMode ? '代码' : '文字') + '</td>' +
+             '<td colspan="3" class="fill">';
+        if (codeMode) {
+            h += cellEditor(d.solution, 'provision = cost - nrv', 3);
+            h += '<div class="cs-code2">解释（可选，一行）</div>';
+            h += plainIn(d.answer[0] || '', '一句话解释这段代码在算什么…');
+        } else {
+            h += cellEditor(d.answer, '写出答案 / 改正思路', 3);
+        }
+        h += '</td></tr>';
+
+        h += '<tr><td class="rowhead">思考总结</td>' +
+             '<th>从已知到未知</th><th>题眼</th><th>关键陷阱</th><th>经验沉淀</th></tr>';
+        h += '<tr>' +
+             '<td class="fill">' + plainIn(d.thought.fromTo, '已知 → 未知 的那一步') + '</td>' +
+             '<td class="fill">' + chipsHTML(d.eyes, true) + '</td>' +
+             '<td class="fill">' + plainIn(d.thought.trap, '容易踩的坑') + '</td>' +
+             '<td class="fill">' + plainIn(d.thought.exp, '下次遇到同类题记住什么') + '</td></tr>';
+
+        /* 问题1..N 追问 */
+        d.followups.forEach(function (f, i) {
+            h += '<tr><td class="rowhead"' + (i === 0 ? ' rowspan="' + d.followups.length + '"' : ' style="display:none"') + '>问题' + (i + 1) + '</td>' +
+                 '<td class="fill">' + plainIn(f.q, '追问的问题') + '</td>' +
+                 '<td colspan="3" class="fill">' + plainIn(f.a, '回答') + '</td></tr>';
+        });
+        h += '<tr><td class="rowhead" style="border-top:0">＋</td><td colspan="4">' +
+             '<button type="button" class="cs-addchip" id="csAddFU">＋ 再加一问</button>' +
+             (d.followups.length > 1 ? ' <button type="button" class="cs-addchip" id="csDelFU">－ 删掉最后一问</button>' : '') +
+             '</td></tr>';
+
+        csTable.innerHTML = h;
+    }
+    /* 问题格：把 1、2、3 拆成多行显示 */
+    function fmtProblem(a) {
+        var s = (a || []).join('\n').trim();
+        if (!s) return [''];
+        return s.split('\n').filter(function (x) { return x.trim() !== ''; });
+    }
+
+    /* 从表格读回草稿 */
+    function readTable() {
+        if (!csTable || !draft) return;
+        var tds = csTable.querySelectorAll('td.fill');
+        // 顺序与 renderTable 里的出现次序严格一致
+        var ins = csTable.querySelectorAll('.cs-cellin');
+        var p = 0;
+        function nextLines() { var el = ins[p++]; return el ? String(el.value).split('\n') : ['']; }
+        function nextText() { var el = ins[p++]; return el ? String(el.value) : ''; }
+
+        draft.q = nextText();                                   // 题目（input）
+        draft.problem = fmtProblem(nextLines());                // 问题（textarea）
+        draft.known = nextLines();                              // 已知（textarea）
+        // 知识点 chips 不在这里（有专门按钮）
+        draft.derived = nextLines();                            // 推导可知（textarea）
+        if (csMode === 'code') {
+            draft.solution = nextLines();                       // 代码（textarea）
+            draft.answer = [nextText()];                        // 解释（input）
+        } else {
+            draft.answer = nextLines();                         // 答案（textarea）
+        }
+        draft.thought.fromTo = nextText();
+        // 题眼 chips 不在这里
+        draft.thought.trap = nextText();
+        draft.thought.exp = nextText();
+        // 追问
+        draft.followups.forEach(function (f) { f.q = nextText(); f.a = nextText(); });
+    }
+
+    /* ============================================================
+       ③ 事件：模式切换 / 新建 / 保存 / 取消 / 列表操作
+       ============================================================ */
+    var csModeSeg = document.getElementById('csModeSeg');
+    if (csModeSeg) {
+        csModeSeg.addEventListener('click', function (ev) {
+            var b = ev.target.closest('[data-csmode]'); if (!b) return;
+            if (csTable && draft) readTable();
+            csMode = b.getAttribute('data-csmode');
+            Array.prototype.forEach.call(csModeSeg.querySelectorAll('[data-csmode]'), function (x) {
+                x.classList.toggle('on', x === b);
+            });
+            renderTable();
+        });
+    }
+
+    function setMode(m) {
+        csMode = (m === 'code') ? 'code' : 'example';
+        if (csModeSeg) Array.prototype.forEach.call(csModeSeg.querySelectorAll('[data-csmode]'), function (x) {
+            x.classList.toggle('on', x.getAttribute('data-csmode') === csMode);
+        });
+    }
+
+    var csNewBtn = document.getElementById('csNewBtn');
+    if (csNewBtn) csNewBtn.addEventListener('click', function () {
+        editId = null;
+        draft = blankDraft();
+        var all = scopeAll(); var first = Object.keys(all)[0] || '';
+        var cur = { course: draft.course || first };
+        refillScope(cur);
+        if (!draft.course && first) { draft.course = first; if (csCourse) csCourse.value = first; refillChapter(); refillSection(); }
+        if (!draft.date) draft.date = today();
+        var dEl = document.getElementById('csDate'); if (dEl) dEl.value = draft.date;
+        var tEl = document.getElementById('csEditorTitle'); if (tEl) tEl.textContent = '新建案例';
+        renderTable();
+        openEditor();
+    });
+
+    function openEditor() {
+        var ed = document.getElementById('csEditor'); if (ed) ed.style.display = '';
+        var lb = document.getElementById('csListBox');
+        if (lb) {
+            lb.style.display = '';
+            if (!lb.querySelector('.cs-list-hint')) {
+                var h = document.createElement('div');
+                h.className = 'cs-list-hint';
+                h.textContent = '↓ 已记下的案例（当前在编辑中）';
+                lb.insertBefore(h, lb.firstChild);
+            }
+        }
+        try { window.scrollTo(0, 0); } catch (e) { }
+    }
+    function closeEditor() {
+        var ed = document.getElementById('csEditor'); if (ed) ed.style.display = 'none';
+        var lb = document.getElementById('csListBox');
+        if (lb) {
+            lb.style.display = '';
+            var h = lb.querySelector('.cs-list-hint');
+            if (h) h.remove();
+        }
+        editId = null; draft = null;
+        renderList();
+    }
+    var csCancelBtn = document.getElementById('csCancelBtn');
+    if (csCancelBtn) csCancelBtn.addEventListener('click', function () { closeEditor(); });
+
+    /* 表格内的动态元素（chips / 追问按钮）用委托 */
+    if (csTable) csTable.addEventListener('click', function (ev) {
+        var rm = ev.target.closest('[data-rmkp]');
+        if (rm && draft) {
+            readTable();
+            var sig = rm.getAttribute('data-rmkp'), isEye = rm.getAttribute('data-eye') === '1';
+            var arr = isEye ? draft.eyes : draft.kps;
+            var i = arr.indexOf(sig); if (i >= 0) arr.splice(i, 1);
+            renderTable(); return;
+        }
+        var ad = ev.target.closest('[data-addkp]');
+        if (ad && draft) {
+            readTable();
+            openKpDialog(ad.getAttribute('data-addkp') === '1');
+            return;
+        }
+        if (ev.target.id === 'csAddFU' && draft) {
+            readTable(); draft.followups.push({ q: '', a: '' }); renderTable(); return;
+        }
+        if (ev.target.id === 'csDelFU' && draft) {
+            readTable(); if (draft.followups.length > 1) draft.followups.pop(); renderTable(); return;
+        }
+    });
+
+    var csSaveBtn = document.getElementById('csSaveBtn');
+    if (csSaveBtn) csSaveBtn.addEventListener('click', function () {
+        if (!draft) return;
+        readTable();
+        // 收集表头（科目/章/节/时间）
+        draft.course = csCourse ? csCourse.value : (draft.course || '');
+        draft.chapter = csChapter ? +csChapter.value || 0 : 0;
+        draft.section = csSection ? +csSection.value || 0 : 0;
+        var dEl = document.getElementById('csDate');
+        draft.date = (dEl && dEl.value) ? dEl.value : today();
+
+        if (!String(draft.q || '').trim()) { toastSafe('先把「题目」写上'); return; }
+        if (!draft.course) { toastSafe('先选科目'); return; }
+
+        draft.mode = csMode;
+        draft.updatedAt = Date.now();
+        if (editId) {
+            var i = cases.findIndex(function (x) { return x.id === editId; });
+            if (i >= 0) { draft.id = editId; draft.createdAt = cases[i].createdAt || Date.now(); cases[i] = draft; }
+            else { draft.id = editId; cases.push(draft); }
+        } else {
+            draft.id = uidSafe();
+            draft.createdAt = Date.now();
+            cases.push(draft);
+        }
+        saveCases(cases);
+        // 题眼：把本条的 eyes 也并入全局题眼集
+        var eyes = loadEyes(); var changed = false;
+        (draft.eyes || []).forEach(function (s) { if (!eyes[s]) { eyes[s] = 1; changed = true; } });
+        if (changed) saveEyes(eyes);
+        try { if (window.KpEye && window.KpEye.repaint) window.KpEye.repaint(); } catch (e) { }
+
+        toastSafe('案例已保存');
+        closeEditor();
+        renderStat();
+    });
+
+    /* ============================================================
+       ④ 案例列表
+       ============================================================ */
+    var csList = document.getElementById('csList');
+    var csEmpty = document.getElementById('csEmpty');
+
+    function renderList() {
+        if (!csList) return;
+        var kw = '';
+        var sEl = document.getElementById('csSearch');
+        if (sEl) kw = String(sEl.value || '').trim().toLowerCase();
+
+        var rows = cases.slice().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+        if (kw) {
+            rows = rows.filter(function (r) {
+                var bag = [r.q, r.thought && r.thought.fromTo, r.thought && r.thought.eye, r.thought && r.thought.exp]
+                    .concat((r.kps || []).map(kpNameOf)).concat((r.eyes || []).map(kpNameOf)).join(' ').toLowerCase();
+                return bag.indexOf(kw) >= 0;
+            });
+        }
+        csList.innerHTML = '';
+        if (!rows.length) { if (csEmpty) csEmpty.style.display = 'block'; return; }
+        if (csEmpty) csEmpty.style.display = 'none';
+
+        rows.forEach(function (r) {
+            var d = document.createElement('div');
+            d.className = 'cs-item';
+            var chLab = (+r.chapter ? ('第' + r.chapter + Lv('chapter', '章') + ' ' + chapterName(r.course, r.chapter)) : '').trim();
+            var seLab = (+r.section ? ((+r.section) + ' ' + sectionName(r.course, r.chapter, r.section)) : '').trim();
+            var chips = (r.kps || []).map(function (s) { return '<span class="cs-chip"><b>' + esc(kpNameOf(s)) + '</b></span>'; }).join('')
+                + (r.eyes || []).map(function (s) { return '<span class="cs-chip eye"><b>' + esc(kpNameOf(s)) + '</b></span>'; }).join('');
+            d.innerHTML =
+                '<div class="cs-item-main">' +
+                '<div class="cs-item-q">' + esc(r.q) + '</div>' +
+                '<div class="cs-item-meta">' + esc(r.course) + (chLab ? ' · ' + esc(chLab) : '') + (seLab ? ' · ' + esc(seLab) : '') +
+                (r.date ? ' · ' + esc(r.date) : '') + ' · ' + (r.mode === 'code' ? '代码模式' : '例题模式') + '</div>' +
+                (chips ? '<div class="cs-chips">' + chips + '</div>' : '') +
+                '</div>' +
+                '<div class="cs-item-actions">' +
+                '<button class="fc-btn" data-cs="edit">✎ 编辑</button>' +
+                '<button class="fc-btn" data-cs="qt">🌲 看题</button>' +
+                '<button class="fc-btn" data-cs="del">🗑 删除</button>' +
+                '</div>';
+            d.querySelector('[data-cs="edit"]').addEventListener('click', function () {
+                editId = r.id; draft = normDraft(r);
+                setMode(draft.mode || 'example');
+                refillScope(draft);
+                if (csCourse) csCourse.value = draft.course || '';
+                refillChapter(); if (csChapter) csChapter.value = String(draft.chapter || '');
+                refillSection(); if (csSection) csSection.value = String(draft.section || '');
+                var dEl = document.getElementById('csDate'); if (dEl) dEl.value = draft.date || '';
+                var tEl = document.getElementById('csEditorTitle'); if (tEl) tEl.textContent = '编辑案例';
+                renderTable(); openEditor();
+            });
+            d.querySelector('[data-cs="del"]').addEventListener('click', function () {
+                if (!confirm('确定删除这条案例？')) return;
+                cases = cases.filter(function (x) { return x.id !== r.id; });
+                saveCases(cases); renderList(); renderStat(); toastSafe('已删除');
+            });
+            d.querySelector('[data-cs="qt"]').addEventListener('click', function () {
+                var b = document.querySelector('#viewTabs .vtab[data-view="qtree"]');
+                if (b) b.click();
+                try { CaseBook.highlight(r.id); } catch (e) { }
+            });
+            csList.appendChild(d);
+        });
+    }
+
+    var csSearch = document.getElementById('csSearch');
+    if (csSearch) csSearch.addEventListener('input', renderList);
+    if (csSearch) csSearch.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { csSearch.value = ''; renderList(); }
+    });
+
+    function renderStat() {
+        var el = document.getElementById('csStat');
+        if (!el) return;
+        if (!cases.length) { el.textContent = '尚无案例'; return; }
+        var n = {};
+        cases.forEach(function (r) { n[r.course] = (n[r.course] || 0) + 1; });
+        el.textContent = '共 ' + cases.length + ' 条 · ' + Object.keys(n).map(function (c) { return c + ' ' + n[c]; }).join(' / ');
+    }
+
+    /* ============================================================
+       ⑤ 知识点选择弹窗（多选，多对多）
+       ============================================================ */
+    var kpMask = null, kpPick = null, kpIsEye = false;
+
+    function openKpDialog(isEye) {
+        kpIsEye = !!isEye;
+        kpPick = {};
+        var cur = (isEye ? (draft && draft.eyes) : (draft && draft.kps)) || [];
+        cur.forEach(function (s) { kpPick[s] = 1; });
+
+        if (kpMask) kpMask.remove();
+        kpMask = document.createElement('div');
+        kpMask.className = 'kp-mask';
+        kpMask.innerHTML =
+            '<div class="kp-dlg">' +
+            '<div class="kp-dlg-head">选择知识点<span class="x" id="kpClose">×</span></div>' +
+            '<div class="kp-dlg-body">' +
+            '<p class="kp-dlg-note">可多选 —— 一道题能关联多个知识点 / 题眼。</p>' +
+            '<div class="kp-dlg-tree" id="kpTree"></div>' +
+            '</div>' +
+            '<div class="kp-dlg-foot">' +
+            '<button type="button" class="fc-btn" id="kpCancel">取消</button>' +
+            '<button type="button" class="fc-btn" id="kpOk" style="background:var(--accent,#A6503C);color:#fff">确定</button>' +
+            '</div></div>';
+        document.body.appendChild(kpMask);
+        renderKpTree();
+
+        kpMask.addEventListener('click', function (ev) {
+            if (ev.target === kpMask) kpMask.remove();
+            if (ev.target.id === 'kpClose' || ev.target.id === 'kpCancel') { kpMask.remove(); return; }
+            var p = ev.target.closest('.kp-pick');
+            if (p) {
+                var sig = p.getAttribute('data-sig');
+                if (kpPick[sig]) delete kpPick[sig]; else kpPick[sig] = 1;
+                p.classList.toggle('picked', !!kpPick[sig]);
+                return;
+            }
+            if (ev.target.id === 'kpOk') {
+                var sigs = Object.keys(kpPick);
+                if (draft) {
+                    if (kpIsEye) draft.eyes = sigs; else draft.kps = sigs;
+                }
+                kpMask.remove();
+                renderTable();
+            }
+        });
+    }
+
+    /* 用 fcWalkAll 建一棵可勾选的树（科目 › 章 › 节 › 知识点自嵌套） */
+    function renderKpTree() {
+        var box = document.getElementById('kpTree'); if (!box) return;
+        var rows = [];
+        try { rows = (typeof fcWalkAll === 'function') ? fcWalkAll({}) : []; } catch (e) { rows = []; }
+        if (!rows || !rows.length) {
+            box.innerHTML = '<div class="cs-empty"><p>还没有知识点 —— 先去「📝 学习记录」写下知识点速记。</p></div>';
+            return;
+        }
+        // 按 course|ch|sec 分组，组内按 path 建树
+        var g = {};
+        rows.forEach(function (n) {
+            var k = [n.course, n.chapter, n.section].join('|');
+            (g[k] = g[k] || []).push(n);
+        });
+        var h = '';
+        Object.keys(g).forEach(function (k) {
+            var list = g[k]; if (!list.length) return;
+            var n0 = list[0];
+            var chLab = '第' + n0.chapter + Lv('chapter', '章') + ' ' + chapterName(n0.course, n0.chapter);
+            var secLab = '第' + n0.section + Lv('section', '节') + ' ' + sectionName(n0.course, n0.chapter, n0.section);
+            h += '<div class="knode"><div class="trow" style="cursor:default">' +
+                 '<span class="tname">' + esc(n0.course) + ' · ' + esc(chLab.trim()) + ' · ' + esc(secLab.trim()) + '</span></div>';
+            // 组内节点：按 tier 缩进
+            list.sort(function (a, b) { return (a.tier - b.tier) || (a.order - b.order); });
+            h += '<div class="tkids">';
+            list.forEach(function (n) {
+                var ind = Math.max(0, (+n.tier || 4) - 4);
+                h += '<div class="knode">' +
+                     '<span class="kp-pick' + (kpPick[n.sig] ? ' picked' : '') + '" data-sig="' + esc(n.sig) + '" ' +
+                     'style="margin-left:' + (ind * 16) + 'px">' +
+                     '<span class="bx">' + (kpPick[n.sig] ? '☑' : '☐') + '</span>' +
+                     '<span class="nm">' + esc(n.name || n.t || '') + '</span></span></div>';
+            });
+            h += '</div></div>';
+        });
+        box.innerHTML = h;
+    }
+
+    /* ============================================================
+       ⑥ 题目树（数据源 = 案例展示）
+       ============================================================ */
+    var qtTree = document.getElementById('qtTree');
+    var qtList = document.getElementById('qtList');
+    var qtEmpty = document.getElementById('qtEmpty');
+    var qtAnsBtn = document.getElementById('qtAnsBtn');
+
+    function answerText(r) {
+        if (r.mode === 'code') return (r.solution || []).join('\n');
+        return (r.answer || []).filter(function (x) { return String(x || '').trim(); }).join('；');
+    }
+
+    function renderQtree() {
+        if (!qtTree) return;
+        var rows = cases.slice();
+        var kw = '';
+        if (!rows.length) {
+            qtTree.innerHTML = ''; if (qtList) qtList.innerHTML = '';
+            if (qtEmpty) qtEmpty.style.display = 'block';
+            qtTree.style.display = (qtView === 'tree') ? '' : 'none';
+            if (qtList) qtList.style.display = (qtView === 'list') ? '' : 'none';
+            renderQtStat(); return;
+        }
+        if (qtEmpty) qtEmpty.style.display = 'none';
+
+        if (qtView === 'tree') { qtTree.style.display = ''; if (qtList) qtList.style.display = 'none'; renderQtTree(rows); }
+        else { qtTree.style.display = 'none'; if (qtList) qtList.style.display = ''; renderQtList(rows); }
+        renderQtStat();
+        applyAnsVisibility();
+    }
+
+    function renderQtStat() {
+        var el = document.getElementById('qtStat');
+        if (!el) return;
+        var nc = {}; cases.forEach(function (r) { nc[r.course] = (nc[r.course] || 0) + 1; });
+        el.textContent = cases.length
+            ? ('共 ' + cases.length + ' 题 · ' + Object.keys(nc).map(function (c) { return c + ' ' + nc[c]; }).join(' / '))
+            : '尚无题目';
+        var b = document.getElementById('qt-count');
+        if (b) b.textContent = cases.length;
+        var cb = document.getElementById('cs-count');
+        if (cb) cb.textContent = cases.length;
+    }
+
+    /* 章节树：科目 › 章 › 节 › 题 */
+    var _collapsed = {};   // sig -> 1 表示收拢
+
+    function renderQtTree(rows) {
+        var g1 = {};    // course -> ch -> sec -> [case]
+        rows.forEach(function (r) {
+            var c = r.course || '未分类', ch = +r.chapter || 0, se = +r.section || 0;
+            g1[c] = g1[c] || {}; g1[c][ch] = g1[c][ch] || {}; g1[c][ch][se] = g1[c][ch][se] || [];
+            g1[c][ch][se].push(r);
+        });
+        var h = '';
+        Object.keys(g1).forEach(function (c) {
+            var chs = Object.keys(g1[c]).map(Number).sort(function (a, b) { return a - b; });
+            var nCo = 0; chs.forEach(function (ch) { Object.keys(g1[c][ch]).forEach(function (se) { nCo += g1[c][ch][se].length; }); });
+            h += nodeHTML('co|' + c, c, nCo + ' 题', 0, chs.map(function (ch) {
+                var secs = Object.keys(g1[c][ch]).map(Number).sort(function (a, b) { return a - b; });
+                var nCh = 0; secs.forEach(function (se) { nCh += g1[c][ch][se].length; });
+                return nodeHTML('ch|' + c + '|' + ch,
+                    '第 ' + ch + ' ' + Lv('chapter', '章') + ' ' + chapterName(c, ch), nCh + ' 题', 1, secs.map(function (se) {
+                        var list = g1[c][ch][se];
+                        return nodeHTML('se|' + c + '|' + ch + '|' + se,
+                            (se ? (se + ' ' + sectionName(c, ch, se)) : '（未分节）'), list.length + ' 题', 2,
+                            list.map(function (r) { return leafHTML(r); }).join(''));
+                    }).join(''));
+            }).join(''));
+        });
+        qtTree.innerHTML = h;
+    }
+    function nodeHTML(sig, name, cnt, depth, kids) {
+        var open = !_collapsed[sig];
+        return '<div class="tnode">' +
+            '<div class="trow" data-tog="' + esc(sig) + '">' +
+            '<span class="tog">' + (open ? '▾' : '▸') + '</span>' +
+            '<span class="tname">' + esc(name) + '</span>' +
+            '<span class="tcnt">' + esc(cnt) + '</span></div>' +
+            '<div class="tkids" data-kids="' + esc(sig) + '"' + (open ? '' : ' style="display:none"') + '>' + kids + '</div>' +
+            '</div>';
+    }
+    function leafHTML(r) {
+        var ans = answerText(r);
+        var kps = (r.kps || []).map(function (s) { return '<span class="cs-chip"><b>' + esc(kpNameOf(s)) + '</b></span>'; }).join('')
+            + (r.eyes || []).map(function (s) { return '<span class="cs-chip eye"><b>👁 ' + esc(kpNameOf(s)) + '</b></span>'; }).join('');
+        return '<div class="tleaf" data-case="' + esc(r.id) + '">' +
+            '<div class="tq"><span class="qno">Q</span>' + esc(r.q) + '</div>' +
+            (kps ? '<div class="cs-chips" style="margin:2px 0 4px 30px">' + kps + '</div>' : '') +
+            (ans ? '<div class="ansbox"><span class="alab">答案：</span>' + esc(ans).replace(/\n/g, '<br>') + '</div>' : '') +
+            '</div>';
+    }
+    function renderQtList(rows) {
+        qtList.innerHTML = rows.map(function (r) {
+            var ans = answerText(r);
+            var chLab = (+r.chapter ? ('第' + r.chapter + Lv('chapter', '章') + ' ' + chapterName(r.course, r.chapter)) : '').trim();
+            return '<div class="qcard" data-case="' + esc(r.id) + '">' +
+                '<div class="qh">' + esc(r.q) + '</div>' +
+                '<div class="qm">' + esc(r.course) + (chLab ? ' · ' + esc(chLab) : '') + (r.date ? ' · ' + esc(r.date) : '') + '</div>' +
+                (ans ? '<div class="ansbox" style="margin-left:0"><span class="alab">答案：</span>' + esc(ans).replace(/\n/g, '<br>') + '</div>' : '') +
+                '</div>';
+        }).join('');
+    }
+
+    /* 树节点展开 / 收拢 */
+    if (qtTree) qtTree.addEventListener('click', function (ev) {
+        var t = ev.target.closest('[data-tog]'); if (!t) return;
+        var sig = t.getAttribute('data-tog');
+        _collapsed[sig] = _collapsed[sig] ? 0 : 1;
+        var kids = qtTree.querySelector('[data-kids="' + CSS_ESC(sig) + '"]');
+        var tog = t.querySelector('.tog');
+        if (kids) kids.style.display = _collapsed[sig] ? 'none' : '';
+        if (tog) tog.textContent = _collapsed[sig] ? '▸' : '▾';
+    });
+    function CSS_ESC(s) { return String(s).replace(/"/g, '\\"'); }
+
+    /* 答案显隐 */
+    function applyAnsVisibility() {
+        var boxes = document.querySelectorAll('#qtTree .ansbox, #qtList .ansbox');
+        Array.prototype.forEach.call(boxes, function (b) { b.classList.toggle('hide', !ansShown); });
+        if (qtAnsBtn) qtAnsBtn.textContent = ansShown ? '🙈 隐藏答案' : '👁 显示答案';
+    }
+    if (qtAnsBtn) qtAnsBtn.addEventListener('click', function () { ansShown = !ansShown; applyAnsVisibility(); });
+    var qtExpandBtn = document.getElementById('qtExpandBtn');
+    if (qtExpandBtn) qtExpandBtn.addEventListener('click', function () { _collapsed = {}; renderQtree(); });
+    var qtCollapseBtn = document.getElementById('qtCollapseBtn');
+    if (qtCollapseBtn) qtCollapseBtn.addEventListener('click', function () {
+        _collapsed = {};
+        cases.forEach(function (r) {
+            _collapsed['co|' + (r.course || '未分类')] = 1;
+            _collapsed['ch|' + (r.course || '未分类') + '|' + (+r.chapter || 0)] = 1;
+            _collapsed['se|' + (r.course || '未分类') + '|' + (+r.chapter || 0) + '|' + (+r.section || 0)] = 1;
+        });
+        renderQtree();
+    });
+    var qtViewSeg = document.getElementById('qtViewSeg');
+    if (qtViewSeg) qtViewSeg.addEventListener('click', function (ev) {
+        var b = ev.target.closest('[data-qtview]'); if (!b) return;
+        qtView = b.getAttribute('data-qtview');
+        Array.prototype.forEach.call(qtViewSeg.querySelectorAll('[data-qtview]'), function (x) { x.classList.toggle('on', x === b); });
+        renderQtree();
+    });
+
+    /* ============================================================
+       ⑦ 知识树「题眼模式」 —— 由 KpEye 模块接管（见窗口导出）
+       ============================================================ */
+    var ktEyeMode = false;
+    var ktEyeSeg = document.getElementById('ktEyeSeg');
+    var ktEyeBar = document.getElementById('ktEyeBar');
+
+    function setKtEyeMode(on) {
+        ktEyeMode = !!on;
+        if (ktEyeSeg) Array.prototype.forEach.call(ktEyeSeg.querySelectorAll('[data-ktmode2]'), function (x) {
+            x.classList.toggle('on', (x.getAttribute('data-ktmode2') === 'eye') === ktEyeMode);
+        });
+        if (ktEyeBar) ktEyeBar.style.display = ktEyeMode ? '' : 'none';
+        var body = document.getElementById('ktBody');
+        if (body) body.classList.toggle('kt-eye-mode', ktEyeMode);
+        paintEyes();
+    }
+    if (ktEyeSeg) ktEyeSeg.addEventListener('click', function (ev) {
+        var b = ev.target.closest('[data-ktmode2]'); if (!b) return;
+        setKtEyeMode(b.getAttribute('data-ktmode2') === 'eye');
+    });
+
+    /* 在当前知识树 DOM 上打题眼标记 */
+    function paintEyes() {
+        var eyes = loadEyes();
+        var n = 0;
+        Object.keys(eyes).forEach(function (k) { if (eyes[k]) n++; });
+        var el = document.getElementById('ktEyeN'); if (el) el.textContent = n;
+        var body = document.getElementById('ktBody'); if (!body) return;
+
+        // 先把上一轮的痕迹清掉
+        Array.prototype.forEach.call(body.querySelectorAll('.kt-eye-dot'), function (d) { d.remove(); });
+        Array.prototype.forEach.call(body.querySelectorAll('.kt-eye-on'), function (d) { d.classList.remove('kt-eye-on'); });
+
+        if (!ktEyeMode) return;
+        // 给每个节点行补一个勾，并标出已选的
+        var rows = body.querySelectorAll('.kt-row, .kt-oline');
+        Array.prototype.forEach.call(rows, function (row) {
+            var sig = row.getAttribute('data-kt-sig') || row.getAttribute('data-sig') || '';
+            var dot = document.createElement('span');
+            dot.className = 'kt-eye-dot';
+            dot.textContent = eyes[sig] ? '☑' : '☐';
+            row.insertBefore(dot, row.firstChild);
+            if (eyes[sig]) row.classList.add('kt-eye-on');
+            if (sig) row.setAttribute('data-eye-sig', sig);
+        });
+    }
+
+    /* 题眼模式下的点击：切换该 sig 的题眼态 */
+    var ktBody = document.getElementById('ktBody');
+    if (ktBody) ktBody.addEventListener('click', function (ev) {
+        if (!ktEyeMode) return;
+        var row = ev.target.closest('.kt-row, .kt-oline');
+        if (!row) return;
+        var sig = row.getAttribute('data-eye-sig') || row.getAttribute('data-kt-sig') || row.getAttribute('data-sig');
+        if (!sig) return;
+        var eyes = loadEyes();
+        if (eyes[sig]) delete eyes[sig]; else eyes[sig] = 1;
+        saveEyes(eyes);
+        ev.preventDefault(); ev.stopPropagation();
+        paintEyes();
+    }, true);
+
+    var ktEyeClear = document.getElementById('ktEyeClear');
+    if (ktEyeClear) ktEyeClear.addEventListener('click', function () {
+        if (!confirm('清空全部题眼标记？（不会删除案例里已挂的题眼）')) return;
+        saveEyes({}); paintEyes();
+    });
+
+    /* ============================================================
+       ⑧ 对外口子
+       ============================================================ */
+    window.CaseBook = {
+        onEnter: function () {
+            refillScope(csCourse && csCourse.value ? { course: csCourse.value } : null);
+            if (!draft) { var ed = document.getElementById('csEditor'); if (ed) ed.style.display = 'none'; }
+            renderList(); renderStat();
+        },
+        qtOnEnter: function () { renderQtree(); },
+        ktOnEnter: function () { paintEyes(); },
+        highlight: function (id) {
+            qtView = 'tree';
+            if (qtViewSeg) Array.prototype.forEach.call(qtViewSeg.querySelectorAll('[data-qtview]'), function (x) {
+                x.classList.toggle('on', x.getAttribute('data-qtview') === 'tree');
+            });
+            // 展开一路到那一条
+            var r = cases.filter(function (x) { return x.id === id; })[0];
+            if (r) {
+                delete _collapsed['co|' + (r.course || '未分类')];
+                delete _collapsed['ch|' + (r.course || '未分类') + '|' + (+r.chapter || 0)];
+                delete _collapsed['se|' + (r.course || '未分类') + '|' + (+r.chapter || 0) + '|' + (+r.section || 0)];
+            }
+            renderQtree();
+            var el = document.querySelector('#qtTree [data-case="' + CSS_ESC(id) + '"]');
+            if (el) { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { } el.style.transition = 'background .3s'; el.style.background = '#FBF0D8'; setTimeout(function () { el.style.background = ''; }, 1600); }
+        },
+        _qtRefresh: function () { try { renderQtree(); } catch (e) { } },
+        eyesOf: function (id) {
+            var r = cases.filter(function (x) { return x.id === id; })[0];
+            return r ? (r.eyes || []) : [];
+        },
+        casesOfSig: function (sig) {
+            return cases.filter(function (r) { return (r.kps || []).indexOf(sig) >= 0 || (r.eyes || []).indexOf(sig) >= 0; });
+        }
+    };
+    window.KpEye = { repaint: paintEyes, isOn: function () { return ktEyeMode; }, count: function () { var e = loadEyes(); var n = 0; Object.keys(e).forEach(function (k) { if (e[k]) n++; }); return n; } };
+
+    /* ---- 启动 ---- */
+    function boot() {
+        refillScope(null);
+        renderList(); renderStat();
+        try { renderQtree(); } catch (e) { }
+        var ed = document.getElementById('csEditor'); if (ed) ed.style.display = 'none';
+        var dEl = document.getElementById('csDate'); if (dEl && !dEl.value) dEl.value = today();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else setTimeout(boot, 0);
+
+    /* 项目切换 → 重新读数据 */
+    window.addEventListener('cpaProjectApplied', function () {
+        cases = loadCases(); closeEditor(); boot();
+    });
+})();
+
         function initViewTabs() {
             const tabs = document.querySelectorAll('#viewTabs .vtab');
             tabs.forEach(btn => {
@@ -13775,7 +14999,10 @@ if (document.readyState === 'loading') {
                     if (view === 'flash') { try { fcAutoSync(); } catch (e) {} try { fcRender(); } catch (e) {} }
                     /* ★ 2026-09-18（需求 K）：进知识树前先把 📝 学习记录 那边的
                        科目 / 章 / 节同步过来（只在记录侧真的变过时才动，见 ktSyncScopeFromRecord）。 */
-                    if (view === 'kptree') { try { ktSyncScopeFromRecord(); ktRender(); } catch (e) {} }
+                    if (view === 'kptree') { try { ktSyncScopeFromRecord(); ktRender(); } catch (e) {} try { if (window.CaseBook) window.CaseBook.ktOnEnter(); } catch (e) {} }
+                    /* ★ Tom 2026-10-10：案例展示 / 题目树 —— 进页签时刷新数据 */
+                    if (view === 'case') { try { if (window.CaseBook) window.CaseBook.onEnter(); } catch (e) {} }
+                    if (view === 'qtree') { try { if (window.CaseBook) window.CaseBook.qtOnEnter(); } catch (e) {} }
                     if (view === 'goal') { renderGoalSummary(); renderGoalStatsPanel(); }
                     if (view === 'scheat') { try { heatRender(); } catch (e) {} }
                     /* ★ v56：切回「学习进度」才量得到卡片顶边（之前在别的视图里 display:none） */
@@ -22867,6 +24094,9 @@ if (document.readyState === 'loading') {
     window.ScRefresh = {
       scboard: function(){ renderBoard(); },
       scwrong: function(){ renderWrongList(); },
+      case:    function(){ try{ if(window.CaseBook) window.CaseBook.onEnter(); }catch(e){} },
+      qtree:   function(){ try{ if(window.CaseBook) window.CaseBook.qtOnEnter(); }catch(e){} },
+      kptree:  function(){ try{ if(window.CaseBook) window.CaseBook.ktOnEnter(); }catch(e){} },
       scsec:   function(){ try{ scSelSyncCurrent(); }catch(e){} updateSeals(); },
       scchap:  function(){ try{ scSelSyncCurrent(); }catch(e){} updateSeals(); }
     };
@@ -25740,7 +26970,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261010d</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261010e</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
