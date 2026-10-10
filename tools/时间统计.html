@@ -3402,7 +3402,48 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260917i</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261010d</div>
 <!-- build-tag:end -->
+
+<!-- ehub-save-hook:start v1 -->
+<script>
+/* ehub-save-hook v1 —— 由 efficiency-hub 统一注入，「保存完成」时通知父窗口立即同步。
+   原则：只对业务数据键发信号；UI 状态键（折叠/页签/主题/背景/草稿）静默。
+   另暴露 window.ehubSave(src) 供页面主动调用。 */
+(function(){
+  if (window.__ehubSaveHook) return;
+  window.__ehubSaveHook = 1;
+  var SRC = "时间统计";
+  var PREFIXES = ["timeCategoriesV2", "timeRecords", "timeTimerHistory", "timeTodos"];
+  var MIN_GAP = 20000;
+  var lastAt = 0;
+  function isBiz(k){
+    if (typeof k !== 'string') return false;
+    for (var i=0;i<PREFIXES.length;i++){ if (k.indexOf(PREFIXES[i])===0) return true; }
+    return false;
+  }
+  function fire(reason){
+    var now = Date.now();
+    if (now - lastAt < MIN_GAP) return false;
+    lastAt = now;
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({type:'ehub-save', src:SRC, key:reason||''}, '*');
+      }
+    } catch(e){}
+    return true;
+  }
+  window.ehubSave = function(r){ return fire(r||'explicit'); };
+  try {
+    var _set = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function(k, v){
+      var r = _set(k, v);
+      try { if (isBiz(k)) fire(k); } catch(e){}
+      return r;
+    };
+  } catch(e){}
+})();
+</script>
+<!-- ehub-save-hook:end -->
 </body>
 </html>
