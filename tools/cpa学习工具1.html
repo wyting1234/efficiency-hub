@@ -3012,6 +3012,75 @@
            配色沿用本页的燕麦赭石：cream 底 + umber 标题 + accent 强调
            ============================================================ */
         .cs-wrap, .qt-wrap { padding: 14px 16px 28px; }
+        /* ===== 案例展示 · 以「问题」为核心（Tom 2026-10-10 二次修订） ===== */
+        /* 每个问题一个框：用 tbody 分组 + 上边框把「问题N」整块圈起来 */
+        .cs-q tbody.cs-tb-prob {
+            border-left: 3px solid var(--accent, #A6503C);
+        }
+        .cs-q tbody.cs-tb-prob > tr > td,
+        .cs-q tbody.cs-tb-prob > tr > th {
+            border-top: 2px solid var(--accent, #A6503C);
+        }
+        .cs-q tbody.cs-tb-prob:first-of-type > tr:first-child > td,
+        .cs-q tbody.cs-tb-prob:first-of-type > tr:first-child > th {
+            border-top-width: 2px;
+        }
+        /* 问题编号列（纵向居中的「问题N」）*/
+        .cs-q td.cs-rowq {
+            font-weight: 700;
+            color: var(--accent, #A6503C);
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        /* 「每条答案配它自己的解析」提示格 */
+        .cs-q td.cs-ansfill-lbl {
+            font-size: 11px;
+            color: #8a7a6a;
+            background: #faf7f2;
+            text-align: left;
+            padding-left: 8px;
+        }
+        /* ★ 思考总结行高 = 问题行高：统一 tr 最小高度 + 单元格垂直居中 */
+        .cs-q tbody.cs-tb-prob > tr,
+        .cs-q tbody.cs-tb-think > tr {
+            height: 46px;
+        }
+        .cs-q tbody.cs-tb-prob > tr > td,
+        .cs-q tbody.cs-tb-prob > tr > th,
+        .cs-q tbody.cs-tb-think > tr > td,
+        .cs-q tbody.cs-tb-think > tr > th {
+            vertical-align: top;
+        }
+        .cs-q tbody.cs-tb-think .cs-cellin,
+        .cs-q tbody.cs-tb-prob .cs-cellin {
+            min-height: 38px;
+            line-height: 1.5;
+        }
+        /* 答案列稍窄、解析列稍宽 */
+        .cs-q td.cs-anscell, .cs-q td.cs-notecell { padding-top: 4px; }
+        .cs-q .cs-anscell textarea { min-height: 44px; }
+        .cs-q .cs-notecell textarea { min-height: 44px; }
+        /* 加减问题那一行 */
+        .cs-q tbody.cs-tb-ops td { padding: 6px 4px 10px; }
+
+        /* ---- 难度星标（编辑器标题旁，可点选）---- */
+        .cs-diff {
+            display: inline-flex; align-items: center; gap: 1px;
+            cursor: pointer; user-select: none; margin: 0 2px 0 6px;
+            font-size: 17px; line-height: 1;
+        }
+        .cs-diff i {
+            font-style: normal; color: #d8cfc4;
+            transition: color .12s ease, transform .12s ease;
+        }
+        .cs-diff i:hover { transform: scale(1.15); }
+        .cs-diff i.on { color: #e8a33d; }
+        /* 列表 / 题目树里的轻量难度 */
+        .cs-diff-lite { color: #e8a33d; font-size: 12px; letter-spacing: 1px; }
+        .cs-nprob {
+            margin-left: 8px; padding: 0 6px; border-radius: 9px;
+            font-size: 11px; background: #efe7dc; color: #7a6a58;
+        }
         .cs-head, .qt-head {
             display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
             padding: 10px 12px; border: 1px solid var(--line2, #DCCFB4);
@@ -5517,26 +5586,24 @@
             </div>
         </div>
 
-        <!-- ===== 📐 案例展示（Tom 2026-10-10 需求）=====
+        <!-- ===== 📐 案例展示（Tom 2026-10-10 需求 / 同日二次修订）=====
              独立数据（accCase_v3_<项目>），不依赖自检/错题两套存档。
-             表格结构照 Tom 给的两张截图：
-               项目 | 第N章 | N.N节
-               题目
-               解题 → 问题 / 已知 / 知识点关联 / 推导可知
-               答案 → 文字 / 代码
-               思考总结 → 从已知到未知 / 题眼 / 关键陷阱 / 经验沉淀
-               问题1..N → 追问行
-             两档模式（例题模式 / 代码模式）只换「已知 + 解题过程 + 答案」三格的画法。 -->
+             ★ 结构以「问题」为核心（Tom 2026-10-10 二次修订）：
+               题目（整道题）
+               问题1 ┐ 每个问题一个框：
+               问题2 ┤   问题 / 已知 / 知识点关联 / 推导可知
+               问题N ┘   答案 · 解析（按行一一对应，一个答案配一条解析）
+               思考总结（整题一份：从已知到未知 / 题眼 / 关键陷阱 / 经验沉淀 / 如何提速）
+             · 已去掉「项目」行：题目直接关联 科目/章/节 预设下拉
+             · 已去掉「代码模式」与「追问 followups」：追问并入「问题N」
+             · 新增「难度」★1-5（工具栏可筛选）
+             表格列网格统一：思考总结行高 == 各问题行高（Tom 明确要求） -->
         <div class="view-pane" id="view-case" style="display:none;">
             <div class="cs-wrap">
                 <div class="cs-head">
                     <h3>📐 案例展示</h3>
                     <span class="cs-sub" id="csStat">尚无案例</span>
                     <span class="fc-spacer"></span>
-                    <span class="cs-seg" id="csModeSeg">
-                        <button type="button" class="fc-btn cs-segb on" data-csmode="example">例题模式</button>
-                        <button type="button" class="fc-btn cs-segb" data-csmode="code">代码模式</button>
-                    </span>
                     <button type="button" class="fc-btn" id="csNewBtn" title="新建一条案例">＋ 新建案例</button>
                 </div>
 
@@ -5544,6 +5611,14 @@
                     <label>科目 <select id="csCourse"></select></label>
                     <label>章 <select id="csChapter"></select></label>
                     <label>节 <select id="csSection"></select></label>
+                    <label>难度 <select id="csDiff" title="按难度筛选已记案例">
+                        <option value="">全部</option>
+                        <option value="1">★ 入门</option>
+                        <option value="2">★★ 熟练</option>
+                        <option value="3">★★★ 拔高</option>
+                        <option value="4">★★★★ 难题</option>
+                        <option value="5">★★★★★ 压轴</option>
+                    </select></label>
                     <label>做题时间 <input type="date" id="csDate"></label>
                     <span class="fc-spacer"></span>
                     <input type="text" class="cs-search" id="csSearch" placeholder="搜索题目 / 知识点（Esc 清空）">
@@ -5552,7 +5627,10 @@
                 <div class="cs-editor" id="csEditor">
                     <div class="cs-editor-head">
                         <b id="csEditorTitle">新建案例</b>
-                        <span class="cs-hint">表格里浅黄格都可直接点进去编辑</span>
+                        <span class="cs-diff" id="csDiffPick" title="本题难度（点星星选择，可再点同一颗取消）">
+                            <i data-dv="1">★</i><i data-dv="2">★</i><i data-dv="3">★</i><i data-dv="4">★</i><i data-dv="5">★</i>
+                        </span>
+                        <span class="cs-hint">浅黄格可直接编辑 · 每题一个框 · 答案与解析按行一一对应</span>
                         <span class="fc-spacer"></span>
                         <button type="button" class="fc-btn" id="csSaveBtn">💾 保存</button>
                         <button type="button" class="fc-btn" id="csCancelBtn">取消</button>
@@ -14149,21 +14227,63 @@ if (document.readyState === 'loading') {
         return '';
     }
 
-    /* 当前项目有哪些「科目 → 章 → 节」 —— 取 fcWalkAll，与知识树同源 */
+    /* 当前项目有哪些「科目 → 章 → 节」
+       ★ Tom 2026-10-10：「科目章节下拉选项是预设的，和前面的学习记录的章节内容一致」
+       ⇒ 单一真源 = 学习记录用的那批数据：
+            COURSES              —— 学习记录侧栏课程列表（科目）
+            ACTIVE_CHAPTER_NAMES —— 章名表（第 N 章 → 章名）
+            sectionNames[course][ch] —— 每章有几节（节数，与学习记录一致）
+            getSectionName()     —— 节名
+       兜底顺序：学习记录源 → (为空时才) fcWalkAll → 已有案例。 */
     function scopeAll() {
-        var out = {};   // course -> { ch -> [sec...] }
+        var out = {};   // course -> { ch -> { se: 1 } }
+
+        /* ---- ① 学习记录源（主） ---- */
         try {
-            var rows = (typeof fcWalkAll === 'function') ? fcWalkAll({}) : [];
-            (rows || []).forEach(function (n) {
-                if (!n || !n.course) return;
-                var c = String(n.course), ch = +(n.chapter || 0), se = +(n.section || 0);
-                if (!ch) return;
-                if (!out[c]) out[c] = {};
-                if (!out[c][ch]) out[c][ch] = {};
-                if (se) out[c][ch][se] = 1;
+            var courses = (typeof COURSES !== 'undefined' && Array.isArray(COURSES)) ? COURSES : [];
+            var chNames = (typeof ACTIVE_CHAPTER_NAMES !== 'undefined' && ACTIVE_CHAPTER_NAMES) ? ACTIVE_CHAPTER_NAMES : {};
+            var seNames = {};
+            try {
+                var proj = (typeof getCurrentProject === 'function') ? getCurrentProject() : null;
+                seNames = (proj && proj.sectionNames) || {};
+            } catch (e2) { }
+
+            courses.forEach(function (c) {
+                if (!c) return;
+                var co = String(c);
+                out[co] = out[co] || {};
+                var arr = (seNames && seNames[co]) || {};
+                var chapters = {};
+                /* a) 章名表里有的章（最权威） */
+                var cn = chNames[co] || {};
+                Object.keys(cn).forEach(function (k) { if (+k) chapters[+k] = 1; });
+                /* b) 节结构里出现的章 */
+                Object.keys(arr).forEach(function (k) { if (+k) chapters[+k] = 1; });
+                Object.keys(chapters).map(Number).sort(function (a, b) { return a - b; }).forEach(function (ch) {
+                    out[co][ch] = out[co][ch] || {};
+                    var secs = arr[ch];
+                    var n = Array.isArray(secs) ? secs.length : (secs && typeof secs === 'object' ? Object.keys(secs).length : 0);
+                    for (var i = 1; i <= n; i++) out[co][ch][i] = 1;
+                });
             });
         } catch (e) { }
-        // 兜底：从已有案例里补（保证「案例里记过的」一定能选到）
+
+        /* ---- ② 兜底 A：fcWalkAll（与知识树同源） ---- */
+        if (!Object.keys(out).length) {
+            try {
+                var rows = (typeof fcWalkAll === 'function') ? fcWalkAll({}) : [];
+                (rows || []).forEach(function (n) {
+                    if (!n || !n.course) return;
+                    var c = String(n.course), ch = +(n.chapter || 0), se = +(n.section || 0);
+                    if (!ch) return;
+                    if (!out[c]) out[c] = {};
+                    if (!out[c][ch]) out[c][ch] = {};
+                    if (se) out[c][ch][se] = 1;
+                });
+            } catch (e3) { }
+        }
+
+        /* ---- ③ 兜底 B：已有案例里记过的（保证一定能选到） ---- */
         cases.forEach(function (r) {
             var c = r.course; if (!c) return;
             var ch = +(r.chapter || 0), se = +(r.section || 0);
@@ -14247,14 +14367,15 @@ if (document.readyState === 'loading') {
             'style="width:100%;border:0;background:transparent;font:inherit;outline:none;">';
     }
 
-    function chipsHTML(sigs, eye) {
+    function chipsHTML(sigs, eye, pi) {
+        pi = (pi == null ? -1 : pi);
         var h = '<div class="cs-chips">';
         (sigs || []).forEach(function (s) {
             var nm = kpNameOf(s);
             h += '<span class="cs-chip' + (eye ? ' eye' : '') + '"><b>' + esc(nm) + '</b>' +
-                 '<span class="x" data-rmkp="' + esc(s) + '" data-eye="' + (eye ? 1 : 0) + '" title="移除">×</span></span>';
+                 '<span class="x" data-rmkp="' + esc(s) + '" data-eye="' + (eye ? 1 : 0) + '" data-pi="' + pi + '" title="移除">×</span></span>';
         });
-        h += '<button type="button" class="cs-addchip" data-addkp="' + (eye ? 1 : 0) + '">＋ 选知识点</button>';
+        h += '<button type="button" class="cs-addchip" data-addkp="' + (eye ? 1 : 0) + '" data-pi="' + pi + '">＋ 选知识点</button>';
         h += '</div>';
         return h;
     }
@@ -14299,27 +14420,106 @@ if (document.readyState === 'loading') {
     /* ---- 画整张表（编辑态） ---- */
     var draft = null;
 
+    /* ---------- 数据模型：以「问题」为核心 ----------
+       case.problems[i] = { q, known[], derived[], kps[], answers:[{a,note}] }
+       · answers 与解析按行一一对应：一条答案配一条解析（note）。
+       · 整题一份 thought（从已知到未知 / 题眼 / 关键陷阱 / 经验沉淀 / 如何提速）。
+       · difficulty: 1-5（0 = 未评）。 */
+
+    var DIFF_LABEL = { 1: '入门', 2: '熟练', 3: '拔高', 4: '难题', 5: '压轴' };
+    function diffStars(n) {
+        n = +n || 0; if (n < 0) n = 0; if (n > 5) n = 5;
+        return new Array(n + 1).join('★') + new Array(6 - n).join('☆');
+    }
+    function diffText(n) { n = +n || 0; return n ? (diffStars(n) + (DIFF_LABEL[n] ? ' ' + DIFF_LABEL[n] : '')) : '未评难度'; }
+
+    function blankProblem() {
+        return { q: '', known: [''], derived: [''], kps: [], answers: [{ a: '', note: '' }] };
+    }
     function blankDraft() {
         return {
-            id: null, course: '', chapter: '', section: '', date: today(),
-            q: '', problem: [''], known: [''], solution: [''], answer: [''],
-            derived: [''], thought: { fromTo: '', eye: '', trap: '', exp: '' },
-            followups: [{ q: '', a: '' }], kps: [], eyes: [], mode: csMode
+            id: null, course: '', chapter: '', section: '', date: today(), difficulty: 0,
+            q: '', problems: [blankProblem()],
+            thought: { fromTo: '', eye: '', trap: '', exp: '', speed: '' },
+            eyes: []
         };
     }
+    function arr1(a) { return (Array.isArray(a) && a.length) ? a.slice() : ['']; }
+
+    /* 把任意形态的问题对象归一 */
+    function normProblem(p) {
+        p = p || {};
+        var o = blankProblem();
+        o.q = String(p.q == null ? '' : p.q);
+        o.known = arr1(p.known); o.derived = arr1(p.derived);
+        o.kps = Array.isArray(p.kps) ? p.kps.slice() : [];
+        var ans = [];
+        if (Array.isArray(p.answers) && p.answers.length) {
+            ans = p.answers.map(function (x) {
+                if (x && typeof x === 'object') return { a: String(x.a == null ? '' : x.a), note: String(x.note == null ? '' : x.note) };
+                return { a: String(x == null ? '' : x), note: '' };
+            });
+        } else if (Array.isArray(p.answer) && p.answer.length) {
+            /* 兼容：answer[] 数组 + 单条 solution / analysis */
+            var one = '';
+            if (Array.isArray(p.analysis) && p.analysis.length) one = p.analysis.join('\n');
+            else if (typeof p.analysis === 'string') one = p.analysis;
+            ans = p.answer.map(function (x, i) { return { a: String(x == null ? '' : x), note: i === 0 ? one : '' }; });
+        }
+        if (!ans.length) ans = [{ a: '', note: '' }];
+        o.answers = ans;
+        return o;
+    }
+
     function normDraft(r) {
         var d = blankDraft();
         if (!r) return d;
-        for (var k in d) if (r[k] !== undefined) d[k] = r[k];
-        d.thought = Object.assign({ fromTo: '', eye: '', trap: '', exp: '' }, r.thought || {});
-        d.followups = (Array.isArray(r.followups) && r.followups.length) ? r.followups : [{ q: '', a: '' }];
-        d.problem = arr1(r.problem); d.known = arr1(r.known); d.solution = arr1(r.solution);
-        d.answer = arr1(r.answer); d.derived = arr1(r.derived);
-        d.kps = Array.isArray(r.kps) ? r.kps.slice() : [];
+        ['id', 'course', 'date', 'q'].forEach(function (k) { if (r[k] !== undefined && r[k] !== null) d[k] = r[k]; });
+        d.chapter = +r.chapter || 0; d.section = +r.section || 0; d.difficulty = +r.difficulty || 0;
+        d.thought = Object.assign({ fromTo: '', eye: '', trap: '', exp: '', speed: '' }, r.thought || {});
         d.eyes = Array.isArray(r.eyes) ? r.eyes.slice() : [];
+
+        /* ---- 新结构：problems[] ---- */
+        if (Array.isArray(r.problems) && r.problems.length) {
+            d.problems = r.problems.map(normProblem);
+            return d;
+        }
+
+        /* ---- 旧结构迁移 ----
+           旧：problem[]（问题）、known[]、derived[]、answer[]、solution[]、kps[]、followups[{q,a}]
+           一条旧案例 = 1 个主问题 + N 个追问 ⇒ 迁成 N+1 个 problems。 */
+        var kps0 = Array.isArray(r.kps) ? r.kps.slice() : [];
+        var known0 = arr1(r.known), derived0 = arr1(r.derived);
+        var ans0 = [];
+        /* 旧 answer[] / solution[] 合成「答案 / 解析」对：答案逐条，解析取 solution 全文归第一条 */
+        var solText = (Array.isArray(r.solution) ? r.solution.join('\n') : (r.solution || ''));
+        var aArr = Array.isArray(r.answer) ? r.answer.filter(function (x) { return String(x || '').trim() !== ''; }) : [];
+        if (aArr.length) {
+            aArr.forEach(function (x, i) { ans0.push({ a: String(x), note: i === 0 ? String(solText || '') : '' }); });
+        } else if (String(solText || '').trim()) {
+            ans0.push({ a: '', note: String(solText) });
+        }
+        if (!ans0.length) ans0 = [{ a: '', note: '' }];
+
+        var probs = [];
+        var mainQ = (Array.isArray(r.problem) ? r.problem.filter(function (x) { return String(x || '').trim() !== ''; }) : []);
+        probs.push({ q: mainQ.length ? mainQ.join('\n') : '', known: known0, derived: derived0, kps: kps0, answers: ans0 });
+        (Array.isArray(r.followups) ? r.followups : []).forEach(function (f) {
+            if (!f) return;
+            var qq = String(f.q || '').trim(), aa = String(f.a || '').trim();
+            if (!qq && !aa) return;
+            probs.push({ q: qq, known: [''], derived: [''], kps: kps0.slice(), answers: [{ a: aa, note: '' }] });
+        });
+        d.problems = probs.length ? probs : [blankProblem()];
         return d;
     }
-    function arr1(a) { return (Array.isArray(a) && a.length) ? a.slice() : ['']; }
+
+    /* ============================================================
+       画整张表（编辑态）—— 列网格：
+         第1列 行标签 | 第2列「问题」 | 第3列「已知」 | 第4列「知识点关联」 | 第5列「推导可知/解析」
+       ★ 每个问题一个 <tbody>（= 一个框）；思考总结行高与问题行同高。
+       ============================================================ */
+    var draft = null;
 
     function renderTable() {
         if (!csTable) return;
@@ -14327,116 +14527,146 @@ if (document.readyState === 'loading') {
         var ch = +d.chapter || 0, se = +d.section || 0;
         var chLab = ch ? ('第 ' + ch + ' ' + Lv('chapter', '章') + ' ' + chapterName(d.course, ch)).trim() : '（未选章）';
         var seLab = se ? ((se + ' ' + sectionName(d.course, ch, se)).trim()) : '（未选节）';
-        var codeMode = csMode === 'code';
 
         var h = '';
+
+        /* ---- 表头一行：科目 / 章 / 节 ---- */
+        h += '<thead><tr>' +
+             '<th class="rowhead">定位</th>' +
+             '<th colspan="2" class="fill-strong">' + esc(d.course || '（未选科目）') + '</th>' +
+             '<th colspan="2" class="fill-strong">' + esc(chLab) + ' · ' + esc(seLab) + '</th>' +
+             '</tr></thead>';
+
+        /* ---- 题目（整道题）---- */
+        h += '<tbody class="cs-tb-head"><tr><td class="rowhead">题目</td>' +
+             '<td colspan="4" class="fill">' + plainIn(d.q, '这道题问的是什么…') + '</td></tr></tbody>';
+
+        /* ---- 每个问题一个框 ---- */
+        d.problems.forEach(function (p, pi) {
+            h += '<tbody class="cs-tb-prob" data-pi="' + pi + '">';
+            h += '<tr>' +
+                 '<td class="rowhead cs-rowq" rowspan="2">问题' + (pi + 1) + '</td>' +
+                 '<th>问题</th><th>已知</th><th>知识点关联</th><th>推导可知</th></tr>';
+            h += '<tr>' +
+                 '<td class="fill">' + cellEditor(splitLines(p.q), '1、求和\n2、求差', 2) + '</td>' +
+                 '<td class="fill">' + cellEditor(p.known, '1、a =6\n2、b=0', 2) + '</td>' +
+                 '<td class="fill">' + chipsHTML(p.kps, false, pi) + '</td>' +
+                 '<td class="fill">' + cellEditor(p.derived, '1、a >0', 2) + '</td></tr>';
+            /* 答案 / 解析：按行一一对应 */
+            h += '<tr>' +
+                 '<th>答案</th><th>解析</th><td colspan="2" class="cs-ansfill-lbl">每条答案配它自己的解析（一行一对）</td></tr>';
+            h += '<tr>' +
+                 '<td class="fill cs-anscell">' + cellEditor(ansLines(p.answers, 'a'), '1\n2\n3', 3) + '</td>' +
+                 '<td class="fill cs-notecell" colspan="3">' + cellEditor(ansLines(p.answers, 'note'), '↑ 对应每一条答案的解析…', 3) + '</td></tr>';
+            h += '</tbody>';
+        });
+
+        /* ---- 加减问题 ---- */
+        h += '<tbody class="cs-tb-ops"><tr><td class="rowhead" style="border-top:0">＋</td>' +
+             '<td colspan="4">' +
+             '<button type="button" class="cs-addchip" id="csAddProb">＋ 加一个问题</button>' +
+             (d.problems.length > 1 ? ' <button type="button" class="cs-addchip" id="csDelProb">－ 删掉最后一个问题</button>' : '') +
+             '</td></tr></tbody>';
+
+        /* ---- 思考总结（整题一份；行高与问题行一致）---- */
+        h += '<tbody class="cs-tb-think">';
         h += '<tr>' +
-             '<th class="rowhead">项目</th>' +
-             '<th colspan="2" class="fill-strong">' + esc(chLab) + '</th>' +
-             '<th colspan="2" class="fill-strong">' + esc(seLab) + '</th></tr>';
-
-        h += '<tr><td class="rowhead">题目</td>' +
-             '<td colspan="4" class="fill">' + plainIn(d.q, '这道题问的是什么…') + '</td></tr>';
-
-        h += '<tr><td class="rowhead" rowspan="2">解题</td>' +
-             '<th>问题</th><th>已知</th><th>知识点关联</th><th>推导可知</th></tr>';
-        h += '<tr>' +
-             '<td class="fill">' + cellEditor(fmtProblem(d.problem), '1、…\n2、…', 3) + '</td>' +
-             '<td class="fill">' + (codeMode ? cellEditor(d.known, 'cost = 100', 3) : cellEditor(d.known, '逐条写出已知条件', 3)) + '</td>' +
-             '<td class="fill">' + chipsHTML(d.kps, false) + '</td>' +
-             '<td class="fill">' + cellEditor(d.derived, '由已知能推出什么', 3) + '</td></tr>';
-
-        h += '<tr><td class="rowhead">答案</td>' +
-             '<td class="rowhead">' + (codeMode ? '代码' : '文字') + '</td>' +
-             '<td colspan="3" class="fill">';
-        if (codeMode) {
-            h += cellEditor(d.solution, 'provision = cost - nrv', 3);
-            h += '<div class="cs-code2">解释（可选，一行）</div>';
-            h += plainIn(d.answer[0] || '', '一句话解释这段代码在算什么…');
-        } else {
-            h += cellEditor(d.answer, '写出答案 / 改正思路', 3);
-        }
-        h += '</td></tr>';
-
-        h += '<tr><td class="rowhead">思考总结</td>' +
+             '<td class="rowhead" rowspan="2">思考总结</td>' +
              '<th>从已知到未知</th><th>题眼</th><th>关键陷阱</th><th>经验沉淀</th></tr>';
         h += '<tr>' +
              '<td class="fill">' + plainIn(d.thought.fromTo, '已知 → 未知 的那一步') + '</td>' +
-             '<td class="fill">' + chipsHTML(d.eyes, true) + '</td>' +
+             '<td class="fill">' + chipsHTML(d.eyes, true, -1) + '</td>' +
              '<td class="fill">' + plainIn(d.thought.trap, '容易踩的坑') + '</td>' +
              '<td class="fill">' + plainIn(d.thought.exp, '下次遇到同类题记住什么') + '</td></tr>';
-
-        /* 问题1..N 追问 */
-        d.followups.forEach(function (f, i) {
-            h += '<tr><td class="rowhead"' + (i === 0 ? ' rowspan="' + d.followups.length + '"' : ' style="display:none"') + '>问题' + (i + 1) + '</td>' +
-                 '<td class="fill">' + plainIn(f.q, '追问的问题') + '</td>' +
-                 '<td colspan="3" class="fill">' + plainIn(f.a, '回答') + '</td></tr>';
-        });
-        h += '<tr><td class="rowhead" style="border-top:0">＋</td><td colspan="4">' +
-             '<button type="button" class="cs-addchip" id="csAddFU">＋ 再加一问</button>' +
-             (d.followups.length > 1 ? ' <button type="button" class="cs-addchip" id="csDelFU">－ 删掉最后一问</button>' : '') +
-             '</td></tr>';
+        h += '<tr>' +
+             '<td class="rowhead">如何提速</td>' +
+             '<td colspan="4" class="fill">' + plainIn(d.thought.speed, '这类题怎么能做更快（套路 / 口诀 / 检查点）') + '</td></tr>';
+        h += '</tbody>';
 
         csTable.innerHTML = h;
+        paintDiffPick();
     }
-    /* 问题格：把 1、2、3 拆成多行显示 */
-    function fmtProblem(a) {
-        var s = (a || []).join('\n').trim();
-        if (!s) return [''];
+
+    /* 把一段文本拆成多行（问题格里用户写 1、2、3 时按行拆） */
+    function splitLines(v) {
+        if (Array.isArray(v)) {
+            var a = v.filter(function (x) { return String(x || '').trim() !== ''; });
+            return a.length ? a : [''];
+        }
+        var s = String(v == null ? '' : v).replace(/\r/g, '');
+        if (!s.trim()) return [''];
         return s.split('\n').filter(function (x) { return x.trim() !== ''; });
+    }
+    /* 取 answers 的某一列，拼成多行文本（供 textarea 显示） */
+    function ansLines(answers, key) {
+        var a = (answers || []).map(function (x) { return String((x && x[key]) || ''); });
+        while (a.length > 1 && a[a.length - 1] === '' && a[a.length - 2] === '') a.pop();
+        if (!a.length) a = [''];
+        return a;
     }
 
     /* 从表格读回草稿 */
     function readTable() {
         if (!csTable || !draft) return;
-        var tds = csTable.querySelectorAll('td.fill');
-        // 顺序与 renderTable 里的出现次序严格一致
         var ins = csTable.querySelectorAll('.cs-cellin');
         var p = 0;
-        function nextLines() { var el = ins[p++]; return el ? String(el.value).split('\n') : ['']; }
+        function nextLines() { var el = ins[p++]; return el ? String(el.value).replace(/\r/g, '').split('\n') : ['']; }
         function nextText() { var el = ins[p++]; return el ? String(el.value) : ''; }
+        function nextTextKeepLines() { var el = ins[p++]; return el ? String(el.value).replace(/\r/g, '') : ''; }
 
-        draft.q = nextText();                                   // 题目（input）
-        draft.problem = fmtProblem(nextLines());                // 问题（textarea）
-        draft.known = nextLines();                              // 已知（textarea）
-        // 知识点 chips 不在这里（有专门按钮）
-        draft.derived = nextLines();                            // 推导可知（textarea）
-        if (csMode === 'code') {
-            draft.solution = nextLines();                       // 代码（textarea）
-            draft.answer = [nextText()];                        // 解释（input）
-        } else {
-            draft.answer = nextLines();                         // 答案（textarea）
-        }
+        /* 题目（input） */
+        draft.q = nextText();
+
+        /* 每个问题：问题(多行) 已知(多行) [知识点 chips 不在流内] 推导可知(多行) 答案(多行) 解析(多行) */
+        draft.problems.forEach(function (pr) {
+            pr.q = nextLines().join('\n');
+            pr.known = nextLines();
+            pr.derived = nextLines();
+            var aLines = nextLines();
+            var nLines = nextLines();
+            /* 答案/解析按行一一对应：以行数多的一边为准补齐 */
+            var n = Math.max(aLines.length, nLines.length);
+            if (n < 1) n = 1;
+            var out = [];
+            for (var i = 0; i < n; i++) {
+                var av = (aLines[i] == null ? '' : aLines[i]);
+                var nv = (nLines[i] == null ? '' : nLines[i]);
+                if (i === n - 1 && av === '' && nv === '' && n > 1) continue; /* 末尾空行不生成 */
+                out.push({ a: av, note: nv });
+            }
+            pr.answers = out.length ? out : [{ a: '', note: '' }];
+        });
+
+        /* 思考总结 */
         draft.thought.fromTo = nextText();
-        // 题眼 chips 不在这里
+        /* 题眼 chips 不在流内 */
         draft.thought.trap = nextText();
         draft.thought.exp = nextText();
-        // 追问
-        draft.followups.forEach(function (f) { f.q = nextText(); f.a = nextText(); });
+        draft.thought.speed = nextTextKeepLines();
     }
+
+    /* 难度星标（编辑器标题旁）*/
+    var csDiffPick = document.getElementById('csDiffPick');
+    function paintDiffPick() {
+        if (!csDiffPick) return;
+        var n = (draft && +draft.difficulty) || 0;
+        Array.prototype.forEach.call(csDiffPick.querySelectorAll('[data-dv]'), function (el) {
+            el.classList.toggle('on', (+el.getAttribute('data-dv')) <= n);
+        });
+        csDiffPick.setAttribute('data-val', String(n));
+    }
+    if (csDiffPick) csDiffPick.addEventListener('click', function (ev) {
+        var el = ev.target.closest('[data-dv]'); if (!el) return;
+        if (!draft) return;
+        var v = +el.getAttribute('data-dv');
+        draft.difficulty = (draft.difficulty === v) ? 0 : v;   /* 再点同一颗 = 取消 */
+        paintDiffPick();
+    });
 
     /* ============================================================
        ③ 事件：模式切换 / 新建 / 保存 / 取消 / 列表操作
        ============================================================ */
-    var csModeSeg = document.getElementById('csModeSeg');
-    if (csModeSeg) {
-        csModeSeg.addEventListener('click', function (ev) {
-            var b = ev.target.closest('[data-csmode]'); if (!b) return;
-            if (csTable && draft) readTable();
-            csMode = b.getAttribute('data-csmode');
-            Array.prototype.forEach.call(csModeSeg.querySelectorAll('[data-csmode]'), function (x) {
-                x.classList.toggle('on', x === b);
-            });
-            renderTable();
-        });
-    }
-
-    function setMode(m) {
-        csMode = (m === 'code') ? 'code' : 'example';
-        if (csModeSeg) Array.prototype.forEach.call(csModeSeg.querySelectorAll('[data-csmode]'), function (x) {
-            x.classList.toggle('on', x.getAttribute('data-csmode') === csMode);
-        });
-    }
+    /* 例题模式 / 代码模式已按 Tom 要求移除（2026-10-10），此处不再有模式切换。 */
 
     var csNewBtn = document.getElementById('csNewBtn');
     if (csNewBtn) csNewBtn.addEventListener('click', function () {
@@ -14487,21 +14717,24 @@ if (document.readyState === 'loading') {
         if (rm && draft) {
             readTable();
             var sig = rm.getAttribute('data-rmkp'), isEye = rm.getAttribute('data-eye') === '1';
-            var arr = isEye ? draft.eyes : draft.kps;
+            var pi = parseInt(rm.getAttribute('data-pi'), 10);
+            var arr;
+            if (isEye) arr = draft.eyes;
+            else arr = (draft.problems[pi] ? draft.problems[pi].kps : draft.problems[0].kps);
             var i = arr.indexOf(sig); if (i >= 0) arr.splice(i, 1);
             renderTable(); return;
         }
         var ad = ev.target.closest('[data-addkp]');
         if (ad && draft) {
             readTable();
-            openKpDialog(ad.getAttribute('data-addkp') === '1');
+            openKpDialog(ad.getAttribute('data-addkp') === '1', parseInt(ad.getAttribute('data-pi'), 10));
             return;
         }
-        if (ev.target.id === 'csAddFU' && draft) {
-            readTable(); draft.followups.push({ q: '', a: '' }); renderTable(); return;
+        if (ev.target.id === 'csAddProb' && draft) {
+            readTable(); draft.problems.push(blankProblem()); renderTable(); return;
         }
-        if (ev.target.id === 'csDelFU' && draft) {
-            readTable(); if (draft.followups.length > 1) draft.followups.pop(); renderTable(); return;
+        if (ev.target.id === 'csDelProb' && draft) {
+            readTable(); if (draft.problems.length > 1) draft.problems.pop(); renderTable(); return;
         }
     });
 
@@ -14519,7 +14752,6 @@ if (document.readyState === 'loading') {
         if (!String(draft.q || '').trim()) { toastSafe('先把「题目」写上'); return; }
         if (!draft.course) { toastSafe('先选科目'); return; }
 
-        draft.mode = csMode;
         draft.updatedAt = Date.now();
         if (editId) {
             var i = cases.findIndex(function (x) { return x.id === editId; });
@@ -14548,19 +14780,37 @@ if (document.readyState === 'loading') {
     var csList = document.getElementById('csList');
     var csEmpty = document.getElementById('csEmpty');
 
+    function caseKps(r) {
+        var out = [];
+        (r.problems || []).forEach(function (p) { (p.kps || []).forEach(function (s) { out.push(s); }); });
+        if (!out.length && Array.isArray(r.kps)) out = r.kps.slice();
+        return out;
+    }
+    function caseSearchBag(r) {
+        var bag = [r.q, r.thought && r.thought.fromTo, r.thought && r.thought.trap,
+                   r.thought && r.thought.exp, r.thought && r.thought.speed];
+        (r.problems || []).forEach(function (p) {
+            bag.push(p.q);
+            (p.known || []).forEach(function (x) { bag.push(x); });
+            (p.derived || []).forEach(function (x) { bag.push(x); });
+            (p.answers || []).forEach(function (x) { bag.push(x.a); bag.push(x.note); });
+        });
+        return bag.concat(caseKps(r).map(kpNameOf)).concat((r.eyes || []).map(kpNameOf)).join(' ').toLowerCase();
+    }
+
     function renderList() {
         if (!csList) return;
         var kw = '';
         var sEl = document.getElementById('csSearch');
         if (sEl) kw = String(sEl.value || '').trim().toLowerCase();
+        var dv = '';
+        var dvEl = document.getElementById('csDiff');
+        if (dvEl) dv = String(dvEl.value || '');
 
         var rows = cases.slice().sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+        if (dv) rows = rows.filter(function (r) { return String(+r.difficulty || 0) === dv; });
         if (kw) {
-            rows = rows.filter(function (r) {
-                var bag = [r.q, r.thought && r.thought.fromTo, r.thought && r.thought.eye, r.thought && r.thought.exp]
-                    .concat((r.kps || []).map(kpNameOf)).concat((r.eyes || []).map(kpNameOf)).join(' ').toLowerCase();
-                return bag.indexOf(kw) >= 0;
-            });
+            rows = rows.filter(function (r) { return caseSearchBag(r).indexOf(kw) >= 0; });
         }
         csList.innerHTML = '';
         if (!rows.length) { if (csEmpty) csEmpty.style.display = 'block'; return; }
@@ -14571,13 +14821,15 @@ if (document.readyState === 'loading') {
             d.className = 'cs-item';
             var chLab = (+r.chapter ? ('第' + r.chapter + Lv('chapter', '章') + ' ' + chapterName(r.course, r.chapter)) : '').trim();
             var seLab = (+r.section ? ((+r.section) + ' ' + sectionName(r.course, r.chapter, r.section)) : '').trim();
-            var chips = (r.kps || []).map(function (s) { return '<span class="cs-chip"><b>' + esc(kpNameOf(s)) + '</b></span>'; }).join('')
+            var chips = caseKps(r).map(function (s) { return '<span class="cs-chip"><b>' + esc(kpNameOf(s)) + '</b></span>'; }).join('')
                 + (r.eyes || []).map(function (s) { return '<span class="cs-chip eye"><b>' + esc(kpNameOf(s)) + '</b></span>'; }).join('');
+            var nProb = (r.problems || []).length || 1;
             d.innerHTML =
                 '<div class="cs-item-main">' +
                 '<div class="cs-item-q">' + esc(r.q) + '</div>' +
                 '<div class="cs-item-meta">' + esc(r.course) + (chLab ? ' · ' + esc(chLab) : '') + (seLab ? ' · ' + esc(seLab) : '') +
-                (r.date ? ' · ' + esc(r.date) : '') + ' · ' + (r.mode === 'code' ? '代码模式' : '例题模式') + '</div>' +
+                (r.date ? ' · ' + esc(r.date) : '') + ' · ' + nProb + ' 个问题' +
+                (r.difficulty ? ' · <span class="cs-diff-lite">' + esc(diffStars(r.difficulty)) + '</span>' : '') + '</div>' +
                 (chips ? '<div class="cs-chips">' + chips + '</div>' : '') +
                 '</div>' +
                 '<div class="cs-item-actions">' +
@@ -14587,7 +14839,6 @@ if (document.readyState === 'loading') {
                 '</div>';
             d.querySelector('[data-cs="edit"]').addEventListener('click', function () {
                 editId = r.id; draft = normDraft(r);
-                setMode(draft.mode || 'example');
                 refillScope(draft);
                 if (csCourse) csCourse.value = draft.course || '';
                 refillChapter(); if (csChapter) csChapter.value = String(draft.chapter || '');
@@ -14615,6 +14866,8 @@ if (document.readyState === 'loading') {
     if (csSearch) csSearch.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') { csSearch.value = ''; renderList(); }
     });
+    var csDiff = document.getElementById('csDiff');
+    if (csDiff) csDiff.addEventListener('change', renderList);
 
     function renderStat() {
         var el = document.getElementById('csStat');
@@ -14622,18 +14875,22 @@ if (document.readyState === 'loading') {
         if (!cases.length) { el.textContent = '尚无案例'; return; }
         var n = {};
         cases.forEach(function (r) { n[r.course] = (n[r.course] || 0) + 1; });
-        el.textContent = '共 ' + cases.length + ' 条 · ' + Object.keys(n).map(function (c) { return c + ' ' + n[c]; }).join(' / ');
+        var np = 0; cases.forEach(function (r) { np += (r.problems || []).length || 1; });
+        el.textContent = '共 ' + cases.length + ' 条 · ' + np + ' 个问题 · ' + Object.keys(n).map(function (c) { return c + ' ' + n[c]; }).join(' / ');
     }
 
     /* ============================================================
        ⑤ 知识点选择弹窗（多选，多对多）
        ============================================================ */
-    var kpMask = null, kpPick = null, kpIsEye = false;
+    var kpMask = null, kpPick = null, kpIsEye = false, kpPi = -1;
 
-    function openKpDialog(isEye) {
+    function openKpDialog(isEye, pi) {
         kpIsEye = !!isEye;
+        kpPi = (pi == null ? -1 : pi);
         kpPick = {};
-        var cur = (isEye ? (draft && draft.eyes) : (draft && draft.kps)) || [];
+        var cur;
+        if (isEye) cur = (draft && draft.eyes) || [];
+        else cur = (draft && draft.problems[kpPi] ? draft.problems[kpPi].kps : (draft && draft.problems[0] ? draft.problems[0].kps : [])) || [];
         cur.forEach(function (s) { kpPick[s] = 1; });
 
         if (kpMask) kpMask.remove();
@@ -14666,7 +14923,9 @@ if (document.readyState === 'loading') {
             if (ev.target.id === 'kpOk') {
                 var sigs = Object.keys(kpPick);
                 if (draft) {
-                    if (kpIsEye) draft.eyes = sigs; else draft.kps = sigs;
+                    if (kpIsEye) draft.eyes = sigs;
+                    else if (draft.problems[kpPi]) draft.problems[kpPi].kps = sigs;
+                    else if (draft.problems[0]) draft.problems[0].kps = sigs;
                 }
                 kpMask.remove();
                 renderTable();
@@ -14722,8 +14981,21 @@ if (document.readyState === 'loading') {
     var qtAnsBtn = document.getElementById('qtAnsBtn');
 
     function answerText(r) {
-        if (r.mode === 'code') return (r.solution || []).join('\n');
-        return (r.answer || []).filter(function (x) { return String(x || '').trim(); }).join('；');
+        var out = [];
+        (r.problems || []).forEach(function (p, i) {
+            var lines = [];
+            (p.answers || []).forEach(function (x) {
+                var a = String((x && x.a) || '').trim();
+                var nt = String((x && x.note) || '').trim();
+                if (a) lines.push(a + (nt ? '（' + nt + '）' : ''));
+                else if (nt) lines.push(nt);
+            });
+            if (lines.length) out.push((r.problems.length > 1 ? ('问题' + (i + 1) + '：') : '') + lines.join('；'));
+        });
+        if (out.length) return out.join('\n');
+        /* 旧结构兜底 */
+        if (Array.isArray(r.answer)) return r.answer.filter(function (x) { return String(x || '').trim(); }).join('；');
+        return '';
     }
 
     function renderQtree() {
@@ -14798,10 +15070,13 @@ if (document.readyState === 'loading') {
     }
     function leafHTML(r) {
         var ans = answerText(r);
-        var kps = (r.kps || []).map(function (s) { return '<span class="cs-chip"><b>' + esc(kpNameOf(s)) + '</b></span>'; }).join('')
+        var kps = caseKps(r).map(function (s) { return '<span class="cs-chip"><b>' + esc(kpNameOf(s)) + '</b></span>'; }).join('')
             + (r.eyes || []).map(function (s) { return '<span class="cs-chip eye"><b>👁 ' + esc(kpNameOf(s)) + '</b></span>'; }).join('');
+        var nProb = (r.problems || []).length || 1;
         return '<div class="tleaf" data-case="' + esc(r.id) + '">' +
-            '<div class="tq"><span class="qno">Q</span>' + esc(r.q) + '</div>' +
+            '<div class="tq"><span class="qno">Q</span>' + esc(r.q) +
+            (nProb > 1 ? '<span class="cs-nprob">' + nProb + ' 问</span>' : '') +
+            (r.difficulty ? '<span class="cs-diff-lite">' + esc(diffStars(r.difficulty)) + '</span>' : '') + '</div>' +
             (kps ? '<div class="cs-chips" style="margin:2px 0 4px 30px">' + kps + '</div>' : '') +
             (ans ? '<div class="ansbox"><span class="alab">答案：</span>' + esc(ans).replace(/\n/g, '<br>') + '</div>' : '') +
             '</div>';
@@ -14811,7 +15086,7 @@ if (document.readyState === 'loading') {
             var ans = answerText(r);
             var chLab = (+r.chapter ? ('第' + r.chapter + Lv('chapter', '章') + ' ' + chapterName(r.course, r.chapter)) : '').trim();
             return '<div class="qcard" data-case="' + esc(r.id) + '">' +
-                '<div class="qh">' + esc(r.q) + '</div>' +
+                '<div class="qh">' + esc(r.q) + (r.difficulty ? ' <span class="cs-diff-lite">' + esc(diffStars(r.difficulty)) + '</span>' : '') + '</div>' +
                 '<div class="qm">' + esc(r.course) + (chLab ? ' · ' + esc(chLab) : '') + (r.date ? ' · ' + esc(r.date) : '') + '</div>' +
                 (ans ? '<div class="ansbox" style="margin-left:0"><span class="alab">答案：</span>' + esc(ans).replace(/\n/g, '<br>') + '</div>' : '') +
                 '</div>';
@@ -26970,7 +27245,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261010e</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261010f</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
