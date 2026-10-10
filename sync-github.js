@@ -586,6 +586,7 @@
     }
     const hasRemote = !!(remote && remote.data && Object.keys(remote.data).length > 0);
     const beforeCount = getLocalKeys().length;
+    const beforeBytes = syncPayloadBytes();   // 同步前「参与同步的数据量」
     // 云端原有的键集合（用来算「本次往云端新增了哪些键」）
     const cloudHad = {};
     if (hasRemote) {
@@ -601,6 +602,7 @@
       hasRemote: hasRemote,
       localStats: localStats,     // null = 云端原本就没有数据
       beforeCount: beforeCount,
+      beforeBytes: beforeBytes,
       nItem: Object.keys(merged).length,
       cloudAddedKeys: cloudAddedKeys,   // 云端原本没有、本次写上去的键
       info: info
@@ -1835,6 +1837,39 @@
     return keys;
   }
 
+  // 本次同步「真正参与同步的数据量」= 所有非排除键的 (value.length + key.length) 之和。
+  // 口径与 buildMergedUpload / entryBytes 一致（都是按字符串长度估），
+  // 且**排除 EXCLUDE_***，否则「总量」里会混进几个 600KB 的背景图与埋点垃圾，
+  // 用户会看到「同步了 1.2MB」其实业务数据只有 300KB。
+  function syncPayloadBytes() {
+    let total = 0;
+    let keys = [];
+    try { keys = getLocalKeys(); } catch (e) { return 0; }
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      let v = null;
+      try { v = localStorage.getItem(key); } catch (e) { continue; }
+      if (v == null) continue;
+      if (isExcludedKey(key, v)) continue;
+      total += v.length + key.length;
+    }
+    return total;
+  }
+
+  // 同步总量的「人话」描述：`73 键 / 348KB → 74 键 / 349KB（+1 键 +1.2KB）`
+  function describeTotal(beforeCount, beforeBytes, afterCount, afterBytes) {
+    const dk = afterCount - beforeCount;
+    const db = afterBytes - beforeBytes;
+    const head = beforeCount + ' 键 / ' + humanBytes(beforeBytes) +
+      ' → ' + afterCount + ' 键 / ' + humanBytes(afterBytes);
+    if (!dk && !db) return head + '（无变化）';
+    const parts = [];
+    if (dk) parts.push(signed(dk) + ' 键');
+    if (db) parts.push((db > 0 ? '+' : '-') + humanBytes(Math.abs(db)));
+    return head + '（' + parts.join(' ') + '）';
+  }
+
+
   // 用云端数据整体覆盖本机（真正的"下载覆盖"）
   function applyCloudToLocal(serverData) {
     const sdata = serverData.data || {};
@@ -2281,6 +2316,16 @@
       return {
         mode: 'both', at: Date.now(), ms: Date.now() - t0, hasRemote: r.hasRemote,
         reload: reloadInfo,
+        // 总量基线：同步前 / 后各算一次（after 在合并+上传都完成之后）
+        total: (function () {
+          const ac = getLocalKeys().length;
+          const ab = syncPayloadBytes();
+          return {
+            beforeKeys: r.beforeCount || 0, beforeBytes: r.beforeBytes || 0,
+            afterKeys: ac, afterBytes: ab,
+            text: describeTotal(r.beforeCount || 0, r.beforeBytes || 0, ac, ab)
+          };
+        })(),
         local: st
           ? { added: st.added, updated: st.updated, merged: st.merged, kept: st.kept, keys: st.keys || [] }
           : { added: 0, updated: 0, merged: 0, kept: 0, keys: [] },
@@ -2328,6 +2373,301 @@
   //   （sync_last_sync / sync_timestamps / __hub_*）都被挡掉，否则「同步把结果写回本机」
   //   会被当成「用户改了数据」→ 立刻再同步 → 无限循环。
   const AUTO_KEY = 'ehub_autosync_v1';
+
+  // ============ 同步记录：把 localStorage 键翻成人看得懂的名字 ============
+  // 为什么需要：同步留痕以前只写原始键名（`chaomuji_web_v27`），
+  // 用户既不知道那是哪个工具，也不知道改的是哪一块。
+  // 现在翻成「模块名 · 用途」，并带上本次同步的总量变化。
+  //
+  // 维护约定：**新增一个会同步的键，就在这儿加一行**。
+  // 加不上也不要紧 —— describeKeys 会退回「模块名 · 原始键名」，不会显示成空白。
+  const KEY_LABELS = {
+    // ---- 朝暮计 ----
+    'chaomuji_web_v27': '主数据',
+    'chaomuji_web_v27_bg': '页面背景',
+    'chaomuji_web_v27_cardbg': '卡片背景',
+    'chaomuji_web_v27_hcardbg': '习惯卡背景',
+    'chaomuji_web_v27_drawexpand': '抽屉展开状态',
+    'chaomuji_web_v27_paste_tpl': '批量粘贴模板',
+    'chaomuji_web_v27_schedmonth': '月历折叠状态',
+    'chaomuji_web_v27_remindlog': '提醒去重日志',
+    'chaomuji_web_v27_dailylog': '每日提醒日志',
+    'chaomuji_web_v27_lsquota': '本机配额实测',
+    'chaomuji_web_v27_lunarcache': '农历缓存',
+    'chaomuji_todos': '待办清单',
+    'chaomuji_records': '打卡记录',
+    'chaomuji_custom_cats': '自定义分类',
+    'chaomuji_habit_list': '习惯清单',
+    'chaomuji_cats': '分类',
+    'chaomuji_diary_v1': '日记正文',
+    'chaomuji_diary_tags_v1': '日记标签',
+    'chaomuji_backups_v1': '本机快照仓',
+    'chaomuji_pomo_count': '番茄钟计数',
+    'chaomuji_focus_min': '专注分钟',
+    'zmv_view_mode': '视图模式',
+    'dreamDiaries': '梦想日记',
+    'dreamGoals': '梦想目标',
+    // ---- CPA 学习工具 ----
+    // ★ 需求（2026-10-10）：「注明是哪个子页和哪个 tab」。
+    //   下面这些键的值就是**工具页内的具体页签**（tools/cpa学习工具1.html 的 11 个 vtab：
+    //   学习进度 / 学习记录 / 知识树 / 闪卡 / 记忆曲线 / 小节自检 / 整章复盘 /
+    //   自检看板 / 自检热力图 / 错题本 / 目标），所以标签直接写页签名。
+    'cpa_learning_data_v3': '学习进度·学习数据（全部项目）',
+    'cpa_learning_data_v3_cpa': '学习进度·学习数据（CPA）',
+    'cpa_study_projects_v1': '学习进度·考试项目列表',
+    'cpa_study_current_project_v1': '学习进度·当前考试项目',
+    'cpa_sidebar_folded_v1': '全工具·侧栏折叠',
+    'cpa_appearance_v1': '全工具·外观设置',
+    'cpa_font_scale': '全工具·字号',
+    'cpa_user_guide_v1': '学习进度·新手引导',
+    'kp_outline_no_v1': '知识树·编号模式',
+    'hub_cpa_draft_v1': '学习记录·表单草稿',
+    'hub_cpa_fc_backview_v1': '闪卡·背面模式',
+    'hub_cpa_kp_cols_v1': '知识树·列数',
+    'hub_cpa_kp_mode_v1': '知识树·编号模式',
+    'hub_cpa_kp_sym_v1': '知识树·符号',
+    'hub_cpa_kp_tmpl_v1': '知识树·编号模板',
+    'hub_cpa_rec_kpview_v1': '学习记录·知识树视角',
+    'hub_cpa_rec_show_v1': '学习记录·显示项',
+    'hub_cpa_rec_tab_v1': '学习记录·当前页签',
+    'accCheck_v3': '小节自检·存档',
+    'accWrong_v3': '错题本·存档',
+    'accMods_v3': '整章复盘·存档',
+    'accPlan_v3': '目标·复习计划存档',
+    'accCheck_v3_migrated': '小节自检·迁移标记',
+    // ---- 工作管理 ----
+    'workLogs': '工作日志',
+    'workTodos': '待办',
+    'workWeekly': '周报',
+    'workStaff': '人员',
+    'workCategories': '分类',
+    // ---- 日记 ----
+    'diary_app_data': '日记正文',
+    'diary_app_draft': '写作草稿',
+    'diary_editor_font': '编辑器字号',
+    // ---- 时间统计 ----
+    'timeRecords': '时间记录',
+    'timeTodos': '待办',
+    'timeCategoriesV2': '类别配置',
+    'timeTimerState': '计时器状态',
+    'timeTimerHistory': '计时历史',
+    'timeDoneFolded': '已完成折叠',
+    // ---- 信息研判 ----
+    'multi_info_records': '研判记录',
+    'info_categories': '分类',
+    // ---- 阅读·思享 ----
+    'reading_think_system_v1': '读书笔记与书单',
+    // ---- 生活工作台 ----
+    'wb_life_v1': '生活工作台数据',
+    'organizer_items_v2': '收纳物品',
+    'organizer_theme': '主题',
+    'storage_categories': '物品分类',
+    // ---- 恒星时间管理法 ----
+    'stellar_tag_system_v2': '标签体系',
+    'stellar_time_records': '时间记录',
+    // ---- 琐碎时间 ----
+    'idleManagerData_v15': '碎片时间数据',
+    // ---- 偶像学习 ----
+    'imitation_targets': '模仿对象',
+    'good_habits': '好习惯',
+    'daily_checklist': '每日清单',
+    'bad_habits': '坏习惯',
+    // ---- 健康管理 ----
+    'mySleepData': '睡眠记录',
+    'mySportData': '运动记录',
+    'myWeightData': '体重记录',
+    'myBpData': '血压记录',
+    'myWaterData': '饮水记录',
+    'myDietData': '饮食记录',
+    'healthFoodDB': '自定义食物库',
+    // ---- 人际交往 ----
+    'comm_daily': '日复盘',
+    'comm_week': '周复盘',
+    'comm_month': '月复盘',
+    'tool_dialog': '对话工具',
+    'tool_relation': '关系工具',
+    'tool_script': '话术工具',
+    'action_plan_data': '行动计划',
+    'action_categories': '行动分类',
+    'wisdom_data': '智慧库',
+    'if_then_plans': '执行意图',
+    'if_then_categories': '执行意图分类',
+    // ---- 学习目标管理 ----
+    'wb_goal': '学习目标',
+    'wb_goal_seeded': '目标播种标记',
+    'wb_goal_draft': '目标草稿',
+    'wb_ex': '练习记录',
+    'wb_ex_seeded': '练习播种标记',
+    // ---- 代码预览器 ----
+    'previewer_html': 'HTML 代码',
+    'previewer_css': 'CSS 代码',
+    'previewer_js': 'JS 代码',
+    // ---- 旅行助手 ----
+    'roam_assistant': '行程数据',
+    'roam_assistant_trips': '行程列表',
+    'roam_assistant_active_trip': '当前行程',
+    'roam_last_tab': '上次页签',
+    // ---- 备考学习工作台 ----
+    'wb_bk_profile': '备考档案',
+    'wb_bk_subjects': '科目',
+    'wb_bk_todos': '待办',
+    'wb_bk_time': '学时',
+    'wb_bk_checks': '验收记录',
+    'wb_bk_reviews': '复习记录',
+    'wb_bk_issues': '疑难',
+    'wb_bk_gains': '感悟',
+    'wb_bk_kps': '知识点',
+    'wb_bk_kpch': '知识点章节',
+    'wb_bk_heat': '掌握度热力图',
+    'wb_bk_stg': '学习阶段',
+    'wb_bk_hmmode': '热力图视图',
+    'wb_bk_chs': '章节表',
+    'cpaMasteryTree_v1': '掌握度台账·知识树',
+    'cpaMasteryScore_v1': '掌握度台账·分数',
+    'cpaMasterySub_v1': '掌握度台账·科目',
+    'cpaTreeEditMode_v1': '知识树编辑模式',
+    'cpaTreeLv_v1': '知识树层级',
+    'cpaScoreCols_v1': '台账列设置',
+    // ---- CPA 学习工具 · 通用外观（工具页自己实现的浮条 / 色板）----
+    'hub_deco_v1': '标注装饰色',
+    'hub_swatches_v1': '标注色位',
+    'hub_swatch_def_v1': '标注默认色',
+    'hub_text_v1': '标注文字色',
+    // ---- 导航页 ----
+    'hub_lastModule': '上次打开的工具',
+    'hub_versions_cache_v1': '版本号缓存',
+    'hub_patch': '前端补丁标记',
+  };
+
+  // 前缀兜底：登记了 `cpa_` 就能覆盖 `cpa_xxx`。
+  // 只在 KEY_LABELS 精确匹配失败后才用它。
+  const KEY_PREFIX_LABELS = [
+    ['cpa_learning_data_v3', '学习数据'],
+    ['cpa_study_', '考试项目'],
+    ['cpa_', 'CPA 数据'],
+    ['hub_cpa_rec_', '记录页设置'],
+    ['hub_cpa_kp_', '知识树设置'],
+    ['hub_cpa_', 'CPA 偏好'],
+    ['accCheck_v3', '小节自检存档'],
+    ['accWrong_v3', '错题本存档'],
+    ['accMods_v3', '整章复盘存档'],
+    ['accPlan_v3', '复习计划存档'],
+    ['chaomuji_diary', '日记'],
+    ['chaomuji_', '朝暮计数据'],
+    ['zmv_', '朝暮计视图'],
+    ['wb_bk_', '备考工作台'],
+    ['wb_goal', '学习目标'],
+    ['wb_ex', '练习记录'],
+    ['wb_', 'WorkBuddy 数据'],
+    ['work', '工作管理'],
+    ['diary_', '日记'],
+    ['time', '时间统计'],
+    ['multi_info_', '信息研判'],
+    ['info_', '信息研判'],
+    ['reading_', '阅读·思享'],
+    ['organizer_', '生活工作台'],
+    ['storage_', '生活工作台'],
+    ['stellar_', '恒星时间管理法'],
+    ['idleManager', '琐碎时间'],
+    ['imitation_', '偶像学习'],
+    ['good_habits', '偶像学习'],
+    ['bad_habits', '偶像学习'],
+    ['daily_checklist', '偶像学习'],
+    ['mySleepData', '健康管理'],
+    ['mySportData', '健康管理'],
+    ['myWeightData', '健康管理'],
+    ['myBpData', '健康管理'],
+    ['myWaterData', '健康管理'],
+    ['myDietData', '健康管理'],
+    ['healthFoodDB', '健康管理'],
+    ['comm_', '人际交往'],
+    ['tool_', '人际交往'],
+    ['action_', '人际交往'],
+    ['wisdom_', '人际交往'],
+    ['if_then_', '人际交往'],
+    ['previewer_', '代码预览器'],
+    ['roam_', '旅行助手'],
+    ['cpaMastery', '掌握度台账'],
+    ['cpaTree', '掌握度知识树'],
+    ['cpaScore', '掌握度台账'],
+    ['hub_deco', '标注装饰色'],
+    ['hub_swatch', '标注色板'],
+    ['hub_text', '标注文字色'],
+    ['hub_', '导航页状态'],
+  ];
+
+  // 键 → 该键所属模块的中文名。优先问 MODULES（单一真源），
+  // 拿不到时才用静态表兜底（例如工具页里单独打开同步面板）。
+  function moduleNameOf(key) {
+    try {
+      if (typeof MODULES !== 'undefined' && Array.isArray(MODULES)) {
+        for (const m of MODULES) {
+          if (!m || !m.keys) continue;
+          for (const k of m.keys) {
+            if (key === k || key.indexOf(k + '_') === 0) return m.name || m.id;
+          }
+        }
+        // 兜底：用 shardOfKey 的 id 反查
+        const sid = shardOfKey(key);
+        const hit = MODULES.filter(function (m) { return m.id === sid; })[0];
+        if (hit) return hit.name || hit.id;
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  // 键 → 用途短名
+  function labelOfKey(key) {
+    if (KEY_LABELS[key]) return KEY_LABELS[key];
+    for (let i = 0; i < KEY_PREFIX_LABELS.length; i++) {
+      const p = KEY_PREFIX_LABELS[i];
+      if (key === p[0] || key.indexOf(p[0]) === 0) return p[1];
+    }
+    return key;                      // 兜底：显示原始键名，总比空白强
+  }
+
+  // 把键集合翻成「模块 · 用途」，同一模块的合并成一条
+  // 例：[{mod:'朝暮计', items:['待办','专注分钟']}, ...]
+  function describeKeys(keys) {
+    const order = [];
+    const byMod = Object.create(null);
+    (keys || []).forEach(function (k) {
+      const mod = moduleNameOf(k) || '其他';
+      const lab = labelOfKey(k);
+      if (!byMod[mod]) { byMod[mod] = []; order.push(mod); }
+      if (byMod[mod].indexOf(lab) < 0) byMod[mod].push(lab);
+    });
+    return order.map(function (mod) {
+      return { mod: mod, items: byMod[mod] };
+    });
+  }
+
+  // 「涉及」那一段的文案。maxMods 控制最多列几个模块，其余归并。
+  // 输出形如：`考证学习进度·学习记录·当前页签、朝暮计·待办 等 3 块`
+  //   —— 模块名（=子页）+ 用途（=工具内的 tab / 区块）+ 块数。
+  function describeKeysText(keys, maxMods) {
+    const groups = describeKeys(keys);
+    if (!groups.length) return '';
+    const lim = maxMods || 3;
+    const shown = groups.slice(0, lim).map(function (g) {
+      return g.mod + '·' + g.items.slice(0, 3).join('/') +
+        (g.items.length > 3 ? '等' + g.items.length + '项' : '');
+    });
+    const more = groups.length - shown.length;
+    return shown.join('、') + (more > 0 ? ' 等 ' + groups.length + ' 块' : '');
+  }
+
+  // 字节数人话：<1KB 报 B，<1MB 报 KB，否则报 MB
+  function humanBytes(n) {
+    n = n || 0;
+    if (n < 1024) return n + 'B';
+    if (n < 1024 * 1024) return (Math.round(n / 1024)) + 'KB';
+    return (n / 1024 / 1024).toFixed(1) + 'MB';
+  }
+
+  // 带符号的差值：+3 / -2 / 0
+  function signed(n) { return (n > 0 ? '+' : '') + n; }
+
   const AUTO_LOG_MAX = 20;
   const AUTO_PRESETS = {
     low:    { id: 'low',    label: '省流量', debounce: 60000, minGap: 300000, pull: 900000,
@@ -2430,15 +2770,11 @@
     const lN = (l.added || 0) + (l.updated || 0) + (l.merged || 0);
     const cAdd = c.added || [];
     if (!lN && !cAdd.length) {
-      return head + ' · 用时 ' + sec + ' 秒 · 两端已一致，无内容变动';
+      // 无内容变动时也要给总量 —— 用户问的是「本次同步的数据总量」，
+      // 哪怕为零也要有个明确的「0 变化」而不是让人猜。
+      return head + ' · 用时 ' + sec + ' 秒 · 两端已一致，无内容变动' +
+        (sum.total && sum.total.text ? ' · 总量 ' + sum.total.text : '');
     }
-    // 涉及的键名：最多列 3 个，其余归并成「等 N 项」——全列出来会把弹窗撑爆
-    const names = [];
-    (l.keys || []).slice(0, 3).forEach(function (k) { if (names.indexOf(k) < 0) names.push(k); });
-    cAdd.slice(0, 3).forEach(function (k) { if (names.indexOf(k) < 0) names.push(k); });
-    names.length = Math.min(names.length, 3);
-    const total = (l.keys || []).length + cAdd.length;
-    const more = total - names.length;
     const parts = [];
     if (lN) parts.push('云端补进本机 ' + lN + ' 项');
     if (cAdd.length) parts.push('本机补上云端 ' + cAdd.length + ' 项');
@@ -2446,15 +2782,23 @@
     // 而小改动（改一条待办）恰恰是自动同步最常见的场景。
     const bytes = c.bytes || 0;
     const sizeTxt = bytes < 1024 ? (bytes + 'B') : (Math.round(bytes / 1024) + 'KB');
+    // ★ 需求（2026-10-10）：「涉及」要能看出是哪个子页 / 哪一块，而不是裸键名。
+    //   把两类变化键合起来交给 describeKeysText 翻译成「模块 · 用途」。
+    const allChanged = [];
+    (l.keys || []).forEach(function (k) { if (allChanged.indexOf(k) < 0) allChanged.push(k); });
+    cAdd.forEach(function (k) { if (allChanged.indexOf(k) < 0) allChanged.push(k); });
+    const involve = describeKeysText(allChanged, 3);
     const base = head + ' · 用时 ' + sec + ' 秒 · ' + parts.join('、') +
-      ' · 云端共 ' + (c.wrote || 0) + ' 项 / ' + sizeTxt + ' · 涉及：' +
-      names.join('、') + (more > 0 ? ' 等 ' + more + ' 项' : '');
+      ' · 云端共 ' + (c.wrote || 0) + ' 项 / ' + sizeTxt +
+      (involve ? ' · 涉及：' + involve : '');
     // 后台同步不主动刷用户正开着的工具页：把这件事写进留痕，
     // 否则用户会看到「记录变了、页面没变」，误以为同步没生效。
+    const withTotal = base +
+      (sum.total && sum.total.text ? ' · 总量 ' + sum.total.text : '');
     if (sum.reload && sum.reload.deferred && sum.reload.deferred.length) {
-      return base + ' · 当前工具已暂缓刷新（切走该工具后自动生效）';
+      return withTotal + ' · 当前工具已暂缓刷新（切走该工具后自动生效）';
     }
-    return base;
+    return withTotal;
   }
 
   function autoRecord(desc, ok) {
