@@ -3012,35 +3012,35 @@
            配色沿用本页的燕麦赭石：cream 底 + umber 标题 + accent 强调
            ============================================================ */
         .cs-wrap, .qt-wrap { padding: 14px 16px 28px; }
-        /* ===== 案例展示 · 以「问题」为核心（Tom 2026-10-10 二次修订） ===== */
-        /* 每个问题一个框：用 tbody 分组 + 上边框把「问题N」整块圈起来 */
-        .cs-q tbody.cs-tb-prob {
-            border-left: 3px solid var(--accent, #A6503C);
+        /* ===== 案例展示 · 以「问题」为核心（Tom 2026-10-10 三次修订） ===== */
+        /* 每个问题 = 一张独立小表 = 一个完全闭合的格子；格子之间留缝 */
+        .cs-colq { width: 84px; }
+        table.cs-pbox {
+            border: 2px solid var(--accent, #A6503C);
+            border-radius: 10px;
+            margin: 0 0 14px;
         }
-        .cs-q tbody.cs-tb-prob > tr > td,
-        .cs-q tbody.cs-tb-prob > tr > th {
-            border-top: 2px solid var(--accent, #A6503C);
+        table.cs-headbox, table.cs-opsbox { margin: 0 0 14px; }
+        table.cs-thinkbox {
+            border: 1.5px solid var(--line2, #DCCFB4);
+            border-radius: 10px; margin: 0 0 6px;
         }
-        .cs-q tbody.cs-tb-prob:first-of-type > tr:first-child > td,
-        .cs-q tbody.cs-tb-prob:first-of-type > tr:first-child > th {
-            border-top-width: 2px;
-        }
-        /* 问题编号列（纵向居中的「问题N」）*/
+        table.cs-pbox > tbody > tr > td,
+        table.cs-pbox > tbody > tr > th { border-color: #E8D9BE; }
+        /* 格内小标签（问题 / 已知N / 知识点关联 / 推导可知 / 答案 / 解析）*/
+        table.cs-q .cs-mini { display: block; font-weight: 600; }
+        /* 问题编号列（rowspan 覆盖整框 ⇒ 答案行的行首也挂着「问题N」）*/
         .cs-q td.cs-rowq {
             font-weight: 700;
             color: var(--accent, #A6503C);
             vertical-align: middle;
             white-space: nowrap;
         }
-        /* 「每条答案配它自己的解析」提示格 */
-        .cs-q td.cs-ansfill-lbl {
-            font-size: 11px;
-            color: #8a7a6a;
-            background: #faf7f2;
-            text-align: left;
-            padding-left: 8px;
-        }
-        /* ★ 思考总结行高 = 问题行高：统一 tr 最小高度 + 单元格垂直居中 */
+        /* 三元组行：一个已知 ↔ 一个知识点 ↔ 一个推导可知 */
+        .cs-q tr.cs-r-tri > td { background: #FDF6D8; }
+        .cs-q td.cs-triops { background: #FFFDF8; padding: 4px 8px; }
+        .cs-q td.cs-triops .cs-addchip { font-size: 11.5px; }
+        /* ★ 思考总结行高 = 问题行高：统一 tr 最小高度 */
         .cs-q tbody.cs-tb-prob > tr,
         .cs-q tbody.cs-tb-think > tr {
             height: 46px;
@@ -3053,16 +3053,45 @@
         }
         .cs-q tbody.cs-tb-think .cs-cellin,
         .cs-q tbody.cs-tb-prob .cs-cellin {
+            display: block;
             min-height: 38px;
             line-height: 1.5;
         }
-        /* 答案列稍窄、解析列稍宽 */
+        /* ★ 思考总结的输入行 = 三元组行等高：补一条与 .cs-mini 同规格的隐形标签行 */
+        .cs-q tbody.cs-tb-think > tr:nth-child(2) > td.fill::before {
+            content: "\00a0";
+            display: block;
+            font-size: 11.5px;
+            line-height: normal;
+            font-weight: 600;
+            margin-bottom: 3px;
+            color: transparent;
+        }
+
+        /* ===== h 轮：一张连续大表（题目行 / 上半已知区 / 下半答案区） ===== */
+        .cs-q col.cs-coldesc { width: 118px; }
+        .cs-q.cs-big td, .cs-q.cs-big th { vertical-align: top; }
+        .cs-q tr.cs-r-title > th { vertical-align: middle; }
+        .cs-q td.cs-titlecell { background: #FFF34D; padding: 6px 8px; }
+        .cs-q td.cs-titlecell .cs-cellin { background: transparent; }
+        .cs-q tr.cs-r-hd > th,
+        .cs-q tr.cs-r-hd2 > th {
+            font-weight: 600; font-size: 12px; text-align: left;
+            padding: 6px 8px; color: #8A7358; background: #F7EFD9;
+        }
+        .cs-q tr.cs-r-hd2 > th { color: #5F6E33; background: #E4EFC2; }
+        .cs-q td.cs-rowdesc { background: #FBE4CF; }
+        .cs-q td.cs-rowdesc .cs-cellin { background: transparent; }
+        .cs-q td.cs-fill { background: #FFFDF8; }
+        .cs-q tr.cs-pstart > td, .cs-q tr.cs-pstart > th { border-top: 2px solid var(--accent, #A6503C); }
+        .cs-q td.cs-descecho { font-size: 12.5px; color: #6B5B45; padding: 2px 2px 0; }
+        .cs-q tr.cs-r-itemops td, .cs-q tr.cs-r-ansops td { padding: 3px 8px 6px; }
+        /* 答案 / 解析 */
         .cs-q td.cs-anscell, .cs-q td.cs-notecell { padding-top: 4px; }
         .cs-q .cs-anscell textarea { min-height: 44px; }
         .cs-q .cs-notecell textarea { min-height: 44px; }
         /* 加减问题那一行 */
-        .cs-q tbody.cs-tb-ops td { padding: 6px 4px 10px; }
-
+        .cs-q tbody.cs-tb-ops td { padding: 2px 4px 8px; }
         /* ---- 难度星标（编辑器标题旁，可点选）---- */
         .cs-diff {
             display: inline-flex; align-items: center; gap: 1px;
@@ -5630,13 +5659,13 @@
                         <span class="cs-diff" id="csDiffPick" title="本题难度（点星星选择，可再点同一颗取消）">
                             <i data-dv="1">★</i><i data-dv="2">★</i><i data-dv="3">★</i><i data-dv="4">★</i><i data-dv="5">★</i>
                         </span>
-                        <span class="cs-hint">浅黄格可直接编辑 · 每题一个框 · 答案与解析按行一一对应</span>
+                        <span class="cs-hint">浅色格可直接编辑 · 一题多问 · 每问一个未知（问题描述）+ 多条已知，一条已知 ↔ 知识点关联 / 推导可知 / 感性结论 · 每问多条答案，一条答案 ↔ 解析 / 题眼陷阱 / 总结</span>
                         <span class="fc-spacer"></span>
                         <button type="button" class="fc-btn" id="csSaveBtn">💾 保存</button>
                         <button type="button" class="fc-btn" id="csCancelBtn">取消</button>
                     </div>
                     <div class="cs-tablebox">
-                        <table class="cs-q" id="csTable"></table>
+                        <div id="csTable"></div>
                     </div>
                 </div>
 
@@ -14367,15 +14396,15 @@ if (document.readyState === 'loading') {
             'style="width:100%;border:0;background:transparent;font:inherit;outline:none;">';
     }
 
-    function chipsHTML(sigs, eye, pi) {
-        pi = (pi == null ? -1 : pi);
+    function chipsHTML(sigs, eye, pi, ii) {
+        pi = (pi == null ? -1 : pi); ii = (ii == null ? -1 : ii);
         var h = '<div class="cs-chips">';
         (sigs || []).forEach(function (s) {
             var nm = kpNameOf(s);
             h += '<span class="cs-chip' + (eye ? ' eye' : '') + '"><b>' + esc(nm) + '</b>' +
-                 '<span class="x" data-rmkp="' + esc(s) + '" data-eye="' + (eye ? 1 : 0) + '" data-pi="' + pi + '" title="移除">×</span></span>';
+                 '<span class="x" data-rmkp="' + esc(s) + '" data-eye="' + (eye ? 1 : 0) + '" data-pi="' + pi + '" data-ii="' + ii + '" title="移除">×</span></span>';
         });
-        h += '<button type="button" class="cs-addchip" data-addkp="' + (eye ? 1 : 0) + '" data-pi="' + pi + '">＋ 选知识点</button>';
+        h += '<button type="button" class="cs-addchip" data-addkp="' + (eye ? 1 : 0) + '" data-pi="' + pi + '" data-ii="' + ii + '">＋ 选知识点</button>';
         h += '</div>';
         return h;
     }
@@ -14420,10 +14449,11 @@ if (document.readyState === 'loading') {
     /* ---- 画整张表（编辑态） ---- */
     var draft = null;
 
-    /* ---------- 数据模型：以「问题」为核心 ----------
-       case.problems[i] = { q, known[], derived[], kps[], answers:[{a,note}] }
-       · answers 与解析按行一一对应：一条答案配一条解析（note）。
-       · 整题一份 thought（从已知到未知 / 题眼 / 关键陷阱 / 经验沉淀 / 如何提速）。
+    /* ---------- 数据模型：以「问题」为核心（h 轮，截图合并范围版） ----------
+       case.problems[i] = { q(问题描述=未知), items:[{known, kps[], derived, feel}], answers:[{a, note, eye, sum}] }
+       · 上半部分：每条已知 ↔ 一个知识点关联 + 一个推导可知 + 一个感性结论。
+       · 下半部分：每条答案 ↔ 一个解析(note) + 一个题眼陷阱(eye) + 一个总结(sum)。
+       · thought / eyes 旧字段仅保留兼容读取，页面不再展示与编辑。
        · difficulty: 1-5（0 = 未评）。 */
 
     var DIFF_LABEL = { 1: '入门', 2: '熟练', 3: '拔高', 4: '难题', 5: '压轴' };
@@ -14433,8 +14463,10 @@ if (document.readyState === 'loading') {
     }
     function diffText(n) { n = +n || 0; return n ? (diffStars(n) + (DIFF_LABEL[n] ? ' ' + DIFF_LABEL[n] : '')) : '未评难度'; }
 
+    function blankItem() { return { known: '', kps: [], derived: '', feel: '' }; }
+    function blankAnswer() { return { a: '', note: '', eye: '', sum: '' }; }
     function blankProblem() {
-        return { q: '', known: [''], derived: [''], kps: [], answers: [{ a: '', note: '' }] };
+        return { q: '', items: [blankItem()], answers: [blankAnswer()] };
     }
     function blankDraft() {
         return {
@@ -14451,13 +14483,33 @@ if (document.readyState === 'loading') {
         p = p || {};
         var o = blankProblem();
         o.q = String(p.q == null ? '' : p.q);
-        o.known = arr1(p.known); o.derived = arr1(p.derived);
-        o.kps = Array.isArray(p.kps) ? p.kps.slice() : [];
+        /* 一个已知 ↔ 一个知识点关联 ↔ 一个推导可知（三元组） */
+        if (Array.isArray(p.items) && p.items.length) {
+            o.items = p.items.map(function (it) {
+                it = it || {};
+                return { known: String(it.known == null ? '' : it.known),
+                         kps: Array.isArray(it.kps) ? it.kps.slice() : [],
+                         derived: String(it.derived == null ? '' : it.derived),
+                         feel: String(it.feel == null ? '' : it.feel) };
+            });
+        } else {
+            var kn = arr1(p.known), dv = arr1(p.derived), fl = arr1(p.feel);
+            var kp0 = Array.isArray(p.kps) ? p.kps.slice() : [];
+            var tn = Math.max(kn.length, dv.length); if (tn < 1) tn = 1;
+            o.items = [];
+            for (var ti = 0; ti < tn; ti++) {
+                o.items.push({ known: String(kn[ti] == null ? '' : kn[ti]),
+                               kps: ti === 0 ? kp0 : [],
+                               derived: String(dv[ti] == null ? '' : dv[ti]),
+                               feel: String(fl[ti] == null ? '' : fl[ti]) });
+            }
+        }
         var ans = [];
         if (Array.isArray(p.answers) && p.answers.length) {
             ans = p.answers.map(function (x) {
-                if (x && typeof x === 'object') return { a: String(x.a == null ? '' : x.a), note: String(x.note == null ? '' : x.note) };
-                return { a: String(x == null ? '' : x), note: '' };
+                if (x && typeof x === 'object') return { a: String(x.a == null ? '' : x.a), note: String(x.note == null ? '' : x.note),
+                                                          eye: String(x.eye == null ? '' : x.eye), sum: String(x.sum == null ? '' : x.sum) };
+                return { a: String(x == null ? '' : x), note: '', eye: '', sum: '' };
             });
         } else if (Array.isArray(p.answer) && p.answer.length) {
             /* 兼容：answer[] 数组 + 单条 solution / analysis */
@@ -14466,7 +14518,7 @@ if (document.readyState === 'loading') {
             else if (typeof p.analysis === 'string') one = p.analysis;
             ans = p.answer.map(function (x, i) { return { a: String(x == null ? '' : x), note: i === 0 ? one : '' }; });
         }
-        if (!ans.length) ans = [{ a: '', note: '' }];
+        if (!ans.length) ans = [blankAnswer()];
         o.answers = ans;
         return o;
     }
@@ -14499,7 +14551,7 @@ if (document.readyState === 'loading') {
         } else if (String(solText || '').trim()) {
             ans0.push({ a: '', note: String(solText) });
         }
-        if (!ans0.length) ans0 = [{ a: '', note: '' }];
+        if (!ans0.length) ans0 = [blankAnswer()];
 
         var probs = [];
         var mainQ = (Array.isArray(r.problem) ? r.problem.filter(function (x) { return String(x || '').trim() !== ''; }) : []);
@@ -14510,7 +14562,7 @@ if (document.readyState === 'loading') {
             if (!qq && !aa) return;
             probs.push({ q: qq, known: [''], derived: [''], kps: kps0.slice(), answers: [{ a: aa, note: '' }] });
         });
-        d.problems = probs.length ? probs : [blankProblem()];
+        d.problems = (probs.length ? probs : [blankProblem()]).map(normProblem);
         return d;
     }
 
@@ -14521,68 +14573,92 @@ if (document.readyState === 'loading') {
        ============================================================ */
     var draft = null;
 
+
     function renderTable() {
         if (!csTable) return;
         var d = draft || blankDraft();
-        var ch = +d.chapter || 0, se = +d.section || 0;
-        var chLab = ch ? ('第 ' + ch + ' ' + Lv('chapter', '章') + ' ' + chapterName(d.course, ch)).trim() : '（未选章）';
-        var seLab = se ? ((se + ' ' + sectionName(d.course, ch, se)).trim()) : '（未选节）';
-
         var h = '';
 
-        /* ---- 表头一行：科目 / 章 / 节 ---- */
-        h += '<thead><tr>' +
-             '<th class="rowhead">定位</th>' +
-             '<th colspan="2" class="fill-strong">' + esc(d.course || '（未选科目）') + '</th>' +
-             '<th colspan="2" class="fill-strong">' + esc(chLab) + ' · ' + esc(seLab) + '</th>' +
-             '</tr></thead>';
+        /* 一张连续大表：
+           第1行 题目（黄色合并格）
+           上半部分：问题N | 问题描述 | 每条已知一行：已知 | 知识点关联 | 推导可知 | 感性结论
+           下半部分：问题N | 问题描述 | 每条答案一行：答案 | 解析 | 题眼、陷阱 | 总结 */
+        h += '<table class="cs-q cs-big"><colgroup><col class="cs-colq"><col class="cs-coldesc"><col><col><col><col></colgroup>';
 
-        /* ---- 题目（整道题）---- */
-        h += '<tbody class="cs-tb-head"><tr><td class="rowhead">题目</td>' +
-             '<td colspan="4" class="fill">' + plainIn(d.q, '这道题问的是什么…') + '</td></tr></tbody>';
+        /* 第 1 行：题目（黄色合并格） */
+        h += '<tbody class="cs-tb-head"><tr class="cs-r-title"><th class="rowhead">题目</th>' +
+             '<td colspan="5" class="cs-titlecell">' + plainIn(d.q, '这道题问的是什么…') + '</td></tr></tbody>';
 
-        /* ---- 每个问题一个框 ---- */
+        /* 上半部分表头 */
+        h += '<tbody class="cs-tb-hdup"><tr class="cs-r-hd">' +
+             '<th></th><th>问题描述</th><th>已知</th><th>知识点关联</th><th>推导可知</th><th>感性结论</th></tr></tbody>';
+
+        /* 上半部分：每个问题一块（问题N / 问题描述 跨该问题所有已知行） */
         d.problems.forEach(function (p, pi) {
-            h += '<tbody class="cs-tb-prob" data-pi="' + pi + '">';
-            h += '<tr>' +
-                 '<td class="rowhead cs-rowq" rowspan="2">问题' + (pi + 1) + '</td>' +
-                 '<th>问题</th><th>已知</th><th>知识点关联</th><th>推导可知</th></tr>';
-            h += '<tr>' +
-                 '<td class="fill">' + cellEditor(splitLines(p.q), '1、求和\n2、求差', 2) + '</td>' +
-                 '<td class="fill">' + cellEditor(p.known, '1、a =6\n2、b=0', 2) + '</td>' +
-                 '<td class="fill">' + chipsHTML(p.kps, false, pi) + '</td>' +
-                 '<td class="fill">' + cellEditor(p.derived, '1、a >0', 2) + '</td></tr>';
-            /* 答案 / 解析：按行一一对应 */
-            h += '<tr>' +
-                 '<th>答案</th><th>解析</th><td colspan="2" class="cs-ansfill-lbl">每条答案配它自己的解析（一行一对）</td></tr>';
-            h += '<tr>' +
-                 '<td class="fill cs-anscell">' + cellEditor(ansLines(p.answers, 'a'), '1\n2\n3', 3) + '</td>' +
-                 '<td class="fill cs-notecell" colspan="3">' + cellEditor(ansLines(p.answers, 'note'), '↑ 对应每一条答案的解析…', 3) + '</td></tr>';
+            var items = (p.items && p.items.length) ? p.items : [blankItem()];
+            h += '<tbody class="cs-tb-up" data-pi="' + pi + '">';
+            items.forEach(function (it, ii) {
+                h += '<tr class="cs-r-item' + (ii === 0 ? ' cs-pstart' : '') + '">';
+                if (ii === 0) {
+                    h += '<td class="rowhead cs-rowq" rowspan="' + items.length + '">问题' + (pi + 1) + '</td>' +
+                         '<td class="cs-rowdesc" rowspan="' + items.length + '"><span class="cs-mini">问题描述（未知）</span>' +
+                         plainIn(p.q, '这个问题求的是什么…') + '</td>';
+                }
+                h += '<td class="cs-fill"><span class="cs-mini">已知' + (ii + 1) + '</span>' +
+                     cellEditor([it.known], '例如：a =6', 1) + '</td>' +
+                     '<td class="cs-fill cs-kpcell"><span class="cs-mini">知识点关联</span>' +
+                     chipsHTML(it.kps, false, pi, ii) + '</td>' +
+                     '<td class="cs-fill"><span class="cs-mini">推导可知</span>' +
+                     cellEditor([it.derived], '例如：a >0', 1) + '</td>' +
+                     '<td class="cs-fill"><span class="cs-mini">感性结论</span>' +
+                     cellEditor([it.feel], '直观感受 / 直觉', 1) + '</td></tr>';
+            });
+            h += '<tr class="cs-r-itemops"><td colspan="6" class="cs-triops">' +
+                 '<button type="button" class="cs-addchip" data-addtri="1" data-pi="' + pi + '">＋ 加一条已知</button>' +
+                 (items.length > 1 ? ' <button type="button" class="cs-addchip" data-deltri="1" data-pi="' + pi + '">－ 删最后一条</button>' : '') +
+                 '<span class="cs-mini" style="display:inline;font-weight:400;margin-left:8px">一条已知 ↔ 一个知识点关联 / 推导可知 / 感性结论</span></td></tr>';
             h += '</tbody>';
         });
 
-        /* ---- 加减问题 ---- */
-        h += '<tbody class="cs-tb-ops"><tr><td class="rowhead" style="border-top:0">＋</td>' +
-             '<td colspan="4">' +
+        /* 下半部分表头（黄绿行，与截图第 8 行对应） */
+        h += '<tbody class="cs-tb-hdlow"><tr class="cs-r-hd2">' +
+             '<th></th><th>问题描述</th><th>答案</th><th>解析</th><th>题眼、陷阱</th><th>总结</th></tr></tbody>';
+
+        /* 下半部分：每个问题一块（问题N / 问题描述 回显，跨该问题所有答案行） */
+        d.problems.forEach(function (p, pi) {
+            var ans = (p.answers && p.answers.length) ? p.answers : [blankAnswer()];
+            h += '<tbody class="cs-tb-low" data-pi="' + pi + '">';
+            ans.forEach(function (x, ai) {
+                h += '<tr class="cs-r-ansr' + (ai === 0 ? ' cs-pstart' : '') + '">';
+                if (ai === 0) {
+                    h += '<td class="rowhead cs-rowq" rowspan="' + ans.length + '">问题' + (pi + 1) + '</td>' +
+                         '<td class="cs-rowdesc" rowspan="' + ans.length + '"><span class="cs-mini">问题描述</span>' +
+                         '<div class="cs-descecho">' + esc(String(p.q || '').trim() || '（同上半部分）') + '</div></td>';
+                }
+                h += '<td class="cs-fill cs-anscell"><span class="cs-mini">答案' + (ai + 1) + '</span>' +
+                     plainIn(x.a, '答案…') + '</td>' +
+                     '<td class="cs-fill"><span class="cs-mini">解析</span>' +
+                     cellEditor(splitLines(x.note), '为什么是这个答案…', 1) + '</td>' +
+                     '<td class="cs-fill"><span class="cs-mini">题眼、陷阱</span>' +
+                     plainIn(x.eye, '这道题的题眼 / 容易踩的坑') + '</td>' +
+                     '<td class="cs-fill"><span class="cs-mini">总结</span>' +
+                     plainIn(x.sum, '这类题记住什么') + '</td></tr>';
+            });
+            h += '<tr class="cs-r-ansops"><td colspan="6" class="cs-triops">' +
+                 '<button type="button" class="cs-addchip" data-addans="1" data-pi="' + pi + '">＋ 加一条答案</button>' +
+                 (ans.length > 1 ? ' <button type="button" class="cs-addchip" data-delans="1" data-pi="' + pi + '">－ 删最后一条答案</button>' : '') +
+                 '</td></tr>';
+            h += '</tbody>';
+        });
+
+        /* 加减问题 */
+        h += '<tbody class="cs-tb-ops"><tr><td class="rowhead">＋</td>' +
+             '<td colspan="5">' +
              '<button type="button" class="cs-addchip" id="csAddProb">＋ 加一个问题</button>' +
              (d.problems.length > 1 ? ' <button type="button" class="cs-addchip" id="csDelProb">－ 删掉最后一个问题</button>' : '') +
              '</td></tr></tbody>';
 
-        /* ---- 思考总结（整题一份；行高与问题行一致）---- */
-        h += '<tbody class="cs-tb-think">';
-        h += '<tr>' +
-             '<td class="rowhead" rowspan="2">思考总结</td>' +
-             '<th>从已知到未知</th><th>题眼</th><th>关键陷阱</th><th>经验沉淀</th></tr>';
-        h += '<tr>' +
-             '<td class="fill">' + plainIn(d.thought.fromTo, '已知 → 未知 的那一步') + '</td>' +
-             '<td class="fill">' + chipsHTML(d.eyes, true, -1) + '</td>' +
-             '<td class="fill">' + plainIn(d.thought.trap, '容易踩的坑') + '</td>' +
-             '<td class="fill">' + plainIn(d.thought.exp, '下次遇到同类题记住什么') + '</td></tr>';
-        h += '<tr>' +
-             '<td class="rowhead">如何提速</td>' +
-             '<td colspan="4" class="fill">' + plainIn(d.thought.speed, '这类题怎么能做更快（套路 / 口诀 / 检查点）') + '</td></tr>';
-        h += '</tbody>';
-
+        h += '</table>';
         csTable.innerHTML = h;
         paintDiffPick();
     }
@@ -14605,44 +14681,55 @@ if (document.readyState === 'loading') {
         return a;
     }
 
-    /* 从表格读回草稿 */
+        /* 从表格读回草稿（每个问题一张独立小表，按 tbody 逐框读） */
+
     function readTable() {
         if (!csTable || !draft) return;
-        var ins = csTable.querySelectorAll('.cs-cellin');
-        var p = 0;
-        function nextLines() { var el = ins[p++]; return el ? String(el.value).replace(/\r/g, '').split('\n') : ['']; }
-        function nextText() { var el = ins[p++]; return el ? String(el.value) : ''; }
-        function nextTextKeepLines() { var el = ins[p++]; return el ? String(el.value).replace(/\r/g, '') : ''; }
+        function textOf(el) { return el ? String(el.value) : ''; }
+        function linesOf(el) { return el ? String(el.value).replace(/\r/g, '').split('\n') : ['']; }
 
-        /* 题目（input） */
-        draft.q = nextText();
+        /* 题目（黄色合并格） */
+        var headIn = csTable.querySelector('tbody.cs-tb-head .cs-cellin');
+        draft.q = textOf(headIn);
 
-        /* 每个问题：问题(多行) 已知(多行) [知识点 chips 不在流内] 推导可知(多行) 答案(多行) 解析(多行) */
-        draft.problems.forEach(function (pr) {
-            pr.q = nextLines().join('\n');
-            pr.known = nextLines();
-            pr.derived = nextLines();
-            var aLines = nextLines();
-            var nLines = nextLines();
-            /* 答案/解析按行一一对应：以行数多的一边为准补齐 */
-            var n = Math.max(aLines.length, nLines.length);
-            if (n < 1) n = 1;
-            var out = [];
-            for (var i = 0; i < n; i++) {
-                var av = (aLines[i] == null ? '' : aLines[i]);
-                var nv = (nLines[i] == null ? '' : nLines[i]);
-                if (i === n - 1 && av === '' && nv === '' && n > 1) continue; /* 末尾空行不生成 */
-                out.push({ a: av, note: nv });
-            }
-            pr.answers = out.length ? out : [{ a: '', note: '' }];
+        /* 上半部分：问题描述 + 每条已知一行（已知, 知识点chips不在流内, 推导可知, 感性结论） */
+        draft.problems.forEach(function (pr, pi) {
+            var up = csTable.querySelector('tbody.cs-tb-up[data-pi="' + pi + '"]');
+            if (!up) return;
+            var descIn = up.querySelector('td.cs-rowdesc .cs-cellin');
+            if (descIn) pr.q = textOf(descIn);
+            var oldItems = pr.items || [];
+            var rows = up.querySelectorAll('tr.cs-r-item');
+            var items = [];
+            Array.prototype.forEach.call(rows, function (row, ii) {
+                var ins = row.querySelectorAll('td.cs-fill .cs-cellin');
+                items.push({
+                    known: textOf(ins[0]),
+                    kps: (oldItems[ii] && oldItems[ii].kps) || [],
+                    derived: textOf(ins[1]),
+                    feel: textOf(ins[2])
+                });
+            });
+            pr.items = items.length ? items : [blankItem()];
         });
 
-        /* 思考总结 */
-        draft.thought.fromTo = nextText();
-        /* 题眼 chips 不在流内 */
-        draft.thought.trap = nextText();
-        draft.thought.exp = nextText();
-        draft.thought.speed = nextTextKeepLines();
+        /* 下半部分：每条答案一行（答案, 解析, 题眼陷阱, 总结） */
+        draft.problems.forEach(function (pr, pi) {
+            var low = csTable.querySelector('tbody.cs-tb-low[data-pi="' + pi + '"]');
+            if (!low) return;
+            var rows = low.querySelectorAll('tr.cs-r-ansr');
+            var out = [];
+            Array.prototype.forEach.call(rows, function (row) {
+                var ins = row.querySelectorAll('td.cs-fill .cs-cellin');
+                out.push({
+                    a: textOf(ins[0]),
+                    note: linesOf(ins[1]).join('\n'),
+                    eye: textOf(ins[2]),
+                    sum: textOf(ins[3])
+                });
+            });
+            pr.answers = out.length ? out : [blankAnswer()];
+        });
     }
 
     /* 难度星标（编辑器标题旁）*/
@@ -14718,16 +14805,21 @@ if (document.readyState === 'loading') {
             readTable();
             var sig = rm.getAttribute('data-rmkp'), isEye = rm.getAttribute('data-eye') === '1';
             var pi = parseInt(rm.getAttribute('data-pi'), 10);
+            var ii = parseInt(rm.getAttribute('data-ii'), 10);
             var arr;
             if (isEye) arr = draft.eyes;
-            else arr = (draft.problems[pi] ? draft.problems[pi].kps : draft.problems[0].kps);
+            else {
+                var prR = draft.problems[pi] || draft.problems[0];
+                var itR = prR && prR.items ? (prR.items[ii] || prR.items[0]) : null;
+                arr = itR ? itR.kps : [];
+            }
             var i = arr.indexOf(sig); if (i >= 0) arr.splice(i, 1);
             renderTable(); return;
         }
         var ad = ev.target.closest('[data-addkp]');
         if (ad && draft) {
             readTable();
-            openKpDialog(ad.getAttribute('data-addkp') === '1', parseInt(ad.getAttribute('data-pi'), 10));
+            openKpDialog(ad.getAttribute('data-addkp') === '1', parseInt(ad.getAttribute('data-pi'), 10), parseInt(ad.getAttribute('data-ii'), 10));
             return;
         }
         if (ev.target.id === 'csAddProb' && draft) {
@@ -14735,6 +14827,34 @@ if (document.readyState === 'loading') {
         }
         if (ev.target.id === 'csDelProb' && draft) {
             readTable(); if (draft.problems.length > 1) draft.problems.pop(); renderTable(); return;
+        }
+        var at = ev.target.closest('[data-addtri]');
+        if (at && draft) {
+            readTable();
+            var tpi = parseInt(at.getAttribute('data-pi'), 10);
+            if (draft.problems[tpi]) { draft.problems[tpi].items.push(blankItem()); renderTable(); }
+            return;
+        }
+        var dt = ev.target.closest('[data-deltri]');
+        if (dt && draft) {
+            readTable();
+            var dtp = parseInt(dt.getAttribute('data-pi'), 10);
+            if (draft.problems[dtp] && draft.problems[dtp].items.length > 1) { draft.problems[dtp].items.pop(); renderTable(); }
+            return;
+        }
+        var aa = ev.target.closest('[data-addans]');
+        if (aa && draft) {
+            readTable();
+            var aap = parseInt(aa.getAttribute('data-pi'), 10);
+            if (draft.problems[aap]) { draft.problems[aap].answers.push(blankAnswer()); renderTable(); }
+            return;
+        }
+        var da = ev.target.closest('[data-delans]');
+        if (da && draft) {
+            readTable();
+            var dap = parseInt(da.getAttribute('data-pi'), 10);
+            if (draft.problems[dap] && draft.problems[dap].answers.length > 1) { draft.problems[dap].answers.pop(); renderTable(); }
+            return;
         }
     });
 
@@ -14782,7 +14902,10 @@ if (document.readyState === 'loading') {
 
     function caseKps(r) {
         var out = [];
-        (r.problems || []).forEach(function (p) { (p.kps || []).forEach(function (s) { out.push(s); }); });
+        (r.problems || []).forEach(function (p) {
+            (p.items || []).forEach(function (it) { (it && it.kps || []).forEach(function (s) { out.push(s); }); });
+            (p.kps || []).forEach(function (s) { out.push(s); });   /* 旧结构兜底 */
+        });
         if (!out.length && Array.isArray(r.kps)) out = r.kps.slice();
         return out;
     }
@@ -14791,9 +14914,10 @@ if (document.readyState === 'loading') {
                    r.thought && r.thought.exp, r.thought && r.thought.speed];
         (r.problems || []).forEach(function (p) {
             bag.push(p.q);
-            (p.known || []).forEach(function (x) { bag.push(x); });
+            (p.items || []).forEach(function (it) { bag.push(it.known); bag.push(it.derived); bag.push(it.feel); });
+            (p.known || []).forEach(function (x) { bag.push(x); });   /* 旧结构兜底 */
             (p.derived || []).forEach(function (x) { bag.push(x); });
-            (p.answers || []).forEach(function (x) { bag.push(x.a); bag.push(x.note); });
+            (p.answers || []).forEach(function (x) { bag.push(x.a); bag.push(x.note); bag.push(x.eye); bag.push(x.sum); });
         });
         return bag.concat(caseKps(r).map(kpNameOf)).concat((r.eyes || []).map(kpNameOf)).join(' ').toLowerCase();
     }
@@ -14882,15 +15006,20 @@ if (document.readyState === 'loading') {
     /* ============================================================
        ⑤ 知识点选择弹窗（多选，多对多）
        ============================================================ */
-    var kpMask = null, kpPick = null, kpIsEye = false, kpPi = -1;
+    var kpMask = null, kpPick = null, kpIsEye = false, kpPi = -1, kpIi = -1;
 
-    function openKpDialog(isEye, pi) {
+    function openKpDialog(isEye, pi, ii) {
         kpIsEye = !!isEye;
         kpPi = (pi == null ? -1 : pi);
+        kpIi = (ii == null ? -1 : ii);
         kpPick = {};
         var cur;
         if (isEye) cur = (draft && draft.eyes) || [];
-        else cur = (draft && draft.problems[kpPi] ? draft.problems[kpPi].kps : (draft && draft.problems[0] ? draft.problems[0].kps : [])) || [];
+        else {
+            var prC = draft && draft.problems[kpPi];
+            var itC = prC && prC.items ? (prC.items[kpIi] || prC.items[0]) : null;
+            cur = (itC ? itC.kps : []);
+        }
         cur.forEach(function (s) { kpPick[s] = 1; });
 
         if (kpMask) kpMask.remove();
@@ -14924,8 +15053,11 @@ if (document.readyState === 'loading') {
                 var sigs = Object.keys(kpPick);
                 if (draft) {
                     if (kpIsEye) draft.eyes = sigs;
-                    else if (draft.problems[kpPi]) draft.problems[kpPi].kps = sigs;
-                    else if (draft.problems[0]) draft.problems[0].kps = sigs;
+                    else {
+                        var prO = draft.problems[kpPi] || draft.problems[0];
+                        var itO = prO && prO.items ? (prO.items[kpIi] || prO.items[0]) : null;
+                        if (itO) itO.kps = sigs;
+                    }
                 }
                 kpMask.remove();
                 renderTable();
@@ -27245,7 +27377,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261010f</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011a</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
