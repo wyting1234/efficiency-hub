@@ -32,11 +32,25 @@
 
     /* ============ 模块清单：keys=精确键，prefixes=前缀键 ============ */
     var MANIFEST = [
-        { id: 'hub', name: '工作台设置', icon: '⚙️', keys: [], prefixes: ['hub_'], internal: true },
+        // ⚠️ exclude 里的 5 个键是 **CPA 工具页**借用的 hub_ 前缀键（高亮浮条 / 调色板），
+        //   不是本导航页的设置。不排除的话，本条目（排 MANIFEST[0]）的 'hub_' 前缀
+        //   会先于 cpa 条目把它们吃掉，备份里就归错模块了（L305 取第一个命中）。
+        { id: 'hub', name: '工作台设置', icon: '⚙️', keys: [], prefixes: ['hub_'],
+          exclude: ['hub_cpa', 'hub_deco_v1', 'hub_swatches_v1', 'hub_swatch_def_v1', 'hub_text_v1'],
+          internal: true },
         { id: 'cpa', name: '考证学习进度', icon: '📚',
+          // ★ 2026-10-10 与 index.html 的 MODULES 对齐（memory §8 缺口②）：
+          //   原先只登记 5 个，其余 10 个靠运行时并集兜 —— 单独打开工具页（无 MODULES）
+          //   时会掉进「未归类」。这里补齐，并把 hub_* 那几个「工具页借用 hub_ 前缀」的
+          //   键也显式登记（否则会被排在前面的 hub 条目的 hub_ 前缀截胡）。
           keys: ['cpa_learning_data_v3', 'cpa_study_projects_v1', 'cpa_study_current_project_v1',
-                 'cpa_appearance_v1', 'accCheck_v3_migrated'],
-          prefixes: ['cpa_learning_data_v3_', 'cpa_study_', 'cpa_'] },
+                 'cpa_appearance_v1', 'accCheck_v3_migrated',
+                 'cpa_font_scale', 'cpa_sidebar_folded_v1', 'cpa_user_guide_v1',
+                 'kp_outline_no_v1',
+                 'hub_cpa', 'hub_deco_v1', 'hub_swatches_v1', 'hub_swatch_def_v1', 'hub_text_v1',
+                 'accCheck_v3', 'accWrong_v3', 'accMods_v3', 'accPlan_v3'],
+          prefixes: ['cpa_learning_data_v3_', 'cpa_study_', 'cpa_', 'hub_cpa_', 'accCheck_v3',
+                     'accWrong_v3', 'accMods_v3', 'accPlan_v3'] },
         { id: 'studybk', name: '备考学习工作台', icon: '📐',
           keys: ['cpaMasteryTree_v1', 'cpaMasteryScore_v1', 'cpaMasterySub_v1',
                  'cpaTreeEditMode_v1', 'cpaTreeLv_v1', 'cpaScoreCols_v1'],
@@ -53,7 +67,10 @@
         { id: 'reading', name: '阅读·思享', icon: '📖',
           keys: ['reading_think_system_v1'], prefixes: ['reading_think_'] },
         { id: 'life', name: '生活工作台', icon: '🏠',
-          keys: ['wb_life_v1'], prefixes: ['wb_life_'] },
+          // organizer_* / storage_categories 原属已删除的 box（收纳盒）条目，
+          //   2026-09-23 并入 life 时只写了注释、没落进 keys ⇒ 靠运行时并集兜。
+          keys: ['wb_life_v1', 'organizer_items_v2', 'organizer_theme', 'storage_categories'],
+          prefixes: ['wb_life_', 'organizer_', 'storage_'] },
         { id: 'star', name: '恒星时间管理法', icon: '🪐',
           keys: ['stellar_tag_system_v2', 'stellar_time_records'], prefixes: ['stellar_'] },
         { id: 'idle', name: '琐碎时间记录', icon: '🧩',
@@ -70,7 +87,9 @@
                  'action_plan_data', 'action_categories', 'wisdom_data', 'if_then_plans', 'if_then_categories'],
           prefixes: ['comm_'] },
         { id: 'learning', name: '学习目标管理', icon: '🎯',
-          keys: ['wb_goal_seeded', 'wb_ex_seeded'],
+          // wb_goal / wb_ex 是「主键」，不带尾下划线 ⇒ 下面的 'wb_goal_' / 'wb_ex_' 前缀
+          //   匹配不到它们（startswith('wb_goal_') 为 False）。必须精确登记。
+          keys: ['wb_goal', 'wb_ex', 'wb_goal_seeded', 'wb_ex_seeded'],
           prefixes: ['wb_goal_db_', 'wb_goal_draft_', 'wb_goal_', 'wb_ex_'] },
         { id: 'previewer', name: '代码预览器', icon: '💻',
           keys: ['previewer_html', 'previewer_css', 'previewer_js'] },

@@ -2,13 +2,13 @@
   "scheme": "V<YYYYMMDD><letters>",
   "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
   "day": "20261009",
-  "seq": 16,
-  "latest": "V20261009p",
-  "updatedAt": "2026-10-10T09:20:00+08:00",
-  "note2": "hub 导航页 + sync-github.js 同步留痕升级。①【正题】同步记录现在能看出「改了哪个子页的哪个 tab」与「本次同步的数据总量」：sync-github.js 新增 KEY_LABELS(132 条精确键→用途) / KEY_PREFIX_LABELS(52 条前缀兜底) / moduleNameOf()（先问 MODULES 这个单一真源，再退 shardOfKey 反查）/ labelOfKey() / describeKeys() / describeKeysText() / humanBytes() / syncPayloadBytes() / describeTotal()；autoFormat 的「涉及：」段由裸键名拼接（names.join）改为「模块(子页)·用途(tab)」分组文案，并追加「总量 73 键/348KB → 74 键/349KB（+1 键 +1KB）」；runBothIO 补返回 beforeCount/beforeBytes，doSyncBoth 补 total{beforeKeys,beforeBytes,afterKeys,afterBytes,text}，无变化分支也报总量。口径与 buildMergedUpload 一致（value.length+key.length）且排除 EXCLUDE，故「总量」是真正参与同步的数据量。②【缓存穿透，关键】<script src=\"sync-github.js?v=66\"> → v=67：不改这处，用户浏览器永远拿旧脚本，整轮白做。③【补遗留缺口】cpa 的 MODULES.keys 补进 hub_deco_v1 / hub_swatches_v1 / hub_swatch_def_v1 / hub_text_v1。上一轮（V20261009o note2）判定它们是「导航页自有外观键」，本轮**推翻**：读 tools/cpa学习工具1.html 源码确认这 4 个键由 CPA 工具页自己的高亮浮条 / 调色板模块写入（页内注释「真源只有一个 key：hub_deco_v1」「真源只有两个 key：hub_swatches_v1 + hub_swatch_def_v1」，常量 DECO_KEY / SW_KEY / SW_DEF_KEY / COLOR_KEY 均在该页），写入者是 CPA 页 ⇒ 应归 cpa。至此 cpa 条目 18 键，工具侧写入键零漏项。工具页 cpa.html 本轮无改动。",
-  "note2_prev": "hub 导航页：补 sync 分片登记表 MODULES[].keys 的漏项。sync-github.js 的 shardOfKey() 用 key === k || key.indexOf(k + \"_\") === 0 归片 —— 注意是给登记值**补**一个下划线再比对，所以登记值本身不能带尾下划线。一个键若归不到任何模块，modulesOfKeys() 会 console.warn 并**保守退化成全刷**（不会丢数据，但用户正在填的表单会被打断、滚动与展开状态归零）。本次补进 cpa 条目的键：① cpa_font_scale / cpa_user_guide_v1 —— 工具页写的显示与引导偏好，此前未登记；② kp_outline_no_v1 —— 这个键完全没有任何前缀，兜底落到 \"kp\" → 不是任何模块 id；③ 自检四键 accCheck_v3 / accWrong_v3 / accMods_v3 / accPlan_v3 —— 工具侧实际写的是 scKey(base) = base + \"_\" + 项目id 的带后缀形式，登记裸名即可靠「补下划线」命中（与 hub_cpa 覆盖 hub_cpa_* 同一机制）。关于原 \"hub_cpa\"：它**本来就是对的**（补下划线后命中全部 hub_cpa_*），本轮保持不动。此前误判它是死条目 —— 真正的漏项是 ①②③。另：hub_deco_v1 / hub_swatches_v1 / hub_swatch_def_v1 / hub_text_v1 虽也触发全刷，但它们是导航页自身的外观键、不属于任何工具模块，硬登记进 cpa 会让「切个主题就重载 CPA 工具页」，方向仍错；正确修法在 sync-github.js 侧（让 modulesOfKeys 直接跳过导航页自有键），留待后续。工具页 cpa.html 内容本轮无改动。",
+  "seq": 17,
+  "latest": "V20261009q",
+  "updatedAt": "2026-10-10T13:05:00+08:00",
+  "note2": "tools/backup-hub.js 的 MANIFEST 与 index.html 的 MODULES 键级对齐（消掉最后一处漂移）。这两份清单是「同一事实的两份抄写」：MODULES 决定同步后重载哪个工具页，MANIFEST 决定备份按模块怎么分组。审计发现 MODULES 侧 100 个键里有 15 个在 MANIFEST 没有离线落点，只靠 backup-hub.js 的运行时并集兜住 —— 而并集只在 hub 内生效，单独打开工具页（无 MODULES）时那 15 个键会掉进「未归类」。本次补齐：① cpa += kp_outline_no_v1 / accCheck_v3 / accWrong_v3 / accMods_v3 / accPlan_v3 / cpa_font_scale / cpa_sidebar_folded_v1 / cpa_user_guide_v1；② learning += wb_goal / wb_ex （这两个是主键，不带尾下划线，原来只靠 'wb_goal_' / 'wb_ex_' 前缀兜 ⇒ startswith 为 False，压根匹配不到）；③ life += organizer_items_v2 / organizer_theme / storage_categories （2026-09-23 收纳盒并入 life 时只写了注释没落 keys）。★ 另修一处真 bug：hub_cpa / hub_deco_v1 / hub_swatches_v1 / hub_swatch_def_v1 / hub_text_v1 是 CPA 工具页借用的 hub_ 前缀键，但 MANIFEST[0] 就是 hub（prefixes=['hub_']），而分组循环取**第一个命中** ⇒ 这 5 个键全被 hub 截胡（实测 hub_cpa -> hub）。运行时并集救不了（顺序在前）。修法：给 hub 条目加 exclude 列这 5 个键。验证：离线漂移审计 15 处缺口 -> 0；真机分组 9/9（对照组确实截胡，产物全归 cpa）。本轮 index.html 只改缓存串与四处版本号，页面逻辑无改动。",
+  "note2_prev": "hub 导航页 + sync-github.js 同步留痕升级。①【正题】同步记录现在能看出「改了哪个子页的哪个 tab」与「本次同步的数据总量」：sync-github.js 新增 KEY_LABELS(132 条精确键→用途) / KEY_PREFIX_LABELS(52 条前缀兜底) / moduleNameOf()（先问 MODULES 这个单一真源，再退 shardOfKey 反查）/ labelOfKey() / describeKeys() / describeKeysText() / humanBytes() / syncPayloadBytes() / describeTotal()；autoFormat 的「涉及：」段由裸键名拼接（names.join）改为「模块(子页)·用途(tab)」分组文案，并追加「总量 73 键/348KB → 74 键/349KB（+1 键 +1KB）」；runBothIO 补返回 beforeCount/beforeBytes，doSyncBoth 补 total{beforeKeys,beforeBytes,afterKeys,afterBytes,text}，无变化分支也报总量。口径与 buildMergedUpload 一致（value.length+key.length）且排除 EXCLUDE，故「总量」是真正参与同步的数据量。②【缓存穿透，关键】<script src=\"sync-github.js?v=66\"> → v=67：不改这处，用户浏览器永远拿旧脚本，整轮白做。③【补遗留缺口】cpa 的 MODULES.keys 补进 hub_deco_v1 / hub_swatches_v1 / hub_swatch_def_v1 / hub_text_v1。上一轮（V20261009o note2）判定它们是「导航页自有外观键」，本轮**推翻**：读 tools/cpa学习工具1.html 源码确认这 4 个键由 CPA 工具页自己的高亮浮条 / 调色板模块写入（页内注释「真源只有一个 key：hub_deco_v1」「真源只有两个 key：hub_swatches_v1 + hub_swatch_def_v1」，常量 DECO_KEY / SW_KEY / SW_DEF_KEY / COLOR_KEY 均在该页），写入者是 CPA 页 ⇒ 应归 cpa。至此 cpa 条目 18 键，工具侧写入键零漏项。工具页 cpa.html 本轮无改动。",
   "files": {
-    "index.html": "V20261009p",
+    "index.html": "V20261009q",
     "sync-github.js": "V20261009p",
     "tools/CPA会计掌握度系统.html": "V20260917i",
     "tools/code-previewer.html": "V20260917i",
@@ -36,7 +36,7 @@
     "tools/social/path.html": "V20260918h",
     "tools/social/action.html": "V20260918h",
     "tools/social/wisdom.html": "V20260918h",
-    "tools/backup-hub.js": "V20260923h",
+    "tools/backup-hub.js": "V20261009q",
     "tools/sync-diff.html": "V20260923j"
   }
 }
