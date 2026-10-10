@@ -2670,6 +2670,8 @@
   function signed(n) { return (n > 0 ? '+' : '') + n; }
 
   const AUTO_LOG_MAX = 20;
+  var autoSaveSrc = '';   // 最近一次「保存信号」来自哪个工具页（仅留痕用）
+  var autoLastSaveAt = 0; // 上一次「保存同步」的时间戳（SAVE_MIN_GAP 只比它）
   const AUTO_PRESETS = {
     low:    { id: 'low',    label: '省流量', debounce: 60000, minGap: 300000, pull: 900000,
               hint: '停顿 1 分钟推 · 两次推送最少隔 5 分钟 · 每 15 分钟查看一次云端' },
@@ -2678,6 +2680,20 @@
     high:   { id: 'high',   label: '实时',   debounce: 10000, minGap: 60000,  pull: 180000,
               hint: '停顿 10 秒推 · 两次推送最少隔 1 分钟 · 每 3 分钟查看一次云端' }
   };
+  // ★ 2026-10-10「保存即立刻同步」：
+  //   工具页保存完成后 postMessage 一个信号，导航页收到就立刻推一次云端。
+  //   为什么需要：自动同步的常规路径是「写入 → debounce 等待 → minGap 顺延」，
+  //   一次保存最坏要等 minGap（推荐档 3 分钟）才上去；用户在这期间切走设备就看不到。
+  //   保存是一个**明确的动作终点**，与「零散写入」不同，值得单独给它一条快车道。
+  //   ⚠️ 与 'hide' / 'manual' 的区别：那几个是「必须立刻」，保存则仍要防连点 ——
+  //   一次编辑往往会连续保存多次，逐个发请求既浪费配额也没意义。
+  const SAVE_MIN_GAP = 20000;   // 两次「保存同步」之间的最小间隔（毫秒）
+  // 认哪几种「保存已结束」消息。type 值是子页与父页之间的既成约定：
+  //   cpaLedgerSaved —— 掌握度台账页保存后通知（沿用已有约定，见 CPA会计掌握度系统.html）
+  //   ehub-save      —— 通用约定，新工具页按这个发即可
+  // 用「包含」而非「相等」判定 type，允许后续出现 ehub-save:xxx 这类细分。
+  const AUTO_SAVE_MSG_TYPES = ['cpaLedgerSaved', 'ehub-save'];
+
   // 这些键的写入不触发自动同步 —— 注意「触发」与「同步」是两件事：
   // 不触发 ≠ 不同步，数据本身仍会在下次同步时一起带上去。
   // hub_*：导航页自己的界面状态（主题 / 侧栏折叠 / 拖拽排序 / 上次打开的工具…）。
@@ -2845,6 +2861,17 @@
     scheduleAutoSync();
   }
 
+  // 收到子页的「保存已结束」信号 → 立刻推一次。
+  // src 只用于留痕（哪个工具页触发的），不参与判定。
+  function noteSaveSignal(src) {
+    if (!autoCfg.on) return null;
+    if (autoBusy) return null;                 // 正在同步，这次保存会被本次同步一并带走
+    const b = activeBackend();
+    if (!b || !b.isReady() || !b.isConnected()) return null;
+    autoSaveSrc = src || '';
+    return runAutoSync('save');
+  }
+
   function scheduleAutoSync() {
     if (!autoCfg.on) return;
     if (autoTimer) clearTimeout(autoTimer);
@@ -2884,12 +2911,24 @@
     //                  节流在这时没有任何意义（下一次触发根本不会发生，因为 JS 已经停了）。
     //   曾经的写法只豁免 'manual'，导致「改完 3 分钟内切走 App」的数据一直被 minGap 拦掉 ——
     //   而定时器随页面销毁 ⇒ 数据永远上不了云端，用户却看到「已同步」（那行是上一次的结果）。
-    if (reason !== 'manual' && reason !== 'hide' && sinceLast < p.minGap) return null;
+    // ★ 2026-10-10 追加 'save'：
+    //   显式保存信号也走快车道，但仍受 SAVE_MIN_GAP 约束（防连点，见常量处说明）。
+    if (reason !== 'manual' && reason !== 'hide' && reason !== 'save'
+        && sinceLast < p.minGap) return null;
+    //   ⚠️ 这里刻意量的是「距上一次**保存**同步」而不是「距上一次同步」：
+    //     保存信号的意义是「我刚存了东西，请立刻推」。若拿 lastAt 去量，
+    //     会出现「用户先手动同步、1 秒后保存」→ 保存被静默吞掉这种错判
+    //     （上一次同步并不包含这次保存的内容）。SAVE_MIN_GAP 只该防「保存连点」。
+    if (reason === 'save') {
+      const sinceSave = Date.now() - (autoLastSaveAt || 0);
+      if (autoLastSaveAt && sinceSave < SAVE_MIN_GAP) return null;
+    }
     autoBusy = true;
     try {
       const sum = await b.both({ silent: true });
       if (sum && sum.error) { autoRecord('自动同步未成功：' + sum.error, false); return sum; }
       autoDirtyAt = 0;
+      if (reason === 'save') autoLastSaveAt = Date.now();
       autoRecord(autoFormat(sum), true);
       return sum;
     } catch (e) {
@@ -3012,6 +3051,30 @@
     try {
       window.addEventListener('storage', function (ev) {
         try { if (ev && ev.key) noteLocalChange(ev.key); } catch (e) {}
+      });
+    } catch (e) {}
+    // ④ 子页（工具页）保存完成 → 立刻推一次（2026-10-10「保存即立刻同步」）。
+    //
+    //   与 ② 的分工：② 只能收到「某个键被写了」这个事实，无从知道
+    //   「这次写入是一个动作的中途、还是终点」。保存信号补上的正是后者。
+    //
+    //   安全考虑：message 事件同源才可信。导航页与全部工具页同源
+    //   （都是 wyting1234.github.io 下的路径），因此校验 origin === location.origin；
+    //   非同源（比如被外部壳嵌入）一律忽略，避免外部页面伪造信号触发同步。
+    try {
+      window.addEventListener('message', function (ev) {
+        try {
+          if (!ev || !ev.data) return;
+          if (ev.origin && location.origin && ev.origin !== location.origin) return;
+          const t = ev.data && ev.data.type;
+          if (typeof t !== 'string') return;
+          for (let i = 0; i < AUTO_SAVE_MSG_TYPES.length; i++) {
+            if (t === AUTO_SAVE_MSG_TYPES[i] || t.indexOf(AUTO_SAVE_MSG_TYPES[i] + ':') === 0) {
+              noteSaveSignal(t);
+              return;
+            }
+          }
+        } catch (e) {}
       });
     } catch (e) {}
     // ③ 移动端切走 App / 关页面时立刻推一次：等不到 debounce 计时器（页面可能直接被冻结）
@@ -3190,6 +3253,11 @@
       modulesOf: (ks) => modulesOfKeys(ks),
       // 该键的写入是否被忽略（不触发自动同步）
       autoIgnored: (k) => isAutoIgnoredKey(String(k)),
+      // 「保存即立刻同步」的口子（2026-10-10）
+      saveSignal: (src) => noteSaveSignal(src || 'test'),
+      SAVE_MIN_GAP: SAVE_MIN_GAP,
+      saveMsgTypes: () => AUTO_SAVE_MSG_TYPES.slice(),
+      lastSaveSrc: () => autoSaveSrc,
     }
   };
 })();
