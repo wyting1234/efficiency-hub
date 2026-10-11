@@ -4758,6 +4758,7 @@
             <button type="button" class="vtab active" data-view="study">📚 学习进度</button>
             <button type="button" class="vtab" data-view="records" title="学习记录：一条条记录的筛选 / 搜索 / 展示方式 / 导出，都在这一页">📋 学习记录</button>
             <button type="button" class="vtab" data-view="flash" title="闪卡：复习内容的另一种呈现形式">🃏 闪卡<span class="sc-tab-badge" id="fc-tabBadge">0</span></button>
+            <button type="button" class="vtab" data-view="kptree" title="知识点树：浏览 / 展开收拢 / 层级范围 / 搜索；题眼模式下点击知识点可标记并回看相关例题">🌳 知识树</button>
             <button type="button" class="vtab" data-view="memory">🧠 记忆曲线</button>
             <button type="button" class="vtab" data-view="scsec" title="小节精简自检">📝 小节自检</button>
             <button type="button" class="vtab" data-view="scchap" title="整章综合复盘">🗂 整章复盘</button>
@@ -4766,7 +4767,6 @@
             <button type="button" class="vtab" data-view="case" title="案例展示：按「项目 / 题目 / 解题 / 答案 / 思考总结」表格记录例题，支持例题模式与代码模式">📐 案例展示<span class="sc-tab-badge" id="cs-count">0</span></button>
             <button type="button" class="vtab" data-view="qtree" title="题目树：案例展示里的所有题目，按「列表」或「章节知识树」展开，可隐藏 / 显示答案">🌲 题目树<span class="sc-tab-badge" id="qt-count">0</span></button>
             <button type="button" class="vtab" data-view="scwrong" title="错题登记与复习">❌ 错题本<span class="sc-tab-badge" id="sc-wrongCount">0</span></button>
-            <button type="button" class="vtab" data-view="kptree" title="知识点树：浏览 / 展开收拢 / 层级范围 / 搜索；题眼模式下点击知识点可标记并回看相关例题">🌳 知识树</button>
             <button type="button" class="vtab vtab-small" data-view="goal" title="科目目标 / 外观设置">⚙️ 设置</button>
         </div>
 
@@ -14665,8 +14665,37 @@ if (document.readyState === 'loading') {
         h += '</table>';
         csTable.innerHTML = h;
         paintDiffPick();
+        csGrowAll();          // ★ r080：打开编辑态时把已有的多行内容一次撑开
     }
 
+    /* ★ r080：案例编辑框随内容自动长高。
+       - 只作用于 #csTable 内的 textarea.cs-cellin；全局 CSS `textarea{min-height:56px}`
+         仍生效 ⇒ 空框保持 56px，不会缩没。
+       - 「设 auto → 读 scrollHeight → 回写」是标准做法；borderSum 补 border-box 差额。
+       - ★ 不可见时（页签 display:none）scrollHeight 恒为 0，必须跳过，否则会把框压成 0 高。
+       - ★ Chrome scroll anchoring 会因元素改尺寸偷挪 scrollY ⇒ 同一帧存/还原。 */
+    function csGrowOne(ta) {
+        if (!ta || ta.tagName !== 'TEXTAREA') return false;
+        if (!ta.getClientRects().length) return false;
+        var sx = window.scrollX, sy = window.scrollY;
+        var bd = ta.offsetHeight - ta.clientHeight;
+        ta.style.height = 'auto';
+        var want = ta.scrollHeight + (bd > 0 ? bd : 0);
+        ta.style.height = want + 'px';
+        if (window.scrollX !== sx || window.scrollY !== sy) window.scrollTo(sx, sy);
+        return true;
+    }
+    function csGrowAll() {
+        if (!csTable) return;
+        var tas = csTable.querySelectorAll('textarea.cs-cellin');
+        for (var i = 0; i < tas.length; i++) csGrowOne(tas[i]);
+    }
+    /* 窗口尺寸变化 ⇒ 文字重排 ⇒ 行数可能变；rAF 合帧，避免频繁重排。 */
+    var csGrowRaf = 0;
+    window.addEventListener('resize', function () {
+        if (csGrowRaf) return;
+        csGrowRaf = requestAnimationFrame(function () { csGrowRaf = 0; csGrowAll(); });
+    });
     /* 把一段文本拆成多行（问题格里用户写 1、2、3 时按行拆） */
     function splitLines(v) {
         if (Array.isArray(v)) {
@@ -14788,6 +14817,11 @@ if (document.readyState === 'loading') {
             }
         }
         try { window.scrollTo(0, 0); } catch (e) { }
+        /* ★ r080：编辑器显示出来之后再撑一次。
+           renderTable() 里的 csGrowAll() 在新建/编辑路径下跑时 #csEditor 还是 display:none，
+           “不可见就跳过”会让那一轮不生效；这里延后一帧确保布局已完成。 */
+        var _growNow = function () { try { csGrowAll(); } catch (e) { } };
+        if (window.requestAnimationFrame) requestAnimationFrame(_growNow); else _growNow();
     }
     function closeEditor() {
         var ed = document.getElementById('csEditor'); if (ed) ed.style.display = 'none';
@@ -14804,6 +14838,10 @@ if (document.readyState === 'loading') {
     if (csCancelBtn) csCancelBtn.addEventListener('click', function () { closeEditor(); });
 
     /* 表格内的动态元素（chips / 追问按钮）用委托 */
+    if (csTable) csTable.addEventListener('input', function (ev) {
+        var _gt = ev.target;
+        if (_gt && _gt.tagName === 'TEXTAREA') csGrowOne(_gt);
+    });
     if (csTable) csTable.addEventListener('click', function (ev) {
         var rm = ev.target.closest('[data-rmkp]');
         if (rm && draft) {
@@ -15011,7 +15049,7 @@ if (document.readyState === 'loading') {
     }
     if (csTable) csTable.addEventListener('focusin', function (ev) {
         var t = ev.target;
-        if (t && t.tagName === 'TEXTAREA') { csLastTa = t; csNumbHint(); }
+        if (t && t.tagName === 'TEXTAREA') { csLastTa = t; csNumbHint(); csGrowOne(t); }
     });
     function csNumbTarget() {
         if (csLastTa && document.contains(csLastTa)) return csLastTa;
@@ -15388,7 +15426,9 @@ if (document.readyState === 'loading') {
             refillScope(csCourse && csCourse.value ? { course: csCourse.value } : null);
             if (!draft) { var ed = document.getElementById('csEditor'); if (ed) ed.style.display = 'none'; }
             renderList(); renderStat();
+            try { csGrowAll(); } catch (e) { }
         },
+        growAll: function () { try { csGrowAll(); } catch (e) { } },
         qtOnEnter: function () { renderQtree(); },
         ktOnEnter: function () { paintEyes(); },
         highlight: function (id) {
@@ -27492,7 +27532,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011d</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011e</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
