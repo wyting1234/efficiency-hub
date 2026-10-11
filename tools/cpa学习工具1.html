@@ -17248,6 +17248,12 @@ if (document.readyState === 'loading') {
                         edited: false, hidden: false, deleted: false, pinMine: false, manual: false,
                         createdAt: today, editedAt: ''
                     };
+                    /* ★ f 轮：新卡落一个卡级首期（来源记录日期 + 第 1 个节点 = 明天），
+                       从此这张卡自己走自己的复习节奏，不再跟着记录轮次整体起落。 */
+                    try {
+                        const _seed = fcSeedNextAt(card);
+                        card.review = { mastery: 0, lastAt: '', nextAt: _seed.nextAt, stage: 0, days: 0, base: 0, hist: [] };
+                    } catch (e) {}
                     if (autoQH) card.qH = autoQH;
                     if (autoAH) card.aH = autoAH;
                     state.cards[id] = card;
@@ -18107,39 +18113,24 @@ if (document.readyState === 'loading') {
             if (fcDetailId === id) fcDetail(id, true);
         }
 
-        // ---------- 统计：与记录复习同源 ----------
+        // ---------- 统计：★ f 轮起按「卡片自己的排期」算 ----------
+        // total = 艾宾浩斯节点数（1/2/4/7/15）；done = 这张卡已经完成过的次数（= stage，封顶 total）。
         function fcProgressOf(card) {
-            const recs = fcSourceRecords(card);
-            if (!recs.length) return { done: 0, total: 0, linked: false };
-            const doneKeys = new Set((state.reviewDone || []).map(function (x) { return x.recordId + '#' + x.round; }));
-            const rvDel = state.reviewDeleted || {};
-            let total = 0, done = 0;
-            recs.forEach(function (r) {
-                getReviewIntervals().forEach(function (iv, i) {
-                    const key = r.id + '#' + (i + 1);
-                    if (rvDel[key]) return;
-                    total++;
-                    if (doneKeys.has(key)) done++;
-                });
-            });
+            const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [];
+            const total = Math.max(1, ivs.length || 5);
+            const rv = fcReviewOf(card);
+            if (!rv) return { done: 0, total: total, linked: false };
+            const st = parseInt(rv.stage, 10);
+            const done = isFinite(st) ? Math.max(0, Math.min(total, st)) : 0;
             return { done: done, total: total, linked: true };
         }
 
         function fcStatusOf(card) {
-            // ★ 需求 3：自评过掌握程度的卡有**自己的**排期，状态以它为准
-            //   （记录级的轮次进度退居其次 —— 否则一张自评「完全不记得」的卡
-            //    会因为记录那边 5 轮都勾完了而显示「复习完」，自相矛盾）。
-            const rv = fcReviewOf(card);
-            if (rv) {
-                const today = dateToStr(new Date());
-                if (rv.nextAt <= today) return { cls: 'due', text: '⭐ 到期复习' };
-                return { cls: 'ok', text: '下次 ' + rv.nextAt.slice(5) };
-            }
-            const p = fcProgressOf(card);
-            if (!p.linked) return { cls: 'fresh', text: '未关联记录' };
-            if (!p.total) return { cls: 'fresh', text: '无排期' };
-            if (p.done >= p.total) return { cls: 'ok', text: '复习完 ' + p.done + '/' + p.total };
-            return { cls: 'due', text: '复习 ' + p.done + '/' + p.total };
+            const n = fcNextAt(card);
+            if (!n) return { cls: 'fresh', text: '无排期' };
+            const today = dateToStr(new Date());
+            if (n <= today) return { cls: 'due', text: '⭐ 到期复习' };
+            return { cls: 'ok', text: '下次 ' + n.slice(5) };
         }
 
         // ============================================================
@@ -18182,6 +18173,117 @@ if (document.readyState === 'loading') {
             return (rv && typeof rv === 'object' && rv.nextAt) ? rv : null;
         }
 
+        /* ==================================================================
+           ★ 2026-10-11 f 轮（Tom 定稿）：「每张闪卡单独计算」—— 卡级排期成为**唯一主干**
+           ------------------------------------------------------------------
+           旧口径（本轮取代）：卡片自己没有排期，到期与否挂**学习记录的复习轮次**上。
+           于是「学一节 → 出 5 张卡」时，5 张卡共用记录级的 1/2/4/7/15 天节点，
+           勾一次完成就把整节的卡一起豁免 —— Tom 报的「点一张卡、后面的子卡团随消失」
+           「点完成还赖着不走」，根都在「一张卡 ↔ 多条记录」的多对多关系上。
+
+           新口径：
+             · 每张卡有自己的 card.review.nextAt（下次复习日），**这是它唯一的排期来源**；
+             · 待复习 = nextAt ≤ 今天；完成 = 把这张卡的 nextAt 往后推一格；
+             · 所有卡都推后了，待复习自然清空 —— 「只有当所有闪卡完成，前面的才会消失」；
+             · 上下级问答配对（卡的内容）、从知识树自动生成 —— 都原样保留。
+           记录级排期（getReviewItems / 复习清单 / 月历知识点轨道）**一个字不动**，
+           它继续管「这一节要复习几轮」，与卡级排期各管各的。
+           ================================================================== */
+
+        // 卡片的下次复习日（没有排期返回 null）
+        function fcNextAt(card) {
+            const rv = card && card.review;
+            return (rv && typeof rv === 'object' && rv.nextAt) ? String(rv.nextAt) : null;
+        }
+
+        // 「自评过掌握程度」= mastery > 0（注意与 fcReviewOf 区分：后者只问「有没有排期」）
+        function fcRated(card) {
+            return !!(card && card.review && (parseInt(card.review.mastery, 10) || 0) > 0);
+        }
+
+        // 这张卡今天是否到期（含过期）
+        function fcIsDue(card, today) {
+            const n = fcNextAt(card);
+            return !!n && n <= (today || dateToStr(new Date()));
+        }
+
+        /* 卡片的首期：来源记录里「最早的未完成轮次」的排期日。
+           - 新卡（刚学完）→ 记录日期 + ivs[0]（1 天）= 明天，正是艾宾浩斯第 1 个节点；
+           - 老卡迁移 → 顺着它原来那条记录的进度走，**不会一夜之间全部到期**。
+           一条来源记录都没有（自建卡 / 记录已删）→ 今天（立即进待复习，由用户处理）。 */
+        function fcSeedNextAt(card) {
+            try {
+                const today = dateToStr(new Date());
+                const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [1, 2, 4, 7, 15];
+                const rvOv = state.reviewOverrides || {};
+                const rvDel = state.reviewDeleted || {};
+                const doneKeys = {};
+                (state.reviewDone || []).forEach(function (x) { doneKeys[x.recordId + '#' + x.round] = 1; });
+                const recs = (typeof fcSourceRecords === 'function') ? fcSourceRecords(card) : [];
+                let earliest = null, maxDone = 0;
+                recs.forEach(function (r) {
+                    if (!r || r.addToMemory === false || !r.date) return;
+                    let doneR = 0;
+                    ivs.forEach(function (iv, i) {
+                        const key = r.id + '#' + (i + 1);
+                        if (rvDel[key]) return;
+                        if (doneKeys[key]) { doneR++; return; }
+                        const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
+                        if (!earliest || sched < earliest) earliest = sched;
+                    });
+                    if (doneR > maxDone) maxDone = doneR;
+                });
+                return { nextAt: earliest || today, doneRounds: maxDone };
+            } catch (e) { return { nextAt: dateToStr(new Date()), doneRounds: 0 }; }
+        }
+
+        // 未自评时的默认推进：完成一次 → stage 前进一格，间隔取 ivs[stage]，从今天起算。
+        // （有自评的走 fcApplyMastery，节奏由掌握程度决定 —— 两条路都只写 card.review。）
+        function fcAutoAdvance(card) {
+            if (!card) return null;
+            const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [];
+            const base0 = ivs.length ? ivs : [1, 2, 4, 7, 15];
+            const rv = fcReviewOf(card) || {};
+            const prev = parseInt(rv.stage, 10);
+            let stage = isFinite(prev) ? prev : 0;
+            stage = Math.max(0, Math.min(base0.length - 1, stage + 1));
+            const days = Math.max(1, base0[stage] || base0[base0.length - 1] || 1);
+            const today = dateToStr(new Date());
+            const nextAt = memAddDays(today, days);
+            const hist = (Array.isArray(rv.hist) ? rv.hist : []).slice(-29);
+            hist.push({ d: today, m: parseInt(rv.mastery, 10) || 0, days: days, next: nextAt });
+            card.review = {
+                mastery: parseInt(rv.mastery, 10) || 0, lastAt: today, nextAt: nextAt,
+                stage: stage, days: days, base: days, hist: hist
+            };
+            return card.review;
+        }
+
+        /* 一次性迁移：给所有还没有 review.nextAt 的老卡补一个卡级首期。
+           幂等 —— 已有 nextAt 的卡一个字不动；返回「本次真改了几张」，
+           调用方据此决定要不要落盘（避免每次启动都触发同步）。 */
+        function fcMigrateCardSchedule() {
+            fcState();
+            const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [];
+            const maxStage = Math.max(0, (ivs.length ? ivs : [1, 2, 4, 7, 15]).length - 1);
+            let n = 0;
+            Object.keys(state.cards).forEach(function (id) {
+                const c = state.cards[id];
+                if (!c || c.deleted) return;
+                if (c.review && c.review.nextAt) return;      // 已有排期 → 不动
+                const seed = fcSeedNextAt(c);
+                const stage = Math.min(maxStage, Math.max(0, seed.doneRounds | 0));
+                const hist = (c.review && Array.isArray(c.review.hist)) ? c.review.hist : [];
+                c.review = {
+                    mastery: (c.review && parseInt(c.review.mastery, 10)) || 0,
+                    lastAt: (c.review && c.review.lastAt) || '',
+                    nextAt: seed.nextAt, stage: stage, days: 0, base: 0, hist: hist
+                };
+                n++;
+            });
+            return n;
+        }
+
         // 自评 → 重算这张卡的下次复习日期。
         // 间隔基数仍取 getReviewIntervals()（与记录级同一套节点，口径不分裂），
         // stage 由掌握程度推进 / 回退：掌握 ≥4 前进一轮（基数更长），
@@ -18210,13 +18312,17 @@ if (document.readyState === 'loading') {
             return card.review;
         }
 
-        // 撤销自评 → 回到记录级排期。历史档位留着（只清排期），方便回看。
+        /* ★ f 轮：撤销自评只清「掌握程度」，**保留这张卡自己的排期** ——
+           卡级排期已是唯一主干，清掉 nextAt 会让这张卡掉进「没有下一次复习」。 */
         function fcClearMastery(card) {
             if (!card) return;
-            const rv = fcReviewOf(card);
-            const hist = (rv && Array.isArray(rv.hist)) ? rv.hist : [];
-            if (hist.length) card.review = { mastery: 0, lastAt: '', nextAt: '', stage: 0, days: 0, hist: hist };
-            else delete card.review;
+            const rv = fcReviewOf(card) || {};
+            const hist = Array.isArray(rv.hist) ? rv.hist : [];
+            const _st = parseInt(rv.stage, 10);
+            card.review = {
+                mastery: 0, lastAt: rv.lastAt || '', nextAt: rv.nextAt || '',
+                stage: isFinite(_st) ? _st : 0, days: rv.days || 0, base: rv.base || 0, hist: hist
+            };
         }
 
         // 「下次复习」人话
@@ -18232,8 +18338,9 @@ if (document.readyState === 'loading') {
         // 自评器：复习面板反面屏与闪卡编辑界面共用这一份 HTML（避免两处走样）
         function fcSelfGradeHTML(card) {
             if (!card) return '';
-            const rv = fcReviewOf(card);
-            const cur = rv ? rv.mastery : 0;
+            const rv = fcReviewOf(card) || {};
+            const rated = fcRated(card);
+            const cur = rated ? (parseInt(rv.mastery, 10) || 0) : 0;
             const btns = FC_MASTERY_LEVELS.map(function (lv) {
                 return '<button type="button" class="fm-b ' + lv.cls + (cur === lv.v ? ' on' : '') +
                     '" data-fcgrade="' + lv.v + '" data-fcgid="' + kpEsc(card.id) + '" title="' + lv.label + '">' +
@@ -18242,11 +18349,12 @@ if (document.readyState === 'loading') {
             return '<div class="fce-mastery">' +
                 '<div class="fm-head">🎯 本次复习掌握程度<span class="fm-sub">决定这张卡的下次复习时间，并反映到日历分布</span></div>' +
                 '<div class="fm-btns">' + btns + '</div>' +
-                '<div class="fm-foot">' + (rv
+                '<div class="fm-foot">' + (rated
                     ? ('<span class="fm-now">已自评 <b>' + fcStarStr(rv.mastery) + '</b> · ' + kpEsc(rv.lastAt) +
                        ' · 间隔 ' + rv.days + ' 天 → 下次复习 <b>' + kpEsc(fcNextText(card)) + '</b></span>' +
                        '<button type="button" class="fc-btn sm" data-fcgrade="0" data-fcgid="' + kpEsc(card.id) + '">撤销自评</button>')
-                    : '<span class="fm-now">还没自评 —— 这张卡当前跟随<b>学习记录</b>的复习节点排期</span>') +
+                    : '<span class="fm-now">还没自评 —— 这张卡按<b>自己的艾宾浩斯节点</b>排期' +
+                       '（在复习面板点「保存并标记已完成」就往后推一格）</span>') +
                 '</div>' +
             '</div>';
         }
@@ -18260,7 +18368,7 @@ if (document.readyState === 'loading') {
                 fcClearMastery(card);
                 saveData();
                 fcRefreshViews();
-                showToast('↩ 已撤销自评，这张卡回到跟随学习记录的排期');
+                showToast('↩ 已撤销自评（这张卡自己的排期与下次复习日都保留）');
                 return;
             }
             const rv = fcApplyMastery(card, n);
@@ -18320,7 +18428,7 @@ if (document.readyState === 'loading') {
             // ★ 需求 3：自评过的卡把「自己的」下次复习日期亮出来 —— 这是卡片级排期，
             //   与上面的记录级轮次不是一回事，所以单独一枚章，不并进 fct-count。
             if (fcReviewOf(card)) {
-                chips.push('<span class="fct fct-next" title="自评掌握程度后重算出的下次复习日期（卡片级排期）">📅 下次 ' +
+                chips.push('<span class="fct fct-next" title="这张卡自己的下次复习日期（卡片级排期）">📅 下次 ' +
                     kpEsc(fcNextText(card)) + '</span>');
             }
             if (card.edited) chips.push('<span class="fct fct-edited" title="内容被手工调整过">✏️ 已改过</span>');
@@ -18930,17 +19038,18 @@ if (document.readyState === 'loading') {
 
            现在 state 维十库**互斥且完备**，一张卡只进一个：
              📥 待复习库        今天到期（含过期）        ← pendIds（= 顶部角标，同一个数）
-             📅 还没到期        未评星 + 下次复习日在今天之后
-             ⚪ 没有下一次复习   未评星 + 轮次全做完 / 卡没挂上学习记录
+             📅 还没到期        未评星 + 下次复习日在今天之后（评过星的住五档库）
+             ⚪ 没有下一次复习   这张卡还没有自己的下次复习日
              ✅ 今天已复习      自评过 + 当天点过完成（明天自动回到五档库）
              ⭕ 已复习待评星    未评星 + 当天点过完成（评一下才进掌握库）
              🥀😵🙂🌿🏆 五档    自评 1–5 星（不因「还没到期」而搬家 —— 那是它们的家）
            刻意让自评卡留在五档掌握库，不进「还没到期」：否则同一张卡会在
            两个库里各出现一次，就是 09-30 定下要避免的「数两遍」。 */
         function fcMasteryTier(card) {
-            const rv = fcReviewOf(card);
-            if (!rv) return 'none';                       // 没自评过 = 还没进复习流程
-            const m = parseInt(rv.mastery, 10) || 0;
+            /* ★ f 轮：判据从「有没有 review 对象」改成「有没有自评值」——
+               f 轮起每张卡都有排期，用 fcReviewOf 判会永远得 true、五档库全空。 */
+            if (!fcRated(card)) return 'none';
+            const m = parseInt(card.review.mastery, 10) || 0;
             if (m <= 0) return 'none';
             /* ★ 2026-10-08（Tom）：五档各自成库 —— 'l' + 星值（l1..l5），
                与 FC_MASTERY_LEVELS 的五档一一同名对齐，不再把 ★–★★ / ★★★★–★★★★★ 并档。 */
@@ -18958,19 +19067,13 @@ if (document.readyState === 'loading') {
             const pendIds = {};
             fcPendingCards().forEach(function (c) { pendIds[c.id] = 1; });
                 if (dim === 'state') {
-                    const doneIds = fcDoneTodayIds();
-                    const isExempt = function (c) {
-                        return fcSourceRecords(c).some(function (r) { return doneIds[r.id]; });
-                    };
-                    /* ★ 2026-10-08 晚：三个「到期状态」桶的数据源，与 ⏰ 待复习 / 📅 剩余 两个视图同源 */
-                    const upIds = {};
-                    if (typeof fcUpcomingCards === 'function') {
-                        fcUpcomingCards().forEach(function (u) { if (u && u.card) upIds[u.card.id] = 1; });
-                    }
+                    const today = dateToStr(new Date());
+                    /* ★ f 轮：分类依据全部换成**卡片自己的排期**（nextAt / lastAt / mastery），
+                       不再用 fcDoneTodayIds 那套记录级豁免。十个库互斥且完备，一张卡只进一个。 */
                     const b = [
                         { key: 'due',      ico: '📥', name: '待复习库',       sub: '今天到期（含过期）· 与顶部「待复习」同一个数', cls: 'f-due',    cards: [] },
-                        { key: 'upcoming', ico: '📅', name: '还没到期',       sub: '未评星 · 下次复习日在今天之后',              cls: 'f-none',   cards: [] },
-                        { key: 'unsched',  ico: '⚪', name: '没有下一次复习', sub: '轮次全做完了 / 卡没挂上学习记录',            cls: 'f-none',   cards: [] },
+                        { key: 'upcoming', ico: '📅', name: '还没到期',       sub: '未评星 · 这张卡的下次复习日在今天之后',      cls: 'f-none',   cards: [] },
+                        { key: 'unsched',  ico: '⚪', name: '没有下一次复习', sub: '这张卡还没有自己的下次复习日',              cls: 'f-none',   cards: [] },
                         { key: 'done',     ico: '✅', name: '今天已复习',     sub: '当天点过完成且已评星 · 明天回到掌握库',      cls: 'f-done',   cards: [] },
                         { key: 'unrated',  ico: '⭕', name: '已复习待评星',   sub: '点过完成但没评星 · 评一下才进掌握库',        cls: 'f-unrated', cards: [] },
                         { key: 'l1',   ico: '🥀', name: '★ 完全不记得',   sub: '自评 1 星 · 优先抢救',            cls: 'f-l1',  cards: [] },
@@ -18982,24 +19085,22 @@ if (document.readyState === 'loading') {
                     const idx = {};
                     b.forEach(function (x) { idx[x.key] = x; });
                     all.forEach(function (c) {
-                        /* ① 今天到期（含过期）→ 待复习库。
-                              数据源就是 fcPendingCards()（pendIds 由它算来），
+                        const rv = c.review || {};
+                        const m = fcRated(c) ? (parseInt(rv.mastery, 10) || 0) : 0;
+                        const n = fcNextAt(c);
+                        /* ① 今天到期（含过期）→ 待复习库。数据源就是 fcPendingCards()，
                               所以这个桶的张数必然等于顶部「⏰ 待复习」角标。 */
                         if (pendIds[c.id]) { idx.due.cards.push(c); return; }
-                        const tier = fcMasteryTier(c);
-                        /* ② 没评过星：先看今天完成过没有，再按「还有没有下一次复习任务」
-                              分「还没到期」与「没有下一次复习」。
-                              原先这两类一律兜底进 due —— 就是两个数字对不上的根源。 */
-                        if (tier === 'none') {
-                            if (isExempt(c)) { idx.unrated.cards.push(c); return; }
-                            (upIds[c.id] ? idx.upcoming : idx.unsched).cards.push(c);
-                            return;
+                        /* ② 今天点过完成 → 看有没有评星，分「今天已复习 / 已复习待评星」 */
+                        if (rv.lastAt === today) {
+                            (m > 0 ? idx.done : idx.unrated).cards.push(c); return;
                         }
-                        /* ③ 自评过：今天完成过 → 今天已复习；否则留在它那一档掌握库。
-                              刻意不因「还没到期」把自评卡挪去「还没到期」——
-                              五档掌握库才是它们的家，挪走会让掌握库空掉，
-                              也会让同一张卡在两个库里各出现一次。 */
-                        (isExempt(c) ? idx.done : (idx[tier] || idx.unsched)).cards.push(c);
+                        /* ③ 还没有自己的下次复习日 → 「没有下一次复习」 */
+                        if (!n) { idx.unsched.cards.push(c); return; }
+                        /* ④ 评过星的住五档掌握库（不因「还没到期」搬家 —— 那是它们的家）；
+                              没评过的住「还没到期」。 */
+                        if (m > 0) { (idx['l' + Math.min(5, m)] || idx.unsched).cards.push(c); return; }
+                        idx.upcoming.cards.push(c);
                     });
                     return b;
                 }
@@ -19140,124 +19241,40 @@ if (document.readyState === 'loading') {
             return null;
         }
 
-        // ---------- 待复习（与记录复习同一套排期） ----------
+        // ---------- 待复习（★ f 轮：卡级排期，唯一主干） ----------
+        /* 今天该看的卡 = 所有 nextAt ≤ 今天 的可见卡。
+           不再掺记录级轮次，也不再需要「今天点过完成就整条记录豁免」那套补丁 ——
+           完成动作本身会把这张卡的 nextAt 推后，它自己就离开了这个集合。 */
         function fcPendingCards() {
             const today = dateToStr(new Date());
-            const ids = {}, out = [];
-            /* ★ v45c（Tom 2026-10-08 二次反馈：「点完『保存并标记已完成』，卡还赖在待复习里」）：
-               当日豁免的粒度从「记录」提到「卡」。
-               doneToday 记的是「今天点过完成的**记录** id」，但一张卡是按 (科目,章,节)
-               关联该节**全部**学习记录的（见 fcSourceRecords —— 按坐标匹配，不按记录 id），
-               而一次完成只勾掉面板定位到的那**一条**记录的一个轮次。
-               于是同一节学过两三次时，其余记录的到期轮次仍会把这张卡拉回来 ——
-               用户看到的就是「点完完成，卡还在待复习」。先展开成卡集合，两段统一按卡豁免。 */
-            const doneToday = fcDoneTodayIds();
-            const doneCards = (typeof fcDoneTodayCardIds === 'function') ? fcDoneTodayCardIds() : {};
-            // ★ 需求 3：先收「自评过、且已到期」的卡 —— 它们的到期日由 card.review.nextAt
-            //   决定（与月历 fcScheduleByDate 同源），跟记录级的轮次没关系。
-            //   ★ v45c：自评卡同样吃当日豁免 —— 今天点过完成的这张卡今天不再催，
-            //     它下一轮什么时候回来由「自评」自己推（fcApplyMastery 改 nextAt）。
-            fcVisibleCards().forEach(function (c) {
-                const rv = fcReviewOf(c);
-                if (rv && rv.nextAt <= today && !ids[c.id] && !doneCards[c.id]) { ids[c.id] = 1; out.push(c); }
-            });
-            /* ★ 2026-10-08（Tom）：「今天已点过完成」的记录，它的卡当天不再进待复习。
-               一条记录常有多个轮次同时到期（补勾 / 过期堆积），原先点一次完成只勾掉
-               一个轮次、其余轮次仍把整节的卡拉住 —— 卡看起来「点完完成还赖着不走」。
-               豁免口径收口在 fcDoneTodayIds()（复习库的「今天已复习」库同源）；
-               只改闪卡这层显示口径；复习清单 / 月历 / 轮次统计仍走 getReviewItems，不受影响。
-               ★ v45c：这条记录级豁免改由函数开头展开出的 doneCards 统一执行。 */
-            // 其余卡：仍按记录级复习清单（已完成勾选语义不变）
-            const items = (typeof getReviewItems === 'function') ? getReviewItems(today).pending : [];
-            items.forEach(function (it) {
-                if (doneToday[it.record.id]) return;   // ★ 今天已点过完成的记录：今天不再催
-                fcCardsForRecord(it.record).forEach(function (c) {
-                    if (ids[c.id]) return;
-                    if (doneCards[c.id]) return;    // ★ v45c：这张卡今天已经完成过，今天不再催
-                    if (fcReviewOf(c)) return;      // 自评过的卡不再重复跟随记录级排期
-                    ids[c.id] = 1; out.push(c);
-                });
-            });
-            /* ★ 2026-10-11（Tom 报障）：「点第一张卡 → 标记已完成 → 后面其他卡全没了」。
-               根因：待复习库的到期判定挂在**记录轮次**上，一次完成会让这条记录当天再无
-               到期轮次，它的卡整体失去「今天到期」资格（上面的记录级豁免只是雪上加霜）。
-               补位：对**带 cards 字段**的完成条目，把它名下「本次没看过、也没自评过」的卡
-               继续留在待复习库 —— 直到用户自己逐张处理。
-               没带该字段的老条目（复习清单勾选 / 历史数据）不补位，维持记录级整条豁免。 */
-            (state.reviewDone || []).forEach(function (x) {
-                if (!x || x.date !== today || !Array.isArray(x.cards)) return;
-                const rec = (state.records || []).filter(function (r) { return r && r.id === x.recordId; })[0];
-                if (!rec) return;
-                const seen = {};
-                x.cards.forEach(function (cid) { seen[cid] = 1; });
-                let list = [];
-                try { list = fcCardsForRecord(rec) || []; } catch (e) { list = []; }
-                list.forEach(function (c) {
-                    if (!c || ids[c.id] || seen[c.id]) return;
-                    if (fcReviewOf(c)) return;      // 自评过的卡走卡片级排期，不在此列
-                    ids[c.id] = 1; out.push(c);
-                });
-            });
-            return out;
+            return fcVisibleCards().filter(function (c) { return fcIsDue(c, today); });
         }
 
-        // 「时间未知」= 该卡的来源记录没有任何复习排期（没有待复习、也没有已完成轮次）
+        // 「没有下一次复习」= 这张卡根本没有排期（老数据没有 review / 记录下来源彻底不在）
         function fcUnScheduledCards() {
-            const out = [];
-            fcVisibleCards().forEach(function (c) {
-                if (fcReviewOf(c)) return;      // ★ 需求 3：自评过就有自己的排期了
-                const p = fcProgressOf(c);
-                if (!p.linked) { out.push(c); return; }
-                if (p.total === 0) out.push(c);
-            });
+            const out = fcVisibleCards().filter(function (c) { return !fcNextAt(c); });
             out.sort(function (a, b) { return fcDifficulty(b) - fcDifficulty(a); });
             return out;
         }
 
-        /* ★ v45d · 需求 2（Tom 2026-10-08）：待复习库切成「当日复习库」与「剩余复习库」。
-           剩余复习库 = **还没到期**的卡 —— 排期已生成，但下次复习日在今天之后。
-           三个库互斥，一张卡今天只可能出现在一个地方：
-             · 当日复习库：今天到期（含过期）且未完成   ← fcPendingCards()
-             · 剩余复习库：下次复习日 > 今天            ← fcUpcomingCards()
-             · 无排期：名下一个可用轮次都没有           ← fcUnScheduledCards()
-           今天点过「已完成」的卡两个库都不进（吃 v45c 那把 doneCards 豁免），今天的事就算结了；
-           它下一次什么时候回来，仍由记录级轮次 / 自评的 nextAt 决定 —— 不需要额外记账。 */
+        /* ★ f 轮 · 「剩余复习库」= 还没到期。
+           只有**未评星**的卡进这里 —— 评过星的卡的家是五档掌握库
+           （那里能看到它们自己的「下次 MM-DD」），两边算进来就会一卡两库、被数两遍。
+           三个库互斥完备：
+             · 当日复习库：nextAt ≤ 今天              ← fcPendingCards()
+             · 剩余复习库：nextAt > 今天（未评星）    ← fcUpcomingCards()
+             · 没有下一次复习：没有 nextAt            ← fcUnScheduledCards() */
         function fcUpcomingCards(today) {
             today = today || dateToStr(new Date());
-            const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [];
-            const rvOv = state.reviewOverrides || {};
-            const rvDel = state.reviewDeleted || {};
-            const doneKeys = {};
-            (state.reviewDone || []).forEach(function (x) { doneKeys[x.recordId + '#' + x.round] = 1; });
-            const doneCards = (typeof fcDoneTodayCardIds === 'function') ? fcDoneTodayCardIds() : {};
-            let pendIds = {};
-            try { fcPendingCards().forEach(function (c) { pendIds[c.id] = 1; }); } catch (e) { }
             const out = [];
             fcVisibleCards().forEach(function (c) {
-                if (pendIds[c.id]) return;          // 已被当日复习库收走（互斥）
-                if (doneCards[c.id]) return;        // 今天已完成 → 今天不再出现在任何待办库
-                /* ★ 2026-10-09（需求 1）：自评过的卡不再是「还没到期」。
-                   以前这里会把 nextAt 在未来的自评卡也算进来 ⇒
-                   ⏰ 待复习视图的「剩余复习库」= 4 张，
-                   而 📚 复习库「还没到期」桶 = 2 张（它只收未自评的卡）
-                   —— 同一批卡、同一个词，两处给两个答案。
-                   自评卡的家是五档掌握库（那里能看到「下次 MM-DD」），
-                   算进这里就等于一卡两库、被数两遍。放到一个地方才对得上账。 */
-                if (fcReviewOf(c)) return;
-                // 记录级排期：名下所有**未完成**的轮次里，取最早的 sched
-                let next = null, hasDue = false;
-                fcSourceRecords(c).forEach(function (r) {
-                    if (!r || r.addToMemory === false) return;      // 与 getReviewItems 同口径
-                    ivs.forEach(function (iv, i) {
-                        const key = r.id + '#' + (i + 1);
-                        if (rvDel[key] || doneKeys[key]) return;    // 已删除 / 已完成 → 不再是未来的任务
-                        const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
-                        if (sched <= today) hasDue = true;          // 今天已到期 → 归当日库，不进这里
-                        else if (!next || sched < next) next = sched;
-                    });
-                });
-                if (hasDue) return;                 // 互斥：已经在当日复习库里了
-                if (next) out.push({ card: c, next: next });
+                if (fcRated(c)) return;             // 自评过的卡住五档掌握库，不重复出现
+                const rv = c.review || {};
+                /* ★ 今天做过的卡，今天不再出现在待办库 —— 与复习库「✅ 今天已复习 /
+                   ⭕ 已复习待评星」两桶同一口径（否则同一张卡在两个视图里归不同库）。 */
+                if (rv.lastAt === today) return;
+                const n = fcNextAt(c);
+                if (n && n > today) out.push({ card: c, next: n });
             });
             out.sort(function (a, b) { return a.next.localeCompare(b.next); });
             return out;
@@ -19279,13 +19296,14 @@ if (document.readyState === 'loading') {
             const _upSet = {}; up.forEach(function (u) { _upSet[u.card.id] = 1; });
             const _unsSet = {}; uns.forEach(function (c) { _unsSet[c.id] = 1; });
             const ratedN = fcVisibleCards().filter(fcMatch).filter(function (c) {
-                return !_pendSet[c.id] && !_upSet[c.id] && !_unsSet[c.id] && !!fcReviewOf(c);
+                return !_pendSet[c.id] && !_upSet[c.id] && !_unsSet[c.id] && fcRated(c);
             }).length;
             let h = '<div class="fc-progress" style="margin:2px 0 8px;">' +
-                '没有自评过的卡，排期与上方「复习清单 / 月历」<b>共用</b>同一套艾宾浩斯节点（' +
-                getReviewIntervals().join(' / ') + ' 天）；' +
-                '<b>自评过掌握程度</b>的卡改用<b>卡片级排期</b>（下次复习日期由自评值算出，见卡片反面）。' +
-                ' <b>当日库</b>今天到期就要看，<b>剩余库</b>是今天之后才排到的卡 —— 两边互斥，一张卡不重复出现。</div>';
+                '每张卡都有<b>自己的下次复习日</b>（艾宾浩斯 ' + getReviewIntervals().join(' / ') + ' 天节奏）：' +
+                '在复习面板点「保存并标记已完成」就把这张卡往后推一格；' +
+                '<b>自评掌握程度</b>则按掌握程度加速 / 减速（见卡片反面）。' +
+                ' <b>当日库</b>今天到期就要看，<b>剩余库</b>是今天之后才排到的卡 —— 两边互斥，一张卡不重复出现；' +
+                '<b>把当日库清空 = 今天全部复习完了</b>。</div>';
             // ---- ① 当日复习库：今天到期（含过期）且未完成 ----
             if (pend.length) {
                 h += fcGroupHTML('fcpending', '⏰ 当日复习库',
@@ -19479,7 +19497,7 @@ if (document.readyState === 'loading') {
             box.innerHTML = '<div class="plan-dialog rv-dialog">' +
                 '<h3>🃏 闪卡详情</h3>' +
                 '<div class="pd-hint">' + kpEsc(fcPathText(card)) + '<br>' +
-                    '复习进度（与记录复习同源）：<b>' + st.text + '</b>' +
+                    '复习进度（卡片自己的排期）：<b>' + st.text + '</b>' +
                     (recs.length ? ' ｜ 关联 ' + recs.length + ' 条学习记录' : ' ｜ 暂无关联学习记录') + '</div>' +
                 '<div class="fc-detail-box">' +
                     '<div class="fc-face-label">正面</div>' +
@@ -19794,6 +19812,9 @@ if (document.readyState === 'loading') {
                启动顺序是 loadData → … → initCardModule，所以 fcNodeOfCard / fcWalkAll 此刻可用。
                失败不影响初始化（内部已 try）。 */
             try { migrateCardRaw(); } catch (e) {}
+            /* ★ f 轮：一次性给老卡补卡级首期（幂等）。有改动才落盘，避免每次启动都触发同步。 */
+            try { if (fcMigrateCardSchedule()) saveData(); } catch (e) {}
+
             const build = document.getElementById('fcBuildBtn');
             if (build) build.addEventListener('click', function () { fcBuild(false); });
             // ★ 2026-09-18（需求 A）：批量删除开关（只切内存标志，不动任何卡片数据）
@@ -22541,6 +22562,21 @@ if (document.readyState === 'loading') {
                 if (_seen) _ent.cards = _seen.slice();
                 state.reviewDone.push(_ent);
             }
+            /* ★ 2026-10-11 f 轮（Tom 定稿「每张闪卡单独计算」）：
+               把本次面板里**实际看过**的卡逐张往后推一格 —— 只推看过的，
+               同一条记录里没看过的卡继续留在待复习库。
+               「保存并标记已完成」因此 = 复习完手上这几张，而不是把整节的卡一起销账。
+               （已经自评过的卡由 fcGrade 推过，这里不重复推。）
+               ★ 记录级的 reviewDone 仍然写（复习清单 / 月历知识点轨道要用），两者互不干扰。 */
+            try {
+                (Array.isArray(d.cards) ? d.cards : []).forEach(function (cid) {
+                    const _c = state.cards && state.cards[cid];
+                    if (!_c) return;
+                    const _rv = _c.review || {};
+                    if (_rv.lastAt === todayStr && (parseInt(_rv.mastery, 10) || 0) > 0) return;
+                    if (typeof fcAutoAdvance === 'function') fcAutoAdvance(_c);
+                });
+            } catch (e) {}
             try { saveData(); } catch (e) {}
             try { renderMemoryView(); } catch (e) {}
             try { renderGoalStatsPanel(); } catch (e) {}
@@ -22588,47 +22624,25 @@ if (document.readyState === 'loading') {
         // 按日聚合：某天有几张卡要复习、其中几张已复习完。
         // 口径按**卡**去重 —— 同一张卡当天被多个轮次命中只算一张；
         // 「已完成」要求该卡当天命中的**所有**轮次都已勾选，否则一张还有事要做的卡会被算成完成。
+        // 按日聚合：某天有几张卡要复习、其中几张已复习完。
+        // ★ f 轮：卡级排期是唯一主干 —— 每张卡只落在自己的 nextAt 那天；
+        //         那天真的复习过（review.lastAt == 该日）就记 done。
         function fcScheduleByDate() {
             fcTaskCacheReset();
             const out = {};
-            const doneKeys = new Set((state.reviewDone || []).map(x => x.recordId + '#' + x.round));
-            const rvOv = state.reviewOverrides || {};
-            const rvDel = state.reviewDeleted || {};
-            const ivs = getReviewIntervals();
-            // slot 取用即建：卡片级排期与记录级排期是两遍扫描，谁先写到哪一天都可能
             const slotOf = function (ds) { return out[ds] || (out[ds] = { total: 0, done: 0, src: {} }); };
-
-            // ---------- ① 卡片级排期（★ 需求 3）----------
-            // 自评过掌握程度的卡不跟记录轮次走，只出现在自己的 nextAt 那天。
-            // 「已完成」不需要额外勾选：用户当天自评后 nextAt 自动前移，它就从那天消失了。
-            const ownSched = {};
             fcVisibleCards().forEach(function (c) {
-                const rv = fcReviewOf(c);
-                if (!rv) return;
-                ownSched[c.id] = 1;
-                const slot = slotOf(rv.nextAt);
-                const rec = slot.src[c.id] || (slot.src[c.id] = { card: c, pend: 0 });
-                rec.pend++;
-            });
-
-            // ---------- ② 记录级排期（原有口径，跳过已有自己排期的卡）----------
-            (state.records || []).forEach(r => {
-                if (r.addToMemory === false) return;                  // 未加入记忆曲线 → 不排期
-                const cards = fcCardsForTask({ record: r })
-                    .filter(c => c && !c.hidden && !c.deleted && !ownSched[c.id]);
-                if (!cards.length) return;                            // 闪卡还没生成 → 这天不出现标记
-                ivs.forEach((iv, i) => {
-                    const round = i + 1;
-                    const key = r.id + '#' + round;
-                    if (rvDel[key]) return;
-                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
-                    const slot = slotOf(sched);
-                    const isDone = doneKeys.has(key);
-                    cards.forEach(c => {
-                        const rec = slot.src[c.id] || (slot.src[c.id] = { card: c, pend: 0 });
-                        if (!isDone) rec.pend++;
-                    });
-                });
+                const rv = c.review || {};
+                const next = fcNextAt(c);
+                if (next) {
+                    const slot = slotOf(next);
+                    const rec = slot.src[c.id] || (slot.src[c.id] = { card: c, pend: 0 });
+                    rec.pend++;                                  // 待复习
+                }
+                if (rv.lastAt && rv.lastAt !== next) {
+                    const slot = slotOf(rv.lastAt);
+                    if (!slot.src[c.id]) slot.src[c.id] = { card: c, pend: 0 };   // 那天复习过 → 已完成
+                }
             });
             Object.keys(out).forEach(ds => {
                 const slot = out[ds];
@@ -27532,7 +27546,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011e</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011f</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
