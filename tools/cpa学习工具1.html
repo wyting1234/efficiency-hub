@@ -3069,7 +3069,7 @@
         }
 
         /* ===== h 轮：一张连续大表（题目行 / 上半已知区 / 下半答案区） ===== */
-        .cs-q col.cs-coldesc { width: 118px; }
+        .cs-q col.cs-coldesc { width: 200px; }   /* 2026-10-11 118 -> 200px（Tom：需要加宽） */
         .cs-q.cs-big td, .cs-q.cs-big th { vertical-align: top; }
         .cs-q tr.cs-r-title > th { vertical-align: middle; }
         .cs-q td.cs-titlecell { background: #FFF34D; padding: 6px 8px; }
@@ -3084,7 +3084,6 @@
         .cs-q td.cs-rowdesc .cs-cellin { background: transparent; }
         .cs-q td.cs-fill { background: #FFFDF8; }
         .cs-q tr.cs-pstart > td, .cs-q tr.cs-pstart > th { border-top: 2px solid var(--accent, #A6503C); }
-        .cs-q td.cs-descecho { font-size: 12.5px; color: #6B5B45; padding: 2px 2px 0; }
         .cs-q tr.cs-r-itemops td, .cs-q tr.cs-r-ansops td { padding: 3px 8px 6px; }
         /* ★ 2026-10-11：工具栏里的编号工具组（替代每格下面那条浮条） */
         .cs-numbgrp { display: inline-flex; align-items: center; gap: 6px; }
@@ -5668,7 +5667,7 @@
                         <span class="cs-diff" id="csDiffPick" title="本题难度（点星星选择，可再点同一颗取消）">
                             <i data-dv="1">★</i><i data-dv="2">★</i><i data-dv="3">★</i><i data-dv="4">★</i><i data-dv="5">★</i>
                         </span>
-                        <span class="cs-hint">浅色格可直接编辑 · 一题多问 · 每问一个未知（问题描述）+ 多条已知，一条已知 ↔ 知识点关联 / 推导可知 / 感性结论 · 每问多条答案，一条答案 ↔ 解析 / 题眼陷阱 / 总结</span>
+                        <span class="cs-hint">浅色格可直接编辑 · 一题多问 · 每问一个未知（问题描述）+ 多条已知，一条已知 ↔ 知识点关联 / 推导可知 · 每问多条答案，一条答案 ↔ 解析 / 题眼陷阱 / 总结</span>
                         <span class="fc-spacer"></span>
                         <button type="button" class="fc-btn" id="csSaveBtn">💾 保存</button>
                         <button type="button" class="fc-btn" id="csCancelBtn">取消</button>
@@ -14460,7 +14459,7 @@ if (document.readyState === 'loading') {
 
     /* ---------- 数据模型：以「问题」为核心（h 轮，截图合并范围版） ----------
        case.problems[i] = { q(问题描述=未知), items:[{known, kps[], derived, feel}], answers:[{a, note, eye, sum}] }
-       · 上半部分：每条已知 ↔ 一个知识点关联 + 一个推导可知 + 一个感性结论。
+       · 上半部分：每条已知 ↔ 一个知识点关联 + 一个推导可知（2026-10-11 起「感性结论」列已移除，feel 旧字段仅保留兼容读取）。
        · 下半部分：每条答案 ↔ 一个解析(note) + 一个题眼陷阱(eye) + 一个总结(sum)。
        · thought / eyes 旧字段仅保留兼容读取，页面不再展示与编辑。
        · difficulty: 1-5（0 = 未评）。 */
@@ -14590,17 +14589,17 @@ if (document.readyState === 'loading') {
 
         /* 一张连续大表：
            第1行 题目（黄色合并格）
-           上半部分：问题N | 问题描述 | 每条已知一行：已知 | 知识点关联 | 推导可知 | 感性结论
-           下半部分：问题N | 问题描述 | 每条答案一行：答案 | 解析 | 题眼、陷阱 | 总结 */
-        h += '<table class="cs-q cs-big"><colgroup><col class="cs-colq"><col class="cs-coldesc"><col><col><col><col></colgroup>';
+           上半部分：问题N | 问题描述 | 每条已知一行：已知 | 知识点关联 | 推导可知
+           下半部分：问题N | 每条答案一行：答案 | 解析 | 题眼、陷阱 | 总结 */
+        h += '<table class="cs-q cs-big"><colgroup><col class="cs-colq"><col class="cs-coldesc"><col><col><col></colgroup>';
 
         /* 第 1 行：题目（黄色合并格） */
         h += '<tbody class="cs-tb-head"><tr class="cs-r-title"><th class="rowhead">题目</th>' +
-             '<td colspan="5" class="cs-titlecell">' + plainIn(d.q, '这道题问的是什么…') + '</td></tr></tbody>';
+             '<td colspan="4" class="cs-titlecell">' + plainIn(d.q, '这道题问的是什么…') + '</td></tr></tbody>';
 
         /* 上半部分表头 */
         h += '<tbody class="cs-tb-hdup"><tr class="cs-r-hd">' +
-             '<th></th><th>问题描述</th><th>已知</th><th>知识点关联</th><th>推导可知</th><th>感性结论</th></tr></tbody>';
+             '<th></th><th>问题描述</th><th>已知</th><th>知识点关联</th><th>推导可知</th></tr></tbody>';
 
         /* 上半部分：每个问题一块（问题N / 问题描述 跨该问题所有已知行） */
         d.problems.forEach(function (p, pi) {
@@ -14618,31 +14617,27 @@ if (document.readyState === 'loading') {
                      '<td class="cs-fill cs-kpcell"><span class="cs-mini">知识点关联</span>' +
                      chipsHTML(it.kps, false, pi, ii) + '</td>' +
                      '<td class="cs-fill"><span class="cs-mini">推导可知</span>' +
-                     cellEditor([it.derived], '例如：a >0', 1) + '</td>' +
-                     '<td class="cs-fill"><span class="cs-mini">感性结论</span>' +
-                     cellEditor([it.feel], '直观感受 / 直觉', 1) + '</td></tr>';
+                     cellEditor([it.derived], '例如：a >0', 1) + '</td></tr>';
             });
-            h += '<tr class="cs-r-itemops"><td colspan="6" class="cs-triops">' +
+            h += '<tr class="cs-r-itemops"><td colspan="5" class="cs-triops">' +
                  '<button type="button" class="cs-addchip" data-addtri="1" data-pi="' + pi + '">＋ 加一条已知</button>' +
                  (items.length > 1 ? ' <button type="button" class="cs-addchip" data-deltri="1" data-pi="' + pi + '">－ 删最后一条</button>' : '') +
-                 '<span class="cs-mini" style="display:inline;font-weight:400;margin-left:8px">一条已知 ↔ 一个知识点关联 / 推导可知 / 感性结论</span></td></tr>';
+                 '<span class="cs-mini" style="display:inline;font-weight:400;margin-left:8px">一条已知 ↔ 一个知识点关联 / 推导可知</span></td></tr>';
             h += '</tbody>';
         });
 
         /* 下半部分表头（黄绿行，与截图第 8 行对应） */
         h += '<tbody class="cs-tb-hdlow"><tr class="cs-r-hd2">' +
-             '<th></th><th>问题描述</th><th>答案</th><th>解析</th><th>题眼、陷阱</th><th>总结</th></tr></tbody>';
+             '<th></th><th>答案</th><th>解析</th><th>题眼、陷阱</th><th>总结</th></tr></tbody>';
 
-        /* 下半部分：每个问题一块（问题N / 问题描述 回显，跨该问题所有答案行） */
+        /* 下半部分：每个问题一块（问题N，跨该问题所有答案行） */
         d.problems.forEach(function (p, pi) {
             var ans = (p.answers && p.answers.length) ? p.answers : [blankAnswer()];
             h += '<tbody class="cs-tb-low" data-pi="' + pi + '">';
             ans.forEach(function (x, ai) {
                 h += '<tr class="cs-r-ansr' + (ai === 0 ? ' cs-pstart' : '') + '">';
                 if (ai === 0) {
-                    h += '<td class="rowhead cs-rowq" rowspan="' + ans.length + '">问题' + (pi + 1) + '</td>' +
-                         '<td class="cs-rowdesc" rowspan="' + ans.length + '"><span class="cs-mini">问题描述</span>' +
-                         '<div class="cs-descecho">' + esc(String(p.q || '').trim() || '（同上半部分）') + '</div></td>';
+                    h += '<td class="rowhead cs-rowq" rowspan="' + ans.length + '">问题' + (pi + 1) + '</td>';
                 }
                 h += '<td class="cs-fill cs-anscell"><span class="cs-mini">答案' + (ai + 1) + '</span>' +
                      cellEditor([x.a], '答案…', 1) + '</td>' +
@@ -14653,7 +14648,7 @@ if (document.readyState === 'loading') {
                      '<td class="cs-fill"><span class="cs-mini">总结</span>' +
                      cellEditor([x.sum], '这类题记住什么', 1) + '</td></tr>';
             });
-            h += '<tr class="cs-r-ansops"><td colspan="6" class="cs-triops">' +
+            h += '<tr class="cs-r-ansops"><td colspan="5" class="cs-triops">' +
                  '<button type="button" class="cs-addchip" data-addans="1" data-pi="' + pi + '">＋ 加一条答案</button>' +
                  (ans.length > 1 ? ' <button type="button" class="cs-addchip" data-delans="1" data-pi="' + pi + '">－ 删最后一条答案</button>' : '') +
                  '</td></tr>';
@@ -14662,7 +14657,7 @@ if (document.readyState === 'loading') {
 
         /* 加减问题 */
         h += '<tbody class="cs-tb-ops"><tr><td class="rowhead">＋</td>' +
-             '<td colspan="5">' +
+             '<td colspan="4">' +
              '<button type="button" class="cs-addchip" id="csAddProb">＋ 加一个问题</button>' +
              (d.problems.length > 1 ? ' <button type="button" class="cs-addchip" id="csDelProb">－ 删掉最后一个问题</button>' : '') +
              '</td></tr></tbody>';
@@ -14701,7 +14696,7 @@ if (document.readyState === 'loading') {
         var headIn = csTable.querySelector('tbody.cs-tb-head .cs-cellin');
         draft.q = textOf(headIn);
 
-        /* 上半部分：问题描述 + 每条已知一行（已知, 知识点chips不在流内, 推导可知, 感性结论） */
+        /* 上半部分：问题描述 + 每条已知一行（已知, 知识点chips不在流内, 推导可知） */
         draft.problems.forEach(function (pr, pi) {
             var up = csTable.querySelector('tbody.cs-tb-up[data-pi="' + pi + '"]');
             if (!up) return;
@@ -14716,7 +14711,8 @@ if (document.readyState === 'loading') {
                     known: textOf(ins[0]),
                     kps: (oldItems[ii] && oldItems[ii].kps) || [],
                     derived: textOf(ins[1]),
-                    feel: textOf(ins[2])
+                    /* 2026-10-11：感性结论列已从界面移除；保留旧值，不再从表格回读 */
+                    feel: (oldItems[ii] && oldItems[ii].feel) || ''
                 });
             });
             pr.items = items.length ? items : [blankItem()];
@@ -27496,7 +27492,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011c</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011d</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
