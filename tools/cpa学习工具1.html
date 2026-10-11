@@ -3091,8 +3091,7 @@
         .cs-numbgrp .numb-hint { font-size: 11.5px; color: #9C8B72; }
         /* 答案 / 解析 */
         .cs-q td.cs-anscell, .cs-q td.cs-notecell { padding-top: 4px; }
-        .cs-q .cs-anscell textarea { min-height: 44px; }
-        .cs-q .cs-notecell textarea { min-height: 44px; }
+        /* 2026-10-11：答案格改用「已知」同款编辑器（rows=1），不再单独顶高；cs-notecell 选择器已随 f 轮移除 */
         /* 加减问题那一行 */
         .cs-q tbody.cs-tb-ops td { padding: 2px 4px 8px; }
         /* ---- 难度星标（编辑器标题旁，可点选）---- */
@@ -14612,7 +14611,7 @@ if (document.readyState === 'loading') {
                 if (ii === 0) {
                     h += '<td class="rowhead cs-rowq" rowspan="' + items.length + '">问题' + (pi + 1) + '</td>' +
                          '<td class="cs-rowdesc" rowspan="' + items.length + '"><span class="cs-mini">问题描述（未知）</span>' +
-                         plainIn(p.q, '这个问题求的是什么…') + '</td>';
+                         cellEditor([p.q], '这个问题求的是什么…', 1) + '</td>';
                 }
                 h += '<td class="cs-fill"><span class="cs-mini">已知' + (ii + 1) + '</span>' +
                      cellEditor([it.known], '例如：a =6', 1) + '</td>' +
@@ -14646,13 +14645,13 @@ if (document.readyState === 'loading') {
                          '<div class="cs-descecho">' + esc(String(p.q || '').trim() || '（同上半部分）') + '</div></td>';
                 }
                 h += '<td class="cs-fill cs-anscell"><span class="cs-mini">答案' + (ai + 1) + '</span>' +
-                     plainIn(x.a, '答案…') + '</td>' +
+                     cellEditor([x.a], '答案…', 1) + '</td>' +
                      '<td class="cs-fill"><span class="cs-mini">解析</span>' +
                      cellEditor(splitLines(x.note), '为什么是这个答案…', 1) + '</td>' +
                      '<td class="cs-fill"><span class="cs-mini">题眼、陷阱</span>' +
-                     plainIn(x.eye, '这道题的题眼 / 容易踩的坑') + '</td>' +
+                     cellEditor([x.eye], '这道题的题眼 / 容易踩的坑', 1) + '</td>' +
                      '<td class="cs-fill"><span class="cs-mini">总结</span>' +
-                     plainIn(x.sum, '这类题记住什么') + '</td></tr>';
+                     cellEditor([x.sum], '这类题记住什么', 1) + '</td></tr>';
             });
             h += '<tr class="cs-r-ansops"><td colspan="6" class="cs-triops">' +
                  '<button type="button" class="cs-addchip" data-addans="1" data-pi="' + pi + '">＋ 加一条答案</button>' +
@@ -27497,7 +27496,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011b</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011c</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
