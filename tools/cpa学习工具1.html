@@ -3086,6 +3086,9 @@
         .cs-q tr.cs-pstart > td, .cs-q tr.cs-pstart > th { border-top: 2px solid var(--accent, #A6503C); }
         .cs-q td.cs-descecho { font-size: 12.5px; color: #6B5B45; padding: 2px 2px 0; }
         .cs-q tr.cs-r-itemops td, .cs-q tr.cs-r-ansops td { padding: 3px 8px 6px; }
+        /* ★ 2026-10-11：工具栏里的编号工具组（替代每格下面那条浮条） */
+        .cs-numbgrp { display: inline-flex; align-items: center; gap: 6px; }
+        .cs-numbgrp .numb-hint { font-size: 11.5px; color: #9C8B72; }
         /* 答案 / 解析 */
         .cs-q td.cs-anscell, .cs-q td.cs-notecell { padding-top: 4px; }
         .cs-q .cs-anscell textarea { min-height: 44px; }
@@ -5649,6 +5652,13 @@
                         <option value="5">★★★★★ 压轴</option>
                     </select></label>
                     <label>做题时间 <input type="date" id="csDate"></label>
+                    <!-- ★ 2026-10-11（Tom）：编号工具从「每个单元格下面浮一条」收到这里，
+                         位置紧跟「做题时间」；作用于**当前聚焦的那个单元格**。 -->
+                    <span class="cs-numbgrp" id="csNumbGrp">
+                        <button type="button" class="fc-btn sm" id="csNumbBtn" title="按「编号模版」给当前单元格的每一行加 / 重排行首编号（层级按缩进；空行原样保留）。先把光标点进要编号的单元格">🔢 一键编号</button>
+                        <button type="button" class="fc-btn sm" id="csNumbUndoBtn" title="撤销当前单元格上一次编号，恢复编号前的原文">↩ 还原</button>
+                        <span class="numb-hint" id="csNumbHint"></span>
+                    </span>
                     <span class="fc-spacer"></span>
                     <input type="text" class="cs-search" id="csSearch" placeholder="搜索题目 / 知识点（Esc 清空）">
                 </div>
@@ -14993,6 +15003,48 @@ if (document.readyState === 'loading') {
     var csDiff = document.getElementById('csDiff');
     if (csDiff) csDiff.addEventListener('change', renderList);
 
+    /* ============================================================
+       ★ 2026-10-11（Tom）：案例工具栏的「🔢 一键编号 / ↩ 还原」
+         位置紧跟「做题时间」；作用于**当前聚焦的那个单元格**。
+         算法与撤销位仍由最后一块的 window.CpaNum 提供（只有一份实现）。
+       ============================================================ */
+    var csLastTa = null;
+    function csNumbHint() {
+        var h = document.getElementById("csNumbHint");
+        if (!h) return;
+        try { h.textContent = '模版：' + window.CpaNum.tmplNameOf(); } catch (e) { h.textContent = ''; }
+    }
+    if (csTable) csTable.addEventListener('focusin', function (ev) {
+        var t = ev.target;
+        if (t && t.tagName === 'TEXTAREA') { csLastTa = t; csNumbHint(); }
+    });
+    function csNumbTarget() {
+        if (csLastTa && document.contains(csLastTa)) return csLastTa;
+        // 没聚焦过任何格：兜底取表内第一个多行框（题目是单行 input，不算）
+        var t = csTable ? csTable.querySelector('textarea') : null;
+        if (t) csLastTa = t;
+        return t;
+    }
+    var csNumbBtn = document.getElementById("csNumbBtn");
+    if (csNumbBtn) csNumbBtn.addEventListener('click', function () {
+        var ta = csNumbTarget();
+        if (!ta) { toastSafe('先把光标点进要编号的单元格'); return; }
+        try { window.CpaNum.applyTo(ta); } catch (e) { }
+    });
+    var csNumbUndoBtn = document.getElementById("csNumbUndoBtn");
+    if (csNumbUndoBtn) csNumbUndoBtn.addEventListener('click', function () {
+        var ta = csNumbTarget();
+        if (!ta) { toastSafe('先把光标点进要编号的单元格'); return; }
+        try { window.CpaNum.undoOf(ta); } catch (e) { }
+    });
+    /* ★ CpaNum 住在**最后一个** <script> 块，首帧还没挂上 —— 提示文案要重试几次，
+       否则第一次进来永远是空的（实测：只 setTimeout(…,0) 会停在空字符串）。 */
+    (function csNumbHintRetry(n) {
+        csNumbHint();
+        var h = document.getElementById('csNumbHint');
+        if ((!h || !h.textContent) && n < 8) setTimeout(function () { csNumbHintRetry(n + 1); }, 250);
+    })(0);
+
     function renderStat() {
         var el = document.getElementById('csStat');
         if (!el) return;
@@ -16274,6 +16326,8 @@ if (document.readyState === 'loading') {
                 if (!isFinite(hours) || hours <= 0) hours = rvDiffHours(start, end);
                 saveKpReview(recordId, {
                     date: dateToStr(new Date()),
+                    /* ★ 2026-10-11：本次面板里实际看过的卡 —— 闪卡待复习库按它做卡级豁免 */
+                    cards: (typeof fcEmbedSeenIds === 'function') ? fcEmbedSeenIds() : null,
                     round: parseInt(box.querySelector('#rvRound').value, 10) || rd,
                     start: start, end: end, hours: hours,
                     tomatoes: Math.max(0, parseInt(p.value, 10) || 0),
@@ -19089,6 +19143,26 @@ if (document.readyState === 'loading') {
                     ids[c.id] = 1; out.push(c);
                 });
             });
+            /* ★ 2026-10-11（Tom 报障）：「点第一张卡 → 标记已完成 → 后面其他卡全没了」。
+               根因：待复习库的到期判定挂在**记录轮次**上，一次完成会让这条记录当天再无
+               到期轮次，它的卡整体失去「今天到期」资格（上面的记录级豁免只是雪上加霜）。
+               补位：对**带 cards 字段**的完成条目，把它名下「本次没看过、也没自评过」的卡
+               继续留在待复习库 —— 直到用户自己逐张处理。
+               没带该字段的老条目（复习清单勾选 / 历史数据）不补位，维持记录级整条豁免。 */
+            (state.reviewDone || []).forEach(function (x) {
+                if (!x || x.date !== today || !Array.isArray(x.cards)) return;
+                const rec = (state.records || []).filter(function (r) { return r && r.id === x.recordId; })[0];
+                if (!rec) return;
+                const seen = {};
+                x.cards.forEach(function (cid) { seen[cid] = 1; });
+                let list = [];
+                try { list = fcCardsForRecord(rec) || []; } catch (e) { list = []; }
+                list.forEach(function (c) {
+                    if (!c || ids[c.id] || seen[c.id]) return;
+                    if (fcReviewOf(c)) return;      // 自评过的卡走卡片级排期，不在此列
+                    ids[c.id] = 1; out.push(c);
+                });
+            });
             return out;
         }
 
@@ -19472,6 +19546,15 @@ if (document.readyState === 'loading') {
         //   一条记录会带出多张卡（相邻两级配对，含祖先链），固定停在第 0 张
         //   会让「点开『1.1 不只是数理化』却看到卡『1. 教育的本质』」。
         //   没给 kpIdx 就退化为「记录命中的第一条知识点」，都对不上才用第 0 张。
+        /* ★ 2026-10-11（Tom 报障）：本次复习面板里**实际看过**的卡 id 列表。
+           打开面板的那张 + 翻过面 / 翻到的每一张都算。
+           点「保存并标记已完成」时只有这些卡当天移出待复习库；
+           同一条记录里还没看过的卡继续留着（见 fcPendingCards 的卡级补位段）。 */
+        function fcEmbedSeenIds() {
+            if (!fcEmbedState || !fcEmbedState.seen) return null;
+            return Object.keys(fcEmbedState.seen);
+        }
+
         function fcEmbedHTML(rec, kpIdx) {
             fcState();
             const cards = fcCardsForRecord(rec);
@@ -19504,7 +19587,9 @@ if (document.readyState === 'loading') {
                     if (t >= 0) { startIdx = t; break; }
                 }
             }
-            fcEmbedState = { idx: startIdx, flipped: false, editing: false, ids: cards.map(function (c) { return c.id; }) };
+            /* ★ 2026-10-11（Tom 报障）：seen = 本次复习面板里**实际看过**的卡（见 fcEmbedSeenIds） */
+            fcEmbedState = { idx: startIdx, flipped: false, editing: false, ids: cards.map(function (c) { return c.id; }), seen: {} };
+            if (cards[startIdx]) fcEmbedState.seen[cards[startIdx].id] = 1;   // 打开的那张就算看过
             return '<div class="fce-wrap" id="fceWrap">' +
                 '<div class="fce-head">' +
                     '<span class="fce-title">🃏 本次闪卡</span>' +
@@ -19521,6 +19606,7 @@ if (document.readyState === 'loading') {
             const stage = document.getElementById('fceStage');
             if (!stage || !fcEmbedState) return;
             const id = fcEmbedState.ids[fcEmbedState.idx];
+            if (id) fcEmbedState.seen[id] = 1;      // ★ 翻面 / 翻到 → 记入「本次看过」（open / flip / nav 都经这里）
             const card = state.cards[id];
             const pos = document.getElementById('fcePos');
             if (pos) pos.textContent = String(fcEmbedState.idx + 1);
@@ -22402,8 +22488,24 @@ if (document.readyState === 'loading') {
             state.kpReviews[recordId + '#' + d.round] = d;
             state.reviewDone = state.reviewDone || [];
             const i = state.reviewDone.findIndex(x => x.recordId === recordId && x.round === d.round);
-            if (i >= 0) state.reviewDone[i].date = todayStr;
-            else state.reviewDone.push({ recordId: recordId, round: d.round, date: todayStr });
+            /* ★ 2026-10-11（Tom 报障）：「保存并标记已完成」原先只写记录级 {recordId, round, date}，
+               闪卡侧只能把整条记录的卡一起豁免 —— 于是看过 1 张、其余全消失。
+               现在把「本次实际看过的卡」也记进这条完成记录（cards 字段，重复保存取并集）；
+               没有这个字段的老条目（复习清单勾选 / 历史数据）维持记录级整条豁免，行为不变。 */
+            const _seen = Array.isArray(d.cards) ? d.cards.filter(Boolean) : null;
+            if (i >= 0) {
+                state.reviewDone[i].date = todayStr;
+                if (_seen) {
+                    const _old = Array.isArray(state.reviewDone[i].cards) ? state.reviewDone[i].cards : [];
+                    const _m = {}; _old.forEach(function (k) { _m[k] = 1; });
+                    _seen.forEach(function (k) { _m[k] = 1; });
+                    state.reviewDone[i].cards = Object.keys(_m);
+                }
+            } else {
+                const _ent = { recordId: recordId, round: d.round, date: todayStr };
+                if (_seen) _ent.cards = _seen.slice();
+                state.reviewDone.push(_ent);
+            }
             try { saveData(); } catch (e) {}
             try { renderMemoryView(); } catch (e) {}
             try { renderGoalStatsPanel(); } catch (e) {}
@@ -27290,10 +27392,36 @@ if (document.readyState === 'loading') {
             var h = bar.querySelector('.numb-hint');
             if (h) h.textContent = '模版：' + tmplName(tmpl);
         }
+        /* ★ 2026-10-11：把「编号 / 撤销」抽成独立函数 —— 浮条与案例工具栏的按钮共用同一份实现
+           （同一套模版、同一套 toast、同一个 dataset.numbUndo 撤销位，不存在两套语义）。 */
+        function numbApplyTo(ta) {
+            if (!ta) return;
+            if (!String(ta.value || '').trim()) { numbToast('这段是空的，没什么可编号。'); return; }
+            var r = numApplyText(ta.value);
+            if (r.text === ta.value) { numbToast('已是最新编号（模版：' + tmplName(tmpl) + '）'); return; }
+            ta.dataset.numbUndo = ta.value;                 // 只留最近一次，够用且不占空间
+            ta.value = r.text;
+            // 让草稿保存 / 联动逻辑跟上（有些字段靠 input 事件驱动）
+            try { ta.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) {}
+            numbToast('🔢 已按「' + tmplName(tmpl) + '」为 ' + r.changed + ' 行编号（可点「↩ 还原」退回）');
+        }
+        function numbUndoTo(ta) {
+            if (!ta) return;
+            if (ta.dataset.numbUndo == null) { numbToast('还没有可撤销的编号。'); return; }
+            ta.value = ta.dataset.numbUndo;
+            delete ta.dataset.numbUndo;
+            try { ta.dispatchEvent(new Event('input', { bubbles: true })); } catch (e3) {}
+            numbToast('↩ 已恢复编号前的原文');
+        }
+
         function numbAttach(ta) {
-            if (!ta || ta.dataset.numbed === '1') return;
+            if (!ta || ta.dataset.numbed === '1' || ta.dataset.numbed === 'skip') return;
             if (ta.dataset.nonumb === '1') return;                 // 预留：将来新字段可自行退出
             if (ta.id && NUMB_SKIP[ta.id]) return;
+            /* ★ 2026-10-11（Tom）：案例展示的单元格改用工具栏那一对按钮（在「做题时间」后面），
+               不再每个单元格下面各浮一条 —— 编辑器里七八条浮条又吵又挤。
+               其余页面 / 记录表单的多行框行为不变。 */
+            if (ta.closest && ta.closest('#csTable')) { ta.dataset.numbed = 'skip'; return; }
             ta.dataset.numbed = '1';
             var bar = document.createElement('div');
             bar.className = 'numb-bar';
@@ -27329,20 +27457,9 @@ if (document.readyState === 'loading') {
                 var ta = bar.__ta;
                 if (!ta) return;
                 if (t.closest('[data-numbapply]')) {
-                    var r = numApplyText(ta.value);
-                    if (!String(ta.value || '').trim()) { numbToast('这段是空的，没什么可编号。'); return; }
-                    if (r.text === ta.value) { numbToast('已是最新编号（模版：' + tmplName(tmpl) + '）'); return; }
-                    ta.dataset.numbUndo = ta.value;                 // 只留最近一次，够用且不占空间
-                    ta.value = r.text;
-                    // 让草稿保存 / 联动逻辑跟上（有些字段靠 input 事件驱动）
-                    try { ta.dispatchEvent(new Event('input', { bubbles: true })); } catch (e2) {}
-                    numbToast('🔢 已按「' + tmplName(tmpl) + '」为 ' + r.changed + ' 行编号（可点「↩ 还原」退回）');
+                    numbApplyTo(ta);
                 } else if (t.closest('[data-numbundo]')) {
-                    if (ta.dataset.numbUndo == null) { numbToast('还没有可撤销的编号。'); return; }
-                    ta.value = ta.dataset.numbUndo;
-                    delete ta.dataset.numbUndo;
-                    try { ta.dispatchEvent(new Event('input', { bubbles: true })); } catch (e3) {}
-                    numbToast('↩ 已恢复编号前的原文');
+                    numbUndoTo(ta);
                 }
             });
         }
@@ -27351,7 +27468,10 @@ if (document.readyState === 'loading') {
             apply: numApplyText,
             stripHead: numStripHead,
             tmplNameOf: function () { return tmplName(tmpl); },
-            attachAll: numbInit
+            attachAll: numbInit,
+            /* ★ 2026-10-11：给「案例展示」工具栏那对按钮用 —— 作用于传进来的那个单元格 */
+            applyTo: numbApplyTo,
+            undoOf: numbUndoTo
         };
 
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -27377,7 +27497,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261011b</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
