@@ -16316,7 +16316,7 @@ if (document.readyState === 'loading') {
                        而实际想要的是「保存这一轮 + 标记完成」一次做完。
                        「知识点补充 / 联想延伸」写在闪卡反面、由 fcAddNote 即时落库，
                        不该因为点了「仅标记已完成」被联动清掉（原来 skip 分支正是把它清成 ''）。 */
-                    '<button class="pd-btn primary" id="rvDoneBtn">保存并标记已完成</button>' +
+                    '<button class="pd-btn primary" id="rvDoneBtn" title="保存这一轮的学习记录，并**只结算当前这张闪卡**（一次一张，不再连带同系列其它卡）">保存并标记已完成</button>' +
                 '</div></div>';
             document.body.appendChild(box);
             const close = function () { rvTimerStop(); if (box.parentNode) box.parentNode.removeChild(box); rvCtx = null; };
@@ -16371,7 +16371,8 @@ if (document.readyState === 'loading') {
                 if (!isFinite(hours) || hours <= 0) hours = rvDiffHours(start, end);
                 saveKpReview(recordId, {
                     date: dateToStr(new Date()),
-                    /* ★ 2026-10-11：本次面板里实际看过的卡 —— 闪卡待复习库按它做卡级豁免 */
+                    /* ★ V20261012b：只结算**当前这张**卡（见 fcEmbedSeenIds）——
+                       一次点击只让一张卡离开待复习库，不再连带同系列其它卡。 */
                     cards: (typeof fcEmbedSeenIds === 'function') ? fcEmbedSeenIds() : null,
                     round: parseInt(box.querySelector('#rvRound').value, 10) || rd,
                     start: start, end: end, hours: hours,
@@ -16523,6 +16524,10 @@ if (document.readyState === 'loading') {
         //    有了守卫，即使宿主再重复调用也只是空转。
         let fcBound = false;
         let fcEmbedRecord = null;   // 当前复习面板对应的学习记录
+        /* ★ V20261012b：用户是从**哪一张卡**点进复习面板的。
+           面板里没列出卡（这一节没出卡 / 卡都没了）时，它是「保存并标记已完成」
+           还能结算到东西的唯一依据 —— 保证点了完成一定有反应。 */
+        let fcEmbedOpenId = null;
         // ★ 需求 6：按「复习掌握程度」筛选。'' = 全部 ｜ 'none' = 未自评 ｜ '1'..'5' = 自评档位
         //   与 fcQuery（关键词）是 and 关系，见 fcMatch。
         let fcMasteryFilter = '';
@@ -18312,15 +18317,28 @@ if (document.readyState === 'loading') {
            点列表上的「✔ 完成」→ 只把**这张卡**的 nextAt 推后一格 → 落盘 → 立即重绘。
            单跳、确定、不经过任何「记录级轮次」或「关联列表」—— 从机制上消除
            「点了不消失」（旧路径要跨 4 跳、依赖运行时 seen 列表，任一环断掉就卡住）。 */
-        function fcComplete(id) {
+        function fcComplete(id, opts) {
+            opts = opts || {};
             const card = state.cards && state.cards[id];
-            if (!card) { showToast('⚠️ 这张卡已不存在'); return; }
+            if (!card) { if (!opts.quiet) showToast('⚠️ 这张卡已不存在'); return null; }
+            /* ★ V20261012b：同一天不重复推进 —— 一张卡一天只结算一次。
+               判据是「今天已经推过后面的日子」，**不是**「评过星」：
+               旧判据（lastAt=今天 且 mastery>0）对没自评的卡不成立，
+               于是同一张卡会被推两格（面板点「✔ 这张卡完成了」之后再点
+               「保存并标记已完成」，间隔就从 1 天跳到 4 天）。 */
+            const rv0 = card.review || {};
+            const today0 = dateToStr(new Date());
+            if (rv0.lastAt === today0 && rv0.nextAt && String(rv0.nextAt) > today0) {
+                if (!opts.quiet) showToast('✅ 这张卡今天已经完成过了 · 下次 ' + fcNextText(card));
+                return card;
+            }
             try {
                 fcAutoAdvance(card);
             } catch (e) {}
             try { saveData(); } catch (e) {}
             fcRefreshViews();
-            showToast('✅ 已完成这张卡' + (fcNextText(card) ? ' · 下次 ' + fcNextText(card) : ''));
+            if (!opts.quiet) showToast('✅ 已完成这张卡' + (fcNextText(card) ? ' · 下次 ' + fcNextText(card) : ''));
+            return card;
         }
 
         /* 「⚡ 生成 / 核对」按钮入口：生成新卡；有差异就摊开核对面板。 */
@@ -18951,6 +18969,8 @@ if (document.readyState === 'loading') {
             //   就该看到哪张卡。面板的卡列表与 fcBuild 同源，所以被点的卡一定在列表里，
             //   把内嵌索引拨过去再重渲一次即可。
             try {
+                /* ★ V20261012b：记住「用户点的是哪一张」—— 面板没有卡列表时靠它结算 */
+                fcEmbedOpenId = card.id;
                 if (fcEmbedState && Array.isArray(fcEmbedState.ids)) {
                     const k = fcEmbedState.ids.indexOf(card.id);
                     if (k >= 0 && k !== fcEmbedState.idx) {
@@ -18984,7 +19004,7 @@ if (document.readyState === 'loading') {
             // ★ 需求 2：两个新标记 —— 「生成 / 更新」现在会按记录刷新，所以要让用户看得见
             //   「这张卡被我锁定了」和「我改过的版本还留着一份」。
             if (card.pinMine) flags.push('<span class="fc-flag pinned" title="内容已锁定，不再被学习记录覆盖">📌 已锁定</span>');
-            if (card.mine) flags.push('<span class="fc-flag mine" title="「⚡ 生成 / 更新」覆盖过你改的内容，编辑面板里可一键恢复">↩ 可恢复我的改动</span>');
+            if (card.mine) flags.push('<span class="fc-flag mine" title="旧版「⚡ 生成 / 更新」覆盖过你改的内容，编辑面板里可一键恢复">↩ 可恢复我的改动</span>');
             /* ★ V20261012a：不再打「树中已不存在 / 范围外」标记 —— 生成即独立，
                来源变化统一在核对面板里说。 */
             const a1 = String(card.a || '').split('\n').filter(function (x) { return x.trim(); });
@@ -19038,7 +19058,7 @@ if (document.readyState === 'loading') {
                     '<input type="text" id="fcEt" value="' + kpEsc(own) + '" placeholder="如：易错, 计算题, 考前必看">' +
                     '<div class="fc-hint">自动标签：' + kpEsc(fcAutoTags(card).join(' / ') || '（无）') + '</div></div>' +
                 '<div class="fc-hint">✏️ 修改只作用于这张卡的文字与标签 —— 不触碰任何已积累的复习记录、轮次完成情况与笔记。' +
-                    '点「⚡ 生成 / 更新」时，被记录覆盖前会先把你的版本存一份，可随时用「↩ 恢复我的改动」换回。</div>' +
+                    '「⚡ 生成 / 核对」现在只新增卡片，不会再改写你改过的内容；这一栏只对旧版覆盖过的卡生效。</div>' +
                 // ★ 需求 3：编辑界面直接给「本次复习掌握程度」——自评后这张卡改用
                 //   卡片级排期（下次复习日期由自评值算出），并同步到日历分布。
                 fcSelfGradeHTML(card) +
@@ -19046,7 +19066,7 @@ if (document.readyState === 'loading') {
                     '<button type="button" class="fc-btn primary fc-esave" data-fcsave="' + card.id + '">保存</button>' +
                     '<button type="button" class="fc-btn fc-ecancel" data-fccancel="1">取消</button>' +
                     '<span class="fc-spacer"></span>' +
-                    (card.mine ? '<button type="button" class="fc-btn sm" data-fcmine="' + card.id + '" title="把「生成 / 更新」覆盖掉的内容换回来">↩ 恢复我的改动</button>' : '') +
+                    (card.mine ? '<button type="button" class="fc-btn sm" data-fcmine="' + card.id + '" title="把旧版「生成 / 更新」覆盖掉的内容换回来">↩ 恢复我的改动</button>' : '') +
                     (card.edited || card.pinMine
                         ? '<button type="button" class="fc-btn sm" data-fcpin="' + card.id + '" title="锁定后这张卡的内容不再被学习记录覆盖">' +
                           (card.pinMine ? '↻ 跟随学习记录' : '📌 锁定我的版本') + '</button>'
@@ -19471,7 +19491,7 @@ if (document.readyState === 'loading') {
             }).length;
             let h = '<div class="fc-progress" style="margin:2px 0 8px;">' +
                 '每张卡都有<b>自己的下次复习日</b>（艾宾浩斯 ' + getReviewIntervals().join(' / ') + ' 天节奏）：' +
-                '在复习面板点「保存并标记已完成」就把这张卡往后推一格；' +
+                '在复习面板点「✔ 这张卡完成了」或「保存并标记已完成」，都只把<b>当前这一张</b>往后推一格（一次一张，不会连带同系列其它卡）；' +
                 '<b>自评掌握程度</b>则按掌握程度加速 / 减速（见卡片反面）。' +
                 ' <b>当日库</b>今天到期就要看，<b>剩余库</b>是今天之后才排到的卡 —— 两边互斥，一张卡不重复出现；' +
                 '<b>把当日库清空 = 今天全部复习完了</b>。</div>';
@@ -19775,13 +19795,71 @@ if (document.readyState === 'loading') {
         //   一条记录会带出多张卡（相邻两级配对，含祖先链），固定停在第 0 张
         //   会让「点开『1.1 不只是数理化』却看到卡『1. 教育的本质』」。
         //   没给 kpIdx 就退化为「记录命中的第一条知识点」，都对不上才用第 0 张。
-        /* ★ 2026-10-11（Tom 报障）：本次复习面板里**实际看过**的卡 id 列表。
-           打开面板的那张 + 翻过面 / 翻到的每一张都算。
-           点「保存并标记已完成」时只有这些卡当天移出待复习库；
-           同一条记录里还没看过的卡继续留着（见 fcPendingCards 的卡级补位段）。 */
+        /* ★ V20261012b：「今日待复习」= 这一节里还没结算、今天到期的卡数。
+           只做面板头部的可见计数 —— 它就是「一张一张往下掉」的那把尺。 */
+        function fcEmbedDueCount(list) {
+            const today = dateToStr(new Date());
+            let n = 0;
+            (list || []).forEach(function (c) {
+                if (!c || c.deleted || c.hidden) return;
+                if (fcIsDue(c, today)) n++;
+            });
+            return n;
+        }
+
+        /* 面板内原地同步：位置与「今日待复习」计数按**最新数据**重算。
+           不重建面板 —— 已填的开始 / 结束时间与番茄数一个字都不动。 */
+        function fcEmbedPanelSync() {
+            if (!fcEmbedState) return;
+            const today = dateToStr(new Date());
+            const posEl = document.getElementById('fcePos');
+            if (posEl) posEl.textContent = String(fcEmbedState.idx + 1);
+            const dueEl = document.getElementById('fceDue');
+            if (dueEl) {
+                let n = 0;
+                fcEmbedState.ids.forEach(function (id) {
+                    const c = state.cards[id];
+                    if (c && !c.deleted && !c.hidden && fcIsDue(c, today)) n++;
+                });
+                dueEl.textContent = String(n);
+            }
+        }
+
+        /* 面板内点「✔ 这张卡完成了」之后的收尾：从**当前这张的下一张**起找第一张
+           「今日待复习」的卡并前进过去；一圈都没有 → 停在原位并提示这一节今天过完了。
+           ★ 一次点击只结算一张 —— Tom 定稿的「一个一个消失」。 */
+        function fcEmbedAfterComplete() {
+            if (!fcEmbedState || !Array.isArray(fcEmbedState.ids) || !fcEmbedState.ids.length) return;
+            const today = dateToStr(new Date());
+            const len = fcEmbedState.ids.length;
+            fcEmbedState.flipped = false;
+            fcEmbedState.editing = false;
+            let found = -1;
+            for (let off = 1; off <= len; off++) {
+                const i = ((fcEmbedState.idx + off) % len + len) % len;
+                const c = state.cards[fcEmbedState.ids[i]];
+                if (c && !c.deleted && !c.hidden && fcIsDue(c, today)) { found = i; break; }
+            }
+            if (found >= 0) fcEmbedState.idx = found;
+            fcEmbedRender();
+            fcEmbedPanelSync();
+            if (found < 0) showToast('🎉 这一节的闪卡今天都过完了 —— 其余的卡都有自己的下次复习日');
+        }
+
         function fcEmbedSeenIds() {
-            if (!fcEmbedState || !fcEmbedState.seen) return null;
-            return Object.keys(fcEmbedState.seen);
+            /* ★ V20261012b（Tom 定稿「一个一个消失」）——
+               这里**不再**返回「本次看过的全部卡」。旧口径（seen 集合）的病因：
+               面板默认落点那张卡在 fcEmbedHTML 里就被记成「看过」，用户真正点进来的
+               那张又被 fcOpenReview 记一次 —— 于是从第 3 张卡进面板、按一次
+               「保存并标记已完成」，会连带把默认落点那张也推走。症状就是
+               「点一次完成，多张同系列的卡一起从待复习库消失」；翻得越多，一次消失越多。
+               新口径：一次只结算**当前正在看的这一张**。
+               面板里没有卡列表（这一节没出卡）时，退回「你点进来的那张卡」。 */
+            if (fcEmbedState && Array.isArray(fcEmbedState.ids)) {
+                const id = fcEmbedState.ids[fcEmbedState.idx];
+                if (id) return [id];
+            }
+            return fcEmbedOpenId ? [fcEmbedOpenId] : null;
         }
 
         function fcEmbedHTML(rec, kpIdx) {
@@ -19792,7 +19870,8 @@ if (document.readyState === 'loading') {
                 fcEmbedState = null;
                 return '<div class="fce-wrap">' +
                     '<div class="fce-head"><span class="fce-title">🃏 本次闪卡</span><span class="fce-count">0 张</span></div>' +
-                    '<div class="fc-empty" style="padding:10px 4px;">这一节还没有可用的闪卡。到顶部 <b>🃏 闪卡</b> 页点 <b>⚡ 生成 / 核对</b>。</div>' +
+                    '<div class="fc-empty" style="padding:10px 4px;">这一节还没有可用的闪卡。到顶部 <b>🃏 闪卡</b> 页点 <b>⚡ 生成 / 核对</b>。' +
+                        '<br>（你这次点进来的那张卡不受影响 —— 下面的「保存并标记已完成」仍会单独结算它。）</div>' +
                 '</div>';
             }
             const kpsOf = (rec && rec.knowledgePoints) || [];
@@ -19816,16 +19895,21 @@ if (document.readyState === 'loading') {
                     if (t >= 0) { startIdx = t; break; }
                 }
             }
-            /* ★ 2026-10-11（Tom 报障）：seen = 本次复习面板里**实际看过**的卡（见 fcEmbedSeenIds） */
             fcEmbedState = { idx: startIdx, flipped: false, editing: false, ids: cards.map(function (c) { return c.id; }), seen: {} };
-            if (cards[startIdx]) fcEmbedState.seen[cards[startIdx].id] = 1;   // 打开的那张就算看过
+            /* ★ V20261012b：seen 只作「本次看过」的痕迹，**不再参与完成结算**
+               （结算只看当前这一张，见 fcEmbedSeenIds）。 */
+            if (cards[startIdx]) fcEmbedState.seen[cards[startIdx].id] = 1;
+            const dueN = fcEmbedDueCount(cards);
             return '<div class="fce-wrap" id="fceWrap">' +
                 '<div class="fce-head">' +
                     '<span class="fce-title">🃏 本次闪卡</span>' +
-                    '<span class="fce-count"><b id="fcePos">1</b> / ' + cards.length + ' 张</span>' +
+                    '<span class="fce-count"><b id="fcePos">' + (startIdx + 1) + '</b> / ' + cards.length + ' 张' +
+                        ' · 今日待复习 <b id="fceDue">' + dueN + '</b> 张</span>' +
                     '<span class="fc-spacer"></span>' +
                     '<button type="button" class="fc-btn sm" data-fce-nav="-1">‹ 上一张</button>' +
                     '<button type="button" class="fc-btn sm" data-fce-nav="1">下一张 ›</button>' +
+                    '<button type="button" class="fc-btn primary fc-donebtn" data-fce-done="1"' +
+                        ' title="只结算当前这一张卡：推后它自己的下次复习日，立刻从待复习库消失。一次点击只走一张。">✔ 这张卡完成了</button>' +
                 '</div>' +
                 '<div class="fce-stage" id="fceStage"></div>' +
             '</div>';
@@ -19861,7 +19945,7 @@ if (document.readyState === 'loading') {
                             '<input type="text" id="fceEt" value="' + kpEsc((card.tags || []).join(', ')) + '">' +
                             '<div class="fc-hint">自动标签：' + kpEsc(fcAutoTags(card).join(' / ') || '（无）') + '</div></div>' +
                         '<div class="fc-hint">✏️ 修改只作用于这张卡的文字与标签 —— 不触碰已积累的复习记录、轮次完成情况与笔记。保存后下次打开可继续补充。' +
-                            '点「⚡ 生成 / 更新」时，被记录覆盖前会先把你的版本存一份。</div>' +
+                            '「⚡ 生成 / 核对」只新增卡片，不会改写你改过的内容 —— 改完就是这张卡自己的版本。</div>' +
                         // ★ 需求 3：闪卡编辑界面里的「本次复习掌握程度」
                         fcSelfGradeHTML(card) +
                         '<div class="fc-edit-actions">' +
@@ -19954,6 +20038,17 @@ if (document.readyState === 'loading') {
                 // ★ v57：反面答案的呈现方式（大纲·带编号 / 符号 / 默认）
                 const bvBtn = pick('data-fcbackview');
                 if (bvBtn) { setFcBackView(bvBtn.getAttribute('data-fcbackview')); return; }
+                /* ★ V20261012b：面板内「✔ 这张卡完成了」——
+                   只结算当前这一张，然后原地前进到下一张今日待复习的卡。
+                   不重建面板（已填的时间 / 番茄数都保住），一次点击只走一张。 */
+                if (pick('data-fce-done')) {
+                    const cur = curCard();
+                    if (cur) {
+                        fcComplete(cur.id, { quiet: true });
+                        fcEmbedAfterComplete();
+                    }
+                    return;
+                }
                 // 翻面：data-fce-flip="1" 翻到反面，"0" 翻回正面。
                 // 正面整块（含问题文字）都可点 —— 对应「学习笔记展示正面，
                 // 再次点击成为反面」；反面屏只在标题行 / 按钮上可点回，
@@ -22751,7 +22846,10 @@ if (document.readyState === 'loading') {
                     const _c = state.cards && state.cards[cid];
                     if (!_c) return;
                     const _rv = _c.review || {};
-                    if (_rv.lastAt === todayStr && (parseInt(_rv.mastery, 10) || 0) > 0) return;
+                    /* ★ V20261012b：同一天不重复推进（与 fcComplete 同一把尺）——
+                       判据是「今天已经推过这张卡」，不是「评过星」；
+                       否则没自评的卡在面板里会被推两格（间隔 1 天 → 4 天）。 */
+                    if (_rv.lastAt === todayStr && _rv.nextAt && String(_rv.nextAt) > todayStr) return;
                     if (typeof fcAutoAdvance === 'function') fcAutoAdvance(_c);
                 });
             } catch (e) {}
@@ -27724,7 +27822,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012b</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
