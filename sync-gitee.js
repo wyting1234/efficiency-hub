@@ -1117,12 +1117,25 @@
         mode = choice;
       }
       let localData;
+      let genBlocked = false;
       if (mode === 'merge') {
         // 合并要读全量远端数据（每片各一个请求）。
         // 若刚刚为「云端有没有数据」读过 meta，这里直接复用它 ——
         // 否则 giteeRead 会再把 meta 读一遍（虽然命中缓存不发请求，但代码路径上
         // 埋了个「缓存一旦失效就多一个 RTT」的隐患）。
         const remote = await giteeRead(cloudMeta);
+        // ★ 世代闸门（同 GitHub 侧）：本机停留在被「覆盖」掉的旧世代时，这批数据上传
+        //   上去就等于撤销那次覆盖 ⇒ 本次不下发，本机数据一行不动。
+        // ⚠️ 只读判断，不记账（同 GitHub 侧：记账会让后续「双向同步」跳过对齐）
+        genBlocked = !!(Core.epochNewerThanSeen && remote && Core.epochNewerThanSeen(remote.metaEpoch));
+        if (genBlocked) {
+          Core.progBusy && Core.progBusy(false);
+          Core.notifyOK('本次未上传：云端已被另一台设备覆盖',
+            Core.epochNoticeText(remote.metaEpoch) +
+            '\n为避免把那次「覆盖」撤销，本次「合并上传」已跳过，本机数据未改动。' +
+            '\n稍后点「下载 → 合并到本机」或「双向同步」即可让本机对齐到云端（对齐前会自动留一份本机快照）。');
+          return;
+        }
         localData = Core.buildMergedUpload(remote || { data: {} });
       } else {
         localData = Core.collectLocalData();
@@ -1173,11 +1186,17 @@
         // 片时间戳」——如果云端 meta 是最近写入的（哪怕它引用的片已丢失，即孤儿
         // meta），本机键的 ts 必然更旧，所有片都会被判「不脏」而跳过，覆盖就形同
         // 虚设。force=true 让每一片都真实重写，这才是「覆盖」的语义。
-        info = await Core.writeShardedWith(giteeIO, localData, mode === 'overwrite');
+        info = await Core.writeShardedWith(giteeIO, localData, mode === 'overwrite',
+          mode === 'overwrite' ? { overwrite: true } : null);
       } catch (e) {
         if (!/不存在/.test(e.message || '')) throw e;
         await ensureRepo();
-        info = await Core.writeShardedWith(giteeIO, localData, true);
+        info = await Core.writeShardedWith(giteeIO, localData, true,
+          mode === 'overwrite' ? { overwrite: true } : null);
+      }
+      // 覆盖成功后立刻承认本机所在世代（同 GitHub 侧）
+      if (info && info.meta && info.meta.epoch && Core.setEpochSeen) {
+        Core.setEpochSeen(info.meta.epoch.n, info.meta.epoch.at);
       }
       markSynced('up', Object.keys(localData));
       if (mode === 'overwrite') lockHoldAfterOverwrite();   // 覆盖成功后：给自动同步让路
@@ -1373,6 +1392,13 @@
         mode === 'merge' ? '按「合并到本机」处理：两边逐项取较新的。'
                          : '按「覆盖本机」处理：用云端数据整体替换本机。');
       const remote = hasShards ? await giteeRead(meta) : pre;
+      // ★ 世代检测（同 GitHub 侧）：合并式下先做「世代对齐」（以云端为准 + 留快照）。
+      const genNewer = (Core.noteCloudEpoch && remote) ? Core.noteCloudEpoch(remote.metaEpoch) : false;
+      let genAlign = null;
+      if (genNewer && mode === 'merge' && Core.alignToGeneration) {
+        genAlign = Core.alignToGeneration(remote, remote.metaEpoch);
+      }
+      const genTip = (genNewer && Core.epochNoticeText) ? '\n\n' + Core.epochNoticeText(remote.metaEpoch) : '';
       // ⚠️ 顺序调整后必须补的安全闸：索引里记着有分片、实际读不回来时，
       //    若不拦就轮到下面执行「覆盖本机」——而 applyCloudToLocal 会先清光本机
       //    可同步键，等于把本机数据清空。这里一律中止，本机数据保持不动。
@@ -1396,9 +1422,12 @@
       markSynced('down', Object.keys(remote.data));
       if (mode === 'overwrite') lockHoldAfterOverwrite();   // 覆盖成功后：给自动同步让路
       Core.notifyOK(mode === 'merge' ? '已合并 Gitee 数据到本机' : '已从 Gitee 同步到本机',
-        mode === 'merge'
+        (mode === 'merge'
           ? '合并完成：新增 ' + stats.added + ' 项，更新 ' + stats.updated + ' 项（云端较新），保留本机 ' + stats.kept + ' 项。'
-          : '云端的 ' + Object.keys(remote.data).length + ' 项数据已写入本机。');
+          : '云端的 ' + Object.keys(remote.data).length + ' 项数据已写入本机。') +
+        genTip +
+        (genAlign ? '\n（世代对齐：' + genAlign.stale.length + ' 项旧世代的本机数据已按云端处理，' +
+          '其中 ' + genAlign.removed + ' 项云端没有、已从本机移除；动手前已留快照，可找回。）' : ''));
     } catch (e) {
       console.warn('[Gitee] 下载失败:', e.message);
       Core.notifyFail('从 Gitee 下载失败', (e.message || String(e)) + healHint() + '\n本机数据未改动。');
@@ -1455,6 +1484,11 @@
       const st = r.localStats;
       if (!silent) {
         Core.notifyOK('已完成双向同步（Gitee）',
+        ((r.epochNewer && Core.epochNoticeText) ? Core.epochNoticeText(r.metaEpoch) + '\n\n' : '') +
+        ((r.epochNewer && r.alignStats)
+          ? '已做世代对齐：' + r.alignStats.stale.length + ' 项旧世代的本机数据按云端处理' +
+            '（其中 ' + r.alignStats.removed + ' 项云端没有、已从本机移除；动手前已留快照）。\n\n'
+          : '') +
         (r.hasRemote
           ? '云端 → 本机：新增 ' + st.added + ' 项，更新 ' + st.updated + ' 项，保留本机 ' + st.kept + ' 项' +
             (st.merged ? '，另有 ' + st.merged + ' 项按内容合并' : '') + '。\n'
@@ -1467,6 +1501,7 @@
       }
       return {
         mode: 'both', at: Date.now(), ms: Date.now() - t0, hasRemote: r.hasRemote,
+        epochNewer: !!r.epochNewer, epoch: r.metaEpoch || null, align: r.alignStats || null,
         reload: reloadInfo,
         local: st
           ? { added: st.added, updated: st.updated, merged: st.merged, kept: st.kept, keys: st.keys || [] }

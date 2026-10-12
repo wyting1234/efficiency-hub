@@ -56,6 +56,11 @@
     // 工具页（iframe）写入的键 → 时间戳，由本模块的 storage 钩子维护（见 localKeyTs 上方注释）。
     // 同样是「本机记录」，跨设备没有意义，传上去会让两端的判新旧时间互相污染。
     'sync_key_ts_v1',
+    // ★ 覆盖世代号（2026-10-12）：本机已知的最近一次「覆盖云端」世代 + 本机标识 + 世代冲突快照。
+    //   同属「本机记录」——同步过去会让两端互相覆盖对方的世代认知，必须排除。
+    'sync_epoch_seen_v1',
+    'sync_device_tag_v1',
+    '__epoch_conflict_backup_v1__',
     /* ---- 2026-09-23 补排：朝暮计与导航页的「本机记录」----------------------
        判据只有一条 —— **这个键同步到另一台设备之后，语义还成立吗？**
        不成立就必须排除：它不是数据，是「这台机器刚才做了什么」的记录。 */
@@ -221,6 +226,188 @@
     let m = {};
     try { m = JSON.parse(localStorage.getItem('__hub_meta_v1__') || '{}') || {}; } catch (e) { return {}; }
     return mergeIframeKeyTs(m);
+  }
+
+  /* ============ 覆盖世代号（2026-10-12）============
+     ★ 要解决什么（这是「跨平台同步还是数据丢失」的最后一个成因，已真机复现）：
+       同步是**并集语义**（逐键/逐域取较新）。于是多设备下「覆盖」天然不成立 ——
+         A 端点「上传 → 覆盖云端」⇒ 云端 = A 的完整快照；
+         B 端下一次同步（双向 / 自动）读云端 → 合并 → 再把「合并结果」写回云端，
+         B 独有的那份旧数据被**原样并了回来** ⇒ A 的覆盖被静默撤销。
+     ★ 世代号怎么破这个局：
+       ① 只有「覆盖」会推进它（writeShardedWith 的 opts.overwrite）；
+       ② 云端 meta 里记 epoch = { n, at, by }，随每次同步一起读回本机；
+       ③ 本机记住「已知的最近一次覆盖时刻」at（sync_epoch_seen_v1）；
+       ④ 一旦发现更新的世代：先把「旧世代的本机键」快照一份，再按云端对齐
+          （云端有的用云端值、云端没有的从本机移除），并保证它们**不再上传**。
+       于是 B 端的旧数据再也上不去云端（覆盖生效），而 B 端**在覆盖之后**的新改动
+       照常同步（那些键的写入时间 > at，不受闸门约束）。
+     ★ 不做什么（有意为之，别顺手加）：
+       · 闸门前不加「无世代号也照做」的分支：at=0 ⇒ 一切关闭 ⇒ 行为与本版之前完全一致。
+       · 不把闸门加在「读云端 → 本机」那一侧的唯一判据上：判断必须落在
+         buildMergedUpload（往云端写）这一侧，对端才不会被污染。
+     ★ 两个「新/旧世代」判定的差异（有意，不是笔误）：
+       · buildMergedUpload / mergeCloudToLocal 的时间戳比较：**无记录 ⇒ 视为本机较新**（保留本机，
+         宁可多传不可静默少传）；
+       · 世代闸门：**无记录 ⇒ 按旧世代处理**（不上传）。
+       方向不同是因为风险不同 —— 前者判错的代价是「多传了一份」，后者判错的代价是
+       「刚做的覆盖被悄悄撤销」。 */
+
+  const EPOCH_SEEN_KEY = 'sync_epoch_seen_v1';
+  const DEVICE_TAG_KEY = 'sync_device_tag_v1';
+  const EPOCH_SNAP_KEY = '__epoch_conflict_backup_v1__';
+  const EPOCH_SNAP_MAX = 400 * 1024;   // 单次快照保存的内容上限（超出只留键名清单）
+
+  // 本机标识：只为提示文案里说得清「是哪台设备覆盖的」，不参与任何判定。
+  function deviceTag() {
+    try {
+      let t = localStorage.getItem(DEVICE_TAG_KEY);
+      if (!t) {
+        t = '设备' + Math.random().toString(36).slice(2, 6).toUpperCase();
+        localStorage.setItem(DEVICE_TAG_KEY, t);
+      }
+      return t;
+    } catch (e) { return '本机'; }
+  }
+
+  // 本机已知的最近一次「覆盖云端」世代 → { n, at }
+  function epochSeen() {
+    try {
+      const o = JSON.parse(localStorage.getItem(EPOCH_SEEN_KEY) || 'null');
+      if (o && typeof o === 'object') {
+        return { n: parseInt(o.n, 10) || 0, at: parseInt(o.at, 10) || 0 };
+      }
+    } catch (e) {}
+    return { n: 0, at: 0 };
+  }
+
+  // 只增不减：n 与 at 各自取较大者（两端时钟可能有偏差，谁大信谁）
+  function setEpochSeen(n, at) {
+    const cur = epochSeen();
+    const nn = Math.max(cur.n || 0, parseInt(n, 10) || 0);
+    const na = Math.max(cur.at || 0, parseInt(at, 10) || 0);
+    if (nn === (cur.n || 0) && na === (cur.at || 0)) return false;
+    try { localStorage.setItem(EPOCH_SEEN_KEY, JSON.stringify({ n: nn, at: na })); } catch (e) {}
+    return true;
+  }
+
+  // 每次从云端读到世代号都调一次：并进本机已知值，返回「本次是否发现了更新的世代」。
+  // ★ 调用顺序有意义 —— 必须在 mergeCloudToLocal / alignToGeneration 之前调，
+  //   才拿得到 true（它们内部也会调，幂等，只会拿到 false）。
+  function noteCloudEpoch(epoch) {
+    if (!epoch || typeof epoch !== 'object') return false;
+    const n = parseInt(epoch.n, 10) || 0;
+    const at = parseInt(epoch.at, 10) || 0;
+    if (!at) return false;
+    const cur = epochSeen();
+    const newer = n > (cur.n || 0) || at > (cur.at || 0);
+    setEpochSeen(n, at);
+    return newer;
+  }
+
+  // 只读判断：云端世代是否比本机已承认的更新（**不写**本机记录）。
+  // 用途 —— 「上传·合并」这类会被拒绝的动作必须在**不记账**的前提下判断：
+  //   一旦记了账，后续的「双向同步」就会以为世代已经承认过，不再对齐 ⇒
+  //   本机旧数据又会被并回云端，本轮的修复等于没做。
+  function epochNewerThanSeen(epoch) {
+    if (!epoch || typeof epoch !== 'object') return false;
+    const at = parseInt(epoch.at, 10) || 0;
+    if (!at) return false;
+    const cur = epochSeen();
+    return (parseInt(epoch.n, 10) || 0) > (cur.n || 0) || at > (cur.at || 0);
+  }
+
+  // 世代闸门时刻：早于它的本机数据属于被覆盖掉的旧世代，不再上传。
+  function overwriteGateAt() { return epochSeen().at || 0; }
+
+  // 算出「旧世代的本机键」→ { key: 本机值 }；没有则返回 null。
+  // ★ 必须在「把云端写回本机」之前调用 —— 那一写会刷新这些键的时间戳，
+  //   之后再算就分不清「云端的内容」与「本机新改的」。
+  function staleGenKeys(at) {
+    at = parseInt(at, 10) || 0;
+    if (!at) return null;
+    const meta = localKeyTs();
+    const out = Object.create(null);
+    let n = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      let v = null;
+      try { v = localStorage.getItem(k); } catch (e) { continue; }
+      if (v === null || isExcludedKey(k, v)) continue;
+      const t = meta[k];
+      if (!t || t <= at) { out[k] = v; n++; }
+    }
+    return n ? out : null;
+  }
+
+  // 世代冲突快照：把「即将被云端取代的本机数据」留一份（不参与同步，最多留最近 3 次）。
+  // 存在的意义：「以云端为准」会丢掉本机独有的旧数据 —— 快照让它是**可找回的**，而不是真丢。
+  function snapshotStaleKeys(staleMap, at, epoch) {
+    try {
+      if (!staleMap) return false;
+      const keys = Object.keys(staleMap);
+      if (!keys.length) return false;
+      let arr = [];
+      try { arr = JSON.parse(localStorage.getItem(EPOCH_SNAP_KEY) || '[]') || []; } catch (e) { arr = []; }
+      if (!Array.isArray(arr)) arr = [];
+      const kept = {};
+      let bytes = 0;
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        const v = String(staleMap[k] == null ? '' : staleMap[k]);
+        bytes += v.length + k.length;
+        if (bytes > EPOCH_SNAP_MAX) continue;      // 体积护栏：超出的只记键名，不存内容
+        kept[k] = v;
+      }
+      arr.unshift({
+        at: Date.now(),
+        epochAt: parseInt(at, 10) || 0,
+        by: (epoch && epoch.by) || '',
+        keys: keys,
+        bytes: bytes,
+        truncated: Object.keys(kept).length < keys.length,
+        data: kept
+      });
+      if (arr.length > 3) arr = arr.slice(0, 3);
+      localStorage.setItem(EPOCH_SNAP_KEY, JSON.stringify(arr));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* 世代对齐：把「旧世代的本机键」以云端为准处理掉（先留快照）。
+     云端有的键 → 用云端那份；云端没有的键 → 从本机移除。
+     返回 { stale:[键名], applied, removed, snapshotted }；没有旧世代键时返回 null。
+     ★ 本机在覆盖之后新写/新改的键不属于旧世代，不受影响，照常同步。 */
+  function alignToGeneration(serverData, epoch, staleMap) {
+    const at = parseInt((epoch && epoch.at) || 0, 10) || 0;
+    if (!at) return null;
+    const stale = staleMap || staleGenKeys(at);
+    if (!stale) return null;
+    const snapshotted = snapshotStaleKeys(stale, at, epoch);
+    const sdata = (serverData && serverData.data) || {};
+    let applied = 0, removed = 0;
+    const names = Object.keys(stale);
+    for (let i = 0; i < names.length; i++) {
+      const k = names[i];
+      const e = sdata[k];
+      try {
+        if (e && typeof e.value === 'string') { localStorage.setItem(k, e.value); applied++; }
+        else { localStorage.removeItem(k); removed++; }
+      } catch (err) {}
+    }
+    return { stale: names, applied: applied, removed: removed, snapshotted: snapshotted };
+  }
+
+  // 给用户看的世代提示（面板回执 / 自动同步日志共用）
+  function epochNoticeText(epoch) {
+    let when = '';
+    try {
+      when = new Date(Number((epoch && epoch.at) || 0)).toLocaleString('zh-CN',
+        { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    } catch (e) {}
+    return '检测到另一台设备' + (epoch && epoch.by ? '（' + epoch.by + '）' : '') +
+      '在 ' + (when || '不久前') + ' 执行了「覆盖云端」。\n' +
+      '本机已按该世代处理：早于此时刻的本机数据不再上传（以云端为准），此后新的改动照常同步。';
   }
 
   /* ============ 领域级合并（v5 新增）============
@@ -488,6 +675,9 @@
   //    云端独有的键仍会在下面 cur === null 的分支补进来，不受影响。
   function mergeCloudToLocal(serverData) {
     const sdata = (serverData && serverData.data) || {};
+    // 世代号并进本机已知值。★ 这里**不**加闸门、也不删键：本机独有的旧世代键的处置
+    //   统一交给 alignToGeneration（它会先留快照再动手），免得两处各删一半。
+    noteCloudEpoch(serverData && serverData.metaEpoch);
     const meta = localKeyTs();
     let timestamps = {};
     try { timestamps = JSON.parse(localStorage.getItem('sync_timestamps') || '{}') || {}; } catch (e) {}
@@ -533,8 +723,9 @@
   }
 
   // 合并上传：以云端数据为本底，逐键与本机「较新」者合并，返回合并后的云端数据集
-  function buildMergedUpload(serverData) {
+  function buildMergedUpload(serverData, gateKeys) {
     const sdata = (serverData && serverData.data) || {};
+    noteCloudEpoch(serverData && serverData.metaEpoch);   // 世代闸门依赖它，必须走在这之前
     const meta = localKeyTs();
     const merged = {};
     for (const key in sdata) {
@@ -543,10 +734,23 @@
       if (isExcludedKey(key, entry.value)) continue;
       merged[key] = { value: entry.value, timestamp: entry.timestamp || 0 };
     }
+    // ★ 世代闸门（2026-10-12）：早于最近一次「覆盖云端」的本机数据属于被替换掉的旧世代，
+    //   一律不上传 —— 否则它会把别的设备刚做的「覆盖」重新并回来（这就是「覆盖在多设备下
+    //   天然不成立」的堵点）。
+    //   gateKeys 由调用方在「把云端合并进本机之前」算好；没传时退化为按时间戳现算
+    //   （doUpload 的合并分支没有中间那一步本机写入，现算是准确的）。
+    //   ⚠️ 无时间戳记录 ⇒ 按旧世代处理（与 OLD-GATE 注释里的取舍一致）。
+    const gateAt = gateKeys ? 0 : overwriteGateAt();
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       const value = localStorage.getItem(key);
       if (value === null || isExcludedKey(key, value)) continue;
+      if (gateKeys) {
+        if (gateKeys[key] !== undefined) continue;              // 旧世代键：不上传
+      } else if (gateAt) {
+        const ltsG = meta[key];
+        if (!ltsG || ltsG <= gateAt) continue;                 // 旧世代键：不上传
+      }
       const lts = meta[key] || Date.now();                   // 无写入记录的键视为刚写过（本机为准）
       const cts = (merged[key] && merged[key].timestamp) || 0;
       // 领域级合并优先：本机与云端都有这一键时，先试合并，只有合并不了才比时间。
@@ -585,6 +789,17 @@
         '\n本机与云端都没有改动，稍等几秒重试即可。');
     }
     const hasRemote = !!(remote && remote.data && Object.keys(remote.data).length > 0);
+    // ★ 世代检测 + 对齐（必须最先做）：noteCloudEpoch 只把「云端世代」并进本机已知值，
+    //   并返回「本次是否发现了更新的世代」。gateKeys 的算法必须排在 mergeCloudToLocal
+    //   之前 —— 那一步会把云端内容写回本机、顺带刷新这些键的时间戳，之后再算就算错了，
+    //   并集结果会被当成本机新数据重新传上去（= 覆盖被撤销）。
+    const epochNewer = noteCloudEpoch(remote && remote.metaEpoch);
+    let gateKeys = null, alignStats = null;
+    if (epochNewer && hasRemote) {
+      const _at = (remote.metaEpoch && remote.metaEpoch.at) || 0;
+      gateKeys = staleGenKeys(_at);
+      alignStats = alignToGeneration(remote, remote.metaEpoch, gateKeys);
+    }
     const beforeCount = getLocalKeys().length;
     const beforeBytes = syncPayloadBytes();   // 同步前「参与同步的数据量」
     // 云端原有的键集合（用来算「本次往云端新增了哪些键」）
@@ -595,11 +810,14 @@
       }
     }
     const localStats = hasRemote ? mergeCloudToLocal(remote) : null;      // ① 云端 → 本机
-    const merged = buildMergedUpload(hasRemote ? remote : { data: {} });  // ② 本机 → 云端
+    const merged = buildMergedUpload(hasRemote ? remote : { data: {} }, gateKeys);  // ② 本机 → 云端
     const cloudAddedKeys = Object.keys(merged).filter(function (k) { return !cloudHad[k]; });
     const info = await writeFn(merged);
     return {
       hasRemote: hasRemote,
+      epochNewer: epochNewer,                          // 本次是否发现「别的设备刚做过覆盖」
+      metaEpoch: (remote && remote.metaEpoch) || null,
+      alignStats: alignStats,                          // 世代对齐的战果（null = 未发生对齐）
       localStats: localStats,     // null = 云端原本就没有数据
       beforeCount: beforeCount,
       beforeBytes: beforeBytes,
@@ -910,7 +1128,7 @@
         • <b>双向同步</b>：先把两边合并，再<b>同时</b>更新本机与云端 —— 两个设备都不会被覆盖。平时点这个就够。<br>
         • <b>上传</b>：点完会让你选「合并到云端」还是「覆盖云端」。<br>
         • <b>下载</b>：点完会让你选「合并到本机」还是「覆盖本机」。<br>
-        <span style="color:#7c8aa5">双向同步永远只做合并，不会丢任何一边；「覆盖」是唯一会整端替换的操作，所以它从不默认、每次都要单独确认。数据上传前会自动 gzip 压缩，并按模块分片，只重传改动过的片。</span><br>
+        <span style="color:#7c8aa5">双向同步永远只做合并，不会丢任何一边；「覆盖」是唯一会整端替换的操作，所以它从不默认、每次都要单独确认。数据上传前会自动 gzip 压缩，并按模块分片，只重传改动过的片。<br>「覆盖」会给云端写入一个<b>世代号</b>：其他设备检测到该世代后，早于覆盖时刻的本机数据不再上传（以云端为准，并可留一份本机快照），此后新的改动照常同步 —— 这样「覆盖」在多设备下才真正生效。</span><br>
         <span style="color:#7c8aa5">同一时刻只允许一个同步任务：后台自动同步会主动给手动操作让路；手动点的时候若正好有别的同步在跑，会自动排队（最多 30 秒）。</span>
       </div>
 
@@ -1613,12 +1831,13 @@
   const META_ORIGIN = '__hub_sync_origin__';   // meta 里记后端，避免两种后端的数据互相踩
 
   function newMeta(origin) {
-    return { version: 5, origin: origin || '', updatedAt: Date.now(), shards: {}, keys: {} };
+    // epoch：覆盖世代号（见上方 EPOCH 区块）。只在「覆盖」时推进，其它写入原样带过去。
+    return { version: 5, origin: origin || '', updatedAt: Date.now(), shards: {}, keys: {}, epoch: null };
   }
 
   // 写：只更新「脏片」。meta 记录每片包含哪些键、以及整体 updatedAt。
   // 返回 { wroteBytes, wroteShards, skippedShards, totalShards, deletedShards }
-  async function writeShardedWith(io, allData, forceShards) {
+  async function writeShardedWith(io, allData, forceShards, opts) {
     const origin = io.origin || '';
     await io.ensureTarget();
 
@@ -1643,6 +1862,23 @@
     let wroteBytes = 0, wroteShards = 0, skippedShards = 0, totalShards = 0;
 
     const next = newMeta(origin);
+
+    // ★ 覆盖世代号（2026-10-12）：只有「覆盖」推进它，合并 / 自动同步只原样带过去 ——
+    //   否则世代号会在每一次普通同步里被改小或抹掉，「覆盖」立刻失去意义。
+    if (opts && opts.overwrite) {
+      const prevSeen = epochSeen();
+      const cloudN = (cloudMeta && cloudMeta.epoch && cloudMeta.epoch.n) || 0;
+      // n 取「云端 n+1」「本机已承认 n+1」「当前时刻」三者最大：
+      //   前两者保证在两端都严格递增；带上当前时刻是为了兜住「读 meta 失败 ⇒ cloudN=0」
+      //   的情况 —— 否则这台设备会写回一个更小的世代号，别的设备就检测不到这次覆盖。
+      next.epoch = {
+        n: Math.max(cloudN + 1, (prevSeen.n || 0) + 1, Date.now()),
+        at: Date.now(),
+        by: deviceTag()
+      };
+    } else if (cloudMeta && cloudMeta.epoch) {
+      next.epoch = cloudMeta.epoch;
+    }
 
     for (const sid in shards) {
       totalShards++;
@@ -1792,6 +2028,8 @@
     merged.shardFail = failIds.length;
     merged.shardFailIds = failIds;
     merged.shardErrors = io.lastShardErrors || [];
+    // 世代号随 meta 一起返回：上层据此判断「云端是否被别的设备覆盖过」。
+    merged.metaEpoch = (cloudMeta && cloudMeta.epoch) || null;
     return merged;
   }
 
@@ -1892,7 +2130,7 @@
   };
 
   // 兼容旧调用点：GitHub 路径继续走这两个名字
-  function writeSharded(allData, forceShards) { return writeShardedWith(gistIO, allData, forceShards); }
+  function writeSharded(allData, forceShards, opts) { return writeShardedWith(gistIO, allData, forceShards, opts); }
   function readShardedMeta() { return readShardedMetaWith(gistIO); }
   function readSharded(cloudMeta) { return readShardedWith(gistIO, cloudMeta); }
 
@@ -2197,6 +2435,20 @@
         // 合并：以云端为本底，逐键取较新（需要读到云端内容；缓存里没有就联网读一次）
         let remote = await readGist();
         if (!remote || !remote.data) remote = { data: {} };
+        // ★ 世代闸门：本机若停留在被「覆盖」掉的旧世代，这批数据上传上去就等于撤销那次覆盖
+        //   ⇒ 本次直接不下发（本机数据一行不动）。对齐交由「下载 / 双向同步」完成，
+        //     那时会先给本机留一份快照，用户可找回。
+        //   ⚠️ 这里用只读判断、**不能**调 noteCloudEpoch：一记账，后一次「双向同步」就
+        //     以为世代已承认而不去对齐，本机旧数据又会被并回云端。
+        if (epochNewerThanSeen(remote.metaEpoch)) {
+          updateStatus('已按世代跳过上传');
+          progBusy(false);
+          notifyOK('本次未上传：云端已被另一台设备覆盖',
+            epochNoticeText(remote.metaEpoch) +
+            '\n为避免把那次「覆盖」撤销，本次「合并上传」已跳过，本机数据未改动。' +
+            '\n稍后点「下载 → 合并到本机」或「双向同步」即可让本机对齐到云端（对齐前会自动留一份本机快照）。');
+          return;
+        }
         localData = buildMergedUpload(remote);
       } else {
         localData = collectLocalData();
@@ -2204,15 +2456,21 @@
       let bodyLen = 0;
       let shardInfo = null;
       const payloadData = localData;
+      // ★ 「覆盖」是唯一会推进世代号的操作（见 writeShardedWith 里的 opts.overwrite）。
+      const wOpts = mode === 'overwrite' ? { overwrite: true } : null;
       try {
-        shardInfo = await writeSharded(payloadData);
+        shardInfo = await writeSharded(payloadData, false, wOpts);
         bodyLen = shardInfo.wroteBytes;
       } catch (e) {
         if (!isNotFound(e)) throw e;
         clearGistCache();                 // 缓存的 Gist 已被删：重建后重试一次
         await findOrCreateGist();
-        shardInfo = await writeSharded(payloadData, true);
+        shardInfo = await writeSharded(payloadData, true, wOpts);
         bodyLen = shardInfo.wroteBytes;
+      }
+      // 覆盖成功后立刻承认「这就是本机所在的世代」，免得本机下一次同步把自己当陈旧设备。
+      if (shardInfo && shardInfo.meta && shardInfo.meta.epoch) {
+        setEpochSeen(shardInfo.meta.epoch.n, shardInfo.meta.epoch.at);
       }
       const kb = Math.round(bodyLen / 1024);
       const nItem = Object.keys(localData).length;
@@ -2306,6 +2564,15 @@
                          : '按「覆盖本机」处理：用云端数据整体替换本机。');
       const remote = pre ? pre : await readSharded(meta0);
       setCachedCloudHasData(true);
+      // ★ 世代检测：云端若在别的设备上被「覆盖」过，早于那一刻的本机数据属于旧世代。
+      //   合并式下先做「世代对齐」（以云端为准 + 留快照），否则本机独有数据会在下一次
+      //   合并时被云端取代、却先被传上去把覆盖撤销。
+      const genNewer = noteCloudEpoch(remote.metaEpoch);
+      let genAlign = null;
+      if (genNewer && mode === 'merge') {
+        genAlign = alignToGeneration(remote, remote.metaEpoch);
+      }
+      const genTip = genNewer ? '\n\n' + epochNoticeText(remote.metaEpoch) : '';
       // ⚠️ 顺序调整后必须补的安全闸：索引里记着有分片、实际读不回来时，
       //    若不拦就轮到下面执行「覆盖本机」——而 applyCloudToLocal 会先清光本机
       //    可同步键，等于把本机数据清空。这里一律中止，本机数据保持不动。
@@ -2339,11 +2606,14 @@
       if (mode === 'overwrite') syncHoldNow(SYNC_HOLD_MS);   // 覆盖成功后：给自动同步让路（同上）
       // 同上传：不关面板，让结果留在原地可见
       notifyOK(mode === 'merge' ? '已合并云端数据到本机' : '已从云端同步到本机',
-        mode === 'merge'
+        (mode === 'merge'
           ? `合并完成：新增 ${mergeStats.added} 项，更新 ${mergeStats.updated} 项（云端较新），保留本机 ${mergeStats.kept} 项。\n` +
             '数据有变动的工具页已刷新，其余工具页保持原状（避免打断正在填写的表单）。'
           : `云端的 ${Object.keys(remote.data).length} 项数据已写入本机。\n` +
-            '数据有变动的工具页已刷新，其余工具页保持原状（避免打断正在填写的表单）。');
+            '数据有变动的工具页已刷新，其余工具页保持原状（避免打断正在填写的表单）。') +
+        genTip +
+        (genAlign ? '\n（世代对齐：' + genAlign.stale.length + ' 项旧世代的本机数据已按云端处理，' +
+          '其中 ' + genAlign.removed + ' 项云端没有、已从本机移除；动手前已留快照，可找回。）' : ''));
     } catch (e) {
       console.warn('[GitHub] 下载失败:', e.message);
       notifyFail('从云端下载失败',
@@ -2400,6 +2670,11 @@
       const st = r.localStats;
       if (!silent) {
         notifyOK('已完成双向同步',
+          (r.epochNewer ? epochNoticeText(r.metaEpoch) + '\n\n' : '') +
+          (r.epochNewer && r.alignStats
+            ? '已做世代对齐：' + r.alignStats.stale.length + ' 项旧世代的本机数据按云端处理' +
+              '（其中 ' + r.alignStats.removed + ' 项云端没有、已从本机移除；动手前已留快照）。\n\n'
+            : '') +
           (r.hasRemote
             ? '云端 → 本机：新增 ' + st.added + ' 项，更新 ' + st.updated + ' 项，保留本机 ' + st.kept + ' 项' +
               (st.merged ? '，另有 ' + st.merged + ' 项按内容合并' : '') + '。\n'
@@ -2412,6 +2687,7 @@
       }
       return {
         mode: 'both', at: Date.now(), ms: Date.now() - t0, hasRemote: r.hasRemote,
+        epochNewer: !!r.epochNewer, epoch: r.metaEpoch || null, align: r.alignStats || null,
         reload: reloadInfo,
         // 总量基线：同步前 / 后各算一次（after 在合并+上传都完成之后）
         total: (function () {
@@ -2879,6 +3155,13 @@
     const head = '双向合并';
     if (!sum) return head + ' · 未取得结果（可能被中断）';
     if (sum.error) return '自动同步未成功：' + sum.error;
+    if (sum.epochNewer) {
+      return head + ' · 检测到另一台设备执行过「覆盖云端」——已按该世代对齐' +
+        (sum.align ? '（' + sum.align.stale.length + ' 项本机旧数据以云端为准' +
+          (sum.align.removed ? '，其中 ' + sum.align.removed + ' 项已从本机移除' : '') +
+          '，动手前已留快照）' : '') +
+        '，此后新的改动照常同步';
+    }
     const sec = ((sum.ms || 0) / 1000).toFixed(1);
     const l = sum.local || {}, c = sum.cloud || {};
     const lN = (l.added || 0) + (l.updated || 0) + (l.merged || 0);
@@ -3315,6 +3598,10 @@
       progShow, progBusy, progHide,
       // 全局互斥锁（2026-10-12）：手动同步与后台自动同步共用
       syncLock: syncLockAPI,
+      // 覆盖世代号（2026-10-12）：Gitee 后端与回归测试共用
+      epochSeen, setEpochSeen, noteCloudEpoch, epochNewerThanSeen, overwriteGateAt, staleGenKeys,
+      alignToGeneration, snapshotStaleKeys, epochNoticeText, deviceTag,
+      EPOCH_SEEN_KEY, DEVICE_TAG_KEY, EPOCH_SNAP_KEY,
       // 刷新（v9）
       //   reloadActiveIframe = 无脑全刷（保留给测试与兜底）
       //   refreshToolData    = 按变化键挑工具；silent 时不动当前正开着的那个
