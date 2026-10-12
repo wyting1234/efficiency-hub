@@ -770,9 +770,89 @@
   function escText(s) {
     return String(s == null ? '' : s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
   }
+  // ============ 全局同步互斥锁（2026-10-12）============
+  // ★★ 为什么需要它（这是一个已真机复现的真实缺陷，不是理论风险）：
+  //   修复前全模块只有两个「忙」标志 ——
+  //     · progBusy：仅仅把 #syncUpload / #syncDownload 两颗按钮置灰，而且**漏了 #syncBoth**；
+  //     · autoBusy：只防「自动同步自己」重入。两者都不构成互斥。
+  //   于是「手动上传还在跑」时，后台的自动双向同步可以**立刻并发启动**，两条链同时
+  //   「读云端 → 写云端」；而 writeShardedWith 的「读索引 → 判脏片 → 写片 → 删残留片」
+  //   **不是原子的**，并发写会互相覆盖 / 互相删片，留下「索引说某片是新的、实际内容却是
+  //   另一份」的静默损坏 —— 之后增量同步会一直跳过该片。
+  //   又因为 doSyncBoth / giteeSyncBoth **无论是否静默都会写进度文案**，后台自动同步一开跑
+  //   就把用户正看着的「正在上传到云端…」原地刷成「正在双向同步…」——
+  //   这就是「我点的是上传覆盖，界面却显示双向同步」的全部原因。
+  // 现在：**手动上传 / 下载 / 双向 与后台自动同步共用这一把锁**，同一时刻只允许一个任务。
+  //   手动操作抢不到锁时**排队等待**（最多 syncWaitMs）；后台自动同步抢不到就直接让路，
+  //   并在返回前重新排一次队（见 runAutoSync —— 直接丢弃会让这次改动永远推不上去）。
+  let syncBusy = false;          // 是否有同步任务在跑
+  let syncBusyWhat = '';         // 占用者文案（上传 / 下载 / 双向同步 / 自动同步）
+  let syncHoldUntil = 0;         // 「覆盖」成功后的静默窗口：此刻之前自动同步一律让路
+  let syncWaitMs = 30000;        // 手动操作最多排队多少毫秒
+  const SYNC_HOLD_MS = 90000;    // 覆盖后静默窗口长度
+
+  function syncTryLock(what) {
+    if (syncBusy) return false;
+    syncBusy = true; syncBusyWhat = what || '同步';
+    return true;
+  }
+  function syncUnlock() { syncBusy = false; syncBusyWhat = ''; }
+  function syncHoldRemaining() { return Math.max(0, syncHoldUntil - Date.now()); }
+  // 「后台自动同步该不该让路」：有人正在同步，或刚做完覆盖（静默窗口内）。
+  function syncAutoBlocked() { return syncBusy || syncHoldRemaining() > 0; }
+  function syncHoldNow(ms) { syncHoldUntil = Date.now() + (ms || SYNC_HOLD_MS); }
+  function syncClearHold() { syncHoldUntil = 0; }
+  function syncWaitLock(what, timeoutMs) {
+    if (syncTryLock(what)) return Promise.resolve(true);
+    const deadline = Date.now() + (timeoutMs || syncWaitMs);
+    return new Promise(function (resolve) {
+      const t = setInterval(function () {
+        if (syncTryLock(what)) { clearInterval(t); resolve(true); return; }
+        if (Date.now() > deadline) { clearInterval(t); resolve(false); }
+      }, 200);
+    });
+  }
+  // 手动操作入口：抢锁；被别人占着时先给出「排队中」提示，再等它结束。
+  async function syncBeginManual(what) {
+    what = what || '同步';
+    if (syncTryLock(what)) return true;
+    if (document.getElementById('syncProgress')) {
+      progShow('running', '已有同步正在进行…',
+        '「' + (syncBusyWhat || '同步') + '」还没结束。已为你排队，它一结束就自动开始「' + what +
+        '」（最多等 ' + Math.round(syncWaitMs / 1000) + ' 秒）。');
+    }
+    return await syncWaitLock(what, syncWaitMs);
+  }
+  function syncBusyNotice() {
+    if (document.getElementById('syncProgress')) {
+      progShow('fail', '同步繁忙，本次未执行',
+        '另一项同步（' + (syncBusyWhat || '同步') + '）仍在进行中，请等它结束后再点一次。数据未被改动。');
+      progBusy(false);
+    } else if (typeof toast === 'function') {
+      toast('⚠️ 另一项同步正在进行中，请稍后再试');
+    }
+  }
+  // 给 Gitee 后端与回归测试共用的一份门面。
+  const syncLockAPI = {
+    beginManual: syncBeginManual,
+    tryLock: syncTryLock,
+    end: syncUnlock,
+    blocked: syncAutoBlocked,
+    hold: syncHoldNow,
+    clearHold: syncClearHold,
+    holdRemaining: syncHoldRemaining,
+    notice: syncBusyNotice,
+    holder: function () { return syncBusyWhat; },
+    busy: function () { return syncBusy; },
+    setWaitMs: function (n) { syncWaitMs = Math.max(0, parseInt(n, 10) || 0); },
+    HOLD_MS: SYNC_HOLD_MS
+  };
+
   // 任务期间锁住按钮，防止连点造成并发上传互相干扰
   function progBusy(busy) {
-    ['#syncUpload', '#syncDownload'].forEach(function (sel) {
+    // ★ 2026-10-12：把「双向同步」也纳入置灰集合。此前漏了它 ——
+    //   而它既最容易被连点，也最容易和后台自动同步撞车。
+    ['#syncBoth', '#syncUpload', '#syncDownload'].forEach(function (sel) {
       const b = document.querySelector(sel);
       if (!b) return;
       b.disabled = !!busy;
@@ -830,7 +910,8 @@
         • <b>双向同步</b>：先把两边合并，再<b>同时</b>更新本机与云端 —— 两个设备都不会被覆盖。平时点这个就够。<br>
         • <b>上传</b>：点完会让你选「合并到云端」还是「覆盖云端」。<br>
         • <b>下载</b>：点完会让你选「合并到本机」还是「覆盖本机」。<br>
-        <span style="color:#7c8aa5">双向同步永远只做合并，不会丢任何一边；「覆盖」是唯一会整端替换的操作，所以它从不默认、每次都要单独确认。数据上传前会自动 gzip 压缩，并按模块分片，只重传改动过的片。</span>
+        <span style="color:#7c8aa5">双向同步永远只做合并，不会丢任何一边；「覆盖」是唯一会整端替换的操作，所以它从不默认、每次都要单独确认。数据上传前会自动 gzip 压缩，并按模块分片，只重传改动过的片。</span><br>
+        <span style="color:#7c8aa5">同一时刻只允许一个同步任务：后台自动同步会主动给手动操作让路；手动点的时候若正好有别的同步在跑，会自动排队（最多 30 秒）。</span>
       </div>
 
       <button id="syncBoth" style="display:block;width:100%;box-sizing:border-box;padding:13px;border:none;border-radius:8px;background:#08bd74;color:white;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px">🔁 双向同步（合并两端）</button>
@@ -2080,6 +2161,8 @@
   // ============ 动作：上传 / 下载 ============
   async function doUpload() {
     if (!isConnected) { showConfigModal(); return; }
+    // ★ 全局互斥：手动上传与后台自动同步共用一把锁，抢不到就排队等（绝不并发写云端）
+    if (!await syncBeginManual('上传')) { syncBusyNotice(); return; }
     // 立刻反馈「开始了」：没有这个提示，用户点完看不到任何动静，会以为没响应
     progShow('running', '正在上传到云端…', '正在检查远端分片、只重传改动过的片，稍等片刻。');
     progBusy(true);
@@ -2141,6 +2224,9 @@
         try { window.BackupHub.markSync('up', Object.keys(localData)); } catch (e) {}
       }
       updateStatus('已上传 ' + fmtTime(lastSyncTime));
+      // ★ 覆盖成功后开一个静默窗口：这段时间内后台自动同步让路 ——
+      //   否则它会立刻把「刚刚覆盖上去的这份」再和另一端合并回来，「覆盖」形同虚设。
+      if (mode === 'overwrite') syncHoldNow(SYNC_HOLD_MS);
       // 刻意不再 closeTopModal()：关掉面板会让回执无处可显示（只剩侧边栏），
       // 用户就看不到这次同步的具体结果了。结果由 notifyOK 写进面板内的状态区。
       // 压缩后仍偏大时给出明确预警：下载会慢，且会走 raw 通道（国内易断）
@@ -2162,11 +2248,13 @@
       notifyFail('上传云端失败',
         (e && e.message ? e.message : String(e)) + '\n请检查网络或 Token 是否有效（可点「重新配置 Token」）。');
       updateStatus('上传失败');
-    }
+    } finally { syncUnlock(); }
   }
 
   async function doDownload() {
     if (!isConnected) { showConfigModal(); return; }
+    // ★ 全局互斥（同上传）
+    if (!await syncBeginManual('下载')) { syncBusyNotice(); return; }
     progShow('running', '正在检查云端数据…', '先读一份很小的索引文件。');
     progBusy(true);
     try {
@@ -2248,6 +2336,7 @@
         try { window.BackupHub.markSync('down', Object.keys(remote.data)); } catch (e) {}
       }
       updateStatus('已下载 ' + fmtTime(lastSyncTime));
+      if (mode === 'overwrite') syncHoldNow(SYNC_HOLD_MS);   // 覆盖成功后：给自动同步让路（同上）
       // 同上传：不关面板，让结果留在原地可见
       notifyOK(mode === 'merge' ? '已合并云端数据到本机' : '已从云端同步到本机',
         mode === 'merge'
@@ -2260,7 +2349,7 @@
       notifyFail('从云端下载失败',
         (e && e.message ? e.message : String(e)) + '\n请检查网络或 Token 是否有效。本机数据未改动。');
       updateStatus('下载失败');
-    }
+    } finally { syncUnlock(); }
   }
 
   // 双向同步：读云端 → 合并进本机 → 合并结果写回云端。
@@ -2274,9 +2363,17 @@
   async function doSyncBoth(opts) {
     const silent = !!(opts && opts.silent);
     if (!isConnected) { if (!silent) showConfigModal(); return { error: '尚未连接云端' }; }
+    // ★ 全局互斥：
+    //   静默（后台自动同步）路径 —— 锁已由 runAutoSync 持有，这里不再抢，否则自己把自己锁死；
+    //   手动路径 —— 自己抢锁，抢不到就排队等，绝不在别人跑的时候并发写云端。
+    const _ownLock = !silent;
+    if (_ownLock && !await syncBeginManual('双向同步')) { syncBusyNotice(); return { error: '同步进行中，本次已跳过' }; }
     const t0 = Date.now();
-    progShow('running', '正在双向同步…', '先读云端，与两端合并后同时更新本机与云端。两端都只会变全，不会丢数据。');
-    progBusy(true);
+    // ★ 静默路径绝不写进度区 —— 这里是「点的是上传覆盖、界面却显示双向同步」的根因所在。
+    if (!silent) {
+      progShow('running', '正在双向同步…', '先读云端，与两端合并后同时更新本机与云端。两端都只会变全，不会丢数据。');
+      progBusy(true);
+    }
     try {
       if (!cachedGistId()) await findOrCreateGist();
       // 必须读「此刻」的云端：cloud-has-data 缓存是给上传的「要不要弹模式选择」用的，
@@ -2344,7 +2441,7 @@
         updateStatus('双向同步失败');
       }
       return { error: (e && e.message ? e.message : String(e)) };
-    }
+    } finally { if (_ownLock) syncUnlock(); }
   }
 
   // ============ 自动双向同步（v8）============
@@ -2866,10 +2963,25 @@
   function noteSaveSignal(src) {
     if (!autoCfg.on) return null;
     if (autoBusy) return null;                 // 正在同步，这次保存会被本次同步一并带走
+    // ★ 全局互斥：有同步正在进行 / 覆盖静默窗口 → 不插队，改为排队
+    if (syncAutoBlocked()) { autoReschedule(15000); return null; }
     const b = activeBackend();
     if (!b || !b.isReady() || !b.isConnected()) return null;
     autoSaveSrc = src || '';
     return runAutoSync('save');
+  }
+
+  // 把「本轮没能跑的自动同步」重新排一次队（而不是丢弃）。
+  // 口径与 scheduleAutoSync 完全一致（debounce 下限 + minGap 顺延），确保下一次触发
+  // 不会又被 runAutoSync 里的 minGap 判定吞掉一次。
+  function autoReschedule(ms) {
+    if (!autoCfg.on) return;
+    const p = autoPreset();
+    const sinceLast = Date.now() - (autoLastAtMem || 0);
+    let wait = Math.max(ms || 1000, p.debounce);
+    if (sinceLast < p.minGap) wait = Math.max(wait, p.minGap - sinceLast);
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = setTimeout(function () { autoTimer = null; runAutoSync('change'); }, wait);
   }
 
   function scheduleAutoSync() {
@@ -2898,6 +3010,16 @@
 
   async function runAutoSync(reason) {
     if (!autoCfg.on || autoBusy) return null;
+    // ★ 全局互斥：有人在同步（手动上传 / 下载 / 双向），或刚做完「覆盖」，本轮让路。
+    //   ⚠️ 这里必须是「推迟」而不是「丢弃」：autoDirtyAt 一旦挂着不清，定时器
+    //   （autoScheduleTick）会以「本机还有没推上去的改动」为理由一直不跑，
+    //   于是这次改动就再也推不上去了。所以除「页面即将销毁 / 用户手点」外一律重排一次。
+    if (syncAutoBlocked()) {
+      if (reason !== 'hide' && reason !== 'manual') {
+        autoReschedule(syncBusy ? 15000 : syncHoldRemaining() + 1000);
+      }
+      return null;
+    }
     const b = activeBackend();
     if (!b || !b.isReady() || !b.isConnected()) return null;
     if (typeof b.both !== 'function') return null;
@@ -2923,6 +3045,7 @@
       const sinceSave = Date.now() - (autoLastSaveAt || 0);
       if (autoLastSaveAt && sinceSave < SAVE_MIN_GAP) return null;
     }
+    if (!syncTryLock('自动同步')) return null;
     autoBusy = true;
     try {
       const sum = await b.both({ silent: true });
@@ -2937,6 +3060,7 @@
       return { error: msg };
     } finally {
       autoBusy = false;
+      syncUnlock();
     }
   }
 
@@ -3189,6 +3313,8 @@
       showChoice, showConfirm, showAlert, notifyOK, notifyFail, fmtTime,
       // 进度反馈（多后端共用：面板内常驻状态区）
       progShow, progBusy, progHide,
+      // 全局互斥锁（2026-10-12）：手动同步与后台自动同步共用
+      syncLock: syncLockAPI,
       // 刷新（v9）
       //   reloadActiveIframe = 无脑全刷（保留给测试与兜底）
       //   refreshToolData    = 按变化键挑工具；silent 时不动当前正开着的那个
@@ -3225,6 +3351,7 @@
     health: doHealth,                                   // 云端体检
     reconnect: initSync,                                // 配置 / 换 Token 后重新连接
     isConnected: () => isConnected,
+    syncLock: syncLockAPI,                             // 全局互斥锁（回归测试用）
     peek: peekCloud,                                   // 只读探测云端数据量
     getStatus: () => ({ connected: isConnected, lastSync: lastSyncTime }),
     // 自动同步（v8）：给测试与「数据管理」面板留的口子

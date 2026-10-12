@@ -39,6 +39,24 @@
     return;
   }
 
+  // ============ 全局同步互斥（2026-10-12）============
+  // 与 sync-github.js 共用 CloudSyncCore 里那一把锁：手动上传 / 下载 / 双向 与后台自动同步
+  // 同一时刻只允许一个在跑（此前 Gitee 侧与 GitHub 侧的缺口完全相同）。
+  // Core 里缺这些东西时一律降级为「不锁」，绝不因为锁不可用而阻断同步本身。
+  function lockBeginManual(what) {
+    try {
+      if (Core.syncLock && Core.syncLock.beginManual) return Core.syncLock.beginManual(what);
+    } catch (e) {}
+    return Promise.resolve(true);
+  }
+  function lockEnd() { try { if (Core.syncLock && Core.syncLock.end) Core.syncLock.end(); } catch (e) {} }
+  function lockHoldAfterOverwrite() {
+    try { if (Core.syncLock && Core.syncLock.hold) Core.syncLock.hold(); } catch (e) {}
+  }
+  function lockBusyNotice() {
+    try { if (Core.syncLock && Core.syncLock.notice) Core.syncLock.notice(); } catch (e) {}
+  }
+
   // ============ 配置 ============
   const API = 'https://gitee.com/api/v5';
   const DEFAULT_REPO = 'efficiency-hub-sync';
@@ -1049,6 +1067,8 @@
 
   async function giteeUpload() {
     if (!TOKEN) { showConfigModal(); return; }
+    // ★ 全局互斥（同 GitHub 侧）
+    if (!await lockBeginManual('上传')) { lockBusyNotice(); return; }
     // 立刻反馈「开始了」：上传要跑几秒到几十秒，没有这个提示用户会以为点了没反应
     Core.progShow && Core.progShow('running', '正在上传到 Gitee…', '正在检查仓库、比对远端分片，稍等片刻。');
     Core.progBusy && Core.progBusy(true);
@@ -1160,6 +1180,7 @@
         info = await Core.writeShardedWith(giteeIO, localData, true);
       }
       markSynced('up', Object.keys(localData));
+      if (mode === 'overwrite') lockHoldAfterOverwrite();   // 覆盖成功后：给自动同步让路
       const kb = Math.round(info.wroteBytes / 1024);
       Core.notifyOK(mode === 'merge' ? '已合并上传到 Gitee' : '已上传到 Gitee',
         (mode === 'merge'
@@ -1172,7 +1193,7 @@
     } catch (e) {
       console.warn('[Gitee] 上传失败:', e.message);
       Core.notifyFail('上传 Gitee 失败', (e.message || String(e)) + healHint() + '\n本机数据未改动。');
-    }
+    } finally { lockEnd(); }
   }
 
   // 读全量远端数据。
@@ -1279,6 +1300,8 @@
 
   async function giteeDownload() {
     if (!TOKEN) { showConfigModal(); return; }
+    // ★ 全局互斥（同 GitHub 侧）
+    if (!await lockBeginManual('下载')) { lockBusyNotice(); return; }
     Core.progShow && Core.progShow('running', '正在检查 Gitee 上的数据…', '先读一份很小的索引文件。');
     Core.progBusy && Core.progBusy(true);
     resetRepoProbe();
@@ -1371,6 +1394,7 @@
       } else Core.reloadActiveIframe();
       if (typeof buildCards === 'function') buildCards();
       markSynced('down', Object.keys(remote.data));
+      if (mode === 'overwrite') lockHoldAfterOverwrite();   // 覆盖成功后：给自动同步让路
       Core.notifyOK(mode === 'merge' ? '已合并 Gitee 数据到本机' : '已从 Gitee 同步到本机',
         mode === 'merge'
           ? '合并完成：新增 ' + stats.added + ' 项，更新 ' + stats.updated + ' 项（云端较新），保留本机 ' + stats.kept + ' 项。'
@@ -1378,7 +1402,7 @@
     } catch (e) {
       console.warn('[Gitee] 下载失败:', e.message);
       Core.notifyFail('从 Gitee 下载失败', (e.message || String(e)) + healHint() + '\n本机数据未改动。');
-    }
+    } finally { lockEnd(); }
   }
 
   // 双向同步（Gitee）：与 GitHub 侧同语义 —— 读远端 → 合并进本机 → 合并结果写回远端。
@@ -1389,10 +1413,20 @@
   async function giteeSyncBoth(opts) {
     const silent = !!(opts && opts.silent);
     if (!TOKEN) { if (!silent) showConfigModal(); return { error: '尚未配置 Gitee 令牌' }; }
+    // ★ 全局互斥（同 GitHub 侧）：静默路径的锁已由 runAutoSync 持有，不重复抢；
+    //   手动路径自己抢，抢不到就排队等。
+    const _ownLock = !silent;
+    if (_ownLock && !await lockBeginManual('双向同步')) {
+      lockBusyNotice();
+      return { error: '同步进行中，本次已跳过' };
+    }
     const t0 = Date.now();
-    Core.progShow && Core.progShow('running', '正在双向同步（Gitee）…',
-      '先读 Gitee 上的数据，与两端合并后同时更新本机与云端。两端都只会变全，不会丢数据。');
-    Core.progBusy && Core.progBusy(true);
+    // ★ 静默路径不写进度区（否则后台自动同步会把用户手动操作的文案刷掉）
+    if (!silent) {
+      Core.progShow && Core.progShow('running', '正在双向同步（Gitee）…',
+        '先读 Gitee 上的数据，与两端合并后同时更新本机与云端。两端都只会变全，不会丢数据。');
+      Core.progBusy && Core.progBusy(true);
+    }
     resetRepoProbe();
     clearFileCache();
     resetHealBudget();                   // 新一轮同步：自愈预算恢复
@@ -1460,7 +1494,7 @@
           (e.message || String(e)) + tip + healHint() + '\n本机与 Gitee 上的数据都未曾被覆盖。');
       }
       return { error: (e.message || String(e)) + healHint() };
-    }
+    } finally { if (_ownLock) lockEnd(); }
   }
 
   function markSynced(dir, keys) {
