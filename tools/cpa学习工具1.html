@@ -5261,6 +5261,7 @@
                          「🗑 恢复已删除」兜底，且复习记录 / 笔记从不随卡片删除。 -->
                     <button type="button" class="fc-btn" id="fcBulkDelBtn" title="批量删除：打开后，列表里每张卡片的「✎」后面会出现一个「🗑」，点它即删除该卡（误删可点顶部「🗑 恢复已删除」找回）">🗑 批量删除</button>
                     <button type="button" class="fc-btn primary" id="fcBuildBtn" title="生成还没出卡的知识点；已有卡不会被改写，来源有变化时摊开核对面板让你逐条决定">⚡ 生成 / 核对</button>
+                    <button type="button" class="fc-btn sm" id="fcRepairBtn" title="体检老数据：缺卡级排期 / 缺出生信息 / 索引错位 / 残留旧标记 —— 一键补齐。不删卡片、不改内容、不动复习历史">🩺 老数据体检</button>
                 </div>
                 <div class="fc-range" id="fcRange" style="display:none;">
                     <label>起点 <select id="fcFrom"></select></label>
@@ -17871,17 +17872,52 @@ if (document.readyState === 'loading') {
                这条记录自己没有下一级，就诚实地给 0 张。 */
             const set = fcLearnedSetForRecord(r);
             const out = [];
-            // 与 fcBuild 用同一套撞号消歧，否则撞号的节点会取到别人的卡
+            const seen = {};
+            /* ★ V20261012c（Tom 报障「老版本添加的数据会出现这种情况」）——
+               这里原来只按 state.cardIndex[sigFix[uid] || sig] 找卡，而 sig 是
+               (科目|章|节|层级|序号) 这种**结构性坐标**：老数据的索引会和卡片错位
+               （实测 Tom 的一个项目：20 张卡只对上 16 条索引，一张卡被算到别人名下），
+               于是「记录 → 卡」的出口让**这张卡找不到、却把另一张卡端出来** ——
+               面板里出现的不是用户点的那张，结算自然推错卡。
+               现在改成**路径优先**：fcUid（科目|章|节|path）唯一，老卡只要有
+               src.path（老版本一直在写）就能命中；索引只作兜底。 */
+            const byUid = fcCardUidIndex();
             const sigFix = fcSigFixMap(nodes);
             nodes.forEach(function (n) {
-                if (!set[fcUid(n)]) return;
-                const id = state.cardIndex[sigFix[fcUid(n)] || n.sig];
-                const c = id ? state.cards[id] : null;
+                const u = fcUid(n);
+                if (!set[u]) return;
+                let c = byUid[u] || null;
+                if (!c) {
+                    const id = state.cardIndex[sigFix[u] || n.sig];
+                    c = id ? state.cards[id] : null;
+                }
                 // ★ 需求 1：已删除的卡不出现在任何「记录 → 卡」的出口里
-                if (c && !c.hidden && !c.deleted) out.push(c);
+                if (c && !c.hidden && !c.deleted && !seen[c.id]) { seen[c.id] = 1; out.push(c); }
             });
             return out;
         }
+
+        /* 卡 → uid 索引（uid = 科目||章||节||path 用 ' > ' 连）。
+           gen.path 优先、src.path 兜底 —— 老卡只有 src，新卡两处都有。
+           与 fcCardsForRecord 配套：路径唯一，撞号（两个分支同层同序号）也不会串卡。 */
+        function fcCardUidIndex() {
+            fcState();
+            if (fcCardUidIndex._n === (fcCardUidIndexCache.n) && fcCardUidIndex._fp === fcWalkFp()) {
+                return fcCardUidIndexCache.byUid;
+            }
+            const byUid = {};
+            Object.keys(state.cards || {}).forEach(function (id) {
+                const c = state.cards[id];
+                if (!c || c.hidden || c.deleted) return;
+                const g = c.gen || c.src || {};
+                if (!g.course || !Array.isArray(g.path) || !g.path.length) return;
+                const u = fcUid({ course: g.course, chapter: g.chapter || 0, section: g.section || 0, path: g.path });
+                if (!byUid[u]) byUid[u] = c;      // 同一路径多张卡 → 取第一张（老的优先）
+            });
+            fcCardUidIndexCache = { n: fcCardUidIndex._n, byUid: byUid };
+            return byUid;
+        }
+        let fcCardUidIndexCache = { n: -1, byUid: {} };
 
         // ---------- 笔记子栏的数据源 ----------
         // ① 历史遗留：早期「记录复习」面板底部那两个输入框写下的新知识点 / 下轮提示
@@ -18174,7 +18210,9 @@ if (document.readyState === 'loading') {
         // 老卡一次性补 gen / origin。幂等（state.cardCfg.independentV1 闸门）。
         function fcMigrateIndependent() {
             fcState();
-            if (state.cardCfg && state.cardCfg.independentV1) return 0;
+            /* ★ V20261012c：这里原来有一道一次性闸门（independentV1），于是**闸门之后**
+               才补进来的老卡（另一台设备 / 旧缓存页面建的）永远不会被补 gen。
+               改成逐卡判断（缺就补），天然幂等；闸门只留作「跑过没有」的记录。 */
             const today = dateToStr(new Date());
             const idToSig = {};
             Object.keys(state.cardIndex || {}).forEach(function (sig) {
@@ -18199,6 +18237,177 @@ if (document.readyState === 'loading') {
             });
             state.cardCfg.independentV1 = true;
             return n;
+        }
+
+        /* ============================================================
+           ★ V20261012c（Tom 报障：「老版本添加的数据会出现这种情况」）
+           ------------------------------------------------------------
+           老版本（V20261011f 之前）建的卡只有 src 坐标：没有 gen / origin，
+           也没有卡级排期 review；cardIndex 还可能和卡片错位。这些差异会让
+           「记录 → 卡」的出口漏卡或取错卡，直接表现为：
+             · 点某张卡进记录面板 → 面板里根本没有这张卡（落在别的卡上）
+             · 点「保存并标记已完成」→ 被推走的是面板里那张，不是点的那张
+               ⇒ 「点的那张不消失、同系列的别的卡反而消失」
+           本模块把这些差异**一次补齐**（幂等、不删内容、不动复习历史与笔记）：
+             ① 缺 gen    → 从 src 拷出生信息（含 path，供 uid 匹配）
+             ② 缺 origin → 用当前节点原文立基线（节点不在树上则用卡自身内容）
+             ③ 缺 review → 按来源记录的进度补卡级首期（不会「一夜全到期」）
+             ④ cardIndex 缺项 / 指向已不存在的卡 → 按卡片自己的坐标补回
+             ⑤ 清掉 orphan / scopeOut 两个旧标记（新口径下已不再使用）
+           ============================================================ */
+        function fcLegacyAudit() {
+            fcState();
+            const cards = state.cards || {};
+            const idx = state.cardIndex || {};
+            const res = { total: 0, noGen: [], noOrigin: [], noSched: [], noIndex: [], badIndex: [], flags: [] };
+            const used = {};
+            Object.keys(idx).forEach(function (sig) { const id = idx[sig]; if (id && cards[id]) used[id] = 1; });
+            Object.keys(cards).forEach(function (id) {
+                const c = cards[id];
+                if (!c) return;
+                res.total++;
+                if (!c.gen) res.noGen.push(id);
+                if (!c.origin) res.noOrigin.push(id);
+                if (!c.review || !c.review.nextAt) res.noSched.push(id);
+                if (c.orphan || c.scopeOut) res.flags.push(id);
+                const s = c.gen || c.src || {};
+                if (s.course) {
+                    const sig = fcSig(s.course, s.chapter || 0, s.section || 0, s.tier || 0, s.order || 0);
+                    const curId = idx[sig];
+                    if (!curId) res.noIndex.push(id);
+                    else if (!cards[curId]) res.badIndex.push({ sig: sig, id: id });
+                    else if (curId !== id && !used[id]) {
+                        /* ★ sig 撞号：两个分支同层同序号，槽位已被一张**有效**卡合法占着。
+                           修 = 把别人挤掉，绝不能做；而「路径优先」（fcCardUidIndex）已经
+                           保证这张卡能被记录面板 / 复习清单 / 月历找到 → 不是缺陷。
+                           只单列一个数字给用户看，**不计入可修复项**（否则 fixN 永不归零、
+                           每次启动都误报「有东西要修」）。 */
+                        res.collision = (res.collision || 0) + 1;
+                    }
+                }
+            });
+            res.cardIndexN = Object.keys(idx).length;
+            res.collision = res.collision || 0;
+            res.indexN = res.noIndex.length + res.badIndex.length;
+            res.fixN = res.noGen.length + res.noOrigin.length + res.noSched.length +
+                res.indexN + res.flags.length;
+            return res;
+        }
+
+        // apply=false → 只体检；true → 真修（幂等）
+        function fcRepairLegacy(apply) {
+            const a = fcLegacyAudit();
+            if (!apply || !a.fixN) return a;
+            const today = dateToStr(new Date());
+            const ivs = (typeof getReviewIntervals === 'function') ? getReviewIntervals() : [];
+            const base0 = ivs.length ? ivs : [1, 2, 4, 7, 15];
+            const maxStage = Math.max(0, base0.length - 1);
+            const idToSig = {};
+            Object.keys(state.cardIndex || {}).forEach(function (sig) {
+                const id = state.cardIndex[sig];
+                if (id && idToSig[id] === undefined) idToSig[id] = sig;
+            });
+            // ① 出生信息
+            a.noGen.forEach(function (id) {
+                const c = state.cards[id]; if (!c) return;
+                const s = c.src || {};
+                c.gen = {
+                    sig: idToSig[id] || '', course: s.course || '',
+                    chapter: s.chapter || 0, section: s.section || 0,
+                    tier: s.tier || 0, order: s.order || 0,
+                    path: Array.isArray(s.path) ? s.path.slice() : [],
+                    at: c.createdAt || today
+                };
+                if (c.edited) c.userEdited = true;
+            });
+            // ② 原文基线
+            a.noOrigin.forEach(function (id) {
+                const c = state.cards[id]; if (!c) return;
+                c.origin = fcOriginOf(c) || { q: c.q || '', a: c.a || '', qH: c.qH || '', aH: c.aH || '' };
+            });
+            // ③ 卡级首期
+            a.noSched.forEach(function (id) {
+                const c = state.cards[id]; if (!c) return;
+                try {
+                    const seed = fcSeedNextAt(c);
+                    const rv0 = c.review || {};
+                    c.review = {
+                        mastery: parseInt(rv0.mastery, 10) || 0, lastAt: rv0.lastAt || '',
+                        nextAt: seed.nextAt,
+                        stage: Math.min(maxStage, Math.max(0, seed.doneRounds | 0)),
+                        days: 0, base: 0,
+                        hist: Array.isArray(rv0.hist) ? rv0.hist : []
+                    };
+                } catch (e) {}
+            });
+            // ④ 索引补齐（只补空位 / 指向坏卡的位，绝不抢别人已占的好位）
+            a.noIndex.concat(a.badIndex.map(function (x) { return x.id; })).forEach(function (id) {
+                const c = state.cards[id]; if (!c) return;
+                const s = c.gen || c.src || {};
+                if (!s.course) return;
+                const sig = fcSig(s.course, s.chapter || 0, s.section || 0, s.tier || 0, s.order || 0);
+                const curId = state.cardIndex[sig];
+                if (!curId || !state.cards[curId]) state.cardIndex[sig] = id;
+            });
+            // ⑤ 清旧标记
+            a.flags.forEach(function (id) {
+                const c = state.cards[id]; if (!c) return;
+                delete c.orphan; delete c.scopeOut;
+            });
+            if (state.cardCfg) {
+                state.cardCfg.legacyFixV1 = {
+                    at: today, gen: a.noGen.length, origin: a.noOrigin.length, sched: a.noSched.length,
+                    index: a.indexN, flags: a.flags.length
+                };
+            }
+            return a;
+        }
+
+        /* 体检面板：把「老数据有哪些差异」摊开，一键修复。 */
+        function fcLegacyPanel() {
+            const a = fcLegacyAudit();
+            const old = document.getElementById('fcLegacy');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            const box = document.createElement('div');
+            box.className = 'plan-mask fc-panel';
+            box.id = 'fcLegacy';
+            const row = function (n, name, hint) {
+                return '<div class="fc-rc-item"><span class="fc-rc-body"><b>' + name + '</b>' +
+                    '<span class="fc-rc-diff">' + hint + '</span></span>' +
+                    '<span class="fc-gmeta">' + n + ' 张</span></div>';
+            };
+            let h = '<div class="plan-dialog rv-dialog">' +
+                '<h3>🩺 老数据体检' + (a.fixN ? '（' + a.fixN + ' 处可修复）' : '（一切正常）') + '</h3>' +
+                '<div class="pd-hint">老版本建的卡只有章节坐标、没有卡级排期，索引也可能错位' +
+                ' —— 这正是「点完成的那张不消失、别的卡反而消失」的来源。' +
+                '这里的修复只做<b>补齐</b>：不删卡片、不改内容、不动复习历史与笔记。</div>';
+            h += row(a.total, '本项目卡片总数', '索引共 ' + a.cardIndexN + ' 条');
+            h += row(a.noGen.length, '① 缺出生信息（gen）', '补上后「生成 / 核对」才能按路径判重');
+            h += row(a.noOrigin.length, '② 缺原文基线（origin）', '补上后第一次核对照不会误报「来源已变化」');
+            h += row(a.noSched.length, '③ 缺卡级排期（review）', '按来源记录的进度补首期，不会一夜之间全部到期');
+            h += row(a.indexN, '④ 索引缺项 / 错位', '补齐后记录面板、复习清单、月历都能找到这些卡');
+            h += row(a.flags.length, '⑤ 残留旧标记（orphan / scopeOut）', '新口径不再使用，清掉即可');
+            if (a.collision) h += row(a.collision, '⑥ 索引撞号（不修）', '两个分支同层同序号，槽位被另一张有效卡占着；已由「路径优先」覆盖，无需处理');
+            h += '<div class="pd-actions">' +
+                '<button type="button" class="fc-btn ghost" id="flcClose">关闭</button>' +
+                '<button type="button" class="fc-btn primary" id="flcFix"' + (a.fixN ? '' : ' disabled') + '>' +
+                (a.fixN ? '一键修复这 ' + a.fixN + ' 处' : '无需修复') + '</button>' +
+                '</div></div>';
+            box.innerHTML = h;
+            document.body.appendChild(box);
+            const close = function () { if (box.parentNode) box.parentNode.removeChild(box); };
+            box.onclick = function (e) { if (e.target === box) close(); };
+            box.querySelector('#flcClose').onclick = close;
+            const fix = box.querySelector('#flcFix');
+            if (fix) fix.onclick = function () {
+                const r = fcRepairLegacy(true);
+                try { saveData(); } catch (e) {}
+                close();
+                try { fcRefreshViews(); } catch (e) {}
+                showToast('🩺 老数据已修复 ' + r.fixN + ' 处（排期 ' + r.noSched.length +
+                    ' · gen ' + r.noGen.length + ' · 索引 ' + r.indexN +
+                    ' · 基线 ' + r.noOrigin.length + ' · 旧标记 ' + r.flags.length + '）');
+            };
         }
 
         /* 这张卡的出生节点**现在**长什么样 —— 做 origin 快照。
@@ -18964,6 +19173,10 @@ if (document.readyState === 'loading') {
                 const kt = fcNormText(k && k.text);
                 if (kt && nm && (kt.indexOf(nm) >= 0 || nm.indexOf(kt) >= 0)) kpIdx = i;
             });
+            /* ★ V20261012c：**先**记住「用户点的是哪一张」，再开面板 ——
+               面板首次渲染（fcEmbedHTML）就用它决定当前卡；否则拿到的是上一张卡的 id，
+               「点进来的卡强制入列 / 定位」会失灵。 */
+            try { fcEmbedOpenId = card.id; } catch (e) {}
             openReviewPanel(rec.id, round, kpIdx);
             // ★ 需求 6：面板默认落在记录的第一个知识点那张卡上，但用户点的是**哪张卡**
             //   就该看到哪张卡。面板的卡列表与 fcBuild 同源，所以被点的卡一定在列表里，
@@ -19492,6 +19705,7 @@ if (document.readyState === 'loading') {
             let h = '<div class="fc-progress" style="margin:2px 0 8px;">' +
                 '每张卡都有<b>自己的下次复习日</b>（艾宾浩斯 ' + getReviewIntervals().join(' / ') + ' 天节奏）：' +
                 '在复习面板点「✔ 这张卡完成了」或「保存并标记已完成」，都只把<b>当前这一张</b>往后推一格（一次一张，不会连带同系列其它卡）；' +
+                '推完它<b>立刻离开当日复习库</b> —— 没自评的会落到 <b>📚 复习库 → ⭕ 已复习待评星</b>（那是它的新家，不是没生效）；' +
                 '<b>自评掌握程度</b>则按掌握程度加速 / 减速（见卡片反面）。' +
                 ' <b>当日库</b>今天到期就要看，<b>剩余库</b>是今天之后才排到的卡 —— 两边互斥，一张卡不重复出现；' +
                 '<b>把当日库清空 = 今天全部复习完了</b>。</div>';
@@ -19866,13 +20080,19 @@ if (document.readyState === 'loading') {
             fcState();
             const cards = fcCardsForRecord(rec);
             fcEmbedRecord = rec;
+            /* ★ V20261012c：本节一张卡都找不到，但你可能是从某张卡点进来的
+               （老数据的索引错位就会这样）→ 把那张卡放进面板，让你看得见、能在原地完成。 */
             if (!cards.length) {
-                fcEmbedState = null;
-                return '<div class="fce-wrap">' +
-                    '<div class="fce-head"><span class="fce-title">🃏 本次闪卡</span><span class="fce-count">0 张</span></div>' +
-                    '<div class="fc-empty" style="padding:10px 4px;">这一节还没有可用的闪卡。到顶部 <b>🃏 闪卡</b> 页点 <b>⚡ 生成 / 核对</b>。' +
-                        '<br>（你这次点进来的那张卡不受影响 —— 下面的「保存并标记已完成」仍会单独结算它。）</div>' +
-                '</div>';
+                const _oc = (fcEmbedOpenId && state.cards[fcEmbedOpenId]) ? state.cards[fcEmbedOpenId] : null;
+                if (!_oc || _oc.hidden || _oc.deleted) {
+                    fcEmbedState = null;
+                    return '<div class="fce-wrap">' +
+                        '<div class="fce-head"><span class="fce-title">🃏 本次闪卡</span><span class="fce-count">0 张</span></div>' +
+                        '<div class="fc-empty" style="padding:10px 4px;">这一节还没有可用的闪卡。到顶部 <b>🃏 闪卡</b> 页点 <b>⚡ 生成 / 核对</b>。' +
+                            '<br>（你这次点进来的那张卡不受影响 —— 下面的「保存并标记已完成」仍会单独结算它。）</div>' +
+                    '</div>';
+                }
+                cards.push(_oc);
             }
             const kpsOf = (rec && rec.knowledgePoints) || [];
             const pushByKp = function (k) {          // 这条知识点对应第几张卡（-1 = 对不上）
@@ -19895,7 +20115,21 @@ if (document.readyState === 'loading') {
                     if (t >= 0) { startIdx = t; break; }
                 }
             }
-            fcEmbedState = { idx: startIdx, flipped: false, editing: false, ids: cards.map(function (c) { return c.id; }), seen: {} };
+            /* ★ V20261012c：「你点进来的那张卡」必须成为面板的当前卡（WYSIWYG）——
+               否则结算（fcEmbedSeenIds 取当前卡）会推走面板默认落点那张。
+               老数据里这张卡可能压根不在本节列表里（索引错位，见 fcCardsForRecord），
+               那就把它插到列表第一位：看得见、对得上、完成它就按它结算。 */
+            let openInserted = false;
+            try {
+                const _open = (fcEmbedOpenId && state.cards[fcEmbedOpenId]) ? state.cards[fcEmbedOpenId] : null;
+                if (_open && !_open.hidden && !_open.deleted) {
+                    let k = -1;
+                    for (let i = 0; i < cards.length; i++) { if (cards[i].id === _open.id) { k = i; break; } }
+                    if (k >= 0) startIdx = k;
+                    else { cards.unshift(_open); startIdx = 0; openInserted = true; }
+                }
+            } catch (e) {}
+            fcEmbedState = { idx: startIdx, flipped: false, editing: false, ids: cards.map(function (c) { return c.id; }), seen: {}, openInserted: openInserted };
             /* ★ V20261012b：seen 只作「本次看过」的痕迹，**不再参与完成结算**
                （结算只看当前这一张，见 fcEmbedSeenIds）。 */
             if (cards[startIdx]) fcEmbedState.seen[cards[startIdx].id] = 1;
@@ -19905,6 +20139,9 @@ if (document.readyState === 'loading') {
                     '<span class="fce-title">🃏 本次闪卡</span>' +
                     '<span class="fce-count"><b id="fcePos">' + (startIdx + 1) + '</b> / ' + cards.length + ' 张' +
                         ' · 今日待复习 <b id="fceDue">' + dueN + '</b> 张</span>' +
+                    (openInserted
+                        ? '<span class="fc-gmeta" style="color:#b7791f" title="这张卡是你点进来的，但按老数据的索引找不到它所属的记录卡列表 —— 已临时放进本节列表（第一位），完成它就按它结算。可到闪卡页顶部点「🩺 老数据体检」一次修好">⚠️ 老数据索引错位 · 已临时入列</span>'
+                        : '') +
                     '<span class="fc-spacer"></span>' +
                     '<button type="button" class="fc-btn sm" data-fce-nav="-1">‹ 上一张</button>' +
                     '<button type="button" class="fc-btn sm" data-fce-nav="1">下一张 ›</button>' +
@@ -20087,9 +20324,25 @@ if (document.readyState === 'loading') {
             try { if (fcMigrateCardSchedule()) saveData(); } catch (e) {}
             /* ★ V20261012a：老卡补 gen / origin（生成即独立）。幂等，有改动才落盘。 */
             try { if (fcMigrateIndependent()) saveData(); } catch (e) {}
+            /* ★ V20261012c（Tom：「老版本添加的数据会出现这种情况」）——
+               启动时把老数据**自动补齐**：缺排期 / 缺 gen / 缺 origin / 索引错位 /
+               残留旧标记。幂等，补出东西才落盘（否则不触发同步）。 */
+            try {
+                const _la = fcRepairLegacy(true);
+                if (_la.fixN) {
+                    saveData();
+                    showToast('🩺 已自动修复 ' + _la.fixN + ' 处老数据（缺排期 ' + _la.noSched.length +
+                        ' · 索引错位 ' + _la.indexN + '）—— 明细见顶部「🩺 老数据体检」');
+                }
+            } catch (e) {}
 
             const build = document.getElementById('fcBuildBtn');
             if (build) build.addEventListener('click', function () { fcGenerate(); });
+            // ★ V20261012c：老数据体检入口
+            const repBtn = document.getElementById('fcRepairBtn');
+            if (repBtn) repBtn.addEventListener('click', function () {
+                try { fcLegacyPanel(); } catch (e) { console.warn(e); }
+            });
             // ★ 2026-09-18（需求 A）：批量删除开关（只切内存标志，不动任何卡片数据）
             const bdbtn = document.getElementById('fcBulkDelBtn');
             if (bdbtn) bdbtn.addEventListener('click', function (e) {
@@ -27822,7 +28075,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012b</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012c</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
