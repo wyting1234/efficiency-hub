@@ -3276,6 +3276,18 @@
         }
         .qcard .qh { font-size: 13.5px; color: #3E3226; font-weight: 600; margin-bottom: 3px; }
         .qcard .qm { font-size: 11.5px; color: #9C8B72; margin-bottom: 6px; }
+        /* ★ v59（Tom 2026-10-12）「题目树：题目的编辑、删除按钮」——
+           树叶子（.tleaf）与列表卡片（.qcard）各挂一组小图标按钮，
+           动作复用「📐 案例展示」同一份 csCaseEdit / csCaseDel，不做第二套实现。 */
+        .qt-ops { display: flex; gap: 6px; margin: 2px 0 5px 30px; }
+        .qcard .qt-ops { margin-left: 0; }
+        .qt-op {
+            font-size: 11.5px; line-height: 1; padding: 3px 9px; cursor: pointer;
+            border: 1px solid var(--line2, #DCCFB4); border-radius: 6px;
+            background: #FFFDF8; color: #7A6A55; font-family: inherit;
+        }
+        .qt-op:hover { background: #F6EFE0; color: #3E3226; }
+        .qt-op.del:hover { background: #FBEDE7; border-color: #E5B7A8; color: #A6503C; }
         .cs-empty { text-align: center; padding: 44px 20px; color: #9C8B72; }
         .cs-empty .cs-big { font-size: 16px; color: #7A6A55; margin-bottom: 7px; font-family: var(--serif, Georgia), serif; }
         .cs-empty p { margin: 0; font-size: 12.5px; }
@@ -15084,6 +15096,39 @@ if (document.readyState === 'loading') {
         return bag.concat(caseKps(r).map(kpNameOf)).concat((r.eyes || []).map(kpNameOf)).join(' ').toLowerCase();
     }
 
+    /* ★ v59（Tom 2026-10-12）：案例的「编辑 / 删除」动作抽成共享函数 ——
+       「📐 案例展示」列表与「🌲 题目树」共用同一份实现
+       （原来只有案例展示列表内联了一份，题目树要点同一件事就得复制一遍）。
+       两处行为必须一致：编辑 = 载入编辑器；删除 = 二次确认后落盘。 */
+    function csCaseEdit(r) {
+        if (!r) return;
+        editId = r.id; draft = normDraft(r);
+        refillScope(draft);
+        if (csCourse) csCourse.value = draft.course || '';
+        refillChapter(); if (csChapter) csChapter.value = String(draft.chapter || '');
+        refillSection(); if (csSection) csSection.value = String(draft.section || '');
+        var dEl = document.getElementById('csDate'); if (dEl) dEl.value = draft.date || '';
+        var tEl = document.getElementById('csEditorTitle'); if (tEl) tEl.textContent = '编辑案例';
+        renderTable(); openEditor();
+    }
+    function csCaseDel(r) {
+        if (!r || !r.id) return;
+        if (!confirm('确定删除这条案例？')) return;
+        cases = cases.filter(function (x) { return x.id !== r.id; });
+        saveCases(cases);                       // 内部已顺带刷题目树（CaseBook._qtRefresh）
+        if (editId === r.id) { editId = null; draft = null; try { closeEditor(); } catch (e) { } }
+        renderList(); renderStat();
+        try { renderQtree(); } catch (e) { }     // 显式再刷一次：不依赖 saveCases 里的隐式链路
+        toastSafe('已删除');
+    }
+    /* 题目树里每条题目下方那一组小按钮 */
+    function qtOpsHTML() {
+        return '<div class="qt-ops">' +
+            '<button type="button" class="qt-op" data-qt-op="edit" title="编辑这条题目：切到「📐 案例展示」并打开编辑器">✎ 编辑</button>' +
+            '<button type="button" class="qt-op del" data-qt-op="del" title="删除这条题目（二次确认，不可撤销）">🗑 删除</button>' +
+            '</div>';
+    }
+
     function renderList() {
         if (!csList) return;
         var kw = '';
@@ -15123,21 +15168,9 @@ if (document.readyState === 'loading') {
                 '<button class="fc-btn" data-cs="qt">🌲 看题</button>' +
                 '<button class="fc-btn" data-cs="del">🗑 删除</button>' +
                 '</div>';
-            d.querySelector('[data-cs="edit"]').addEventListener('click', function () {
-                editId = r.id; draft = normDraft(r);
-                refillScope(draft);
-                if (csCourse) csCourse.value = draft.course || '';
-                refillChapter(); if (csChapter) csChapter.value = String(draft.chapter || '');
-                refillSection(); if (csSection) csSection.value = String(draft.section || '');
-                var dEl = document.getElementById('csDate'); if (dEl) dEl.value = draft.date || '';
-                var tEl = document.getElementById('csEditorTitle'); if (tEl) tEl.textContent = '编辑案例';
-                renderTable(); openEditor();
-            });
-            d.querySelector('[data-cs="del"]').addEventListener('click', function () {
-                if (!confirm('确定删除这条案例？')) return;
-                cases = cases.filter(function (x) { return x.id !== r.id; });
-                saveCases(cases); renderList(); renderStat(); toastSafe('已删除');
-            });
+            /* ★ v59：动作已抽到 csCaseEdit / csCaseDel（题目树共用同一份）。 */
+            d.querySelector('[data-cs="edit"]').addEventListener('click', function () { csCaseEdit(r); });
+            d.querySelector('[data-cs="del"]').addEventListener('click', function () { csCaseDel(r); });
             d.querySelector('[data-cs="qt"]').addEventListener('click', function () {
                 var b = document.querySelector('#viewTabs .vtab[data-view="qtree"]');
                 if (b) b.click();
@@ -15413,6 +15446,7 @@ if (document.readyState === 'loading') {
             '<div class="tq"><span class="qno">Q</span>' + esc(r.q) +
             (nProb > 1 ? '<span class="cs-nprob">' + nProb + ' 问</span>' : '') +
             (r.difficulty ? '<span class="cs-diff-lite">' + esc(diffStars(r.difficulty)) + '</span>' : '') + '</div>' +
+            qtOpsHTML() +
             (kps ? '<div class="cs-chips" style="margin:2px 0 4px 30px">' + kps + '</div>' : '') +
             (ans ? '<div class="ansbox"><span class="alab">答案：</span>' + esc(ans).replace(/\n/g, '<br>') + '</div>' : '') +
             '</div>';
@@ -15424,6 +15458,7 @@ if (document.readyState === 'loading') {
             return '<div class="qcard" data-case="' + esc(r.id) + '">' +
                 '<div class="qh">' + esc(r.q) + (r.difficulty ? ' <span class="cs-diff-lite">' + esc(diffStars(r.difficulty)) + '</span>' : '') + '</div>' +
                 '<div class="qm">' + esc(r.course) + (chLab ? ' · ' + esc(chLab) : '') + (r.date ? ' · ' + esc(r.date) : '') + '</div>' +
+                qtOpsHTML() +
                 (ans ? '<div class="ansbox" style="margin-left:0"><span class="alab">答案：</span>' + esc(ans).replace(/\n/g, '<br>') + '</div>' : '') +
                 '</div>';
         }).join('');
@@ -15440,6 +15475,27 @@ if (document.readyState === 'loading') {
         if (tog) tog.textContent = _collapsed[sig] ? '▸' : '▾';
     });
     function CSS_ESC(s) { return String(s).replace(/"/g, '\\"'); }
+    /* ★ v59（Tom 2026-10-12）：「🌲 题目树」里每条题目的「✎ 编辑 / 🗑 删除」。
+       树叶子与列表卡片都用同一套委托 —— 两个容器本身不换（只有 innerHTML 换血），
+       所以各挂一次就够，重绘多少次都不失联。 */
+    function qtOpsClick(ev) {
+        var btn = ev.target.closest('[data-qt-op]'); if (!btn) return;
+        var host = ev.target.closest('[data-case]'); if (!host) return;
+        var id = host.getAttribute('data-case');
+        var r = cases.filter(function (x) { return x.id === id; })[0];
+        if (!r) return;
+        ev.stopPropagation();
+        if (btn.getAttribute('data-qt-op') === 'del') { csCaseDel(r); return; }
+        /* 编辑：**先**切到「📐 案例展示」，**再**载入编辑器。
+           顺序不能反 —— 切页会跑 CaseBook.onEnter()（refillScope + renderList），
+           若在它之前就填好 draft，onEnter 的 refillScope 会按当前科目把章 / 节下拉重填，
+           把刚设进去的坐标盖掉。先切页再载入，最后一次写入才说了算。 */
+        var tab = document.querySelector('#viewTabs .vtab[data-view="case"]');
+        if (tab) tab.click();
+        csCaseEdit(r);
+    }
+    if (qtTree) qtTree.addEventListener('click', qtOpsClick);
+    if (qtList) qtList.addEventListener('click', qtOpsClick);
 
     /* 答案显隐 */
     function applyAnsVisibility() {
@@ -28202,7 +28258,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012f</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012h</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
