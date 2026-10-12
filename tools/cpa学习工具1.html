@@ -3100,6 +3100,20 @@
         .cs-numbgrp .numb-hint { font-size: 11.5px; color: #9C8B72; }
         /* 答案 / 解析 */
         .cs-q td.cs-anscell, .cs-q td.cs-notecell { padding-top: 4px; }
+        /* ★ v58（Tom 2026-10-12）「答案」表头右侧的粘贴模式切换条
+           整体 = 整段粘贴算一条答案（与旧行为一致） / 逐行 = 每行各算一条答案 */
+        .cs-q tr.cs-r-hd2 > th.cs-anshd { white-space: nowrap; }
+        .cs-pastebar { display: inline-flex; align-items: center; gap: 3px; margin-left: 7px; vertical-align: middle; }
+        .cs-pastebar .csp-lb { font-size: 11px; color: #7C8B52; font-weight: 400; }
+        .cs-pastebar .csp-b {
+            border: 1px solid #C6CE9E; background: #F6FAE9; color: #5F6E33;
+            border-radius: 9px; padding: 0 7px; font-size: 11px; line-height: 16px;
+            cursor: pointer; font-weight: 500; font-family: inherit;
+        }
+        .cs-pastebar .csp-b:hover { background: #EAF2CE; }
+        .cs-pastebar .csp-b.active {
+            background: #5F6E33; border-color: #5F6E33; color: #FAF7F1; font-weight: 600;
+        }
         /* 2026-10-11：答案格改用「已知」同款编辑器（rows=1），不再单独顶高；cs-notecell 选择器已随 f 轮移除 */
         /* 加减问题那一行 */
         .cs-q tbody.cs-tb-ops td { padding: 2px 4px 8px; }
@@ -14391,6 +14405,47 @@ if (document.readyState === 'loading') {
        ============================================================ */
     var csTable = document.getElementById('csTable');
 
+    /* ============================================================
+       ★ v58（Tom 2026-10-12）「答案」格的粘贴模式
+       ── 只影响**粘贴那一下**怎么落数据，不改答案格平时的输入行为 ──
+       · one   = 整体（默认）：完全不拦 paste，走浏览器原生 ⇒ 整段文字进同一条答案，
+                 与这一版之前的行为逐字节一致（存量习惯不受影响）。
+       · lines = 逐行：拦下 paste —— 第一行按**原生语义插到光标处**（保留格内原有文字），
+                 其余每一行各自**新起一条答案**（插在当前这条答案之后，解析/题眼/总结留空）。
+       · 切换按钮挂在表格下半表头「答案」两字右侧（Tom 指定的位置）。
+       · 选择记 localStorage —— 与闪卡「答案呈现方式」同一套做法，刷新/换案例都沿用。
+       · 数据层仍是 draft.problems[pi].answers[]（在这里就写它），保存走原路，没有第二条真源。
+       ============================================================ */
+    var CS_ANSPASTE_KEY = 'hub_cpa_cs_anspaste_v1';
+    var CS_ANSPASTES = ['one', 'lines'];
+    var CS_ANSPASTE_NAME = { one: '整体', lines: '逐行' };
+    var csAnsPaste = (function () {
+        try {
+            var v = localStorage.getItem(CS_ANSPASTE_KEY);
+            if (CS_ANSPASTES.indexOf(v) >= 0) return v;
+        } catch (e) { }
+        return 'one';
+    })();
+    function csSetAnsPaste(v) {
+        if (CS_ANSPASTES.indexOf(v) < 0) v = 'one';
+        if (v === csAnsPaste) return;
+        csAnsPaste = v;
+        try { localStorage.setItem(CS_ANSPASTE_KEY, v); } catch (e) { }
+        /* 切换前先把表里正在编辑的内容收进 draft，否则重画会吃掉没同步的输入 */
+        if (draft) { readTable(); renderTable(); }
+    }
+    function csAnsPasteBarHTML() {
+        return '<span class="cs-pastebar" role="group" aria-label="答案粘贴模式">' +
+            '<span class="csp-lb">粘贴</span>' +
+            CS_ANSPASTES.map(function (v) {
+                return '<button type="button" class="csp-b' + (v === csAnsPaste ? ' active' : '') +
+                    '" data-csanspaste="' + v + '" title="' +
+                    (v === 'one' ? '整体：粘贴的整段文字算作同一条答案'
+                        : '逐行：粘贴的每一行各算一条答案（第一行落在光标处，其余新起一条）') +
+                    '">' + CS_ANSPASTE_NAME[v] + '</button>';
+            }).join('') + '</span>';
+    }
+
     function lines2ul(arr, ph) {
         var a = (arr || []).filter(function (x) { return String(x || '').trim() !== ''; });
         if (!a.length) return '<div class="cs-mini">' + esc(ph || '（空）') + '</div>';
@@ -14639,7 +14694,8 @@ if (document.readyState === 'loading') {
 
         /* 下半部分表头（黄绿行，与截图第 8 行对应） */
         h += '<tbody class="cs-tb-hdlow"><tr class="cs-r-hd2">' +
-             '<th></th><th>答案</th><th>解析</th><th>题眼、陷阱</th><th>总结</th></tr></tbody>';
+             '<th></th><th class="cs-anshd">答案' + csAnsPasteBarHTML() +
+             '</th><th>解析</th><th>题眼、陷阱</th><th>总结</th></tr></tbody>';
 
         /* 下半部分：每个问题一块（问题N，跨该问题所有答案行） */
         d.problems.forEach(function (p, pi) {
@@ -14852,6 +14908,58 @@ if (document.readyState === 'loading') {
     if (csTable) csTable.addEventListener('input', function (ev) {
         var _gt = ev.target;
         if (_gt && _gt.tagName === 'TEXTAREA') csGrowOne(_gt);
+    });
+    /* ★ v58：粘贴模式切换（委托）——按钮是 renderTable 每次重画的，所以也走委托 */
+    if (csTable) csTable.addEventListener('click', function (ev) {
+        var pb = ev.target.closest ? ev.target.closest('[data-csanspaste]') : null;
+        if (pb) { csSetAnsPaste(pb.getAttribute('data-csanspaste')); return; }
+    });
+    /* ★ v58：答案格「逐行粘贴」——把剪贴板按行拆开，一行一条答案。
+       只有「逐行」模式 + 落在答案格（td.cs-anscell）+ 至少两行 才拦；其余一律放行给原生。 */
+    function csAnsPasteSplit(txt) {
+        return String(txt == null ? '' : txt).replace(/\r/g, '').split('\n')
+            .map(function (x) { return String(x).replace(/[ \t]+$/, ''); })
+            .filter(function (x) { return x.trim() !== ''; });
+    }
+    if (csTable) csTable.addEventListener('paste', function (ev) {
+        if (csAnsPaste !== 'lines') return;
+        var ta = ev.target;
+        if (!ta || ta.tagName !== 'TEXTAREA' || !ta.closest) return;
+        if (!ta.closest('td.cs-anscell')) return;
+        var txt = '';
+        try { txt = (ev.clipboardData || window.clipboardData).getData('text') || ''; } catch (e) { txt = ''; }
+        var rowsP = csAnsPasteSplit(txt);
+        if (rowsP.length < 2) return;          /* 只有一行 ⇒ 与「整体」无差别，交给原生 */
+        var tb = ta.closest('tbody.cs-tb-low');
+        var tr = ta.closest('tr.cs-r-ansr');
+        if (!tb || !tr) return;
+        var pi = parseInt(tb.getAttribute('data-pi'), 10);
+        var domRows = Array.prototype.slice.call(tb.querySelectorAll('tr.cs-r-ansr'));
+        var ai = domRows.indexOf(tr);
+        if (isNaN(pi) || ai < 0) return;
+        ev.preventDefault();
+        /* ① 第一行按原生语义插到光标处（保留格内原有文字，不整格覆盖） */
+        var sPos = ta.selectionStart, ePos = ta.selectionEnd, curV = String(ta.value);
+        if (sPos == null) sPos = curV.length;
+        if (ePos == null) ePos = sPos;
+        ta.value = curV.slice(0, sPos) + rowsP[0] + curV.slice(ePos);
+        /* ② 先把表里当前内容（含刚改的这格）收进 draft，再把余下各行各起一条答案 */
+        readTable();
+        var pr = (draft && draft.problems) ? draft.problems[pi] : null;
+        if (!pr) return;
+        if (!Array.isArray(pr.answers) || !pr.answers.length) pr.answers = [blankAnswer()];
+        if (ai > pr.answers.length - 1) ai = pr.answers.length - 1;
+        pr.answers[ai].a = ta.value;           /* 兜底：readTable 已写入，这里显式对齐一次 */
+        var addAns = rowsP.slice(1).map(function (x) { var b = blankAnswer(); b.a = x; return b; });
+        pr.answers.splice.apply(pr.answers, [ai + 1, 0].concat(addAns));
+        renderTable();
+        /* ③ 焦点还给刚粘的那一格、光标停在新内容末尾 —— 连着粘 / 接着打字不丢位置 */
+        try {
+            var tb2 = csTable.querySelector('tbody.cs-tb-low[data-pi="' + pi + '"]');
+            var rs2 = tb2 ? tb2.querySelectorAll('tr.cs-r-ansr') : null;
+            var ta2 = (rs2 && rs2[ai]) ? rs2[ai].querySelector('textarea.cs-cellin') : null;
+            if (ta2) { ta2.focus(); var L2 = String(ta2.value).length; ta2.setSelectionRange(L2, L2); }
+        } catch (e3) { }
     });
     if (csTable) csTable.addEventListener('click', function (ev) {
         var rm = ev.target.closest('[data-rmkp]');
@@ -28075,7 +28183,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012c</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012d</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
