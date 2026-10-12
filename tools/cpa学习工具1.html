@@ -5040,7 +5040,7 @@
                                     <div class="kp-mode-row">
                                         <span class="kp-mode-cap">展示模式</span>
                                         <span class="kp-modes" id="kpModes">
-                                            <button type="button" class="kp-mode active" data-kpmode="default" title="现在的输入方式：一行一个知识点，回车自动续编号">默认</button>
+                                            <button type="button" class="kp-mode active" data-kpmode="default" title="现在的输入方式：一行一个知识点，回车自动续编号；Tab 降级（缩进一级）/ Shift+Tab 升级">默认</button>
                                             <button type="button" class="kp-mode" data-kpmode="outline" title="缩进表示层级，Tab / Shift+Tab 调整">大纲视角</button>
                                             <button type="button" class="kp-mode" data-kpmode="mind" title="列 = 层级，父单元格纵向合并">思维导图视角</button>
                                             <button type="button" class="kp-mode" data-kpmode="md" title="Markdown 源码，可编辑并与其他视角双向同步">MD视角</button>
@@ -27804,6 +27804,25 @@ if (document.readyState === 'loading') {
                 var e2 = el(id);
                 if (e2) e2.addEventListener('keydown', onTextKey);
             });
+
+            /* ★ v58（Tom 2026-10-12）「默认视角」的 Tab / Shift+Tab —— 层级降级 / 升级。
+               Tom 原话：「记录学习：层级降级的快捷键是 tab 键盘，升级键的快捷键设定为 shift」。
+               缺口：本版之前 keydown 只绑在 #fKpOutline / #fKpMd 上，
+               **默认视角（#fKpQuick）一条 keydown 都没有** —— 记录学习打开就是默认视角，
+               按 Tab 落到浏览器默认行为（焦点移出编辑器），层级既降不下去也升不上来
+               （_probe58_tab.js 真机实测：prevented=false、文本零变化）。
+               这里只接 **Tab 一个键**，其余按键一字不动：
+                 · Enter / Shift+Enter / 行首退格已由上面那条 document 级 beforeinput
+                   委托统一兜住（三个视角共享），不能在这里再走一遍 —— 两套路径同时
+                   存在就会各插一次；
+                 · 所以刻意**不整包绑 onTextKey**，只把 Tab 转交给它，复用的仍是
+                   onTextKeyRich 里那一份单一实现（mode==='outline' 在树上升降；
+                   其余视角走 kpIndentLine 的 2 空格缩进 + relevelRepaintKeepCursor 重绘）。 */
+            var qkEl = el('fKpQuick');
+            if (qkEl) qkEl.addEventListener('keydown', function (e3) {
+                if (e3.key !== 'Tab') return;
+                onTextKey(e3);
+            });
             eachNode('#kpTmplList input[name="kpTmpl"]', function (b) {
                 b.addEventListener('change', function () { if (b.checked) setTmpl(b.value); });
             });
@@ -28183,7 +28202,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012d</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261012f</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
