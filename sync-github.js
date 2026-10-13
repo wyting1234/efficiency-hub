@@ -278,9 +278,19 @@
      ★ 两个「新/旧世代」判定的差异（有意，不是笔误）：
        · buildMergedUpload / mergeCloudToLocal 的时间戳比较：**无记录 ⇒ 视为本机较新**（保留本机，
          宁可多传不可静默少传）；
-       · 世代闸门：**无记录 ⇒ 按旧世代处理**（不上传）。
-       方向不同是因为风险不同 —— 前者判错的代价是「多传了一份」，后者判错的代价是
-       「刚做的覆盖被悄悄撤销」。 */
+       · 世代闸门：**看云端有没有同名键** ——
+         云端有 ⇒ 本机记录缺失或早于覆盖时按旧世代（不上传 / 对齐时用云端那份）；
+         云端没有 ⇒ 本机独有，放行（上传）/ 保留（对齐时不删），与本机时间戳无关。
+       ★ 2026-10-13 修正（Tom：「上传之后再下载，案例又没了」）：
+         闸门原先写的是「无记录 ⇒ 一律按旧世代（不上传）」。这条在全量 localStorage 同步
+         架构里是有害的 —— **工具页（iframe）写入的键天然没有时间戳记录**
+         （__hub_meta_v1__ 被导航页覆写 setItem 记录，跨 realm 抓不到；sync_key_ts_v1 靠
+         storage 事件补记，也需要导航页在场）。于是 cpa_* / life-* / accCase_v3_<项目>
+         这类键在做过一次「覆盖云端」之后**永远上不了云**，且上传回执仍报「已合并上传」；
+         更糟的是 alignToGeneration 会把它们当旧世代、在云端没有同名键时直接从本机删掉。
+         判据改成「看云端有没有」之后：覆盖语义照样成立（防的是「旧数据把云端那次覆盖
+         并回来」，而这只有在云端存在同名键时才谈得上），工具页写入的活数据不再被误伤。
+       两处判定的方向仍不同，但都退到了「不丢用户数据」这一侧。 */
 
   const EPOCH_SEEN_KEY = 'sync_epoch_seen_v1';
   const DEVICE_TAG_KEY = 'sync_device_tag_v1';
@@ -352,7 +362,11 @@
   // 算出「旧世代的本机键」→ { key: 本机值 }；没有则返回 null。
   // ★ 必须在「把云端写回本机」之前调用 —— 那一写会刷新这些键的时间戳，
   //   之后再算就分不清「云端的内容」与「本机新改的」。
-  function staleGenKeys(at) {
+  // cloudKeys（可选）：本次云端读回来的键集。传了它，才能区分「无时间戳记录」的两种情形。
+  // ★ 2026-10-13 修：旧实现把「无记录」一律当旧世代，于是 alignToGeneration 会把
+  //   **本机独有的活数据**（工具页写入、时间戳抓不到的键）从本机删掉 —— 实测复现过。
+  //   新口径：无记录 + 云端没有该键 ⇒ 不算旧世代（保留本机，不删）。
+  function staleGenKeys(at, cloudKeys) {
     at = parseInt(at, 10) || 0;
     if (!at) return null;
     const meta = localKeyTs();
@@ -363,10 +377,25 @@
       let v = null;
       try { v = localStorage.getItem(k); } catch (e) { continue; }
       if (v === null || isExcludedKey(k, v)) continue;
+      // ★ 2026-10-13 修订：判据与 buildMergedUpload 的闸门保持一致 —— 只看「云端有没有同名键」。
+      //   · 云端没有 ⇒ 本机独有 ⇒ 既不算旧世代、也不会被 alignToGeneration 删掉
+      //     （旧口径会在这里把工具页写入的活数据从本机删除，实测复现过）。
+      //   · 云端有 ⇒ 本机记录缺失或早于覆盖时算旧世代，对齐时用云端那份替换。
+      if (!cloudKeys || !cloudKeys[k]) continue;
       const t = meta[k];
       if (!t || t <= at) { out[k] = v; n++; }
     }
     return n ? out : null;
+  }
+
+  // 云端键集 → {key:1}。给 staleGenKeys 判断「无时间戳记录的键，云端到底有没有」。
+  function cloudKeySet(serverData) {
+    const d = (serverData && serverData.data) || {};
+    const s = Object.create(null);
+    for (const k in d) {
+      if (Object.prototype.hasOwnProperty.call(d, k)) s[k] = 1;
+    }
+    return s;
   }
 
   // 世代冲突快照：把「即将被云端取代的本机数据」留一份（不参与同步，最多留最近 3 次）。
@@ -410,7 +439,7 @@
   function alignToGeneration(serverData, epoch, staleMap) {
     const at = parseInt((epoch && epoch.at) || 0, 10) || 0;
     if (!at) return null;
-    const stale = staleMap || staleGenKeys(at);
+    const stale = staleMap || staleGenKeys(at, cloudKeySet(serverData));
     if (!stale) return null;
     const snapshotted = snapshotStaleKeys(stale, at, epoch);
     const sdata = (serverData && serverData.data) || {};
@@ -436,7 +465,8 @@
     } catch (e) {}
     return '检测到另一台设备' + (epoch && epoch.by ? '（' + epoch.by + '）' : '') +
       '在 ' + (when || '不久前') + ' 执行了「覆盖云端」。\n' +
-      '本机已按该世代处理：早于此时刻的本机数据不再上传（以云端为准），此后新的改动照常同步。';
+      '本机已按该世代处理：早于此时刻、且云端存有同名的本机数据不再上传并改用云端那份；' +
+      '云端没有的本机独有数据一律保留（不会被删），此后新的改动照常同步。';
   }
 
   /* ============ 领域级合并（v5 新增）============
@@ -752,11 +782,17 @@
   }
 
   // 合并上传：以云端数据为本底，逐键与本机「较新」者合并，返回合并后的云端数据集
+  // 最近一次 buildMergedUpload 里「因世代闸门而未上传」的键名。
+  // 用途：① 上传回执如实告知（把「静默少传」变成用户可见）；
+  //      ② 排查时能直接看到是哪些键被闸门拦下、以及为什么（见下面的分支注释）。
+  let lastGateSkipped = [];
+
   function buildMergedUpload(serverData, gateKeys) {
     const sdata = (serverData && serverData.data) || {};
     noteCloudEpoch(serverData && serverData.metaEpoch);   // 世代闸门依赖它，必须走在这之前
     const meta = localKeyTs();
     const merged = {};
+    lastGateSkipped = [];
     for (const key in sdata) {
       const entry = sdata[key];
       if (!entry || typeof entry.value !== 'string') continue;
@@ -775,10 +811,20 @@
       const value = localStorage.getItem(key);
       if (value === null || isExcludedKey(key, value)) continue;
       if (gateKeys) {
-        if (gateKeys[key] !== undefined) continue;              // 旧世代键：不上传
+        // 旧世代键：不上传（gateKeys 由 staleGenKeys 算出，那边已按「云端有没有」判过）
+        if (gateKeys[key] !== undefined) { lastGateSkipped.push(key); continue; }
       } else if (gateAt) {
+        // ★ 2026-10-13 修订：判据统一为「云端有没有同名键」，不再看本机时间戳是否早于覆盖。
+        //   · 云端没有该键（本机独有）⇒ 放行。往云端加一个新键不会改动任何已有键，
+        //     谈不上「撤销覆盖」；而拦住它的代价是这份数据**永远上不了云** ——
+        //     工具页写入的键（cpa_* / life-* / accCase_v3_<项目>）时间戳常常缺失或陈旧，
+        //     旧口径把它们一律拦下，才有「上传成功、另一端却看不到」这种静默失败。
+        //   · 云端已有该键 ⇒ 本机这份不得覆盖云端，只有「覆盖之后的新改动」
+        //     （记录晚于 gateAt）才放行；否则会把那次覆盖并回来。这才是闸门本来要防的事。
         const ltsG = meta[key];
-        if (!ltsG || ltsG <= gateAt) continue;                 // 旧世代键：不上传
+        if (Object.prototype.hasOwnProperty.call(merged, key)) {
+          if (!ltsG || ltsG <= gateAt) { lastGateSkipped.push(key); continue; }
+        }
       }
       const lts = meta[key] || Date.now();                   // 无写入记录的键视为刚写过（本机为准）
       const cts = (merged[key] && merged[key].timestamp) || 0;
@@ -826,7 +872,7 @@
     let gateKeys = null, alignStats = null;
     if (epochNewer && hasRemote) {
       const _at = (remote.metaEpoch && remote.metaEpoch.at) || 0;
-      gateKeys = staleGenKeys(_at);
+      gateKeys = staleGenKeys(_at, cloudKeySet(remote));
       alignStats = alignToGeneration(remote, remote.metaEpoch, gateKeys);
     }
     const beforeCount = getLocalKeys().length;
@@ -2541,11 +2587,18 @@
         ? `\n本次只更新了 ${shardInfo.wroteShards} / ${shardInfo.totalShards} 个数据片` +
           (shardInfo.skippedShards > 0 ? `（跳过 ${shardInfo.skippedShards} 个未变化的片，省流量）` : '') + '。'
         : '';
+      const gateTip = lastGateSkipped.length
+        ? '\n\n⚠️ 另有 ' + lastGateSkipped.length + ' 项本机数据本次未上传（属于上次「覆盖云端」之前的旧数据，' +
+          '云端已存有同名的一份，按「以云端为准」跳过）：\n   ' +
+          lastGateSkipped.slice(0, 5).join('、') +
+          (lastGateSkipped.length > 5 ? ' 等' : '') +
+          '\n   若其中有你刚改过的东西，先在本机点「下载 → 覆盖本机」让两端对齐，再改一次即可传上去。'
+        : '';
       notifyOK(mode === 'merge' ? '已合并上传到云端' : '已上传到云端',
         (mode === 'merge'
           ? `两边数据已按「较新保留」合并，共 ${nItem} 项。`
           : `本机的 ${nItem} 项数据已存到云端。`) +
-        shardTip + `\n本次写入约 ${kb}KB（已压缩）。` + sizeTip +
+        shardTip + `\n本次写入约 ${kb}KB（已压缩）。` + sizeTip + gateTip +
         '\n在手机 / 其他电脑点「云端 → 本机」就能同步过去。');
     } catch (e) {
       console.warn('[GitHub] 上传失败:', e.message);
@@ -3243,6 +3296,8 @@
       syncLock: syncLockAPI,
       // 覆盖世代号（2026-10-12）：Gitee 后端与回归测试共用
       epochSeen, setEpochSeen, noteCloudEpoch, epochNewerThanSeen, overwriteGateAt, staleGenKeys,
+      // 最近一次「合并上传」中因世代闸门而未上传的键名（回执提示与排查用）
+      gateSkipped: () => lastGateSkipped.slice(),
       alignToGeneration, snapshotStaleKeys, epochNoticeText, deviceTag,
       EPOCH_SEEN_KEY, DEVICE_TAG_KEY, EPOCH_SNAP_KEY,
       // 刷新（v9）

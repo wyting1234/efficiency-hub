@@ -1201,10 +1201,18 @@
       markSynced('up', Object.keys(localData));
       if (mode === 'overwrite') lockHoldAfterOverwrite();   // 覆盖成功后：给自动同步让路
       const kb = Math.round(info.wroteBytes / 1024);
+      const _gate = (mode === 'merge' && Core.gateSkipped) ? Core.gateSkipped() : [];
+      const gateTip = _gate.length
+        ? '\n\n⚠️ 另有 ' + _gate.length + ' 项本机数据本次未上传（属于上次「覆盖云端」之前的旧数据，' +
+          '云端已存有同名的一份，按「以云端为准」跳过）：\n   ' +
+          _gate.slice(0, 5).join('、') + (_gate.length > 5 ? ' 等' : '') +
+          '\n   若其中有你刚改过的东西，先在本机点「下载 → 覆盖本机」让两端对齐，再改一次即可传上去。'
+        : '';
       Core.notifyOK(mode === 'merge' ? '已合并上传到 Gitee' : '已上传到 Gitee',
         (mode === 'merge'
           ? '两边数据已按「较新保留」合并，共 ' + Object.keys(localData).length + ' 项。'
           : '本机的 ' + Object.keys(localData).length + ' 项数据已存到 Gitee。') +
+        gateTip +
         '\n本次只更新了 ' + info.wroteShards + ' / ' + info.totalShards + ' 个数据片' +
         (info.skippedShards > 0 ? '（跳过 ' + info.skippedShards + ' 个未变化的片，省流量）' : '') +
         (info.deletedShards ? '，清理 ' + info.deletedShards + ' 个旧片' : '') +
