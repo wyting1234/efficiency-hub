@@ -2,14 +2,14 @@
   "scheme": "V<YYYYMMDD><letters>",
   "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
   "day": "20261013",
-  "seq": 3,
-  "latest": "V20261013c",
-  "updatedAt": "2026-10-13T10:23:15+08:00",
-  "note2": "同步「保存即推」白名单漏键修复：save-hook v1（白名单 PREFIXES）→ v2（黑名单 IGNORE）。【症状】案例展示等页改完数据，另一台设备看不到 —— 已真机复现。【病因】不是 Gitee 的 bug，也不是同步内核坏。同步内核四层全部实测完好：采集是全量 localStorage 减排除清单（accCase_v3 实测能上传能下载）、iframe 写入经 storage 事件补 sync_key_ts_v1 时间戳、判新旧双读加兜底。断点在「触发」这一环：工具页写盘后靠页尾 ehub-save-hook 给父页发 ehub-save 信号才会立即同步，而 v1 的判定是白名单 —— 每新增一个业务键都要人工往 PREFIXES 添一条，漏一次就出一个「改完不同步」。本轮实测漏网的：CPA 的 accCase_v3（案例展示）/ cpa_appearance_v1 / hub_cpa_cs_anspaste_v1 / kp_outline_no_v1；偶像学习的 imitation_targets / good_habits / daily_checklist / bad_habits（全页 4 键全漏）；朝暮计主数据键 chaomuji_web_v27（目标 / 日记 / 习惯 / 专注全在这一个键里）；code-previewer 连 hook 都没有。【修法】hook 判定改为黑名单：除「UI 即时状态 / 背景大图 / 草稿 / 同步技术键」外一律发信号，新业务键自动覆盖、零配置，排除清单与父页 AUTO_IGNORE_PREFIXES + AUTO_IGNORE_TRANSIENT 口径对齐。16 个工具页整段替换（15 个换 v2 + code-previewer 补 v2）；父页 sync-github.js / index.html 零改动。顺手修掉 v1 会为草稿 hub_cpa_draft_v1 发信号的口径矛盾（父页本就把草稿当临时态忽略）。【实测】判别力闸门 BEFORE(v1) / AFTER(v2) 双跑 27 条全过：11 个漏网键从静默变为发信号，5 个对照键不回归，11 个 UI / 技术键保持静默。【遗留】朝暮计(1).html / (2).html 是历史副本、MODULES 不加载，未处理；social/* 8 页与 CPA会计掌握度系统.html 未登记、不加载，未处理。",
-  "note2_prev": "V20261013a：同步「覆盖世代号」—— 覆盖在多设备下终于成立。【症状】A 端点「上传·覆盖云端」把云端换成 A 的快照后，B 端下一次同步（双向 / 自动）读云端 → 合并 → 再把合并结果写回云端的**并集语义**，会把 B 独有的旧数据原样并回来，A 的覆盖被静默撤销（已真机复现：B 的独有键与列表条目重新出现在云端）。【修法】给云端 meta 加一个**世代号** epoch={n,at,by}，只有「覆盖」会推进它；每次同步随 meta 读回本机（sync_epoch_seen_v1）。本机一旦发现更新的世代：① 立刻把「早于 at 的本机键」快照一份（__epoch_conflict_backup_v1__，可找回）；② 按云端为准对齐（云端有的用云端值、云端没有的从本机移除）；③ 这些旧世代键一律不再上传（buildMergedUpload 的世代闸门）；④ 覆盖之后的新改动照常同步。另：「上传·合并」遇到新世代直接不下发（用只读判断、不记账），提示用户走「下载 / 双向同步」对齐。云端没有世代号时行为与本版之前完全一致（闸门关闭）。Gitee / GitHub 两个后端同一套逻辑。",
+  "seq": 4,
+  "latest": "V20261013d",
+  "updatedAt": "2026-10-13T13:28:29+08:00",
+  "note2": "同步：修「切到 GitHub 后点上传/下载/双向同步被弹配置窗、面板还消失」。【症状·已真机复现】设备默认后端是 Gitee；切到 GitHub 点上传/下载/同步 ⇒ 同步面板先被关掉，同时弹出「配置云端同步」输入框 —— 即使 github_token 早就配好了。 【病因】isConnected 是内核级单一标志，只在【页面加载时】由 initSync() 为【当时激活的后端】初始化；默认后端是 Gitee，且 Gitee 后端加载时会乐观自标已连接（sync-gitee.js: if (TOKEN) isConnected = true），GitHub 没有这一步 ⇒ 「以 Gitee 启动、后切 GitHub」这条路径上 isConnected 恒为 false。doUpload / doDownload / doSyncBoth 三个入口都以 if (!isConnected) { showConfigModal(); return; } 开头，而 showConfigModal 内部先 closeTopModal() ⇒ 面板消失。状态按钮还显示「已连接」（只判有没有 token），进一步误导。 【修法】① 新增 ensureGithubConnected()：已配置但未连接时补跑连接（有 gist 缓存走零请求快路径）；② 三个动作入口改为「先补连接，失败才弹配置窗」；③ 后端对象新增 connect()；④ 面板切后端时立刻补新后端连接态并刷新状态文案；⑤ 状态文案按 isConnected 区分「已连接/未连接/待配置」。只动 sync-github.js；同步抬 index.html 的缓存串 sync-github.js?v=71→72（否则设备仍走缓存旧内核）。 【实测】新闸门 verify_backendconn60.js 判别力双跑：BEFORE 6 PASS/2 FAIL（切换后连接态未初始化、点上传被弹配置窗），AFTER 8 PASS/0 FAIL。全量本地回归 navsync 50/0、verlink 28/0、buildtag 24/0 全绿。",
+  "note2_prev": "同步「保存即推」白名单漏键修复：save-hook v1（白名单 PREFIXES）→ v2（黑名单 IGNORE）。【症状】案例展示等页改完数据，另一台设备看不到 —— 已真机复现。【病因】不是 Gitee 的 bug，也不是同步内核坏。同步内核四层全部实测完好：采集是全量 localStorage 减排除清单（accCase_v3 实测能上传能下载）、iframe 写入经 storage 事件补 sync_key_ts_v1 时间戳、判新旧双读加兜底。断点在「触发」这一环：工具页写盘后靠页尾 ehub-save-hook 给父页发 ehub-save 信号才会立即同步，而 v1 的判定是白名单 —— 每新增一个业务键都要人工往 PREFIXES 添一条，漏一次就出一个「改完不同步」。本轮实测漏网的：CPA 的 accCase_v3（案例展示）/ cpa_appearance_v1 / hub_cpa_cs_anspaste_v1 / kp_outline_no_v1；偶像学习的 imitation_targets / good_habits / daily_checklist / bad_habits（全页 4 键全漏）；朝暮计主数据键 chaomuji_web_v27（目标 / 日记 / 习惯 / 专注全在这一个键里）；code-previewer 连 hook 都没有。【修法】hook 判定改为黑名单：除「UI 即时状态 / 背景大图 / 草稿 / 同步技术键」外一律发信号，新业务键自动覆盖、零配置，排除清单与父页 AUTO_IGNORE_PREFIXES + AUTO_IGNORE_TRANSIENT 口径对齐。16 个工具页整段替换（15 个换 v2 + code-previewer 补 v2）；父页 sync-github.js / index.html 零改动。顺手修掉 v1 会为草稿 hub_cpa_draft_v1 发信号的口径矛盾（父页本就把草稿当临时态忽略）。【实测】判别力闸门 BEFORE(v1) / AFTER(v2) 双跑 27 条全过：11 个漏网键从静默变为发信号，5 个对照键不回归，11 个 UI / 技术键保持静默。【遗留】朝暮计(1).html / (2).html 是历史副本、MODULES 不加载，未处理；social/* 8 页与 CPA会计掌握度系统.html 未登记、不加载，未处理。",
   "files": {
-    "index.html": "V20261013c",
-    "sync-github.js": "V20261013a",
+    "index.html": "V20261013d",
+    "sync-github.js": "V20261013d",
     "tools/CPA会计掌握度系统.html": "V20260917i",
     "tools/backup-hub.js": "V20261010a",
     "tools/code-previewer.html": "V20261013b",
@@ -41,6 +41,10 @@
     "sync-gitee.js": "V20261013a"
   },
   "notes": [
+    {
+      "ver": "V20261013d",
+      "text": "同步：修「切到 GitHub 后点上传/下载/双向同步被弹配置窗、面板还消失」。【症状·已真机复现】设备默认后端是 Gitee；切到 GitHub 点上传/下载/同步 ⇒ 同步面板先被关掉，同时弹出「配置云端同步」输入框 —— 即使 github_token 早就配好了。 【病因】isConnected 是内核级单一标志，只在【页面加载时】由 initSync() 为【当时激活的后端】初始化；默认后端是 Gitee，且 Gitee 后端加载时会乐观自标已连接（sync-gitee.js: if (TOKEN) isConnected = true），GitHub 没有这一步 ⇒ 「以 Gitee 启动、后切 GitHub」这条路径上 isConnected 恒为 false。doUpload / doDownload / doSyncBoth 三个入口都以 if (!isConnected) { showConfigModal(); return; } 开头，而 showConfigModal 内部先 closeTopModal() ⇒ 面板消失。状态按钮还显示「已连接」（只判有没有 token），进一步误导。 【修法】① 新增 ensureGithubConnected()：已配置但未连接时补跑连接（有 gist 缓存走零请求快路径）；② 三个动作入口改为「先补连接，失败才弹配置窗」；③ 后端对象新增 connect()；④ 面板切后端时立刻补新后端连接态并刷新状态文案；⑤ 状态文案按 isConnected 区分「已连接/未连接/待配置」。只动 sync-github.js；同步抬 index.html 的缓存串 sync-github.js?v=71→72（否则设备仍走缓存旧内核）。 【实测】新闸门 verify_backendconn60.js 判别力双跑：BEFORE 6 PASS/2 FAIL（切换后连接态未初始化、点上传被弹配置窗），AFTER 8 PASS/0 FAIL。全量本地回归 navsync 50/0、verlink 28/0、buildtag 24/0 全绿。"
+    },
     {
       "ver": "V20261013b",
       "text": "同步「保存即推」白名单漏键修复：save-hook v1（白名单 PREFIXES）→ v2（黑名单 IGNORE）。【症状】案例展示等页改完数据，另一台设备看不到 —— 已真机复现。【病因】不是 Gitee 的 bug，也不是同步内核坏。同步内核四层全部实测完好：采集是全量 localStorage 减排除清单（accCase_v3 实测能上传能下载）、iframe 写入经 storage 事件补 sync_key_ts_v1 时间戳、判新旧双读加兜底。断点在「触发」这一环：工具页写盘后靠页尾 ehub-save-hook 给父页发 ehub-save 信号才会立即同步，而 v1 的判定是白名单 —— 每新增一个业务键都要人工往 PREFIXES 添一条，漏一次就出一个「改完不同步」。本轮实测漏网的：CPA 的 accCase_v3（案例展示）/ cpa_appearance_v1 / hub_cpa_cs_anspaste_v1 / kp_outline_no_v1；偶像学习的 imitation_targets / good_habits / daily_checklist / bad_habits（全页 4 键全漏）；朝暮计主数据键 chaomuji_web_v27（目标 / 日记 / 习惯 / 专注全在这一个键里）；code-previewer 连 hook 都没有。【修法】hook 判定改为黑名单：除「UI 即时状态 / 背景大图 / 草稿 / 同步技术键」外一律发信号，新业务键自动覆盖、零配置，排除清单与父页 AUTO_IGNORE_PREFIXES + AUTO_IGNORE_TRANSIENT 口径对齐。16 个工具页整段替换（15 个换 v2 + code-previewer 补 v2）；父页 sync-github.js / index.html 零改动。顺手修掉 v1 会为草稿 hub_cpa_draft_v1 发信号的口径矛盾（父页本就把草稿当临时态忽略）。【实测】判别力闸门 BEFORE(v1) / AFTER(v2) 双跑 27 条全过：11 个漏网键从静默变为发信号，5 个对照键不回归，11 个 UI / 技术键保持静默。【遗留】朝暮计(1).html / (2).html 是历史副本、MODULES 不加载，未处理；social/* 8 页与 CPA会计掌握度系统.html 未登记、不加载，未处理。"
