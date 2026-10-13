@@ -1743,6 +1743,24 @@
         } else {
           L.push('<span style="color:#08bd74">✓ 体积正常，下载应当顺畅。</span>');
         }
+        // ★ 2026-10-13：把「本机有、这份云端没有」的键直接列出来。
+        //   这是「某个 tab 的数据在另一台设备上看不到」的第一诊断口：合并只会补云端**已有**的键，
+        //   本机独有的键永远不会自己跑到别的设备上；也说明两台设备可能连的是不同的云/副本。
+        const onlyK = Object.keys(localOnlyKeys(remote));
+        L.push('');
+        if (onlyK.length) {
+          L.push('<b style="color:#e67e22">本机有、这份云端没有：' + onlyK.length + ' 项</b>');
+          L.push('<span style="color:#888">这些数据不会因为同步而出现在别的设备上（合并只补云端已有的键）。' +
+            '要让它们上云：在本机点「上传到云端」→ 选「覆盖云端」。</span>');
+          onlyK.slice(0, 10).forEach(function (k) {
+            let lb = k;
+            try { lb = (typeof labelOfKey === 'function' ? labelOfKey(k) : k) || k; } catch (e) { }
+            L.push('&nbsp;&nbsp;· ' + lb + ' <code>' + k + '</code>');
+          });
+          if (onlyK.length > 10) L.push('&nbsp;&nbsp;· …等共 ' + onlyK.length + ' 项');
+        } else {
+          L.push('<span style="color:#08bd74">✓ 本机可同步的键在这份云端上都有。</span>');
+        }
       }
     } catch (e) {
       L.push('<span style="color:#d33">检查失败：' + (e && e.message ? e.message : e) + '</span>');
