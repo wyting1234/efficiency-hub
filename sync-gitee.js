@@ -1626,6 +1626,78 @@
     };
   }
 
+
+  // ============ 云端体检（Gitee）============
+  // 与 GitHub 侧同语义：先给「你连的是哪个仓库」与「云端有多少键」，
+  // 再给**关键的那一条** —— 「本机有、这份云端没有」的键清单。
+  // 有了它，「某个 tab 的数据在别的设备上看不到」不必再来回猜。
+  async function giteeHealth() {
+    if (!TOKEN) { showConfigModal(); return; }
+    try { const m = document.querySelector('.sync-mask'); if (m) m.remove(); } catch (e) { }
+    const mask = document.createElement('div');
+    mask.className = 'sync-mask';
+    mask.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:2147483000;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:16px 0;box-sizing:border-box;';
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background:white;border-radius:12px;padding:22px;max-width:540px;width:92%;max-height:82vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.2);';
+    const esc = function (x) {
+      return String(x == null ? '' : x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    modal.innerHTML = '<h2 style="margin:0 0 10px;font-size:19px">🩺 云端体检（Gitee）</h2>' +
+      '<div id="hcBody" style="font-size:13px;line-height:1.85;color:#333">正在检查…</div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:16px">' +
+      '<button id="hcClose" style="padding:8px 16px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">关闭</button></div>';
+    mask.appendChild(modal);
+    document.body.appendChild(mask);
+    mask.addEventListener('click', function (e) { if (e.target === mask) mask.remove(); });
+    modal.querySelector('#hcClose').onclick = function () { mask.remove(); };
+    const body = modal.querySelector('#hcBody');
+    const rows = [];
+    try {
+      await ensureRepo();
+      rows.push('<b>连接坐标</b>：<code>' + esc(OWNER) + '/' + esc(REPO) + '</code>　分支 <code>' + esc(BRANCH) + '</code>');
+      const meta = await readShardedMetaSafe();
+      const sids = Object.keys((meta && meta.shards) || {});
+      rows.push('云端索引：分片 ' + sids.length + ' 个' + (sids.length ? '（' + esc(sids.join('、')) + '）' : ''));
+      rows.push('云端世代号：' + (meta && meta.epoch ? esc(JSON.stringify(meta.epoch)) : '（无 —— 说明还没做过「覆盖云端」）'));
+      let remote = null;
+      try { remote = await giteeRead(meta); } catch (e) {
+        rows.push('<span style="color:#d33">读取云端数据失败：' + esc(e && e.message ? e.message : e) + '</span>');
+      }
+      const data = (remote && remote.data) || {};
+      const keys = Object.keys(data);
+      let tot = 0, biggest = [];
+      keys.forEach(function (k) {
+        const v = data[k];
+        const sz = (v && typeof v.value === 'string') ? v.value.length : 0;
+        tot += sz; biggest.push([sz, k]);
+      });
+      biggest.sort(function (a, b) { return b[0] - a[0]; });
+      rows.push('');
+      rows.push('<b>云端内容</b>：' + keys.length + ' 项，原始值合计约 ' + Math.round(tot / 1024) + 'KB');
+      biggest.slice(0, 5).forEach(function (r) {
+        rows.push('&nbsp;&nbsp;· <code>' + esc(r[1]) + '</code> ' + Math.round(r[0] / 1024) + 'KB');
+      });
+      // ★ 关键一条：本机有、这份云端没有的键
+      const onlyK = (Core.localOnlyKeys ? Object.keys(Core.localOnlyKeys(remote || { data: {} })) : []);
+      rows.push('');
+      if (onlyK.length) {
+        rows.push('<b style="color:#e67e22">本机有、这份云端没有：' + onlyK.length + ' 项</b>');
+        rows.push('<span style="color:#888">合并只会补云端**已有**的键 ⇒ 这些键永远不会自己出现在别的设备上。' +
+          '要让它们上云：在本机点「上传到云端」→ 选「覆盖云端」。</span>');
+        onlyK.slice(0, 12).forEach(function (k) { rows.push('&nbsp;&nbsp;· <code>' + esc(k) + '</code>'); });
+        if (onlyK.length > 12) rows.push('&nbsp;&nbsp;· …等共 ' + onlyK.length + ' 项');
+      } else {
+        rows.push('<span style="color:#08bd74">✓ 本机可同步的键在这份云端上都有。</span>');
+      }
+      rows.push('');
+      rows.push('<span style="color:#888">提示：GitHub 与 Gitee 是两朵**互相独立**的云，各自的键表可能不同 —— ' +
+        '在本机看「本机有、云端没有」为 0，才说明这朵云确实收全了。</span>');
+    } catch (e) {
+      rows.push('<span style="color:#d33">体检失败：' + esc(e && e.message ? e.message : e) + '</span>');
+    }
+    body.innerHTML = rows.join('<br>');
+  }
+
   // ============ 注册后端 ============
   window.CloudSyncBackends = window.CloudSyncBackends || {};
   window.CloudSyncBackends.gitee = {
@@ -1637,7 +1709,8 @@
     reconfigure: showConfigModal,
     upload: giteeUpload,
     download: giteeDownload,
-    both: giteeSyncBoth
+    both: giteeSyncBoth,
+    health: giteeHealth
   };
 
   // 静默探活：有令牌就标已连接（启动路径不发请求，避免拖慢首屏）
@@ -1664,6 +1737,7 @@
     upload: giteeUpload,
     download: giteeDownload,
     both: giteeSyncBoth,
+    health: giteeHealth,
     ensureRepo: ensureRepo
   };
 })();
