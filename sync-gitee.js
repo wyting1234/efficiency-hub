@@ -1411,8 +1411,26 @@
         return;
       }
       let stats = null;
+      let owSnap = 0;
       if (mode === 'merge') stats = Core.mergeCloudToLocal(remote);
-      else Core.applyCloudToLocal(remote);
+      else {
+        // ★ 覆盖前把关（同 GitHub 侧）：云端没有的本机键会被删掉 ⇒ 先告知、再留快照。
+        const only = Core.localOnlyKeys(remote);
+        const onlyNames = Object.keys(only);
+        if (onlyNames.length) {
+          const go = await Core.showConfirm('覆盖将删除 ' + onlyNames.length + ' 项本机数据',
+            '下面这些数据【本机有、云端没有】：\n' + Core.describeKeyList(onlyNames, 8) +
+            '\n\n「覆盖本机」会先清掉本机全部可同步数据、再写入 Gitee 那一份，' +
+            '因此上面这些会被删除。\n动手前会先留一份快照，可在同步面板「↩️ 找回覆盖前的数据」恢复。');
+          if (!go) {
+            Core.progShow && Core.progShow('running', '已取消下载（未删除任何数据）', '本机数据未改动。');
+            Core.progBusy && Core.progBusy(false);
+            return;
+          }
+          owSnap = Core.snapshotStaleKeys(only, Date.now(), null) ? onlyNames.length : 0;
+        }
+        Core.applyCloudToLocal(remote);
+      }
       // 与 GitHub 侧同款：按变化键挑工具页刷新；覆盖式动全部键所以全刷。
       // Core.refreshToolData 不存在时（sync-github.js 没加载成功）退回旧的全刷，不静默失效。
       if (Core.refreshToolData) {
@@ -1426,6 +1444,8 @@
           ? '合并完成：新增 ' + stats.added + ' 项，更新 ' + stats.updated + ' 项（云端较新），保留本机 ' + stats.kept + ' 项。'
           : '云端的 ' + Object.keys(remote.data).length + ' 项数据已写入本机。') +
         genTip +
+        (owSnap ? '\n（覆盖前已把 ' + owSnap + ' 项云端没有的本机数据存进快照，' +
+          '可在同步面板「↩️ 找回覆盖前的数据」恢复。）' : '') +
         (genAlign ? '\n（世代对齐：' + genAlign.stale.length + ' 项旧世代的本机数据已按云端处理，' +
           '其中 ' + genAlign.removed + ' 项云端没有、已从本机移除；动手前已留快照，可找回。）' : ''));
     } catch (e) {
