@@ -920,12 +920,14 @@
     try { localStorage.setItem('cloud_backend', id); } catch (e) {}
     const b = activeBackend();
     const btn = document.getElementById('syncStatus');
-    if (btn && b) btn.textContent = b.isReady() ? '已连接' : '待配置';
+    if (btn && b) btn.textContent = !b.isReady() ? '待配置'
+      : ((typeof b.isConnected === 'function' && b.isConnected()) ? '已连接' : '未连接');
   }
   window.refreshBackendUI = function () {
     const b = activeBackend();
     const el = document.getElementById('syncStatus');
-    if (el && b) el.textContent = b.isReady() ? '已连接' : '待配置';
+    if (el && b) el.textContent = !b.isReady() ? '待配置'
+      : ((typeof b.isConnected === 'function' && b.isConnected()) ? '已连接' : '未连接');
   };
 
   // 后端没有体检面板时的临时提示（Gitee 侧暂未实现完整体检）
@@ -1217,6 +1219,12 @@
           setBackend(id);
           mask.remove();
           openSyncPanel();
+          // ★ 切过去就把该后端的连接态补上：否则「已配置但未初始化」的后端
+          //   会在用户点上传/下载时被弹「配置云端同步」并关掉面板（2026-10-13 修）。
+          const nb = activeBackend();
+          if (nb && typeof nb.connect === 'function' && nb.isReady && nb.isReady()) {
+            Promise.resolve(nb.connect()).then(function () { refreshBackendUI(); });
+          }
         };
         bdRow.appendChild(btn);
       });
@@ -2396,9 +2404,32 @@
     } catch (e) {}
   })();
 
+  // 补上「已配置、但尚未初始化」的连接态。
+  // 背景（2026-10-13 Tom 真机复现）：isConnected 只在【页面加载】时由 initSync()
+  //   为【当时激活的后端】初始化。默认后端是 Gitee ⇒ 用户切到 GitHub 后 isConnected
+  //   恒为 false ⇒ 上传 / 下载 / 双向同步一律先关面板再弹「配置云端同步」，
+  //   哪怕 github_token 早就配好了。此函数供「切后端」与「动作入口」两处调用。
+  // 返回 true = 连接可用（不发多余的请求：有 gist 缓存时零网络）。
+  async function ensureGithubConnected() {
+    if (isConnected) return true;
+    if (!GITHUB_TOKEN) return false;          // 真没配置：交给调用方弹配置窗
+    updateStatus('连接中…');
+    try {
+      if (!cachedGistId()) await findOrCreateGist();
+      isConnected = true;
+      updateStatus('已连接');
+      return true;
+    } catch (e) {
+      console.warn('[GitHub] 自动连接失败:', e && e.message);
+      isConnected = false;
+      updateStatus('连接失败');
+      return false;
+    }
+  }
+
   // ============ 动作：上传 / 下载 ============
   async function doUpload() {
-    if (!isConnected) { showConfigModal(); return; }
+    if (!await ensureGithubConnected()) { showConfigModal(); return; }
     // ★ 全局互斥：手动上传与后台自动同步共用一把锁，抢不到就排队等（绝不并发写云端）
     if (!await syncBeginManual('上传')) { syncBusyNotice(); return; }
     // 立刻反馈「开始了」：没有这个提示，用户点完看不到任何动静，会以为没响应
@@ -2510,7 +2541,7 @@
   }
 
   async function doDownload() {
-    if (!isConnected) { showConfigModal(); return; }
+    if (!await ensureGithubConnected()) { showConfigModal(); return; }
     // ★ 全局互斥（同上传）
     if (!await syncBeginManual('下载')) { syncBusyNotice(); return; }
     progShow('running', '正在检查云端数据…', '先读一份很小的索引文件。');
@@ -2632,6 +2663,8 @@
   //   无论静默与否都返回同步摘要，调用方（自动同步）靠它生成「同步了什么」。
   async function doSyncBoth(opts) {
     const silent = !!(opts && opts.silent);
+    // 手动路径：先补一次连接（静默路径不动 —— 自动同步只在该连接时才会被调起）
+    if (!isConnected && !silent) { await ensureGithubConnected(); }
     if (!isConnected) { if (!silent) showConfigModal(); return { error: '尚未连接云端' }; }
     // ★ 全局互斥：
     //   静默（后台自动同步）路径 —— 锁已由 runAutoSync 持有，这里不再抢，否则自己把自己锁死；
@@ -3622,6 +3655,7 @@
     // 主面板调用这几个口子，具体实现留在本文件（闭包内有状态）
     isReady: function () { return !!GITHUB_TOKEN; },
     isConnected: function () { return isConnected; },
+    connect: function () { return ensureGithubConnected(); },
     reconfigure: function () { showConfigModal(); },
     upload: function () { return doUpload(); },
     download: function () { return doDownload(); },
