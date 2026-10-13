@@ -1133,7 +1133,7 @@
           Core.notifyOK('本次未上传：云端已被另一台设备覆盖',
             Core.epochNoticeText(remote.metaEpoch) +
             '\n为避免把那次「覆盖」撤销，本次「合并上传」已跳过，本机数据未改动。' +
-            '\n稍后点「下载 → 合并到本机」或「双向同步」即可让本机对齐到云端（对齐前会自动留一份本机快照）。');
+            '\n稍后点「下载 → 合并到本机」即可让本机对齐到云端（对齐前会自动留一份本机快照）。');
           return;
         }
         localData = Core.buildMergedUpload(remote || { data: {} });

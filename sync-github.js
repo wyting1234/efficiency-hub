@@ -12,7 +12,13 @@
  * 2. 在应用里粘贴 Token 连接
  * 3. 想让哪边覆盖哪边，就手动点「上传」或「下载」，每次覆盖前都会弹窗确认
  *
- * v8（2026-09-16）新增「双向同步」：
+ * v9（2026-10-13）按需求精简：
+ * - 移除 GitHub 后端（仅保留 Gitee；本文件仍是核心 CloudSyncCore，文件名保留）。
+ * - 移除「双向同步」按钮与整套自动同步（变动触发 / 定时检查 / 保存快车道 / hide 兜底）。
+ *   同步改为纯手动：上传（合并/覆盖）+ 下载（合并/覆盖）。
+ * - 新增 SYNC_TRANSIENT_KEYS：计时器 / 界面瞬时键写入不参与「该刷哪些工具页」判定与留痕。
+ *
+ * v8（2026-09-16）新增「双向同步」（已于 v9 移除）：
  * - 一次点击 = 先读云端、把云端合并进本机，再把合并结果写回云端。
  *   两端最终都等于「本机 ∪ 云端，逐键取较新」，谁都不会被覆盖。
  * - 「上传 / 下载」两个按钮保留原样：点开仍会让你选「合并 / 覆盖」。
@@ -899,7 +905,6 @@
       <span style="flex:1">
         <div style="font-size:13px" id="syncLabel">云端同步</div>
         <div style="font-size:11px;color:#7c8aa5" id="syncStatus">配置中...</div>
-        <div style="font-size:11px;color:#0d8a5f;display:none" id="syncAutoLine"></div>
       </span>`;
     sideFoot.insertBefore(row, sideFoot.firstChild);
 
@@ -930,7 +935,7 @@
     try { id = localStorage.getItem('cloud_backend') || ''; } catch (e) {}
     const reg = window.CloudSyncBackends || {};
     // 默认：优先 Gitee（国内更稳），没配就回落到 GitHub
-    if (!id || !reg[id]) id = reg.gitee ? 'gitee' : (reg.github ? 'github' : '');
+    if (!id || !reg[id]) id = reg.gitee ? 'gitee' : '';   // 2026-10-13：GitHub 后端已移除
     return id;
   }
 
@@ -1093,9 +1098,7 @@
 
   // 任务期间锁住按钮，防止连点造成并发上传互相干扰
   function progBusy(busy) {
-    // ★ 2026-10-12：把「双向同步」也纳入置灰集合。此前漏了它 ——
-    //   而它既最容易被连点，也最容易和后台自动同步撞车。
-    ['#syncBoth', '#syncUpload', '#syncDownload'].forEach(function (sel) {
+    ['#syncUpload', '#syncDownload'].forEach(function (sel) {
       const b = document.querySelector(sel);
       if (!b) return;
       b.disabled = !!busy;
@@ -1142,22 +1145,13 @@
       </div>
       <div style="padding-top:14px">
 
-      <div id="bdBox" style="background:#f6f8fa;border-radius:8px;padding:10px 12px;margin-bottom:14px">
-        <div style="font-size:12px;color:#666;margin-bottom:8px">存到哪儿（可随时切换，数据格式通用）：</div>
-        <div id="bdRow" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-        <div id="bdHint" style="font-size:12px;color:#7c8aa5;margin-top:8px"></div>
-      </div>
-
       <div style="background:#f6f8fa;border-radius:8px;padding:12px;font-size:13px;color:#444;line-height:1.7;margin-bottom:16px">
         <b>怎么用：</b><br>
-        • <b>双向同步</b>：先把两边合并，再<b>同时</b>更新本机与云端 —— 两个设备都不会被覆盖。平时点这个就够。<br>
         • <b>上传</b>：点完会让你选「合并到云端」还是「覆盖云端」。<br>
         • <b>下载</b>：点完会让你选「合并到本机」还是「覆盖本机」。<br>
-        <span style="color:#7c8aa5">双向同步永远只做合并，不会丢任何一边；「覆盖」是唯一会整端替换的操作，所以它从不默认、每次都要单独确认。数据上传前会自动 gzip 压缩，并按模块分片，只重传改动过的片。<br>「覆盖」会给云端写入一个<b>世代号</b>：其他设备检测到该世代后，早于覆盖时刻的本机数据不再上传（以云端为准，并可留一份本机快照），此后新的改动照常同步 —— 这样「覆盖」在多设备下才真正生效。</span><br>
-        <span style="color:#7c8aa5">同一时刻只允许一个同步任务：后台自动同步会主动给手动操作让路；手动点的时候若正好有别的同步在跑，会自动排队（最多 30 秒）。</span>
+        <span style="color:#7c8aa5">「覆盖」是唯一会整端替换的操作，所以它从不默认、每次都要单独确认。数据上传前会自动 gzip 压缩，并按模块分片，只重传改动过的片。<br>「覆盖」会给云端写入一个<b>世代号</b>：其他设备检测到该世代后，早于覆盖时刻的本机数据不再上传（以云端为准，并可留一份本机快照），此后新的改动照常同步 —— 这样「覆盖」在多设备下才真正生效。</span><br>
+        <span style="color:#7c8aa5">同一时刻只允许一个同步任务：手动点的时候若正好有别的同步在跑，会自动排队（最多 30 秒）。</span>
       </div>
-
-      <button id="syncBoth" style="display:block;width:100%;box-sizing:border-box;padding:13px;border:none;border-radius:8px;background:#08bd74;color:white;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px">🔁 双向同步（合并两端）</button>
 
       <div style="display:flex;gap:10px;margin-bottom:10px">
         <button id="syncUpload" style="flex:1;padding:11px;border:1px solid #d8e0ea;border-radius:8px;background:#f7f9fc;color:#33415c;font-size:14px;cursor:pointer">⬆️ 上传到云端</button>
@@ -1169,23 +1163,6 @@
            界面上再无任何痕迹，用户既不知道在跑、也不知道跑完没有。
            这里原地反馈，面板不再自动关闭（完成后面板内出现「关闭」）。 -->
       <div id="syncProgress" style="display:none;margin-bottom:14px;border-radius:8px;padding:12px;font-size:13px;line-height:1.7"></div>
-
-      <!-- 自动双向同步（v8）：默认开启，数据变动后自动合并两端。
-           与上面那颗手动按钮走的是同一段逻辑（后端 both），区别只有两点：
-           ① 静默 —— 不弹通知卡；② 受三层节流约束（停顿 / 最小间隔 / 定时）。 -->
-      <div id="autoBox" style="background:#f2fbf7;border:1px solid #cdeee0;border-radius:8px;padding:12px;margin-bottom:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13.5px;font-weight:600;color:#0a6b45">
-            <input type="checkbox" id="autoSwitch" style="width:15px;height:15px;cursor:pointer">
-            数据变动后自动双向同步
-          </label>
-          <span id="autoStateTxt" style="font-size:12px;color:#0a6b45"></span>
-        </div>
-        <div id="autoHintTxt" style="font-size:11.5px;color:#5b7a6c;margin-top:7px;line-height:1.7"></div>
-        <select id="autoPresetSel" style="width:100%;margin-top:9px;padding:7px 9px;border:1px solid #cdeee0;border-radius:6px;background:white;font-size:12.5px;color:#33415c;cursor:pointer"></select>
-        <div id="autoLast" style="margin-top:10px;padding:9px 11px;border-radius:8px;background:#fff;border:1px dashed #cdeee0;font-size:11.5px;line-height:1.85;color:#4a6357">尚未发生自动同步</div>
-        <div id="autoLogList" style="margin-top:9px"></div>
-      </div>
 
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <button id="syncHealth" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:13px">🩺 云端体检（下载失败先点这里）</button>
@@ -1222,41 +1199,6 @@
     const noopEl = { set onclick(v) {} };
     const q = (sel) => modal.querySelector(sel) || noopEl;
 
-    // ---- 后端切换按钮（GitHub Gist / Gitee），来自 window.CloudSyncBackends ----
-    const bdRow = modal.querySelector('#bdRow');
-    const bdHint = modal.querySelector('#bdHint');
-    const reg = window.CloudSyncBackends || {};
-    const order = ['github', 'gitee'];
-    if (bdRow) {
-      order.forEach(function (id) {
-        const b = reg[id];
-        if (!b) return;
-        const on = backend && backend.id === id;
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.disabled = false;
-        btn.textContent = (on ? '● ' : '○ ') + b.name;
-        btn.style.cssText = 'padding:7px 12px;border-radius:999px;font-size:13px;cursor:pointer;' +
-          (on ? 'border:1px solid #08bd74;background:#eafaf3;color:#067a4d;font-weight:600;'
-              : 'border:1px solid #ddd;background:white;color:#555;');
-        btn.onclick = function () {
-          setBackend(id);
-          mask.remove();
-          openSyncPanel();
-          // ★ 切过去就把该后端的连接态补上：否则「已配置但未初始化」的后端
-          //   会在用户点上传/下载时被弹「配置云端同步」并关掉面板（2026-10-13 修）。
-          const nb = activeBackend();
-          if (nb && typeof nb.connect === 'function' && nb.isReady && nb.isReady()) {
-            Promise.resolve(nb.connect()).then(function () { refreshBackendUI(); });
-          }
-        };
-        bdRow.appendChild(btn);
-      });
-      bdHint.textContent = backend
-        ? (backend.isReady() ? backend.name + ' 已配置完成' : backend.hint)
-        : '请选择一个存储位置';
-    }
-
     q('#syncClose').onclick = () => mask.remove();
     // 顶栏那个关闭按钮：面板内容再高也始终可见，这是主要的退出路径
     const closeTop = modal.querySelector('#syncCloseTop');
@@ -1268,15 +1210,6 @@
     // ⚠️ 这里刻意不关面板：后端会异步跑几秒到几十秒，
     //    关掉面板就只剩侧边栏，用户会以为「跳到侧边栏了」而且看不到任何结果。
     //    改为原地显示进度，状态由 progShow/progBusy 驱动（后端内部调用）。
-    q('#syncBoth').onclick = () => {
-      if (!backend) { showConfigModal(); return; }
-      if (!backend.isReady()) { mask.remove(); backend.reconfigure(); return; }
-      if (typeof backend.both !== 'function') {
-        Core_showToastCompat((backend.name || '当前后端') + ' 未提供双向同步');
-        return;
-      }
-      backend.both();
-    };
     q('#syncUpload').onclick = () => {
       if (!backend) { showConfigModal(); return; }
       if (!backend.isReady()) { mask.remove(); backend.reconfigure(); return; }
@@ -1314,25 +1247,6 @@
     const rsBtn = modal.querySelector('#syncRestoreSnap');
     if (rsBtn) rsBtn.onclick = () => { restoreSnapshot(); };
 
-    // ---- 自动同步控件（v8）----
-    const autoSw = modal.querySelector('#autoSwitch');
-    const autoSel = modal.querySelector('#autoPresetSel');
-    if (autoSw) {
-      autoSw.checked = !!autoCfg.on;
-      autoSw.onchange = function () { autoSetOn(autoSw.checked); };
-    }
-    if (autoSel) {
-      autoSel.innerHTML = '';
-      Object.keys(AUTO_PRESETS).forEach(function (k) {
-        const o = document.createElement('option');
-        o.value = k;
-        o.textContent = AUTO_PRESETS[k].label + '（' + AUTO_PRESETS[k].hint + '）';
-        if (k === autoCfg.preset) o.selected = true;
-        autoSel.appendChild(o);
-      });
-      autoSel.onchange = function () { autoSetPreset(autoSel.value); };
-    }
-    renderAutoState();
   }
 
   // ============ 配置弹窗 ============
@@ -2578,7 +2492,7 @@
           notifyOK('本次未上传：云端已被另一台设备覆盖',
             epochNoticeText(remote.metaEpoch) +
             '\n为避免把那次「覆盖」撤销，本次「合并上传」已跳过，本机数据未改动。' +
-            '\n稍后点「下载 → 合并到本机」或「双向同步」即可让本机对齐到云端（对齐前会自动留一份本机快照）。');
+            '\n稍后点「下载 → 合并到本机」即可让本机对齐到云端（对齐前会自动留一份本机快照）。');
           return;
         }
         localData = buildMergedUpload(remote);
@@ -3195,31 +3109,6 @@
   // 带符号的差值：+3 / -2 / 0
   function signed(n) { return (n > 0 ? '+' : '') + n; }
 
-  const AUTO_LOG_MAX = 20;
-  var autoSaveSrc = '';   // 最近一次「保存信号」来自哪个工具页（仅留痕用）
-  var autoLastSaveAt = 0; // 上一次「保存同步」的时间戳（SAVE_MIN_GAP 只比它）
-  const AUTO_PRESETS = {
-    low:    { id: 'low',    label: '省流量', debounce: 60000, minGap: 300000, pull: 900000,
-              hint: '停顿 1 分钟推 · 两次推送最少隔 5 分钟 · 每 15 分钟查看一次云端' },
-    normal: { id: 'normal', label: '推荐',   debounce: 30000, minGap: 180000, pull: 600000,
-              hint: '停顿 30 秒推 · 两次推送最少隔 3 分钟 · 每 10 分钟查看一次云端' },
-    high:   { id: 'high',   label: '实时',   debounce: 10000, minGap: 60000,  pull: 180000,
-              hint: '停顿 10 秒推 · 两次推送最少隔 1 分钟 · 每 3 分钟查看一次云端' }
-  };
-  // ★ 2026-10-10「保存即立刻同步」：
-  //   工具页保存完成后 postMessage 一个信号，导航页收到就立刻推一次云端。
-  //   为什么需要：自动同步的常规路径是「写入 → debounce 等待 → minGap 顺延」，
-  //   一次保存最坏要等 minGap（推荐档 3 分钟）才上去；用户在这期间切走设备就看不到。
-  //   保存是一个**明确的动作终点**，与「零散写入」不同，值得单独给它一条快车道。
-  //   ⚠️ 与 'hide' / 'manual' 的区别：那几个是「必须立刻」，保存则仍要防连点 ——
-  //   一次编辑往往会连续保存多次，逐个发请求既浪费配额也没意义。
-  const SAVE_MIN_GAP = 20000;   // 两次「保存同步」之间的最小间隔（毫秒）
-  // 认哪几种「保存已结束」消息。type 值是子页与父页之间的既成约定：
-  //   cpaLedgerSaved —— 掌握度台账页保存后通知（沿用已有约定，见 CPA会计掌握度系统.html）
-  //   ehub-save      —— 通用约定，新工具页按这个发即可
-  // 用「包含」而非「相等」判定 type，允许后续出现 ehub-save:xxx 这类细分。
-  const AUTO_SAVE_MSG_TYPES = ['cpaLedgerSaved', 'ehub-save'];
-
   // 这些键的写入不触发自动同步 —— 注意「触发」与「同步」是两件事：
   // 不触发 ≠ 不同步，数据本身仍会在下次同步时一起带上去。
   // hub_*：导航页自己的界面状态（主题 / 侧栏折叠 / 拖拽排序 / 上次打开的工具…）。
@@ -3241,10 +3130,33 @@
   // 而且跨设备传草稿本身也可疑 —— 草稿的含义是「我正在写的这一份」。
   const AUTO_IGNORE_TRANSIENT = ['hub_cpa_draft_v1'];
 
-  // 这个键的写入该不该触发自动同步？true = 忽略（不触发）。
-  // 逻辑：先看命不命中忽略前缀；命中后再看是不是「例外中的例外（临时态）」——
-  //       是 → 照旧忽略；再看是不是业务偏好例外 —— 是 → 不忽略（触发同步）。
+  // ★ 2026-10-13：计时器 / 技术类瞬时键 —— 无条件忽略，不依赖 hub_ 前缀命中。
+  //   这些键写入频繁（计时器起停、抽屉开合、页签切换、草稿自动落盘），
+  //   语义是「这台机器此刻的状态」，跨设备无意义，也没资格代表「有新数据」。
+  //   注意口径：忽略的是「触发 / 刷新判定」，不是同步本身 ——
+  //   数据仍会随下次上传/下载一起走（沿用「不触发 ≠ 不同步」的老口径）。
+  //   （自动同步已于 2026-10-13 移除；此清单现在只影响「下载后该刷哪些工具页」
+  //    与留痕降噪，但清单保留 —— 以后若恢复自动同步，瞬时键照样进不来。）
+  const SYNC_TRANSIENT_KEYS = [
+    'timeTimerState',                 // 时间统计·计时器运行状态（起停即写）
+    'timeDoneFolded',                 // 时间统计·已完成折叠
+    'zmv_view_mode',                  // 朝暮计·视图模式
+    'chaomuji_web_v27_drawexpand',    // 朝暮计·抽屉展开状态
+    'chaomuji_web_v27_schedmonth',    // 朝暮计·月历折叠状态
+    'roam_last_tab',                  // 旅行助手·上次页签
+    'diary_app_draft',                // 日记·写作草稿（10s 自动落盘）
+    'wb_goal_draft',                  // 学习目标·草稿
+    'hub_cpa_draft_v1'                // CPA 学习记录·表单草稿
+  ];
+
+  // 这个键该不该被同步联动忽略？true = 忽略。
+  // 逻辑：① 先看是不是瞬时键（无条件忽略）；
+  //       ② 再看命不命中忽略前缀；命中后再看是不是「例外中的例外（临时态）」——
+  //          是 → 照旧忽略；再看是不是业务偏好例外 —— 是 → 不忽略（参与联动）。
   function isAutoIgnoredKey(k) {
+    for (let t = 0; t < SYNC_TRANSIENT_KEYS.length; t++) {
+      if (k.indexOf(SYNC_TRANSIENT_KEYS[t]) === 0) return true;
+    }
     for (let i = 0; i < AUTO_IGNORE_PREFIXES.length; i++) {
       if (k.indexOf(AUTO_IGNORE_PREFIXES[i]) !== 0) continue;
       for (let j = 0; j < AUTO_IGNORE_TRANSIENT.length; j++) {
@@ -3258,438 +3170,18 @@
     return false;
   }
 
-  let autoCfg = { on: true, preset: 'normal', lastAt: 0, lastDesc: '', lastOk: true, failStreak: 0, log: [] };
-  let autoTimer = null;        // debounce：本机数据变动后的「停顿计时」
-  let autoTickTimer = null;    // 定时：即使没有变动也定期看一眼云端（换设备后能拉到新数据）
-  let autoDirtyAt = 0;         // 最近一次「本机数据变动」的时刻
-  let autoBusy = false;        // 自动同步进行中（防重入）
-  let autoLastAtMem = 0;       // 上次同步时刻的内存镜像（minGap 判定，避免每次读盘）
-  let autoHooksOn = false;
-  let autoHookOk = false;      // 导航页 setItem hook 是否真的装上了（见 installAutoHooks 注释）
-
-  function autoLoadCfg() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(AUTO_KEY) || 'null');
-      if (raw && typeof raw === 'object') {
-        if (typeof raw.on === 'boolean') autoCfg.on = raw.on;
-        if (raw.preset && AUTO_PRESETS[raw.preset]) autoCfg.preset = raw.preset;
-        if (typeof raw.lastAt === 'number') autoCfg.lastAt = raw.lastAt;
-        if (typeof raw.lastDesc === 'string') autoCfg.lastDesc = raw.lastDesc;
-        if (typeof raw.lastOk === 'boolean') autoCfg.lastOk = raw.lastOk;
-        if (typeof raw.failStreak === 'number') autoCfg.failStreak = raw.failStreak;
-        if (Array.isArray(raw.log)) autoCfg.log = raw.log.slice(0, AUTO_LOG_MAX);
-      }
-    } catch (e) {}
-    autoLastAtMem = autoCfg.lastAt || 0;
-  }
-  function autoSaveCfg() {
-    try { localStorage.setItem(AUTO_KEY, JSON.stringify(autoCfg)); } catch (e) {}
-  }
-  function autoPreset() { return AUTO_PRESETS[autoCfg.preset] || AUTO_PRESETS.normal; }
-
-  function autoClock(ts) {
-    if (!ts) return '';
-    const d = new Date(Number(ts));
-    const p = function (n) { return (n < 10 ? '0' : '') + n; };
-    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
-  }
-  function autoRelTime(ts) {
-    if (!ts) return '';
-    const d = Date.now() - ts;
-    if (d < 60000) return '刚刚';
-    if (d < 3600000) return Math.floor(d / 60000) + ' 分钟前';
-    if (d < 86400000) return Math.floor(d / 3600000) + ' 小时前';
-    return Math.floor(d / 86400000) + ' 天前';
-  }
-
-  // 把同步摘要翻成一句人话。这是用户真正要看的东西：
-  // 「什么时候」由 autoClock/autoRelTime 给，「同步了什么」由这里给。
-  function autoFormat(sum) {
-    const head = '双向合并';
-    if (!sum) return head + ' · 未取得结果（可能被中断）';
-    if (sum.error) return '自动同步未成功：' + sum.error;
-    if (sum.epochNewer) {
-      return head + ' · 检测到另一台设备执行过「覆盖云端」——已按该世代对齐' +
-        (sum.align ? '（' + sum.align.stale.length + ' 项本机旧数据以云端为准' +
-          (sum.align.removed ? '，其中 ' + sum.align.removed + ' 项已从本机移除' : '') +
-          '，动手前已留快照）' : '') +
-        '，此后新的改动照常同步';
-    }
-    const sec = ((sum.ms || 0) / 1000).toFixed(1);
-    const l = sum.local || {}, c = sum.cloud || {};
-    const lN = (l.added || 0) + (l.updated || 0) + (l.merged || 0);
-    const cAdd = c.added || [];
-    if (!lN && !cAdd.length) {
-      // 无内容变动时也要给总量 —— 用户问的是「本次同步的数据总量」，
-      // 哪怕为零也要有个明确的「0 变化」而不是让人猜。
-      return head + ' · 用时 ' + sec + ' 秒 · 两端已一致，无内容变动' +
-        (sum.total && sum.total.text ? ' · 总量 ' + sum.total.text : '');
-    }
-    const parts = [];
-    if (lN) parts.push('云端补进本机 ' + lN + ' 项');
-    if (cAdd.length) parts.push('本机补上云端 ' + cAdd.length + ' 项');
-    // 体积文案：< 1KB 时报字节数。四舍五入成「0KB」看着像没写进去东西，
-    // 而小改动（改一条待办）恰恰是自动同步最常见的场景。
-    const bytes = c.bytes || 0;
-    const sizeTxt = bytes < 1024 ? (bytes + 'B') : (Math.round(bytes / 1024) + 'KB');
-    // ★ 需求（2026-10-10）：「涉及」要能看出是哪个子页 / 哪一块，而不是裸键名。
-    //   把两类变化键合起来交给 describeKeysText 翻译成「模块 · 用途」。
-    const allChanged = [];
-    (l.keys || []).forEach(function (k) { if (allChanged.indexOf(k) < 0) allChanged.push(k); });
-    cAdd.forEach(function (k) { if (allChanged.indexOf(k) < 0) allChanged.push(k); });
-    const involve = describeKeysText(allChanged, 3);
-    const base = head + ' · 用时 ' + sec + ' 秒 · ' + parts.join('、') +
-      ' · 云端共 ' + (c.wrote || 0) + ' 项 / ' + sizeTxt +
-      (involve ? ' · 涉及：' + involve : '');
-    // 后台同步不主动刷用户正开着的工具页：把这件事写进留痕，
-    // 否则用户会看到「记录变了、页面没变」，误以为同步没生效。
-    const withTotal = base +
-      (sum.total && sum.total.text ? ' · 总量 ' + sum.total.text : '');
-    if (sum.reload && sum.reload.deferred && sum.reload.deferred.length) {
-      return withTotal + ' · 当前工具已暂缓刷新（切走该工具后自动生效）';
-    }
-    return withTotal;
-  }
-
-  function autoRecord(desc, ok) {
-    autoCfg.lastAt = Date.now();
-    autoCfg.lastDesc = desc;
-    autoCfg.lastOk = !!ok;
-    autoCfg.failStreak = ok ? 0 : (autoCfg.failStreak || 0) + 1;
-    autoCfg.log.unshift({ at: autoCfg.lastAt, desc: desc, ok: !!ok });
-    if (autoCfg.log.length > AUTO_LOG_MAX) autoCfg.log.length = AUTO_LOG_MAX;
-    autoLastAtMem = autoCfg.lastAt;
-    autoSaveCfg();
-    renderAutoState();
-    autoEscalate();
-  }
-
-  // 连续失败第 3 次时提醒一次。
-  // 为什么需要：自动同步是「无感」的，一次失败用户多半不知道；但默默一直失败
-  // 就是最危险的一类静默失效（用户以为在同步，其实早就断了）。
-  // 为什么只在第 3 次：网络抖动是常态，每次失败都弹卡就成了骚扰。3 次是「确实有问题」的门槛。
-  function autoEscalate() {
-    if (autoCfg.lastOk) return;
-    if (autoCfg.failStreak !== 3) return;
-    if (document.getElementById('autoLast')) return;   // 面板开着，用户已经能直接看到
-    if (window.BackupHub && typeof window.BackupHub.notify === 'function') {
-      try {
-        window.BackupHub.notify({ type: 'warn', icon: '⚠️', title: '自动同步连续失败 3 次',
-          detail: (autoCfg.lastDesc || '') + '\n打开侧边栏「云端同步」可查看详情与手动重试。', ms: 9000 });
-      } catch (e) {}
-    }
-  }
-
-  // 本机数据变动 → 排一次同步。
-  // key 来自两条路径（导航页 hook / iframe 的 storage 事件），在这里统一过滤。
-  function noteLocalChange(key) {
-    if (!autoCfg.on) return;
-    if (!key) return;
-    const k = String(key);
-    if (isAutoIgnoredKey(k)) return;
-    let v = null;
-    try { v = localStorage.getItem(k); } catch (e) {}
-    if (isExcludedKey(k, v)) return;   // 背景大图 / 内部键 / 同步自身的技术键
-    autoDirtyAt = Date.now();
-    scheduleAutoSync();
-  }
-
-  // 收到子页的「保存已结束」信号 → 立刻推一次。
-  // src 只用于留痕（哪个工具页触发的），不参与判定。
-  function noteSaveSignal(src) {
-    if (!autoCfg.on) return null;
-    if (autoBusy) return null;                 // 正在同步，这次保存会被本次同步一并带走
-    // ★ 全局互斥：有同步正在进行 / 覆盖静默窗口 → 不插队，改为排队
-    if (syncAutoBlocked()) { autoReschedule(15000); return null; }
-    const b = activeBackend();
-    if (!b || !b.isReady() || !b.isConnected()) return null;
-    autoSaveSrc = src || '';
-    return runAutoSync('save');
-  }
-
-  // 把「本轮没能跑的自动同步」重新排一次队（而不是丢弃）。
-  // 口径与 scheduleAutoSync 完全一致（debounce 下限 + minGap 顺延），确保下一次触发
-  // 不会又被 runAutoSync 里的 minGap 判定吞掉一次。
-  function autoReschedule(ms) {
-    if (!autoCfg.on) return;
-    const p = autoPreset();
-    const sinceLast = Date.now() - (autoLastAtMem || 0);
-    let wait = Math.max(ms || 1000, p.debounce);
-    if (sinceLast < p.minGap) wait = Math.max(wait, p.minGap - sinceLast);
-    if (autoTimer) clearTimeout(autoTimer);
-    autoTimer = setTimeout(function () { autoTimer = null; runAutoSync('change'); }, wait);
-  }
-
-  function scheduleAutoSync() {
-    if (!autoCfg.on) return;
-    if (autoTimer) clearTimeout(autoTimer);
-    const p = autoPreset();
-    // 最小间隔：刚同步完不久再推一次没意义（也伤配额）。
-    // 把这次等待顺延到「距上次同步满 minGap」之后，而不是直接丢弃这次改动 ——
-    // 丢弃会让刚写的数据一直等不到下一次触发。
-    const sinceLast = Date.now() - (autoLastAtMem || 0);
-    let wait = p.debounce;
-    if (sinceLast < p.minGap) wait = Math.max(wait, p.minGap - sinceLast);
-    autoTimer = setTimeout(function () { autoTimer = null; runAutoSync('change'); }, wait);
-  }
-
-  function autoScheduleTick() {
-    if (autoTickTimer) clearInterval(autoTickTimer);
-    autoTickTimer = setInterval(function () {
-      if (!autoCfg.on || autoBusy) return;
-      // 本机还有没推上去的改动 → 交给 debounce 那条路径，定时器不抢跑，
-      // 否则刚改完就被定时器用「云端旧版本」抢先去合并，白跑一趟
-      if (autoDirtyAt) return;
-      runAutoSync('timer');
-    }, autoPreset().pull);
-  }
-
-  async function runAutoSync(reason) {
-    if (!autoCfg.on || autoBusy) return null;
-    // ★ 全局互斥：有人在同步（手动上传 / 下载 / 双向），或刚做完「覆盖」，本轮让路。
-    //   ⚠️ 这里必须是「推迟」而不是「丢弃」：autoDirtyAt 一旦挂着不清，定时器
-    //   （autoScheduleTick）会以「本机还有没推上去的改动」为理由一直不跑，
-    //   于是这次改动就再也推不上去了。所以除「页面即将销毁 / 用户手点」外一律重排一次。
-    if (syncAutoBlocked()) {
-      if (reason !== 'hide' && reason !== 'manual') {
-        autoReschedule(syncBusy ? 15000 : syncHoldRemaining() + 1000);
-      }
-      return null;
-    }
-    const b = activeBackend();
-    if (!b || !b.isReady() || !b.isConnected()) return null;
-    if (typeof b.both !== 'function') return null;
-    const p = autoPreset();
-    const sinceLast = Date.now() - (autoLastAtMem || 0);
-    // ★★ 兜底路径豁免 minGap（2026-10-10 修复）：
-    //   reason 有两种「不等下一次就必须推」：
-    //     · 'manual' —— 用户亲手点的，他正看着，必须立刻有结果；
-    //     · 'hide'   —— 页面即将隐藏 / 卸载（切走 App、关标签页）。
-    //                  这是页面销毁前**唯一**还能把改动推上去的机会，错过即永久丢失；
-    //                  节流在这时没有任何意义（下一次触发根本不会发生，因为 JS 已经停了）。
-    //   曾经的写法只豁免 'manual'，导致「改完 3 分钟内切走 App」的数据一直被 minGap 拦掉 ——
-    //   而定时器随页面销毁 ⇒ 数据永远上不了云端，用户却看到「已同步」（那行是上一次的结果）。
-    // ★ 2026-10-10 追加 'save'：
-    //   显式保存信号也走快车道，但仍受 SAVE_MIN_GAP 约束（防连点，见常量处说明）。
-    if (reason !== 'manual' && reason !== 'hide' && reason !== 'save'
-        && sinceLast < p.minGap) return null;
-    //   ⚠️ 这里刻意量的是「距上一次**保存**同步」而不是「距上一次同步」：
-    //     保存信号的意义是「我刚存了东西，请立刻推」。若拿 lastAt 去量，
-    //     会出现「用户先手动同步、1 秒后保存」→ 保存被静默吞掉这种错判
-    //     （上一次同步并不包含这次保存的内容）。SAVE_MIN_GAP 只该防「保存连点」。
-    if (reason === 'save') {
-      const sinceSave = Date.now() - (autoLastSaveAt || 0);
-      if (autoLastSaveAt && sinceSave < SAVE_MIN_GAP) return null;
-    }
-    if (!syncTryLock('自动同步')) return null;
-    autoBusy = true;
-    try {
-      const sum = await b.both({ silent: true });
-      if (sum && sum.error) { autoRecord('自动同步未成功：' + sum.error, false); return sum; }
-      autoDirtyAt = 0;
-      if (reason === 'save') autoLastSaveAt = Date.now();
-      autoRecord(autoFormat(sum), true);
-      return sum;
-    } catch (e) {
-      const msg = (e && e.message ? e.message : String(e));
-      autoRecord('自动同步未成功：' + msg, false);
-      return { error: msg };
-    } finally {
-      autoBusy = false;
-      syncUnlock();
-    }
-  }
-
-  function autoSetOn(on) {
-    autoCfg.on = !!on;
-    autoSaveCfg();
-    if (autoCfg.on) {
-      if (autoDirtyAt) scheduleAutoSync();
-      autoScheduleTick();
-    } else if (autoTimer) {
-      clearTimeout(autoTimer); autoTimer = null;
-    }
-    renderAutoState();
-  }
-
-  function autoSetPreset(id) {
-    if (!AUTO_PRESETS[id]) return;
-    autoCfg.preset = id;
-    autoSaveCfg();
-    autoScheduleTick();
-    if (autoTimer) {
-      clearTimeout(autoTimer); autoTimer = null;
-      if (autoDirtyAt) scheduleAutoSync();
-    }
-    renderAutoState();
-  }
-
-  // 留痕三处：侧边栏第二行 / 面板明细块 / 面板内记录列表。
-  // 面板没开时后两处的 DOM 不存在，直接跳过（不是错误）。
-  function renderAutoState() {
-    const line = document.getElementById('syncAutoLine');
-    if (line) {
-      if (autoCfg.on && autoCfg.lastAt) {
-        line.style.display = 'block';
-        line.style.color = autoCfg.lastOk ? '#0d8a5f' : '#c0392b';
-        line.textContent = '自动 ' + autoClock(autoCfg.lastAt).slice(0, 5) +
-          '（' + autoRelTime(autoCfg.lastAt) + '）';
-      } else if (autoCfg.on) {
-        line.style.display = 'block';
-        line.style.color = '#7c8aa5';
-        line.textContent = '自动同步已开启 · 等待首次同步';
-      } else {
-        line.style.display = 'none';
-      }
-    }
-
-    const sw = document.getElementById('autoSwitch');
-    if (sw) sw.checked = !!autoCfg.on;
-    const sel = document.getElementById('autoPresetSel');
-    if (sel && sel.value !== autoCfg.preset) sel.value = autoCfg.preset;
-    const st = document.getElementById('autoStateTxt');
-    if (st) st.textContent = autoCfg.on ? ('已开启 · ' + autoPreset().label) : '已关闭';
-    const hint = document.getElementById('autoHintTxt');
-    if (hint) {
-      hint.textContent = autoCfg.on
-        ? ('每次只做合并，永远不会覆盖任何一端（覆盖类操作仍需手动点击）。当前节奏：' + autoPreset().hint + '。')
-        : '已关闭：数据变动后不会自动同步，需要手动点上面的按钮。';
-      // 降级要看得见：hook 没装成时不装作在实时监听，直接告诉用户实际节奏会变慢
-      if (autoCfg.on && !autoHookOk) {
-        hint.textContent += ' ⚠️ 本页面的写入监听未生效（浏览器限制），只会按上面的定时节奏同步。';
-      }
-    }
-    const last = document.getElementById('autoLast');
-    if (last) {
-      if (!autoCfg.lastAt) {
-        last.textContent = '尚未发生自动同步';
-      } else {
-        last.innerHTML = '最近一次自动同步 <b>' + autoClock(autoCfg.lastAt) + '</b>（' +
-          autoRelTime(autoCfg.lastAt) + '）<br>' + escText(autoCfg.lastDesc || '') +
-          '<br><span style="color:#93a3ba">完整记录见下方列表。</span>';
-      }
-    }
-    const list = document.getElementById('autoLogList');
-    if (list) {
-      if (!autoCfg.log.length) {
-        list.innerHTML = '';
-      } else {
-        list.innerHTML = '<div style="font-size:11.5px;color:#5b7a6c;margin-bottom:5px">最近自动同步记录</div>' +
-          autoCfg.log.map(function (r) {
-            return '<div style="font-size:11px;line-height:1.75;color:' +
-              (r.ok ? '#4a6357' : '#a3341f') + '">' +
-              '<span style="color:#0d8a5f;font-weight:600">' + autoClock(r.at) + '</span> ' +
-              escText(r.desc || '') + '</div>';
-          }).join('');
-      }
-    }
-  }
-
-  function installAutoHooks() {
-    if (autoHooksOn) return;
-    autoHooksOn = true;
-    // ① 导航页自身的写入。
-    //
-    // ⚠️ 赋值之后【必须回读确认】。浏览器有可能让这次赋值静默失效 ——
-    //    把 Storage 包成 Proxy、实例不可扩展、隐私模式下 Storage 被冻结，
-    //    都会让 `localStorage.setItem = fn` 悄悄不生效。若不确认，代码会以为
-    //    「实时监听已生效」，而实际一个写入都抓不到 —— 这是最危险的一类静默失效：
-    //    不是少报，是永远不报，用户还以为自己在实时同步。
-    //    （实测：JSDOM 环境下就是装不上的那种。）
-    try {
-      const origSet = localStorage.setItem;
-      localStorage.setItem = function (k, v) {
-        const r = origSet.apply(localStorage, arguments);
-        try { noteLocalChange(k); } catch (e) {}
-        return r;
-      };
-      autoHookOk = (localStorage.setItem !== origSet);
-    } catch (e) { autoHookOk = false; }
-    // ② iframe（工具页）内的写入。
-    //    storage 事件只会在【其它】文档触发，所以这里收到的一定不是导航页自己的写入，
-    //    与 ① 不会重复计数（同一次写入最多被记一次）。
-    try {
-      window.addEventListener('storage', function (ev) {
-        try { if (ev && ev.key) noteLocalChange(ev.key); } catch (e) {}
-      });
-    } catch (e) {}
-    // ④ 子页（工具页）保存完成 → 立刻推一次（2026-10-10「保存即立刻同步」）。
-    //
-    //   与 ② 的分工：② 只能收到「某个键被写了」这个事实，无从知道
-    //   「这次写入是一个动作的中途、还是终点」。保存信号补上的正是后者。
-    //
-    //   安全考虑：message 事件同源才可信。导航页与全部工具页同源
-    //   （都是 wyting1234.github.io 下的路径），因此校验 origin === location.origin；
-    //   非同源（比如被外部壳嵌入）一律忽略，避免外部页面伪造信号触发同步。
-    try {
-      window.addEventListener('message', function (ev) {
-        try {
-          if (!ev || !ev.data) return;
-          if (ev.origin && location.origin && ev.origin !== location.origin) return;
-          const t = ev.data && ev.data.type;
-          if (typeof t !== 'string') return;
-          for (let i = 0; i < AUTO_SAVE_MSG_TYPES.length; i++) {
-            if (t === AUTO_SAVE_MSG_TYPES[i] || t.indexOf(AUTO_SAVE_MSG_TYPES[i] + ':') === 0) {
-              noteSaveSignal(t);
-              return;
-            }
-          }
-        } catch (e) {}
-      });
-    } catch (e) {}
-    // ③ 移动端切走 App / 关页面时立刻推一次：等不到 debounce 计时器（页面可能直接被冻结）
-    try {
-      document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState !== 'hidden') return;
-        if (!autoCfg.on || !autoDirtyAt || autoBusy) return;
-        if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
-        // ★ reason='hide'：这一步必须**豁免 minGap**（见 runAutoSync 里的说明）。
-        //   页面马上要隐藏/销毁，定时器不会再有下一次机会 —— 用 'change' 会被节流拦掉。
-        runAutoSync('hide');
-      });
-      window.addEventListener('pagehide', function () {
-        if (!autoCfg.on || !autoDirtyAt || autoBusy) return;
-        if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
-        runAutoSync('hide');
-      });
-    } catch (e) {}
-  }
-
-  function autoStart() {
-    autoLoadCfg();
-    installAutoHooks();
-    autoScheduleTick();
-    renderAutoState();
-  }
+  // ★ 2026-10-13：自动同步（变动触发 / 定时检查 / 保存快车道 / hide 兜底推送）整体移除，
+  // 同步改为纯手动上传 / 下载。上面的触发忽略清单保留，供「下载后重载判定」与留痕降噪使用。
+  // window.CloudSync.auto 的测试口子一并移除；诊断口子（shardOf / modulesOf 等）迁到 CloudSync 顶层。
 
   // ============ 初始化 ============
   async function initSync() {
     const b = activeBackend();
-    // 选中的是 Gitee：连接流程归 Gitee 模块自己管（它没有「查找已有载体」这一步）
-    if (b && b.id !== 'github') {
-      isConnected = !!b.isConnected();
-      updateStatus(isConnected ? '已连接' : '待配置');
-      if (!isConnected) b.reconfigure();
-      return;
-    }
-    if (!GITHUB_TOKEN) { showConfigModal(); return; }
-    // 提速：有缓存的 Gist ID 就立即显示「已连接」，启动不再发网络请求。
-    // 首次真正同步时才会联网；若 Gist 已被删，404 兜底会自动重建，不影响使用。
-    if (cachedGistId()) {
-      isConnected = true;
-      updateStatus('已连接');
-      return;
-    }
-    try {
-      await findOrCreateGist();   // 关键：两端复用同一 Gist
-      isConnected = true;
-      updateStatus('已连接');
-    } catch (e) {
-      console.error('[GitHub] 初始化失败:', e);
-      isConnected = false;
-      updateStatus('连接失败');
-      showConfigModal();
-    }
+    if (!b) { updateStatus('未配置'); return; }
+    // Gitee 后端（2026-10-13 起唯一后端）：连接流程归 Gitee 模块自己管
+    isConnected = !!b.isConnected();
+    updateStatus(isConnected ? '已连接' : '待配置');
+    if (!isConnected) b.reconfigure();
   }
 
   async function init() {
@@ -3697,12 +3189,8 @@
     // 尽早装上：这是「工具页（iframe）写入的键」唯一的时间来源。
     // 晚一步，这段时间里的改动就会漏记 —— 而漏记的后果是静默的（见 localKeyTs 上方注释）。
     installIframeKeyTs();
-    // 自动同步的钩子与定时器要尽早装上：即使此刻还没配置云端，
-    // 用户后续配置好之后「数据变动触发同步」也能立刻生效（不必刷新页面）。
-    autoStart();
     const b = activeBackend();
     if (!b || !b.isReady()) { updateStatus(b ? '待配置' : '未配置'); return; }
-    if (b.id !== 'github') { updateStatus('已连接'); return; }   // 非 GitHub 后端不在这里联网
     await initSync();
   }
 
@@ -3768,28 +3256,13 @@
   }
   exportCore();
 
-  // 后端注册表：各后端（GitHub / Gitee）注册自己，主面板据此渲染切换项
-  window.CloudSyncBackends = window.CloudSyncBackends || {};
-  window.CloudSyncBackends.github = {
-    id: 'github',
-    name: 'GitHub Gist',
-    hint: '国内可直连，免费，需 GitHub Token',
-    // 主面板调用这几个口子，具体实现留在本文件（闭包内有状态）
-    isReady: function () { return !!GITHUB_TOKEN; },
-    isConnected: function () { return isConnected; },
-    connect: function () { return ensureGithubConnected(); },
-    reconfigure: function () { showConfigModal(); },
-    upload: function () { return doUpload(); },
-    download: function () { return doDownload(); },
-    both: function (o) { return doSyncBoth(o); },
-    health: function () { return doHealth(); }
-  };
+  // 后端注册表：GitHub 后端已于 2026-10-13 移除，唯一后端 Gitee 由 sync-gitee.js 自行注册。
+  // 本文件保留 CloudSyncCore 与（未注册的）Gist 实现，供核心复用与历史数据兼容。
 
   window.CloudSync = {
     build: '2026-09-16-heal',                 // 回归测试用：确认页面跑的是这一版
     upload: doUpload,
     download: doDownload,
-    both: doSyncBoth,
     openPanel: openSyncPanel,
     health: doHealth,                                   // 云端体检
     reconnect: initSync,                                // 配置 / 换 Token 后重新连接
@@ -3797,37 +3270,15 @@
     syncLock: syncLockAPI,                             // 全局互斥锁（回归测试用）
     peek: peekCloud,                                   // 只读探测云端数据量
     getStatus: () => ({ connected: isConnected, lastSync: lastSyncTime }),
-    // 自动同步（v8）：给测试与「数据管理」面板留的口子
-    auto: {
-      KEY: AUTO_KEY,
-      PRESETS: AUTO_PRESETS,
-      state: () => JSON.parse(JSON.stringify(autoCfg)),
-      preset: autoPreset,
-      setOn: autoSetOn,
-      setPreset: autoSetPreset,
-      note: noteLocalChange,
-      format: autoFormat,
-      render: renderAutoState,
-      runNow: () => runAutoSync('manual'),
-      isBusy: () => autoBusy,
-      dirty: () => autoDirtyAt,
-      hookOk: () => autoHookOk,
-      // 延迟重载的观测口子：自动化测试靠它确认「后台同步没刷当前工具」
-      pendingReload: () => Object.keys(pendingReload),
-      flushReload: () => flushPendingReload(),
-      // 分片归属诊断口子（回归测试用）：shardOfKey 把某个键归到了哪个模块。
-      // 归不到任何模块 → modulesOfKeys 会让本次同步退化成「全刷」，见该函数注释。
-      shardOf: (k) => shardOfKey(k),
-      moduleIds: () => moduleIds(),
-      // 「变化键 → 该刷哪些模块」的直接口子。返回 null = 认不出来、退化成全刷。
-      modulesOf: (ks) => modulesOfKeys(ks),
-      // 该键的写入是否被忽略（不触发自动同步）
-      autoIgnored: (k) => isAutoIgnoredKey(String(k)),
-      // 「保存即立刻同步」的口子（2026-10-10）
-      saveSignal: (src) => noteSaveSignal(src || 'test'),
-      SAVE_MIN_GAP: SAVE_MIN_GAP,
-      saveMsgTypes: () => AUTO_SAVE_MSG_TYPES.slice(),
-      lastSaveSrc: () => autoSaveSrc,
-    }
+    // 键归属 / 刷新诊断口子（回归测试用；2026-10-13 从 CloudSync.auto 迁出，
+    // 自动同步相关口子随自动同步一起移除）
+    autoIgnored: (k) => isAutoIgnoredKey(String(k)),
+    transientKeys: () => SYNC_TRANSIENT_KEYS.slice(),
+    shardOf: (k) => shardOfKey(k),
+    moduleIds: () => moduleIds(),
+    // 「变化键 → 该刷哪些模块」。返回 null = 认不出来、退化成全刷。
+    modulesOf: (ks) => modulesOfKeys(ks),
+    pendingReload: () => Object.keys(pendingReload),
+    flushReload: () => flushPendingReload()
   };
 })();
