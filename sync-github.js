@@ -77,7 +77,17 @@
     // 导航页：版本号拉取缓存 + 前端补丁标记（「这版补丁跑过了没」，必须各机器各自判定，
     // 否则新设备会以为自己已经迁移过而跳过补丁）。
     'hub_versions_cache_v1',
-    'hub_patch'
+    'hub_patch',
+    /* ★ 2026-10-13 实测补排（直读 Gitee 云端）：同源下**其它应用**共用一个 localStorage，
+       它们把自己的同步配置（内含**明文令牌**）存在这些键里，被判据「全量 localStorage 减排除
+       清单」原样收上了云 —— 云端实测躺着三把：cloud_sync_config_v1（ghp_…）、
+       gesp_sync_config_v1（ghp_…）、invs_sync_cfg_v1（Gitee 令牌）。
+       点名之外，isExcludedKey 里还有一条「按值凭据兜底」防以后再犯。 */
+    'cloud_sync_config_v1', 'cloud_sync_time_v1',
+    'gesp_sync_config_v1', 'gesp_sync_device_v1',
+    'invs_sync_cfg_v1',
+    // 纯技术/垃圾键（实测都已在云端）：同步脏标记、上次页签、SDK 埋点残留
+    'sync_dirty', 'lastTab', 'ARGUS_XSS_V3'
   ]);
 
   // ============ 背景图片不同步 ============
@@ -94,12 +104,25 @@
   ];
   const BIG_IMAGE_MIN = 30 * 1024;   // 超过 30KB 的内嵌图片才视为背景资源
 
+  // ============ 按值兜底：值里出现凭据形态 ⇒ 一律不上云 ============
+  // 为什么必须有：判据是「全量 localStorage 减排除清单」，而同源下**任何**应用（含以后新加的）
+  // 都可能把令牌写进自己的配置键 —— 点名排除永远追不上新键。实测就漏过三把明文令牌。
+  // 宁可少同步一个键，也不上云一把钥匙。（只认明确的凭据形态，不认裸 32 位 hex ——
+  // 后者会在 URL/id 里大面积误伤，实测 diary_app_data / investResBoard_v1 就是这种误报。）
+  const SECRET_VALUE_RE = /ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|Bearer\s+[A-Za-z0-9_\-\.]{20,}|["']?(?:access_)?token["']?\s*[:=]\s*["'][^"']{16,}["']/i;
+  const SECRET_SCAN_MAX = 64 * 1024;   // 只扫这个长度以内的值（足够覆盖配置类键，避免大 JSON 拖慢）
+  function looksSecret(v) {
+    if (typeof v !== 'string' || !v.length || v.length > SECRET_SCAN_MAX) return false;
+    return SECRET_VALUE_RE.test(v);
+  }
+
   function isExcludedKey(key, value) {
     if (EXCLUDE_KEYS.has(key)) return true;
     for (let i = 0; i < EXCLUDE_PREFIXES.length; i++) {
       if (key.indexOf(EXCLUDE_PREFIXES[i]) === 0) return true;
     }
     if (value && value.length > BIG_IMAGE_MIN && value.slice(0, 11) === 'data:image/') return true;
+    if (looksSecret(value)) return true;      // ★ 含凭据的值一律不上云
     return false;
   }
 
@@ -110,7 +133,7 @@
   }
 
   // 通用确认弹窗：返回 Promise<boolean>
-  function showConfirm(title, message) {
+  function showConfirm(title, message, okText) {
     return new Promise((resolve) => {
       const mask = document.createElement('div');
       mask.className = 'sync-mask';
@@ -122,7 +145,7 @@
         <p style="margin:0 0 18px;color:#555;font-size:14px;line-height:1.6;white-space:pre-wrap">${message}</p>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button class="sync-cancel" style="padding:9px 18px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:14px">取消</button>
-          <button class="sync-ok" style="padding:9px 18px;border:none;border-radius:6px;background:#08bd74;color:white;cursor:pointer;font-size:14px">确定覆盖</button>
+          <button class="sync-ok" style="padding:9px 18px;border:none;border-radius:6px;background:#08bd74;color:white;cursor:pointer;font-size:14px">${okText || '确定覆盖'}</button>
         </div>`;
       mask.appendChild(modal);
       document.body.appendChild(mask);
@@ -1168,6 +1191,7 @@
         <button id="syncHealth" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:13px">🩺 云端体检（下载失败先点这里）</button>
         <button id="syncDataMgr" style="flex:1;padding:9px;border:1px solid #ddd;border-radius:6px;background:white;cursor:pointer;font-size:13px">🗂️ 数据管理（导入 / 导出 / 清空）</button>
       </div>
+      ${latestSnapshot() ? '<div style="margin:-6px 0 14px"><button id="syncRestoreSnap" style="width:100%;padding:9px;border:1px solid #f0c36d;border-radius:6px;background:#fffbf0;color:#8a5a00;cursor:pointer;font-size:13px">↩️ 找回覆盖前的数据（有快照）</button></div>' : ''}
 
       <div id="syncBackupBox" style="border-top:1px solid #eee;padding-top:12px;margin-bottom:14px">
         <div style="font-size:14px;font-weight:600;margin-bottom:8px">💾 数据备份</div>
@@ -1287,6 +1311,8 @@
       if (typeof window.openDataModal === 'function') { try { window.openDataModal(); return; } catch (e) {} }
       if (window.BackupHub && window.BackupHub.open) { try { window.BackupHub.open(); } catch (e) {} }
     };
+    const rsBtn = modal.querySelector('#syncRestoreSnap');
+    if (rsBtn) rsBtn.onclick = () => { restoreSnapshot(); };
 
     // ---- 自动同步控件（v8）----
     const autoSw = modal.querySelector('#autoSwitch');
@@ -2214,6 +2240,63 @@
     localStorage.setItem('sync_timestamps', JSON.stringify(timestamps));
   }
 
+  // ============ 覆盖前把关（2026-10-13 新增）============
+  // applyCloudToLocal 会先清光本机可同步键、再写云端那份 ⇒ **云端没有的本机键会被删除**。
+  // 过去覆盖路径既不告知也不留快照（只有 merge + 世代更新才走 alignToGeneration 留档），
+  // 于是「某朵云缺某个键」时，一次覆盖就能把本机那份悄悄抹掉 —— 实测踩过（案例展示）。
+  // 这里给出：① 会被删的键清单（给确认框）② 快照（可找回）③ 回执里报数。
+  function localOnlyKeys(serverData) {
+    const sdata = (serverData && serverData.data) || {};
+    const out = {};
+    const keys = getLocalKeys();
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (Object.prototype.hasOwnProperty.call(sdata, k)) continue;
+      try { out[k] = localStorage.getItem(k) || ''; } catch (e) { out[k] = ''; }
+    }
+    return out;
+  }
+
+  function describeKeyList(names, max) {
+    const n = Math.max(1, max || 8);
+    const head = names.slice(0, n).map(function (k) {
+      let lb = k;
+      try { lb = (typeof labelOfKey === 'function' ? labelOfKey(k) : k) || k; } catch (e) { }
+      return '· ' + lb + '（' + k + '）';
+    }).join('\n');
+    return names.length > n ? head + '\n· …等共 ' + names.length + ' 项' : head;
+  }
+
+  function latestSnapshot() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(EPOCH_SNAP_KEY) || '[]') || [];
+      return (Array.isArray(arr) && arr.length) ? arr[0] : null;
+    } catch (e) { return null; }
+  }
+
+  async function restoreSnapshot() {
+    const sn = latestSnapshot();
+    if (!sn) { notifyFail('没有可找回的快照', '本机还没有留下「覆盖前」的快照。'); return; }
+    const names = sn.keys || [];
+    const withData = Object.keys(sn.data || {});
+    let when = '';
+    try { when = new Date(Number(sn.at) || 0).toLocaleString('zh-CN'); } catch (e) { }
+    const ok = await showConfirm('找回覆盖前的数据',
+      '快照时间：' + (when || '未知') + '\n共 ' + names.length + ' 项' +
+      (sn.truncated ? '（其中 ' + withData.length + ' 项带内容，其余因体积超限只留了键名）' : '') + '：\n' +
+      describeKeyList(names, 8) +
+      '\n\n确定把这些数据写回本机吗？（会覆盖本机同名的当前值）', '确定找回');
+    if (!ok) return;
+    let n = 0;
+    for (let i = 0; i < withData.length; i++) {
+      const k = withData[i];
+      try { localStorage.setItem(k, sn.data[k]); n++; } catch (e) { }
+    }
+    try { refreshToolData({ all: true }); } catch (e) { }
+    notifyOK('已找回 ' + n + ' 项覆盖前的数据',
+      '共 ' + names.length + ' 项在快照里，' + n + ' 项带内容已写回；其余只有键名（体积超限）。');
+  }
+
   function reloadActiveIframe() {
     // v2：下载覆盖后必须刷新【全部】工具 iframe —— 所有 iframe 在 buildIframes 时
     // 已带 src 常驻，只刷当前激活的话，其余 iframe 内存里仍是旧数据，
@@ -2616,9 +2699,26 @@
         return;
       }
       let mergeStats = null;
+      let owSnap = 0;
       if (mode === 'merge') {
         mergeStats = mergeCloudToLocal(remote);
       } else {
+        // ★ 覆盖前把关：云端没有的本机键会被删掉 ⇒ 先告知、再留快照，用户确认后才动。
+        const only = localOnlyKeys(remote);
+        const onlyNames = Object.keys(only);
+        if (onlyNames.length) {
+          const go = await showConfirm('覆盖将删除 ' + onlyNames.length + ' 项本机数据',
+            '下面这些数据【本机有、云端没有】：\n' + describeKeyList(onlyNames, 8) +
+            '\n\n「覆盖本机」会先清掉本机全部可同步数据、再写入云端那一份，' +
+            '因此上面这些会被删除。\n动手前会先留一份快照，可在同步面板「↩️ 找回覆盖前的数据」恢复。');
+          if (!go) {
+            updateStatus('已取消下载');
+            progShow('running', '已取消下载（未删除任何数据）', '本机数据未改动。');
+            progBusy(false);
+            return;
+          }
+          owSnap = snapshotStaleKeys(only, Date.now(), null) ? onlyNames.length : 0;
+        }
         applyCloudToLocal(remote);
       }
       // 手动操作：用户刚点了按钮，期望马上看到结果 → 立刻刷新受影响的工具页（不延迟）。
@@ -2643,6 +2743,8 @@
           : `云端的 ${Object.keys(remote.data).length} 项数据已写入本机。\n` +
             '数据有变动的工具页已刷新，其余工具页保持原状（避免打断正在填写的表单）。') +
         genTip +
+        (owSnap ? '\n（覆盖前已把 ' + owSnap + ' 项云端没有的本机数据存进快照，' +
+          '可在同步面板「↩️ 找回覆盖前的数据」恢复。）' : '') +
         (genAlign ? '\n（世代对齐：' + genAlign.stale.length + ' 项旧世代的本机数据已按云端处理，' +
           '其中 ' + genAlign.removed + ' 项云端没有、已从本机移除；动手前已留快照，可找回。）' : ''));
     } catch (e) {
@@ -3607,6 +3709,8 @@
       runBothIO,
       // 本地数据
       collectLocalData, getLocalKeys, applyCloudToLocal, localMeta,
+      // 覆盖前把关（2026-10-13）：本机独有键 / 描述 / 快照，供各后端下载覆盖时复用
+      localOnlyKeys, describeKeyList, snapshotStaleKeys, latestSnapshot,
       // 分片：工具函数
       buildShards, shardOfKey, shardFile, newMeta,
       // 分片：与后端无关的通用读写（传 io 进来）
