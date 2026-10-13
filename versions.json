@@ -2,18 +2,18 @@
  "scheme": "V<YYYYMMDD><letters>",
  "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
  "day": "20261013",
- "seq": 12,
- "latest": "V20261013l",
- "updatedAt": "2026-10-13T16:55:00+08:00",
- "note2": "修复「上传之后再下载，案例又没了」（Tom 报的第二例同步丢数据）：根因 —— 覆盖世代闸门（overwriteGateAt）的判据把「本机时间戳记录缺失或早于覆盖时刻」一律当旧世代，而工具页（iframe）写入的键（cpa_* / life-* / accCase_v3_<项目>）恰好抓不到时间戳（__hub_meta_v1__ 由导航页覆写 setItem 记录，跨 realm 抓不到；sync_key_ts_v1 靠 storage 事件补记，也需导航页在场）。两个后果：① 合并上传时这些键被 continue 掉 ⇒ 没进上传包，回执却报「已合并上传」；② alignToGeneration 把它们当旧世代、云端没有同名键时直接 localStorage.removeItem ⇒ 本机数据被删。修法：判据统一为「云端有没有同名键」—— 云端没有 ⇒ 本机独有，放行上传 / 对齐时不删（与本机时间戳无关）；云端已有 ⇒ 仅「覆盖之后的新改动」（记录晚于该时刻）才放行，否则按旧世代（覆盖语义保住）。另新增上传回执提示：本次因世代闸门跳过的键名会如实列出，静默少传不再发生。",
- "note2_prev": "修复「案例展示 / 题眼」项目隔离失效（Tom 报「跨设备同步后数据对不上、切换项目也不隔离」）：根因 —— scKey() 定义在「输出自检」IIFE 的私有作用域，案例展示模块是另一个独立 IIFE 拿不到它，typeof 判定恒假 ⇒ 键名一路退化成裸键 accCase_v3 / hub_cpa_kp_eye_v1，注释写的 _<项目id> 从未生效。修法：案例模块自带与 scPid() 同口径的 projId() 解析（currentProjectId → 存档当前项目 → cpa），并优先复用自检模块新暴露的 window.ehubScKey；新增 adoptLegacyKeys() 一次性迁移裸键数据（目标键为空则接管、两边都有则取并集，搬完删裸键避免跨项目乱窜），在 boot() 与 cpaProjectApplied 事件里各跑一次。另：MODULES[’cpa’].keys 经核查**早已包含** accCase_v3 / hub_cpa_kp_eye_v1，无需改动（此前误报见下）。",
+ "seq": 13,
+ "latest": "V20261013m",
+ "updatedAt": "2026-10-13T17:35:00+08:00",
+ "note2": "修复「案例界面内容无法保存了」（Tom 报：新建案例点保存完全没反应、编辑器也不关）：根因是**提示静默 + 校验无出口**，两条叠加：① tools/cpa学习工具1.html 案例模块的 toastSafe() 找的是全局 `toast` —— 该页面根本没有这个函数（同名 toast 都在别的 IIFE 私有作用域，window.toast 为 undefined），typeof 判定恒假 ⇒ 模块内 8 处提示全部静默；② 保存前的两道校验（无题目 / 无科目）只调 toastSafe 后 return ⇒ 用户看到的就是「点了没反应、编辑器不关」；③ 触发条件：案例「科目」下拉的选项来自 scopeAll()，而 COURSES 只在 applyProject() 里按 proj.courses 赋值 —— 自建项目 courses 为空（内置 CPA / 法考有代码常量兜底，不受影响）且本机还没有任何案例时，下拉只剩一个空项，新建时 draft.course 恒为空 ⇒ 必被拦。修法：toastSafe 改用页面真实存在的全局 showToast（失败提示立刻可见）；两道校验改为说清缺什么、去哪补；科目下拉为空时给「未分类」出口（数据先落地不丢）；新建流程接住该兜底值；saveCases 返回真实写入结果 —— 此前写入失败也照样提示「案例已保存」并关闭编辑器（数据没落盘用户却以为存上了），现在失败会保留编辑器内容。",
+ "note2_prev": "修复「上传之后再下载，案例又没了」（Tom 报的第二例同步丢数据）：根因 —— 覆盖世代闸门（overwriteGateAt）的判据把「本机时间戳记录缺失或早于覆盖时刻」一律当旧世代，而工具页（iframe）写入的键（cpa_* / life-* / accCase_v3_<项目>）恰好抓不到时间戳（__hub_meta_v1__ 由导航页覆写 setItem 记录，跨 realm 抓不到；sync_key_ts_v1 靠 storage 事件补记，也需导航页在场）。两个后果：① 合并上传时这些键被 continue 掉 ⇒ 没进上传包，回执却报「已合并上传」；② alignToGeneration 把它们当旧世代、云端没有同名键时直接 localStorage.removeItem ⇒ 本机数据被删。修法：判据统一为「云端有没有同名键」—— 云端没有 ⇒ 本机独有，放行上传 / 对齐时不删（与本机时间戳无关）；云端已有 ⇒ 仅「覆盖之后的新改动」（记录晚于该时刻）才放行，否则按旧世代（覆盖语义保住）。另新增上传回执提示：本次因世代闸门跳过的键名会如实列出，静默少传不再发生。",
  "files": {
-  "index.html": "V20261013l",
+  "index.html": "V20261013m",
   "sync-github.js": "V20261013l",
   "tools/CPA会计掌握度系统.html": "V20260917i",
   "tools/backup-hub.js": "V20261010a",
   "tools/code-previewer.html": "V20261013b",
-  "tools/cpa学习工具1.html": "V20261013k",
+  "tools/cpa学习工具1.html": "V20261013m",
   "tools/life-workbench.html": "V20261013b",
   "tools/social/action.html": "V20260918h",
   "tools/social/learn.html": "V20260918h",
@@ -41,6 +41,10 @@
   "sync-gitee.js": "V20261013l"
  },
  "notes": [
+  {
+   "ver": "V20261013m",
+   "text": "V20261013m：案例展示「无法保存」修复（Tom 报「案例界面内容无法保存了」）。① **提示全部静默**：案例模块 toastSafe() 依赖的全局 `toast` 在本页面不存在（实测 window.toast === undefined，同名函数都在别的 IIFE 里），改为调用真实存在的全局 showToast ⇒ 8 处提示立刻可见；② **保存被静默拦截**：无题目 / 无科目两处校验只提示不说明，现改为明确文案（缺什么、去哪补），题目为空时自动把焦点送回题目输入框；③ **无科目项目无法保存**：科目下拉取自 scopeAll()（源头是 applyProject 写入的 COURSES），自建项目 courses 为空 + 本机无案例 ⇒ 下拉全空 ⇒ 新建必被拦。现在下拉为空时兜底一个「未分类（当前项目没有配置科目）」选项，新建流程同步接住，数据先落地不丢，科目可稍后在项目设置里补；④ **写失败仍报成功**：saveCases 现在返回真实写入结果，配额满时报明确原因并**保留编辑器内容**（此前会误报成功并关闭编辑器）。回归：verify_case_savefix.js 10 项（正常项目新建/无科目项目新建/题目为空提示/无科目项目编辑），test_case_isolation.js 10 项、test_case_switch.js 8 项、test_sync.js 31 项，全通过。"
+  },
   {
    "ver": "V20261013l",
    "text": "V20261013l：同步丢数据第二轮修复（案例展示「上传后再下载就没了」）。① 上传侧：buildMergedUpload 的世代闸门判据由「无时间戳记录 ⇒ 旧世代」改为「云端没有同名键 ⇒ 放行」，工具页写入的键在做过一次「覆盖云端」之后不再永久上不了云；② 下载侧：staleGenKeys 同步改判据，世代对齐不再把「云端没有的本机独有键」从本机删除；③ 可观测：新增 Core.gateSkipped()，GitHub / Gitee 两侧上传回执都会如实报出被闸门跳过的键名；④ 文案：epochNoticeText 说清「云端没有的本机数据一律保留」。回归：repro_case_loss.js 20 项（含「覆盖语义仍成立」的反向用例）、test_sync.js 31 项、test_case_isolation.js 10 项、test_case_switch.js 8 项，全通过。sync-github.js ?v=75→76、sync-gitee.js ?v=69→70。"

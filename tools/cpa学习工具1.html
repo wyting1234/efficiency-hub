@@ -14306,10 +14306,19 @@ if (document.readyState === 'loading') {
         try { var a = JSON.parse(localStorage.getItem(K(CASE_KEY))) || []; return Array.isArray(a) ? a : []; }
         catch (e) { return []; }
     }
+    /* ★ 2026-10-13：返回「是否真的写进了 localStorage」。
+       此前写入失败也照样往下走：提示「案例已保存」+ 关闭编辑器 ⇒
+       数据没落盘、用户却以为存上了（真丢数据且无感知）。 */
     function saveCases(arr) {
-        try { localStorage.setItem(K(CASE_KEY), JSON.stringify(arr)); } catch (e) { toastSafe('案例保存失败（存储空间可能已满）'); }
+        var okWrite = true;
+        try { localStorage.setItem(K(CASE_KEY), JSON.stringify(arr)); }
+        catch (e) {
+            okWrite = false;
+            toastSafe('保存失败：浏览器存储空间不足（localStorage 配额已满）。本次内容仍留在编辑器里没有丢 —— 请先「上传到云端」备份，再清理部分旧数据后重试。', 8000);
+        }
         try { refreshCountsSafe(); } catch (e) { }
         try { if (window.CaseBook && window.CaseBook._qtRefresh) window.CaseBook._qtRefresh(); } catch (e) { }
+        return okWrite;
     }
     function loadEyes() {
         try { return JSON.parse(localStorage.getItem(K(EYE_KEY))) || {}; } catch (e) { return {}; }
@@ -14317,7 +14326,22 @@ if (document.readyState === 'loading') {
     function saveEyes(o) {
         try { localStorage.setItem(K(EYE_KEY), JSON.stringify(o || {})); } catch (e) { }
     }
-    function toastSafe(m) { try { if (typeof toast === 'function') toast(m); } catch (e) { } }
+    /* ★ 2026-10-13 修复（Tom「案例界面内容无法保存了」）：
+       此前这里找的是全局 `toast` —— 而本页面**根本没有**这个函数
+       （同名 toast 都在别的 IIFE 私有作用域里，window.toast 为 undefined），
+       typeof 判定恒假 ⇒ 案例模块 8 处提示**全部静默**：没选科目、没写题目、
+       存储配额满…… 用户看到的就是「点保存完全没反应、编辑器也不关」。
+       页面里真正可用的是全局 showToast（输出自检模块之外，见本文件 showToast 定义）。 */
+    function toastSafe(m, ms) {
+        try { if (typeof showToast === 'function') { showToast(m, ms || 3200); return; } } catch (e) { }
+        try { if (typeof toast === 'function') toast(m); } catch (e) { }
+    }
+    /* 当前项目名（提示文案里要说清「是哪个项目没有科目」）*/
+    function projLabelSafe() {
+        try { if (typeof getCurrentProject === 'function') { var p = getCurrentProject(); if (p && p.name) return p.name; } } catch (e) { }
+        try { return projId(); } catch (e) { }
+        return '当前项目';
+    }
     function refreshCountsSafe() { try { if (typeof refreshCounts === 'function') refreshCounts(); } catch (e) { } }
     function uidSafe() {
         try { if (typeof uid === 'function') return uid(); } catch (e) { }
@@ -14450,7 +14474,14 @@ if (document.readyState === 'loading') {
     function refillCourse(cur) {
         var all = scopeAll();
         var list = Object.keys(all).map(function (c) { return { v: c, t: c }; });
-        fillSelect(csCourse, list, cur || '', '— 选择科目 —');
+        /* ★ 2026-10-13：项目没配科目（自建项目 courses 为空）+ 本机还没有任何案例时，
+           scopeAll() 全空 ⇒ 下拉只剩一个空项 ⇒ 保存被「没有科目」拦死（且此前提示静默）。
+           这里给一个「未分类」出口：数据先落地不丢，科目可稍后在项目里补。 */
+        if (!list.length) {
+            fillSelect(csCourse, [{ v: '未分类', t: '未分类（当前项目没有配置科目）' }], cur || '未分类', '— 当前项目无科目 —');
+        } else {
+            fillSelect(csCourse, list, cur || '', '— 选择科目 —');
+        }
     }
     function refillChapter() {
         var all = scopeAll();
@@ -14940,7 +14971,14 @@ if (document.readyState === 'loading') {
         var all = scopeAll(); var first = Object.keys(all)[0] || '';
         var cur = { course: draft.course || first };
         refillScope(cur);
-        if (!draft.course && first) { draft.course = first; if (csCourse) csCourse.value = first; refillChapter(); refillSection(); }
+        /* ★ 2026-10-13：项目无科目时 first 为空，上面 refillCourse 会兜底出「未分类」，
+           这里必须接住 —— 否则 draft.course 仍是空串，保存照样被拦（等于没修）。 */
+        if (!draft.course) {
+            if (first) draft.course = first;
+            else if (csCourse && csCourse.value) draft.course = csCourse.value;
+        }
+        if (csCourse && draft.course) csCourse.value = draft.course;
+        refillChapter(); refillSection();
         if (!draft.date) draft.date = today();
         var dEl = document.getElementById('csDate'); if (dEl) dEl.value = draft.date;
         var tEl = document.getElementById('csEditorTitle'); if (tEl) tEl.textContent = '新建案例';
@@ -15108,8 +15146,18 @@ if (document.readyState === 'loading') {
         var dEl = document.getElementById('csDate');
         draft.date = (dEl && dEl.value) ? dEl.value : today();
 
-        if (!String(draft.q || '').trim()) { toastSafe('先把「题目」写上'); return; }
-        if (!draft.course) { toastSafe('先选科目'); return; }
+        /* ★ 2026-10-13：这两处此前只调 toastSafe（静默）⇒ 用户看到「点了没反应」。
+           现在：① 提示一定可见；② 说清缺什么、去哪补；③ 题目为空时把光标送回题目格。 */
+        if (!String(draft.q || '').trim()) {
+            toastSafe('保存失败：还没有写「题目」。表格最上面那一行的输入框就是题目，填好再点保存。', 5200);
+            try { var _hq = csTable ? csTable.querySelector('tbody.cs-tb-head .cs-cellin') : null; if (_hq) _hq.focus(); } catch (e) { }
+            return;
+        }
+        if (!draft.course) {
+            toastSafe('保存失败：没有可用科目（科目下拉是空的）。当前项目「' + projLabelSafe() +
+                '」没有配置科目 —— 请到「学习进度 → 项目管理」给该项目添加科目，或切换到 CPA / 法考 等项目后再记案例。', 9000);
+            return;
+        }
 
         draft.updatedAt = Date.now();
         if (editId) {
@@ -15121,7 +15169,7 @@ if (document.readyState === 'loading') {
             draft.createdAt = Date.now();
             cases.push(draft);
         }
-        saveCases(cases);
+        if (!saveCases(cases)) return;      // ★ 写入失败 → 不关编辑器、不报成功，内容还给用户
         // 题眼：把本条的 eyes 也并入全局题眼集
         var eyes = loadEyes(); var changed = false;
         (draft.eyes || []).forEach(function (s) { if (!eyes[s]) { eyes[s] = 1; changed = true; } });
