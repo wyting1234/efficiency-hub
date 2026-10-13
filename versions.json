@@ -2,18 +2,18 @@
  "scheme": "V<YYYYMMDD><letters>",
  "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
  "day": "20261013",
- "seq": 10,
- "latest": "V20261013j",
- "updatedAt": "2026-10-13T15:20:00+08:00",
- "note2": "同步面板精简（Tom 三项需求）：① 移除 GitHub 后端，仅保留 Gitee（sync-github.js 仍是核心 CloudSyncCore，文件名不变，文件内 Gist 实现保留但不再注册后端）；② 移除「双向同步」按钮与整套自动同步（变动触发 / 定时检查 / 保存快车道 ehub-save / hide 兜底推送），同步改为纯手动：上传（合并/覆盖）+ 下载（合并/覆盖）；③ 新增 SYNC_TRANSIENT_KEYS 瞬时键清单（timeTimerState / timeDoneFolded / zmv_view_mode / drawexpand / schedmonth / roam_last_tab / diary_app_draft / wb_goal_draft / hub_cpa_draft_v1），计时器与界面瞬时键不再参与触发与重载判定，数据本身仍随下次同步带上去。测试口子：window.CloudSync.auto 移除，诊断口子（autoIgnored/shardOf/modulesOf/pendingReload/flushReload）迁到 CloudSync 顶层。",
- "note2_prev": "同步：① 凭据泄漏修复（三把明文令牌上云）+ 技术键排除；② 覆盖本机前告知/快照/可找回。【怎么发现的】直读 Gitee 云端（wyting1234/efficiency-hub-sync，162 键）逐值审计：cloud_sync_config_v1、gesp_sync_config_v1、invs_sync_cfg_v1 三把键里各存着一把**明文令牌**（两把 GitHub PAT + 一把 Gitee 令牌），已被同步上云；另有 sync_dirty / lastTab / ARGUS_XSS_V3 等技术键。根因：判据是「全量 localStorage 减排除清单」，而同源（wyting1234.github.io）下**其它应用**把自己的同步配置也存在同一个 localStorage 里 ⇒ 点名排除永远追不上新键。 【修法一】EXCLUDE_KEYS 点名补排这三个同步配置键 + 三个技术键；并在 isExcludedKey 加**按值凭据兜底**：值里出现 ghp_ / github_pat_ / Bearer xxx / \"token\":\"…\" 形态一律不上云（不认裸 32 位 hex —— 实测那样会在 URL/id 上大面积误伤）。 【修法二】覆盖本机（applyCloudToLocal）会先清光本机可同步键再写云端那份 ⇒ 云端没有的本机键被删除，而过去覆盖路径既不告知也不留快照，且 __epoch_conflict_backup_v1__ 快照只写不读、没有找回入口。现在：覆盖前若存在「本机有、云端没有」的键，先弹确认框**逐个列出会被删的键**，确认后先把它们写进快照，回执里报数；同步面板新增「↩️ 找回覆盖前的数据」（有快照时才出现）一键写回。 【实测】新闸门 verify_overwriteguard60.js 判别力双跑：BEFORE 6 PASS/14 FAIL → AFTER 20 PASS/0 FAIL；其中泄漏断言是「把云端分片 gzip 解包后再搜 ghp_」（避免压缩造成的假绿），端到端跑通上传/下载/找回全链。index.html 两个内核缓存串同步抬（?v=73 / ?v=67）。 【待办】① 已在云端的旧令牌请在 Gitee/GitHub 侧吊销轮换（本改动只阻止继续上传，不会删除云端已有副本）；② 用一台**已装新内核**的设备对 Gitee 做一次「上传·覆盖云端」即可把旧键从云端清掉。",
+ "seq": 11,
+ "latest": "V20261013k",
+ "updatedAt": "2026-10-13T15:50:00+08:00",
+ "note2": "修复「案例展示 / 题眼」项目隔离失效（Tom 报「跨设备同步后数据对不上、切换项目也不隔离」）：根因 —— scKey() 定义在「输出自检」IIFE 的私有作用域，案例展示模块是另一个独立 IIFE 拿不到它，typeof 判定恒假 ⇒ 键名一路退化成裸键 accCase_v3 / hub_cpa_kp_eye_v1，注释写的 _<项目id> 从未生效。修法：案例模块自带与 scPid() 同口径的 projId() 解析（currentProjectId → 存档当前项目 → cpa），并优先复用自检模块新暴露的 window.ehubScKey；新增 adoptLegacyKeys() 一次性迁移裸键数据（目标键为空则接管、两边都有则取并集，搬完删裸键避免跨项目乱窜），在 boot() 与 cpaProjectApplied 事件里各跑一次。另：MODULES[’cpa’].keys 经核查**早已包含** accCase_v3 / hub_cpa_kp_eye_v1，无需改动（此前误报见下）。",
+ "note2_prev": "同步面板精简（Tom 三项需求）：① 移除 GitHub 后端，仅保留 Gitee（sync-github.js 仍是核心 CloudSyncCore，文件名不变，文件内 Gist 实现保留但不再注册后端）；② 移除「双向同步」按钮与整套自动同步（变动触发 / 定时检查 / 保存快车道 ehub-save / hide 兜底推送），同步改为纯手动：上传（合并/覆盖）+ 下载（合并/覆盖）；③ 新增 SYNC_TRANSIENT_KEYS 瞬时键清单（timeTimerState / timeDoneFolded / zmv_view_mode / drawexpand / schedmonth / roam_last_tab / diary_app_draft / wb_goal_draft / hub_cpa_draft_v1），计时器与界面瞬时键不再参与触发与重载判定，数据本身仍随下次同步带上去。测试口子：window.CloudSync.auto 移除，诊断口子（autoIgnored/shardOf/modulesOf/pendingReload/flushReload）迁到 CloudSync 顶层。",
  "files": {
-  "index.html": "V20261013j",
+  "index.html": "V20261013k",
   "sync-github.js": "V20261013j",
   "tools/CPA会计掌握度系统.html": "V20260917i",
   "tools/backup-hub.js": "V20261010a",
   "tools/code-previewer.html": "V20261013b",
-  "tools/cpa学习工具1.html": "V20261013b",
+  "tools/cpa学习工具1.html": "V20261013k",
   "tools/life-workbench.html": "V20261013b",
   "tools/social/action.html": "V20260918h",
   "tools/social/learn.html": "V20260918h",
@@ -41,6 +41,10 @@
   "sync-gitee.js": "V20261013j"
  },
  "notes": [
+  {
+   "ver": "V20261013k",
+   "text": "V20261013k：修正 V20261013j 里的两处（一处真修、一处误报）—— ① 真修：tools/cpa学习工具1.html 的「案例展示 / 题目树 / 题眼」项目隔离失效。scKey() 是「输出自检」IIFE 的私有函数，案例模块（独立 IIFE）取不到 ⇒ K() 回退成裸键 accCase_v3 / hub_cpa_kp_eye_v1。现在案例模块自备 projId() 同口径解析 + 优先用 window.ehubScKey（自检模块已导出），并加了 adoptLegacyKeys() 一次性迁移（并集合并、搬完删裸键）。② 误报更正：上一轮我把「accCase_v3 未登记进 MODULES」当成缺陷 —— 实际它和 hub_cpa_kp_eye_v1 早就登记在 id:’cpa’ 的 keys 里，是我误读了 studybk 条目。故本轮 index.html 除版本号外无改动。③ 另修：mergeKeyValue 对数组型键走领域并集，因此「合并」模式不会把本机旧条目冲掉（覆盖模式不受影响）—— 非改动，仅备忘录。"
+  },
   {
    "ver": "V20261013j",
    "text": "V20261013j：同步体系精简三连 —— ① 去掉 GitHub 同步：后端注册表删 github 项，面板删「存到哪儿」切换框，activeBackend 回落只剩 gitee（存量 cloud_backend=github 的设备自动落回 gitee，数据格式通用无缝切换）；② 去掉双向同步：面板绿色「🔁 双向同步」按钮、说明文案、自动双向同步整块 UI（autoBox）、以及引擎侧 runAutoSync / scheduleAutoSync / autoScheduleTick / autoReschedule / noteLocalChange / noteSaveSignal / installAutoHooks / hide-pagehide 兜底推送全删，写入 hook 中维护 sync_key_ts_v1 的部分保留；③ 计时器/技术类瞬时键从触发判定剔除：新增 SYNC_TRANSIENT_KEYS 无条件忽略清单（不依赖 hub_ 前缀命中），isAutoIgnoredKey 先查瞬时键再走前缀逻辑；同时该清单作用于 modulesOfKeys（下载后不因瞬时键刷新工具页）。顺带：progBusy 置灰集合去掉已不存在的 #syncBoth；两处覆盖冲突用户提示去掉「或双向同步」字样；sync-github.js ?v=74→75、sync-gitee.js ?v=68→69。"

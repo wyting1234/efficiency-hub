@@ -14233,9 +14233,74 @@ if (document.readyState === 'loading') {
     var CASE_KEY = 'accCase_v3';
     var EYE_KEY  = 'hub_cpa_kp_eye_v1';
 
+    /* ★ 2026-10-13 修复（Tom）：项目隔离此前**形同虚设**。
+       成因：scKey() 定义在「输出自检」那个 IIFE 的私有作用域里，而本模块是另一个独立 IIFE
+       ⇒ `typeof scKey === 'function'` 恒为 false ⇒ 键名一路退化成裸键
+       （accCase_v3 / hub_cpa_kp_eye_v1），注释里写的 `_<项目id>` 从未真正生效。
+       现在两条路都堵上：
+         ① 优先复用页面暴露的 window.ehubScKey（自检模块导出的正版实现）；
+         ② 拿不到就自带一份与 scPid() 完全同口径的解析（currentProjectId → 存档当前项目 → 'cpa'）。
+       两者算出的键必然一致 ⇒ 切换考试项目时案例 / 题眼数据真正分家。 */
+    function projId() {
+        try { if (typeof currentProjectId !== 'undefined' && currentProjectId) return currentProjectId; } catch (e) { }
+        try { return localStorage.getItem('cpa_study_current_project_v1') || 'cpa'; } catch (e) { }
+        return 'cpa';
+    }
     function K(base) {
+        try { if (typeof window.ehubScKey === 'function') return window.ehubScKey(base); } catch (e) { }
         try { if (typeof scKey === 'function') return scKey(base); } catch (e) { }
-        return base;
+        return base + '_' + projId();
+    }
+
+    /* ★ 一次性迁移：把「隔离失效时期」写在裸键里的数据搬进当前项目的键。
+       · 裸键不存在 → 什么都不做（幂等：第二次进来早已搬完）。
+       · 目标键为空 → 直接接管，写完后删掉裸键。
+       · 两边都有（本机已在新键上写过）→ 取并集：案例按 id、题眼按 sig 合并，一条都不丢。
+       为什么必须删掉裸键：留着它，下次切到别的考试项目时会被**再次**接管 ⇒
+       同一批数据在多个项目间乱窜。删除是安全的 —— 内容已经在目标键里，同步会把它带走。 */
+    function adoptLegacyKeys() {
+        try {
+            [[CASE_KEY, 'cases'], [EYE_KEY, 'eyes']].forEach(function (pair) {
+                var base = pair[0], shape = pair[1];
+                var raw = null;
+                try { raw = localStorage.getItem(base); } catch (e) { return; }
+                if (raw == null) return;                       // 无裸键 → 已迁移过
+                var target = K(base);
+                if (target === base) return;                   // 解析不出项目（极端）→ 不动，保数据
+                var tRaw = null;
+                try { tRaw = localStorage.getItem(target); } catch (e) { }
+                var merged = raw;
+                if (shape === 'cases') {
+                    var legacy = [], cur = [];
+                    try { legacy = JSON.parse(raw) || []; } catch (e) { legacy = []; }
+                    try { cur = JSON.parse(tRaw || '[]') || []; } catch (e) { cur = []; }
+                    if (!Array.isArray(legacy)) legacy = [];
+                    if (!Array.isArray(cur)) cur = [];
+                    if (cur.length) {
+                        var seen = {};
+                        cur.forEach(function (r) { if (r && r.id) seen[r.id] = 1; });
+                        legacy.forEach(function (r) { if (r && r.id && !seen[r.id]) cur.push(r); });
+                        merged = JSON.stringify(cur);
+                    }
+                } else {
+                    var l = {}, c2 = {};
+                    try { l = JSON.parse(raw) || {}; } catch (e) { l = {}; }
+                    try { c2 = JSON.parse(tRaw || '{}') || {}; } catch (e) { c2 = {}; }
+                    if (!l || typeof l !== 'object' || Array.isArray(l)) l = {};
+                    if (!c2 || typeof c2 !== 'object' || Array.isArray(c2)) c2 = {};
+                    if (Object.keys(c2).length) {
+                        var outO = {};
+                        Object.keys(c2).forEach(function (k) { outO[k] = c2[k]; });
+                        Object.keys(l).forEach(function (k) { if (!(k in outO)) outO[k] = l[k]; });
+                        merged = JSON.stringify(outO);
+                    }
+                }
+                try {
+                    localStorage.setItem(target, merged);       // 先落目标键
+                    localStorage.removeItem(base);              // 再删裸键（顺序不能反）
+                } catch (e) { return; }                             // 写失败（配额满）→ 保留裸键，下次再试
+            });
+        } catch (e) { }
     }
     function loadCases() {
         try { var a = JSON.parse(localStorage.getItem(K(CASE_KEY))) || []; return Array.isArray(a) ? a : []; }
@@ -15635,6 +15700,7 @@ if (document.readyState === 'loading') {
 
     /* ---- 启动 ---- */
     function boot() {
+        adoptLegacyKeys();          // ★ 迁移必须早于第一次读取（loadCases / renderList）
         refillScope(null);
         renderList(); renderStat();
         try { renderQtree(); } catch (e) { }
@@ -15646,6 +15712,7 @@ if (document.readyState === 'loading') {
 
     /* 项目切换 → 重新读数据 */
     window.addEventListener('cpaProjectApplied', function () {
+        adoptLegacyKeys();          // 首次迁移若因页面未就绪而错过，这里补上
         cases = loadCases(); closeEditor(); boot();
     });
 })();
@@ -23701,6 +23768,9 @@ if (document.readyState === 'loading') {
       return "cpa";
     }
     function scKey(base){ return base + "_" + scPid(); }
+    // ★ 2026-10-13：把项目隔离的「正版实现」暴露给页面里其它独立 IIFE（案例展示 / 题目树 / 题眼）。
+    //   此前它只在本 IIFE 内可见，案例展示那边 typeof 判定失败、悄悄退化成裸键 —— 项目隔离形同虚设。
+    try { window.ehubScKey = scKey; } catch (e) { }
     // 层级文案：跟随当前项目的层级别名（如 GESP：考点 / 模块 / 级别）
     function scLv(key, dft){
       try{ if(typeof L === "function"){ const v = L(key); if(v) return v; } }catch(e){}
@@ -28258,7 +28328,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261013b</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261013k</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
