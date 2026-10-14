@@ -137,12 +137,23 @@ var FALLBACK_EXCLUDE_KEYS = ['github_token','github_gist_id','sync_last_sync','g
   // 内核的 storage 钩子维护的「键 → 时间戳」表，属本机记录，不能同步。
   // 兜底名单原本漏了它 —— 内核取不到时会把这张表当业务数据一起比对，判词就会跑偏。
   'sync_key_ts_v1',
+  // ★ 2026-10-12 补排（覆盖世代号那三个）：本机已知的最近一次「覆盖云端」世代 + 本机标识 +
+  //   世代冲突快照。同属「本机记录」—— 同步过去会让两端互相覆盖对方的世代认知。
+  'sync_epoch_seen_v1','sync_device_tag_v1','__epoch_conflict_backup_v1__',
   // ★ 2026-09-23 补齐（与内核新增的 6 条一一对应，见 verify_syncdiff.js K3）：
   //   朝暮计的三个「本机记录」（提醒去重 / 每日提醒 / 本机配额探测）+ 农历派生缓存，
   //   以及导航页的版本缓存与补丁标记。判据只有一条：搬到另一台设备后语义还成立吗。
   //   漏在兜底里 ⇒ 内核取不到时排除集是错的 ⇒ 工具页会把这些本机记录报成「云端有、本机缺」。
   'chaomuji_web_v27_remindlog','chaomuji_web_v27_dailylog','chaomuji_web_v27_lsquota',
-  'chaomuji_web_v27_lunarcache','hub_versions_cache_v1','hub_patch'];
+  'chaomuji_web_v27_lunarcache','hub_versions_cache_v1','hub_patch',
+  // ★ 2026-10-13 补排（直读 Gitee 云端实测）：同源下**其它应用**共用一个 localStorage，
+  //   它们把含**明文令牌**的同步配置存进这些键，被判据「全量 localStorage 减排除清单」
+  //   原样收上了云（云端实测躺着三把）。点名之外，内核 isExcludedKey 还有按值凭据兜底。
+  'cloud_sync_config_v1','cloud_sync_time_v1',
+  'gesp_sync_config_v1','gesp_sync_device_v1',
+  'invs_sync_cfg_v1',
+  // 纯技术/垃圾键（实测都已在云端）：同步脏标记、上次页签、SDK 埋点残留
+  'sync_dirty','lastTab','ARGUS_XSS_V3'];
 var FALLBACK_EXCLUDE_PREFIXES = ['chaomuji_web_v27_bg','chaomuji_web_v27_cardbg','chaomuji_web_v27_hcardbg',
   'zmv_bg_','__hub_','__tea_sdk_','__BEACON_'];
 var BIG_IMAGE_MIN = 30*1024;
@@ -741,7 +752,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20260923j</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261014c</div>
 <!-- build-tag:end -->
 </body>
 </html>
