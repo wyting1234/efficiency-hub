@@ -139,6 +139,55 @@
         .sc-app .sc-ans-item .cpa-rt:focus { border-color: var(--sc-umber); box-shadow: none; }
         .sc-app .sc-field .cpa-rt:focus { border-color: var(--sc-umber); box-shadow: none; }
         .fc-note-add .cpa-rt { width: 100%; box-sizing: border-box; font-size: 13px; }
+        /* ===== 表格 / 图片：粘贴进来的富内容（2026-10-14 新增） =====
+           为什么需要这一段：sanitize 放行 <table>/<img> 只解决了「存得住」，
+           观感还得靠 CSS —— 粘贴进来的表格默认无边框（看不出是表），
+           图片默认按原始像素铺开，会把卡片撑破（知识树格子、闪卡正面尤其窄）。 */
+        .cpa-rt table, .kp-cell-in table, .val table, .fc-face-q table, .fc-face-a table,
+        .kpn table, .kt-name table {
+            border-collapse: collapse;
+            margin: 6px 0;
+            max-width: 100%;
+            width: auto;
+            font-size: 13px;
+            line-height: 1.5;
+            background: #FFFDF8;
+        }
+        .cpa-rt table td, .cpa-rt table th,
+        .kp-cell-in table td, .kp-cell-in table th,
+        .val table td, .val table th,
+        .fc-face-q table td, .fc-face-q table th,
+        .fc-face-a table td, .fc-face-a table th,
+        .kpn table td, .kpn table th,
+        .kt-name table td, .kt-name table th {
+            border: 1px solid var(--border, #E5DCCD);
+            padding: 3px 8px;
+            vertical-align: top;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .cpa-rt table th, .kp-cell-in table th, .val table th,
+        .fc-face-q table th, .fc-face-a table th, .kpn table th, .kt-name table th {
+            background: #F1EBDF;
+            font-weight: 600;
+            text-align: center;
+        }
+        /* 图片：一律按容器宽等比缩放，绝不横向溢出（手机 / iframe 窄栏是常态）。
+           保持 inline（vertical-align: bottom）而不设 display:block —— 用户常在图片前后
+           接文字，block 会强行独占一行，把「图 + 说明」拆成两段。 */
+        .cpa-rt img, .kp-cell-in img, .val img, .fc-face-q img, .fc-face-a img,
+        .kpn img, .kt-name img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            vertical-align: bottom;
+        }
+        /* 「其他」页签顶部的插入图片工具条（给没有 Ctrl+V 的场景：手机相册 / 拍照 / 桌面选文件） */
+        .cpa-imgbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            margin: 0 0 12px; padding: 8px 10px; border: 1px dashed var(--border, #E5DCCD);
+            border-radius: var(--radius-sm, 8px); background: #FBF8F2; }
+        .cpa-imgbar button { font-size: 12.5px; padding: 5px 10px; }
+        .cpa-imgbar .cpa-imgbar-hint { font-size: 11.5px; color: var(--text-secondary, #6E6355); }
         /*##CPARICH_CSS_END##*/
         label {
             font-size: 13px;
@@ -5112,6 +5161,15 @@
                             </div>
 
                             <div class="rec-pane rec-pane-out" id="recPaneOther" role="tabpanel" hidden>
+                                <!-- ★ 2026-10-14（Tom：其他里要能粘贴表格与图片）：表格靠 Ctrl+V 原生插入
+                                     （Excel / 网页复制的就是 HTML，再由 sanitize 白名单收口）；
+                                     图片优先走 Ctrl+V，下面这个按钮是「没有 Ctrl+V」时的入口：
+                                     手机相册 / 拍照 / 桌面选文件都走它。插入位置 = 最后一次点过的输入框。 -->
+                                <div class="cpa-imgbar">
+                                    <button type="button" id="cpaImgPickBtn" title="选一张图片插到下面当前光标所在的输入框（手机可选相册 / 拍照）">🖼 插入图片</button>
+                                    <span class="cpa-imgbar-hint">Ctrl / ⌘ + V 可直接粘贴截图与表格（从 Excel、网页复制的表格都行）；图片会自动压缩后随记录一起同步到其它设备。</span>
+                                    <input type="file" id="cpaImgFile" accept="image/*" multiple hidden />
+                                </div>
                                 <div class="field">
                                     <label>🧠 解题思路 <span style="font-weight:400;color:var(--text-secondary);">(重点)</span></label>
                                     <div class="cpa-rt" id="fProblemSolving" data-rt="1" contenteditable="true" spellcheck="false" data-ph="记录你的解题思路、关键步骤、易错点…"></div>
@@ -7140,6 +7198,20 @@
             if (n) { try { saveData(); } catch (e) {} }
             return n;
         }
+
+        /* ★ 2026-10-14：把历史记录里「被当成纯文本存下来的表格 / 图片」修回富文本旁挂
+           （Tom：粘贴表格 → 保存 → 再打开是乱码）。
+           修复逻辑住在本文件**末尾**的 CpaRich 里，而这段脚本执行得更早、那时还没有 CpaRich
+           ⇒ 这里只登记一个钩子，由 CpaRich 尾部主动来够（见 window.CpaRich 那段的 setTimeout）。
+           幂等：没有破损记录时返回 0，不写盘、不重渲染。 */
+        window.__cpaRichRepair = function () {
+            try {
+                if (!window.CpaRich || typeof window.CpaRich.repairRecords !== 'function') return 0;
+                var n = window.CpaRich.repairRecords(state.records);
+                if (n) { saveData(); try { renderAll(); } catch (e2) { } }
+                return n;
+            } catch (e) { return 0; }
+        };
 
         function saveData() {
             const data = {
@@ -28376,7 +28448,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261013m</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261014a</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
@@ -29397,10 +29469,38 @@ html.embedded #buildTag{display:none}
     var RE_SOFTBR = /<br[^>]*data-soft[^>]*>/gi;
     function softJoin(v) { return String(v == null ? '' : v).replace(/\u2028/g, '<br data-soft="1">'); }
 
-    var TAG_OK = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, MARK: 1, SPAN: 1, BR: 1, DIV: 1, P: 1 };
+    /* ★★ 2026-10-14（Tom：学习记录 → 其他 里粘贴的表格保存后再打开是乱码；要求支持粘贴表格与图片）
+       原来的白名单只认行内格式标签，于是粘贴进来的 <table> / <img> 同时掉进两条缝：
+         · toText 判定「不是标记」⇒ 原样返回 HTML 源码 ⇒ **纯文本字段里存进一整段
+           <table><tr><td>…</table>**；重开记录时 set() 走 esc() 把它当文本显示，
+           用户看到的就是那串标签 —— 这就是「乱码」的成因。
+         · sanitize 发现 TAG_OK 里没有 ⇒ 拆掉标签只留子节点 ⇒ 表格结构没了；
+           图片更彻底：拆掉 <img> 等于整张图消失。
+       ⇒ 白名单补齐结构化标签。注意这些标签只进**富文本旁挂**（*H / nd.h / qH / kpRich），
+         纯文本字段照旧只收 toText 的结果（导出 / 打印 / 检索 / 卡片签名零改动）。 */
+    var TAG_OK = { B: 1, STRONG: 1, I: 1, EM: 1, U: 1, S: 1, STRIKE: 1, DEL: 1, MARK: 1, SPAN: 1, BR: 1, DIV: 1, P: 1,
+        TABLE: 1, THEAD: 1, TBODY: 1, TFOOT: 1, CAPTION: 1, COLGROUP: 1, COL: 1, TR: 1, TD: 1, TH: 1,
+        UL: 1, OL: 1, LI: 1, IMG: 1 };
     // 样式白名单：只放「格式条会产出」的那几条，且不允许 url()/expression
-    var STYLE_OK = { 'color': 1, 'background-color': 1, 'font-weight': 1, 'font-style': 1, 'text-decoration': 1, 'text-decoration-line': 1 };
-    var RE_MARKUP = /<\/?(b|strong|i|em|u|s|strike|del|mark|span|br|div|p)\b/i;
+    // ★ 2026-10-14 增：text-align / vertical-align / width / max-width ——
+    //   Excel 与网页复制过来的单元格带这几条，丢掉不算致命但表格会挤在一起；
+    //   值另有窄校验（见 sanitize 里对 width 系的正则），不会变成排版炸弹。
+    var STYLE_OK = { 'color': 1, 'background-color': 1, 'font-weight': 1, 'font-style': 1, 'text-decoration': 1, 'text-decoration-line': 1,
+        'text-align': 1, 'vertical-align': 1, 'width': 1, 'max-width': 1 };
+    /* ★ 属性白名单（2026-10-14）：sanitize 原先除 style 外**全删**属性，
+       而合并单元格的 colspan/rowspan、图片的 src 全在属性里 —— 删掉即结构损坏。
+       ⚠️ 只放下面这几条，其余（on* / class / id / data-* / href / srcset…）仍然一律删除。 */
+    var ATTR_OK = {
+        TD: { colspan: 1, rowspan: 1 }, TH: { colspan: 1, rowspan: 1 },
+        COL: { span: 1 }, COLGROUP: { span: 1 },
+        IMG: { src: 1, alt: 1, width: 1, height: 1 }
+    };
+    /* 图片只收两类 src：
+       · data:image/…;base64 —— 这是「跨设备同步」的前提（自包含，跟着记录一起上云）；
+       · http(s):// —— 从网页复制表格时图片常常是外链，收下总比整张丢掉强。
+       ⚠️ 明确排除 javascript: / data:text/html 这类可执行协议（白名单只挡名字，挡不住值里的花样）。 */
+    var RE_IMG_SRC = /^(?:data:image\/(?:png|jpe?g|gif|webp|bmp|avif);base64,[A-Za-z0-9+/=\s]+|https?:\/\/[^\s"'<>]+)$/i;
+    var RE_MARKUP = /<\/?(b|strong|i|em|u|s|strike|del|mark|span|br|div|p|table|thead|tbody|tfoot|caption|colgroup|col|tr|td|th|ul|ol|li|img)\b/i;
     /* ★ 2026-09-22（第十二轮）：HTML 实体引用（命名 / 十进制 / 十六进制）。
        用途见 toText 的短路判据 —— 只含实体、不含任何标签的串也必须走完整解析。 */
     var RE_ENTITY = /&(?:[a-zA-Z][a-zA-Z0-9]{1,31}|#\d{1,7}|#[xX][0-9a-fA-F]{1,6});/;
@@ -29426,10 +29526,29 @@ html.embedded #buildTag{display:none}
                     continue;
                 }
                 var attrs = [].slice.call(c.attributes);
+                var allow = ATTR_OK[c.tagName] || null;
                 for (var j = 0; j < attrs.length; j++) {
                     var nm = String(attrs[j].name || '').toLowerCase();
                     if (nm === 'style') continue;
-                    c.removeAttribute(attrs[j].name);
+                    /* ★ 2026-10-14：放行 colspan / rowspan / src 等结构属性 —— 白名单只挡名字，
+                       值必须再验一遍（src 是唯一能带协议进来的属性，重点验它）。 */
+                    if (!allow || !allow[nm]) { c.removeAttribute(attrs[j].name); continue; }
+                    var av = String(attrs[j].value == null ? '' : attrs[j].value);
+                    if (nm === 'src') {
+                        if (!RE_IMG_SRC.test(av)) c.removeAttribute(attrs[j].name);
+                        continue;
+                    }
+                    if (nm === 'colspan' || nm === 'rowspan' || nm === 'span') {
+                        var cn = parseInt(av, 10);
+                        if (cn >= 1 && cn <= 64) c.setAttribute(nm, String(cn));
+                        else c.removeAttribute(attrs[j].name);
+                        continue;
+                    }
+                    if (nm === 'width' || nm === 'height') {
+                        if (!/^\d{1,4}(?:\.\d+)?%?$/.test(av.replace(/\s+/g, ''))) c.removeAttribute(attrs[j].name);
+                        continue;
+                    }
+                    if (av.length > 200) c.setAttribute(nm, av.slice(0, 200));   // alt 等文本属性限长
                 }
                 var raw = c.getAttribute('style');
                 if (raw) {
@@ -29441,6 +29560,12 @@ html.embedded #buildTag{display:none}
                         var val = decl.slice(k + 1).trim();
                         if (!STYLE_OK[prop]) return;
                         if (/url\s*\(|expression|javascript:|@import/i.test(val)) return;
+                        /* ★ 2026-10-14：宽度类只收「数字 + 单位」，别的一律丢 ——
+                           粘贴网页表格时 style 里什么都有（calc()/var()/!important），
+                           留着会把单元格撑成排版炸弹。 */
+                        if (prop === 'width' || prop === 'max-width') {
+                            if (!/^\d{1,5}(?:\.\d+)?(?:px|%|em|rem|pt|ch|vw|vh)?$/i.test(val)) return;
+                        }
                         keep.push(prop + ':' + val);
                     });
                     if (keep.length) c.setAttribute('style', keep.join(';'));
@@ -29467,14 +29592,25 @@ html.embedded #buildTag{display:none}
         //   剩下的 <br> 才是知识点之间的换行。
         s = s.replace(RE_SOFTBR, SOFT)
             .replace(/<br\s*\/?>/gi, '\n')
-            .replace(/<\/(div|p|li|tr|h[1-6])\s*>/gi, '\n')
+            /* ★ 2026-10-14：表格的纯文本口径 —— 单元格之间 \t、行之间 \n。
+               为什么单元格不用 \n：两列表会被拉成一条竖线，粘回 Excel 时列全丢；
+               \t 才能让「从备注里复制回表格」保住列结构。
+               ⚠️ 顺序要紧：先 </td>/</th> 再 </tr>，否则 </tr> 会先吃掉行尾那一格。 */
+            .replace(/<\/(td|th)\s*>/gi, '\t')
+            .replace(/<\/(tr|table|caption)\s*>/gi, '\n')
+            .replace(/<\/(div|p|li|h[1-6]|ul|ol)\s*>/gi, '\n')
+            /* ★ 图片在纯文本层留一个占位符，**不能直接删掉**：
+               「只贴了一张图的备注」若纯文本为空，记录卡片上的判据 `if (r.notes)`
+               会把整块内容隐藏 —— 格式旁挂里明明有图却显示不出来；
+               知识点节点判空、闪卡卡片签名也都吃这条纯文本，同样不能为空。 */
+            .replace(/<img\b[^>]*>/gi, '[图片]')
             .replace(/<[^>]*>/g, '');
         var d = document.createElement('div');
         d.innerHTML = s;
         s = d.textContent || '';
         // 块级边界会多出一个行尾换行（'<div>x</div><div>y</div>' → 'x\ny\n'），抹掉它 ——
         // toText 的调用方是「导出 / 打印 / 纯文本字段」，不需要行尾空行。
-        return s.replace(/\u00a0/g, ' ').replace(/\n+$/, '');
+        return s.replace(/\u00a0/g, ' ').replace(/\t+\n/g, '\n').replace(/\n+$/, '').replace(/\t+$/, '');
     }
 
     // 「空」归一：只剩 <br> / 空 div / &nbsp; 一律当空串 ——
@@ -29482,6 +29618,10 @@ html.embedded #buildTag{display:none}
     function norm(h) {
         var s = String(h == null ? '' : h);
         if (!s) return '';
+        /* ★ 2026-10-14：<img> 是**内容**不是空标记 —— 原判据把标签统统剥掉再看剩下什么，
+           于是「只有一张图」的字段被判成空，initRT 的 input 监听会当场把 innerHTML
+           清成 ''（图片刚粘上就消失，且没有任何报错）。含 img 一律算非空。 */
+        if (/<img\b/i.test(s)) return s.replace(/(<br\s*\/?>\s*)+$/i, '').replace(/\s+$/, '');
         var probe = s.replace(/<br\s*\/?>/gi, '')
             .replace(/<[^>]*>/g, '')
             .replace(/&nbsp;/gi, ' ')
@@ -29718,13 +29858,240 @@ html.embedded #buildTag{display:none}
         return newT;
     }
 
-    // 挂到 window：rtHtml 供记录详情模板串行内调用
+    /* ========================================================================
+       ★★ 2026-10-14（Tom：「主要在 CPA 工具，希望在『其他』界面实现粘贴表格和图片，
+          并实现跨设备同步」）
+       ------------------------------------------------------------
+       表格：白名单放行 <table> 全家（见上面的 TAG_OK / ATTR_OK / toText），走原生粘贴。
+       图片：剪贴板里的图片**内联成 data: URL** 存进记录。
+       为什么必须内联、不能留外链：跨设备同步的判据就是「记录 JSON 里有没有这段字节」。
+       外链（从网页复制来的 https://…png）在另一台设备上要么需要联网、要么原图已删；
+       data: URL 是自包含的，跟着记录一起上云、一起下来。
+       代价是记录变大 ⇒ 所以**必须压缩**：localStorage 每个源只有 ~5MB，而且本页与
+       效率中心其它应用**共用同一个源**；一张未压缩的手机截图 1.5–3MB，
+       几张就能把整个工作台写挂（写入失败 → 保存直接报错，记录只在内存里）。
+       ======================================================================== */
+    var IMG_MAX_EDGE = 1400;                  // 最长边（px）：再大在手机 / iframe 窄栏里没有可读性收益
+    var IMG_TARGET_CHARS = 300 * 1024 * 1.38; // 压缩目标（dataURL 字符数；base64 相对原始字节膨胀 ≈1.37 倍）
+    var IMG_WARN_CHARS = 500 * 1024 * 1.38;   // 压不下去时的二次确认线（500KB 以上的图才值得打断一次）
+
+    // 等比缩放到「最长边 ≤ IMG_MAX_EDGE」并重新编码。失败（跨域画布污染 / 浏览器不支持）
+    // 一律原样返回 —— 宁可存一张大图，也不能把用户的图吞掉。
+    function shrinkImage(src, cb) {
+        var done = false;
+        function fin(v) { if (!done) { done = true; cb(v || src); } }
+        var img = new Image();
+        img.onload = function () {
+            try {
+                var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+                if (!w || !h) return fin(src);
+                /* 优先 WebP：截图里的文字不糊、透明背景也保得住，体积还比 PNG 小一个量级；
+                   逐档降质量 / 降尺寸直到进入目标；最后两档退回 JPEG 兜底（老浏览器没有 webp 编码）。 */
+                var plans = [
+                    [1.00, 'image/webp', 0.88], [0.80, 'image/webp', 0.80], [0.65, 'image/webp', 0.70],
+                    /* 难压的图（噪点照片 / 密集纹理）前几档都进不了目标，再往下压两档；
+                       到这一档已经不是「清晰度问题」而是「能不能存下」的问题了。 */
+                    [0.55, 'image/webp', 0.62], [0.45, 'image/webp', 0.55],
+                    [1.00, 'image/jpeg', 0.85], [0.80, 'image/jpeg', 0.75]
+                ];
+                var best = '';
+                for (var i = 0; i < plans.length; i++) {
+                    var scale = plans[i][0], mime = plans[i][1], q = plans[i][2];
+                    var long = Math.max(w, h) * scale;
+                    if (long > IMG_MAX_EDGE) scale = scale * (IMG_MAX_EDGE / long);
+                    var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+                    var cv = document.createElement('canvas');
+                    cv.width = cw; cv.height = ch;
+                    var cx = cv.getContext ? cv.getContext('2d') : null;
+                    if (!cx) break;
+                    if (mime === 'image/jpeg') {          // JPEG 没有透明通道：不铺底，透明区会变成黑块
+                        cx.fillStyle = '#FFFDF8';
+                        cx.fillRect(0, 0, cw, ch);
+                    }
+                    try { cx.drawImage(img, 0, 0, cw, ch); } catch (e1) { continue; }
+                    var got = '';
+                    try { got = cv.toDataURL(mime, q); } catch (e2) { continue; }   // 画布被污染
+                    if (!got || got.indexOf('data:image/') !== 0) continue;
+                    if (!best || got.length < best.length) best = got;
+                    if (got.length <= IMG_TARGET_CHARS) break;
+                }
+                fin(best || src);
+            } catch (e3) { fin(src); }
+        };
+        img.onerror = function () { fin(src); };
+        try { img.src = src; } catch (e4) { fin(src); }
+    }
+
+    // 在光标处插入一个节点，并把选区挪到它后面（连续插多张时才不会倒序）
+    function insertNodeAt(e, node, range) {
+        try {
+            e.focus();
+            var at = range;
+            if (!at || !at.startContainer || (at.startContainer !== e && !e.contains(at.startContainer))) {
+                at = document.createRange();
+                at.selectNodeContents(e);
+                at.collapse(false);
+            }
+            if (!at.collapsed) at.deleteContents();
+            at.insertNode(node);
+            var after = document.createRange();
+            after.setStartAfter(node);
+            after.collapse(true);
+            var sel = window.getSelection();
+            if (sel) { sel.removeAllRanges(); sel.addRange(after); }
+            return after;
+        } catch (err) {
+            try { e.appendChild(node); } catch (e2) { }
+            return null;
+        }
+    }
+
+    // 一组图片文件 → dataURL → 压缩 → 依次插到光标处
+    function insertImageFiles(e, files, range) {
+        if (!e || !files || !files.length) return;
+        var queue = [].slice.call(files).slice(0, 8);   // 一次最多 8 张：防手滑选中整个图库目录
+        var at = range;
+        (function step() {
+            if (!queue.length) {
+                try { e.dispatchEvent(new Event('input', { bubbles: true })); } catch (e9) { }
+                return;
+            }
+            var f = queue.shift();
+            if (!f || !/^image\//i.test(f.type || '')) return step();
+            var fr = new FileReader();
+            fr.onload = function () {
+                var raw = String(fr.result || '');
+                if (!raw) return step();
+                shrinkImage(raw, function (res) {
+                    if (res.length > IMG_WARN_CHARS) {
+                        var kb = Math.round(res.length / 1024);
+                        if (!window.confirm('这张图压缩后仍有约 ' + kb + ' KB，会让记录明显变大、云端同步变慢。\n\n仍要插入吗？')) return step();
+                    }
+                    var im = document.createElement('img');
+                    im.setAttribute('src', res);
+                    var next = insertNodeAt(e, im, at);
+                    if (next) at = next;
+                    step();
+                });
+            };
+            fr.onerror = function () { step(); };
+            try { fr.readAsDataURL(f); } catch (e5) { step(); }
+        })();
+    }
+
+    /* 粘贴拦截：只有「剪贴板里有图片文件」时才接管，其余（纯文本 / 表格 HTML）走原生。
+       ⚠️ 为什么不接管 HTML 粘贴：Excel、网页复制过来的表格本来就是 HTML，
+          原生插入后再由 sanitize 收口即可；若这里连 cd.getData('text/html') 也自己插一遍，
+          从网页复制「图文混排」会得到重复的两份。 */
+    function onRichPaste(ev) {
+        var e = (ev.currentTarget && ev.currentTarget.nodeType === 1) ? ev.currentTarget : ev.target;
+        if (!e || e.nodeType !== 1 || !e.getAttribute || !e.getAttribute('data-rt')) return;
+        var cd = ev.clipboardData || window.clipboardData;
+        if (!cd) return;
+        var files = [];
+        try {
+            var items = cd.items || [];
+            for (var i = 0; i < items.length; i++) {
+                if (items[i] && items[i].kind === 'file' && /^image\//i.test(items[i].type || '')) {
+                    var f = items[i].getAsFile();
+                    if (f) files.push(f);
+                }
+            }
+        } catch (e1) { }
+        if (!files.length && cd.files && cd.files.length) {
+            for (var j = 0; j < cd.files.length; j++) {
+                if (cd.files[j] && /^image\//i.test(cd.files[j].type || '')) files.push(cd.files[j]);
+            }
+        }
+        if (!files.length) return;                       // 没有图片 ⇒ 交给浏览器原生粘贴
+        ev.preventDefault();
+        var range = null;
+        try {
+            var sel = window.getSelection();
+            if (sel && sel.rangeCount) range = sel.getRangeAt(0).cloneRange();
+        } catch (e2) { }
+        insertImageFiles(e, files, range);
+    }
+
+    /* ---------- 「🖼 插入图片」按钮（没有 Ctrl+V 的场景：手机相册 / 拍照 / 桌面选文件） ---------- */
+    var lastRT = null;
+    // 目标框 = 最后一次获得焦点的富文本容器；它已被隐藏 / 移除时退回「📌 备注」。
+    // ⚠️ 不能用 document.activeElement：按下按钮之后焦点已经在按钮上了，不在输入框。
+    function pickTarget() {
+        var t = lastRT;
+        if (!t || !document.documentElement.contains(t) || !t.offsetParent) t = document.getElementById('fNotes');
+        return t;
+    }
+    function bindImgPick() {
+        var btn = document.getElementById('cpaImgPickBtn');
+        var inp = document.getElementById('cpaImgFile');
+        if (!btn || !inp || btn.__wired) return;
+        btn.__wired = 1;
+        btn.addEventListener('click', function () {
+            inp.value = '';
+            try { inp.click(); } catch (e) { }
+        });
+        inp.addEventListener('change', function () {
+            var fs = inp.files ? [].slice.call(inp.files) : [];
+            var t = pickTarget();
+            inp.value = '';
+            if (!t || !fs.length) return;
+            t.focus();
+            insertImageFiles(t, fs, null);
+        });
+    }
+
+    /* ================= 一次性修复：旧记录里的「表格 / 图片乱码」 =================
+       判据只认表格 / 图片标签，两条理由：
+         · 行内格式（b/i/u/span）在旧版就是好的，不在修复范围；
+         · 不用「含 < > 就算标记」这种宽判据 —— 用户手打的 <div>、C++ 的 <cstdio>
+           会被误判成格式，toText 一过就把用户敲的字符删掉，那是**有损**的。
+       实体形态（&lt;table&gt;…）也要认：那条路径是「粘贴 → 保存 → 重开（被转义显示）
+       → 再保存」留下的，值里没有真标签，先解码才能还原成表。 */
+    var RICH_PAIRS = [
+        ['problemSolving', 'problemSolvingH'], ['memoryNetwork', 'memoryNetworkH'],
+        ['aiQA', 'aiQAH'], ['notes', 'notesH']
+    ];
+    var RE_STRAY = /<(?:table|thead|tbody|tfoot|tr|td|th|img)\b/i;
+    var RE_STRAY_ESC = /&lt;(?:table|thead|tbody|tfoot|tr|td|th|img)\b/i;
+    function repairRichFields(rec) {
+        var hit = 0;
+        for (var i = 0; i < RICH_PAIRS.length; i++) {
+            var plain = rec[RICH_PAIRS[i][0]], h = rec[RICH_PAIRS[i][1]];
+            if (typeof plain !== 'string' || !plain) continue;
+            if (h && looksMarkup(h)) continue;                    // 已有旁挂格式：不动
+            if (!RE_STRAY.test(plain) && !RE_STRAY_ESC.test(plain)) continue;
+            var src = plain;
+            if (!RE_STRAY.test(src)) {                            // 实体形态 → 先前解码成真标签
+                var d = document.createElement('div');
+                d.innerHTML = src;
+                src = d.textContent || src;
+            }
+            var clean = sanitize(src);
+            if (!clean || !looksMarkup(clean)) continue;
+            rec[RICH_PAIRS[i][1]] = clean;
+            var t = toText(clean);
+            if (t) rec[RICH_PAIRS[i][0]] = t;                     // 纯文本为空就保留原值，别把记录做成「空」
+            hit++;
+        }
+        return hit;
+    }
+    function repairRecords(records) {
+        if (!records || !records.length) return 0;
+        var n = 0;
+        for (var i = 0; i < records.length; i++) if (records[i]) n += repairRichFields(records[i]);
+        return n;
+    }
+
+    // 挂到 window：rtHtml 供记录详情模板串行调用
     window.CpaRich = {
         esc: esc, sanitize: sanitize, toText: toText, norm: norm, render: render,
         rawOf: rawOf, textOf: textOf, fmtOf: fmtOf, set: set, shim: shim,
         caretLine: caretLine, caretLineIndex: caretLineIndex, insertBreak: insertBreak, softBreak: softBreak, cell: cell,
         richMapOf: richMapOf, applyRichMap: applyRichMap, carryRich: carryRich,
-        looksMarkup: looksMarkup
+        looksMarkup: looksMarkup,
+        // ★ 2026-10-14：存量修复 + 图片插入（修复由页面 __cpaRichRepair 钩子驱动，见下）
+        repairRecords: repairRecords, insertImageFiles: insertImageFiles, shrinkImage: shrinkImage
     };
     window.rtHtml = function (h, t) { return softJoin(render(h, t)); };
 
@@ -29735,6 +30102,10 @@ html.embedded #buildTag{display:none}
             var e = list[i];
             if (e.__rtReady) continue;
             e.__rtReady = 1;
+            /* ★ 2026-10-14：每个富文本容器都挂上粘贴拦截（表格走原生 + sanitize 收口，
+               图片由 onRichPaste 接管，见那里的注释）。这里挂而不是委托到 document：
+               currentTarget 就是容器本身，省掉一次向上找元素。 */
+            e.addEventListener('paste', onRichPaste);
             shim(e);
             if (!norm(e.innerHTML)) e.innerHTML = '';
             e.addEventListener('input', function () {
@@ -29751,6 +30122,25 @@ html.embedded #buildTag{display:none}
         initRT();
     }
     window.CpaRich.initRT = initRT;
+
+    /* 焦点跟踪 —— 给「🖼 插入图片」按钮定位目标框（capture 阶段，任何 [data-rt] 都能跟到） */
+    document.addEventListener('focusin', function (ev) {
+        var t = ev.target;
+        if (!t || t.nodeType !== 1 || !t.closest) return;
+        var rt = t.closest('[data-rt]');
+        if (rt) lastRT = rt;
+    }, true);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindImgPick);
+    } else {
+        bindImgPick();
+    }
+    /* 首屏修一次旧记录：修复逻辑住在本脚本里，而 loadData / saveData 住在**本文件靠前**
+       的那个 IIFE 里（先执行）⇒ 这里是主动去够页面登记的钩子 window.__cpaRichRepair。
+       幂等：第二轮扫不到破损记录就直接返回 0，不写盘、不重渲染。 */
+    setTimeout(function () {
+        try { if (typeof window.__cpaRichRepair === 'function') window.__cpaRichRepair(); } catch (e) { }
+    }, 0);
 
     /* ★ 后插入的 [data-rt] 也要装上 —— 闪卡编辑框 / 复习面板 / 小节自检作答框都是
        「渲染时才出现」的，只在 DOMContentLoaded 跑一次 initRT 会把它们全漏掉；而漏掉的
