@@ -2,18 +2,18 @@
   "scheme": "V<YYYYMMDD><letters>",
   "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
   "day": 20261015,
-  "seq": 2,
-  "latest": "V20261015b",
-  "updatedAt": "2026-10-15T09:59:45+08:00",
-  "note2": "闪卡复习首轮=学习当天：记忆曲线整体前移 1 天。fcSeedNextAt 每轮排期由 记录日+ivs[i] 改为 记录日+(ivs[i]-1)，首轮 ivs[0]=1 → 今天；轮次键(r.id#round)不变，不影响已有复习进度。附带解释「保存记录后弹出已生成新卡但卡库看不到」：旧版新卡首轮排在明天，故不进待复习；改后新卡当日即到期，并说明卡库(库视图)默认折叠文件夹需点开。",
-  "note2_prev": "朝暮计「集思录 · 梦想成真」清理旧版遗留的 localStorage 键：dmImportLegacy() 把 dreamGoals / dreamDiaries 并入 S.jisi.dm 后旧键仍留在本机。这两个键没有登记在导航页 MODULES[].keys 里 —— 会被当作陌生键同步上云，回来时 shardOfKey() 认不出归属，退化成「刷新全部已加载工具页」，打断正在填的表单、重置滚动位置（不丢数据）。本轮新增幂等的 dmPurgeLegacyKeys()，两条硬约束：旧数据确已并入 chaomuji_web_v27（legacyImported 闸门已置）才删；旧键解析不了的那个保留原文、不置闸门（另一个能解析的照删），绝不为了干净丢数据。调用点有三处 —— dmImportLegacy 迁移后、其 early-return 分支（补上一版「只搬不删」的老用户）、以及首屏初始化（用户不开集思录页也能清掉）。未新增任何 localStorage 键，同步覆盖面无变化。",
+  "seq": 3,
+  "latest": "V20261015c",
+  "updatedAt": "2026-10-15T10:10:29+08:00",
+  "note2": "V20261015b 的曲线/任务部分补齐：记忆曲线、复习任务清单(getReviewItems 等)与完成提示也同步前移 1 天（与卡片首轮=当天一致），避免曲线显示与实际排期不符。",
+  "note2_prev": "闪卡复习首轮=学习当天：记忆曲线整体前移 1 天。fcSeedNextAt 每轮排期由 记录日+ivs[i] 改为 记录日+(ivs[i]-1)，首轮 ivs[0]=1 → 今天；轮次键(r.id#round)不变，不影响已有复习进度。附带解释「保存记录后弹出已生成新卡但卡库看不到」：旧版新卡首轮排在明天，故不进待复习；改后新卡当日即到期，并说明卡库(库视图)默认折叠文件夹需点开。",
   "files": {
-    "index.html": "V20261015b",
+    "index.html": "V20261015c",
     "sync-github.js": "V20261013l",
     "tools/CPA会计掌握度系统.html": "V20260917i",
     "tools/backup-hub.js": "V20261010a",
     "tools/code-previewer.html": "V20261013b",
-    "tools/cpa学习工具1.html": "V20261015b",
+    "tools/cpa学习工具1.html": "V20261015c",
     "tools/life-workbench.html": "V20261013b",
     "tools/social/action.html": "V20260918h",
     "tools/social/learn.html": "V20260918h",
@@ -41,6 +41,11 @@
     "sync-gitee.js": "V20261013l"
   },
   "notes": [
+    {
+      "ver": "V20261015c",
+      "date": "2026-10-15T10:10:29+08:00",
+      "text": "V20261015b 的曲线/任务部分补齐：记忆曲线、复习任务清单(getReviewItems 等)与完成提示也同步前移 1 天（与卡片首轮=当天一致），避免曲线显示与实际排期不符。"
+    },
     {
       "ver": "V20261015b",
       "date": "2026-10-15T09:59:45+08:00",

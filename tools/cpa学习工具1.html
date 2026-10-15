@@ -15998,7 +15998,7 @@ if (document.readyState === 'loading') {
                     const round = i + 1;
                     const key = r.id + '#' + round;
                     if (rvDel[key] || doneKeys.has(key)) return;
-                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
+                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv - 1);
                     map[sched] = (map[sched] || 0) + kpCount;
                 });
             });
@@ -16074,7 +16074,7 @@ if (document.readyState === 'loading') {
                     const round = i + 1;
                     const key = r.id + '#' + round;
                     if (rvDel[key]) return;            // 已删除的复习任务不再出现
-                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
+                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv - 1);
                     if (doneKeys.has(key)) {
                         const doneRec = doneList.find(x => x.recordId === r.id && x.round === round);
                         done.push({ record: r, round, sched, doneAt: doneRec.date, key });
@@ -16279,7 +16279,7 @@ if (document.readyState === 'loading') {
                     const round = i + 1;
                     const key = r.id + '#' + round;
                     if (rvDel[key]) return;
-                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
+                    const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv - 1);
                     if (sched !== ds) return;
                     tasks.push({ record: r, round: round, key: key, sched: sched, done: doneKeys.has(key) });
                 });
@@ -23474,7 +23474,7 @@ if (document.readyState === 'loading') {
             const ivs = getReviewIntervals();
             const rec = (state.records || []).find(r => r.id === recordId);
             const nextTip = (d.round < ivs.length && rec)
-                ? ('；' + roundName(d.round + 1) + ' 排在 ' + memAddDays(rec.date, ivs[d.round]))
+                ? ('；' + roundName(d.round + 1) + ' 排在 ' + memAddDays(rec.date, ivs[d.round] - 1))
                 : '；这是最后一轮复习';
             showToast('🔁 ' + roundName(d.round) + ' 已保存并标记完成' + ((d.tomatoes || d.hours)
                 ? ('（🍅 ' + (d.tomatoes || 0) + ' 个 · ' + (d.hours || 0) + 'h）') : '') + nextTip);
@@ -28453,7 +28453,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261015b</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261015c</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
