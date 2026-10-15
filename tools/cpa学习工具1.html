@@ -18453,7 +18453,8 @@ if (document.readyState === 'loading') {
         }
 
         /* 卡片的首期：来源记录里「最早的未完成轮次」的排期日。
-           - 新卡（刚学完）→ 记录日期 + ivs[0]（1 天）= 明天，正是艾宾浩斯第 1 个节点；
+           - 新卡（刚学完）→ 记录日期 + (ivs[0]-1) = 今天，正是艾宾浩斯第 1 个节点
+             （首复习=学习当天；整条记忆曲线较旧版前移 1 天，间隔不变）；
            - 老卡迁移 → 顺着它原来那条记录的进度走，**不会一夜之间全部到期**。
            一条来源记录都没有（自建卡 / 记录已删）→ 今天（立即进待复习，由用户处理）。 */
         function fcSeedNextAt(card) {
@@ -18473,7 +18474,11 @@ if (document.readyState === 'loading') {
                         const key = r.id + '#' + (i + 1);
                         if (rvDel[key]) return;
                         if (doneKeys[key]) { doneR++; return; }
-                        const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv);
+                        /* ★ 2026-10-15：首复习=学习当天。整条记忆曲线整体前移 1 天 ——
+                           每轮排期 = 记录日 + (ivs[i] - 1)；轮次键(r.id#round)不变，
+                           不影响已有复习进度(reviewDone)。ivs[0]=1 → 第 1 次=今天，
+                           之后 +1/+3/+6/+14，间隔(1/2/3/8)与原曲线完全一致。 */
+                        const sched = (rvOv[key] && rvOv[key].sched) ? rvOv[key].sched : memAddDays(r.date, iv - 1);
                         if (!earliest || sched < earliest) earliest = sched;
                     });
                     if (doneR > maxDone) maxDone = doneR;
@@ -28448,7 +28453,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261014a</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261015b</div>
 <!-- build-tag:end -->
 
 <!-- ============ v20260918u：本页自带的「选中文字 → 浮出格式条」 ============
