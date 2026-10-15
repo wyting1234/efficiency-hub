@@ -1,14 +1,14 @@
 {
   "scheme": "V<YYYYMMDD><letters>",
   "note": "版本号由 version_bump.py 维护：同日每次推送取下一个字母；a..z, aa..zz, aaa..；跨天重置为 a。files 记录每个文件最后一次推送时的版本，index.html 恒等于全站最新版本。",
-  "day": "20261014",
-  "seq": 4,
-  "latest": "V20261014d",
-  "updatedAt": "2026-10-14T22:51:52+08:00",
-  "note2": "tools/sync-diff.html 兜底排除清单 24 → 35 条，与内核 EXCLUDE_KEYS 逐条对齐（世代号三项 / 同源其它应用的含令牌同步配置五项 / 纯技术键三项）；此前内核读不到时会把本机记录误报成「云端有、本机缺」。该页为孤儿页（不在 MODULES、全站 0 引用），仅直链可开，不影响导航与工具页缓存。",
-  "note2_prev": "CPA 学习工具「其他」页签现支持粘贴 Excel/网页表格与截图图片：表格不再变成「保存后一串标签」的乱码（存进富文本旁挂，纯文本仍按单元格/行还原）；图片自动压缩后内联存入记录，随记录一起上云可跨设备；打开时自动把历史里被当纯文本存下的表格修回富表格（幂等，手写字面量不动）。",
+  "day": "20261015",
+  "seq": 1,
+  "latest": "V20261015a",
+  "updatedAt": "2026-10-15T08:33:00+08:00",
+  "note2": "朝暮计「集思录 · 梦想成真」清理旧版遗留的 localStorage 键：dmImportLegacy() 把 dreamGoals / dreamDiaries 并入 S.jisi.dm 后旧键仍留在本机。这两个键没有登记在导航页 MODULES[].keys 里 —— 会被当作陌生键同步上云，回来时 shardOfKey() 认不出归属，退化成「刷新全部已加载工具页」，打断正在填的表单、重置滚动位置（不丢数据）。本轮新增幂等的 dmPurgeLegacyKeys()，两条硬约束：旧数据确已并入 chaomuji_web_v27（legacyImported 闸门已置）才删；旧键解析不了的那个保留原文、不置闸门（另一个能解析的照删），绝不为了干净丢数据。调用点有三处 —— dmImportLegacy 迁移后、其 early-return 分支（补上一版「只搬不删」的老用户）、以及首屏初始化（用户不开集思录页也能清掉）。未新增任何 localStorage 键，同步覆盖面无变化。",
+  "note2_prev": "tools/sync-diff.html 兜底排除清单 24 → 35 条，与内核 EXCLUDE_KEYS 逐条对齐（世代号三项 / 同源其它应用的含令牌同步配置五项 / 纯技术键三项）；此前内核读不到时会把本机记录误报成「云端有、本机缺」。该页为孤儿页（不在 MODULES、全站 0 引用），仅直链可开，不影响导航与工具页缓存。",
   "files": {
-    "index.html": "V20261014d",
+    "index.html": "V20261015a",
     "sync-github.js": "V20261013l",
     "tools/CPA会计掌握度系统.html": "V20260917i",
     "tools/backup-hub.js": "V20261010a",
@@ -35,12 +35,16 @@
     "tools/日记.html": "V20261013b",
     "tools/时间统计.html": "V20261013b",
     "tools/时间统计2.html": "V20261013b",
-    "tools/朝暮计.html": "V20261013b",
+    "tools/朝暮计.html": "V20261015a",
     "tools/消息获取.html": "V20261013b",
     "tools/阅读 (2).html": "V20261013b",
     "sync-gitee.js": "V20261013l"
   },
   "notes": [
+    {
+      "ver": "V20261015a",
+      "text": "朝暮计「集思录 · 梦想成真」清理旧版遗留的 localStorage 键：dmImportLegacy() 把 dreamGoals / dreamDiaries 并入 S.jisi.dm 后旧键仍留在本机。这两个键没有登记在导航页 MODULES[].keys 里 —— 会被当作陌生键同步上云，回来时 shardOfKey() 认不出归属，退化成「刷新全部已加载工具页」，打断正在填的表单、重置滚动位置（不丢数据）。本轮新增幂等的 dmPurgeLegacyKeys()，两条硬约束：旧数据确已并入 chaomuji_web_v27（legacyImported 闸门已置）才删；旧键解析不了的那个保留原文、不置闸门（另一个能解析的照删），绝不为了干净丢数据。调用点有三处 —— dmImportLegacy 迁移后、其 early-return 分支（补上一版「只搬不删」的老用户）、以及首屏初始化（用户不开集思录页也能清掉）。未新增任何 localStorage 键，同步覆盖面无变化。"
+    },
     {
       "ver": "V20261014c",
       "text": "tools/sync-diff.html 兜底排除清单 24 → 35 条，与内核 EXCLUDE_KEYS 逐条对齐（世代号三项 / 同源其它应用的含令牌同步配置五项 / 纯技术键三项）；此前内核读不到时会把本机记录误报成「云端有、本机缺」。该页为孤儿页（不在 MODULES、全站 0 引用），仅直链可开，不影响导航与工具页缓存。"

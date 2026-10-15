@@ -18541,11 +18541,36 @@ oninput="pgRefresh()"></textarea>
             if (!S.jisi.dm.diaries || typeof S.jisi.dm.diaries !== 'object') S.jisi.dm.diaries = {};
             return S.jisi.dm;
         }
+        /* 删掉旧版遗留在 localStorage 的 dreamGoals / dreamDiaries（2026-10-15）。
+           这两个键没登记在导航页 MODULES[].keys 里 —— 留着会被当陌生键同步上云；回来时
+           shardOfKey() 认不出归属，退化成「刷新全部已加载工具页」，打断正在填的表单、重置滚动。
+           两条硬约束：
+             ① 迁移没跑过（legacyImported 未置）绝不能删 —— 那时旧数据还没并进 S.jisi.dm，
+                删了就是真丢数据，所以先判闸门；
+             ② 解析不了的那个键留着（宁可不干净，也不丢数据），且不置闸门，下次再试；
+                另一个能解析的照删 —— 不让一个坏键连累另一个。
+           数据一旦已在 S.jisi.dm（chaomuji_web_v27，已登记）里，删旧键不丢数据。 */
+        function dmPurgeLegacyKeys() {
+            const d = dmStore();
+            if (d.legacyKeysPurged) return;
+            if (!d.legacyImported) return;
+            let all = true;
+            ['dreamGoals', 'dreamDiaries'].forEach(function (k) {
+                const raw = localStorage.getItem(k);
+                if (raw === null) return;
+                let ok = true;
+                try { if (JSON.parse(raw) === null) ok = false; } catch (e) { ok = false; }
+                if (ok) { try { localStorage.removeItem(k); } catch (e) {} } else { all = false; }
+            });
+            if (!all) return;
+            d.legacyKeysPurged = true;
+            save();
+        }
         /* 一次性把旧 localStorage 里的梦想成真数据搬进来，之后置闸门不再跑。
            只搬「当前为空」的分片，绝不覆盖已有数据。 */
         function dmImportLegacy() {
             const d = dmStore();
-            if (d.legacyImported) return;
+            if (d.legacyImported) { dmPurgeLegacyKeys(); return; }
             try {
                 if (!d.goals.length) {
                     const raw = localStorage.getItem('dreamGoals');
@@ -18558,6 +18583,7 @@ oninput="pgRefresh()"></textarea>
             } catch (e) {}
             d.legacyImported = true;
             save();
+            dmPurgeLegacyKeys();
         }
         function getGoals() { return dmStore().goals; }
         function setGoals(g) { dmStore().goals = Array.isArray(g) ? g : []; save(); }
@@ -24221,6 +24247,10 @@ oninput="pgRefresh()"></textarea>
     /* v55：历史脏优先级归一 —— 必须赶在首屏渲染之前，否则四象限首帧仍缺这些任务 */
     try { normalizeFollowPri(); } catch (e) {}
     applyBg();
+    /* v58（2026-10-15）：旧键清理不能只等「进入集思录」——用户不开那一页就永远留着，
+       而 dreamGoals / dreamDiaries 没登记在导航页 MODULES[].keys，会被当陌生键同步上云。
+       这里只清「迁移已经跑过」的情形（闸门由 dmPurgeLegacyKeys 内部判），无丢数据风险。 */
+    try { dmPurgeLegacyKeys(); } catch (e) {}
     /* v48：背景图实体在 IndexedDB，启动时要把它们取回来。
        顺序：打开并回读校验 → 申请持久化（不申请的话磁盘紧张时浏览器可直接回收）
              → 还原/迁移（把旧 dataURL 搬进 IDB 并腾空 localStorage）→ 重绘。 */
@@ -24995,7 +25025,7 @@ html.embedded #buildTag{display:none}
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
-<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261013b</div>
+<div id="buildTag" title="构建版本（确认本设备加载的是哪一版）：本工具最后一次推送">V20261015a</div>
 <!-- build-tag:end -->
 <!-- v57: 集思录 · 梦想成真迁移骨架（晨间日记 / 目标管理 / 计划视图 + 右栏目标树 + 编辑弹窗）
      用 <template> 承载：内容不在文档树里，不参与主站的 id / 类匹配，
